@@ -373,6 +373,7 @@ is done.
 | 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, fit drawn sharp |
 | 3240 | The player's pick of the picture: sharp pixels or fill the screen (after 2333) |
 | 3241 | The capture mode compares a filled frame with the raster, in the render jobs (after 2333) |
+| 3242 | `check --target` compares each target's scale with the game's `DEFAULT_SCALE` (after 2333) |
 | 2335 | Rotated sprites: an angle around a pivot and `flip_y`, with an integer `Angle` in `shuyi-core` |
 | 2336 | Drawn shapes for every game: lines, circles and polygons |
 | 2337 | Tints and blend modes on sprites and overlays |

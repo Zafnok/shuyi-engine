@@ -23,7 +23,6 @@ use shuyi_assets::lang::Lang;
 use shuyi_assets::onebit::PatternMapDef;
 use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
-use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::input::fit::Controls;
 
 use shuyi_core::bots::playtest::{Check, PlayedTry, PlaytestReport, Tries};
@@ -642,16 +641,6 @@ pub trait GameTools {
     /// checks the display alone and says so. An error (the game's files
     /// don't load) fails the check.
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
-        None
-    }
-
-    /// `check --target`: how the game's frame fills a window by default,
-    /// its settings' [`DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE),
-    /// which each asked target's `scale` in `shuyi.ron` must match (the
-    /// check certifies what the window draws). `None`, the default,
-    /// doesn't offer it: `check --target` then says the scale isn't
-    /// compared.
-    fn scale(&self) -> Option<ScaleMode> {
         None
     }
 

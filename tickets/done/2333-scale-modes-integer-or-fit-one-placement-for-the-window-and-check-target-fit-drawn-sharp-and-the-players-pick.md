@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: in-progress
+status: done
 blocked_by: ["2511"]
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 2333 — Scale modes: integer or fit
@@ -196,34 +196,10 @@ game's choice, through its `engine-change` skill.
   mode there too). `Layout::frame_px` stays as a call of the `Integer`
   placement's, as `layout` does, so 2413's tests stay; `Placement`'s
   tests get a `Fit` row.
-- **The check compares the game's default with `shuyi.ron`:**
-  - `GameTools::scale(&self) -> Option<ScaleMode>`
-    (`crates/cli/src/game.rs`), `None` by default;
-  - in `targets` (`crates/cli/src/contract/check.rs`), when the game's
-    tools offer it, each asked target whose `scale` differs is an
-    error: `TargetCheck::Fits`, setting `targets."<id>".scale`, message
-    "`fit` here, but the game draws `integer` by default
-    (`GameSettings::DEFAULT_SCALE`)". There is no new `TargetCheck`
-    variant, so the contract's schema stays;
-  - without it, the answer's limits get a line, as for the controls:
-    "the scale isn't compared with the game's: the game's tools don't
-    offer it (GameTools::scale)", or, with no tool program, "… it needs
-    the game's tools, and shuyi.ron names no game tool program
-    (`game`)". It goes after the per-target lines, and the last line
-    becomes "only the frame's fit, the text's size, the controls, the
-    scale, one-bit patterns and the identity are checked yet" (**from
-    3048, done:** the line today ends "the controls, one-bit patterns
-    and the identity are checked yet", after the identity's own line
-    when `shuyi.ron` has no `app`);
-  - `Fake` (`crates/cli/src/contract/fake.rs`) gets a `scale` field
-    for the tests;
-  - the grid template's tools (`templates/grid/crates/game/src/tools.rs`)
-    and hello-grid's (`examples/hello-grid/src/tools.rs`) return
-    `Some(<S as GameSettings>::DEFAULT_SCALE)` for their settings type
-    `S` (`Prefs` today). `shuyi_cli::BasicTools` (2511, the blank
-    template's tools) returns `Some(<() as GameSettings>::DEFAULT_SCALE)`;
-  - the check certifies the game's default. A player who picks the
-    other mode chooses what they see.
+- **The check compares the game's default with `shuyi.ron`:** moved to
+  3242 when this PR passed 1,500 counted lines (`GameTools::scale`, the
+  comparison and its limit lines, `Fake`, and the tools of the grid
+  template, hello-grid and `BasicTools`).
 - **Docs:**
   - an ADR (the `write-adr` skill). A frame may be shown at a
     fractional scale. Logical pixels, glyph scales, the backdrop's
@@ -294,7 +270,8 @@ tests 500, docs 300); about 1,000 without it (written 2026-11-23, after
 the code had started: see the completion notes).
 
 **Split:** past 1,000 lines, step 7's player's pick goes to its own
-ticket, and the `Fit` capture of 2018's `render` job with it.
+ticket, and the `Fit` capture of 2018's `render` job with it; past
+1,500, step 6's comparison of the game's default too.
 
 ## Implementation steps
 
@@ -314,7 +291,7 @@ ticket, and the `Fit` capture of 2018's `render` job with it.
    the toy, hello-grid and the `()` form.
 5. Draw `Fit` in `shuyi-app`: the render target, the backdrop on it,
    and the card. Move the pointer's inverse onto `Placement`.
-6. Add `GameTools::scale`, the comparison and the limit lines, `Fake`,
+6. (Moved to 3242.) Add `GameTools::scale`, the comparison and the limit lines, `Fake`,
    and the tools of the grid template, hello-grid and `BasicTools`.
 7. Count the changed lines. If the PR would pass about 600 (fixtures
    and snapshots not counted), move the player's pick to a follow-up
@@ -332,7 +309,7 @@ ticket, and the `Fit` capture of 2018's `render` job with it.
 
 ## Acceptance criteria
 
-- [ ] `place` gives these for an 800 × 512 frame (a table test):
+- [x] `place` gives these for an 800 × 512 frame (a table test):
 
   | Window | `Integer` | `Fit` (`draw_scale`) |
   | ------ | --------- | -------------------- |
@@ -353,18 +330,18 @@ ticket, and the `Fit` capture of 2018's `render` job with it.
   (116, 0) (3) and 3375 × 2160 at (232, 0) (5), the 384 × 384 case on
   1280 × 800 was 800 × 800 at (240, 0) (3), and the 1600 × 1000 case was
   on 3840 × 2160, where it now snaps.)
-- [ ] The existing tests of `layout` in `console.rs` pass unchanged.
-- [ ] The tests in `crates/cli/src/contract/target/tests.rs` pass
+- [x] The existing tests of `layout` in `console.rs` pass unchanged.
+- [x] The tests in `crates/cli/src/contract/target/tests.rs` pass
       unchanged.
 - [ ] A check whose tools report `integer` against a `fit` target fails
       on `targets."web".scale`. Tools that report `fit` pass. Tools
       that report nothing, and no tool program, each give their limit
       line.
-- [ ] An `App` test in `crates/platform/src/app/tests.rs`, through a
+- [x] An `App` test in `crates/platform/src/app/tests.rs`, through a
       platform that records each frame's `scale` (as `RecordLook`
       records the look): the toy's loading card frame carries `Fit`,
       its `DEFAULT_SCALE`.
-- [ ] A `Harness` test: the toy's presented frame carries
+- [x] A `Harness` test: the toy's presented frame carries
       `ScaleMode::Fit`; after `Settings::scale` is set to `Integer`, it
       carries `Integer`. (If step 7 moved the player's pick out: the
       frame carries the toy's `DEFAULT_SCALE`.)
@@ -374,13 +351,13 @@ ticket, and the `Fit` capture of 2018's `render` job with it.
       settings file without `scale` loads with `Fit`; hello-grid's
       options test (`tests/it/options.rs`) lists `options.row.scale`
       after `options.row.look`.
-- [ ] Every existing frame snapshot is unchanged.
+- [x] Every existing frame snapshot is unchanged.
 - [ ] The PR has screenshots of hello-grid at 1280 × 800 and
       1920 × 1080 in both modes, on the desktop and in the web build.
       In `Fit` the pixels stay sharp: an edge blends over one window
       pixel at most.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -408,4 +385,119 @@ ticket, and the `Fit` capture of 2018's `render` job with it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done:
+
+- `shuyi_ui::frame::console` (`console/place.rs`, in whole numbers,
+  `no_std`): `ScaleMode { Integer, Fit }` with `ALL`, `Factor` (moved
+  from the CLI, with `floor`, `ceil`, `is_whole`), `scale`, `place`,
+  `Placement` (with `is_whole` and `frame_px`), `SNAP` and
+  `MAX_DRAW_PX`; `frame_of(spec)`. `layout` is `place(Integer, …)` and
+  `Layout::frame_px` is `Placement::frame_px` at a whole scale: their
+  tests in `console.rs` pass unchanged. Table, case and property tests
+  in `console/place/tests.rs`.
+- `check --target`: `project::Scale` is `ScaleMode`, `scale_on` is
+  `console::scale`, and `target.rs` re-exports `Factor`; the tests in
+  `target/tests.rs` pass unchanged.
+- `GameSettings::DEFAULT_SCALE` (default `Integer`; the toy's `Fit`),
+  `Frame::scale` (set by `present_game` and on the loading card's frame),
+  `Presented::Game`'s `scale` and `Harness::scale`, with an `App` test
+  (the card's and the game's frames carry the toy's `Fit`) and a
+  `Harness` test.
+- `shuyi-app`: `Renderer::set_scale`; `draw` draws a whole placement as
+  before and a fraction through `Stretch` (a render target kept between
+  frames, filtered linearly, the backdrop's viewport and camera on it);
+  the loading card's picture through `place` and the same `Stretch`;
+  the pointer maps through `Placement::frame_px` with the mode the last
+  frame was drawn in (`Macroquad` keeps it beside the spec), with a test
+  of a filled frame at 1280 × 720.
+- ADR-0139; the ADR-0008 status and index rows; `targets/desktop.ron`'s
+  and the template `shuyi.ron`'s comments; `docs/platform-backends.md`'s
+  `frame.scale` line; `docs/contract.md`'s `check --target` row; the
+  roadmap's rows for 3240, 3241 and 3242.
+
+Tried by hand on this branch (9f3b74e5 and after, on main fd927adb), on
+Windows 11: hello-grid in a 1280 × 720 window through the capture mode,
+with an uncommitted change to `Fit` and a full-window read. The 384 × 384
+frame filled the height, 720 × 720 at (280, 0), drawn at 2× and
+stretched, upright, the title and both looks of the stage. With
+`Integer` in the same window, the three captures matched the raster
+exactly (0 pixels over): the whole-scale path draws as before. The web
+build wasn't tried: 3241 puts a filled frame in the `web-render` job.
+
+Deviations:
+
+- **The snap** (Nick's OK, 2026-11-23, for game#1320): `Fit` keeps the
+  whole scale when it is at least 9 / 10 of the fraction, in `scale`
+  itself so the check agrees. The acceptance table's 1920 × 1080 and
+  3840 × 2160 rows, the 384 × 384 case on 1280 × 800 and the
+  1600 × 1000 case changed with it (the ticket says what they were); a
+  1280 × 720 row was added. The property "Fit equals the window on one
+  axis" holds when it doesn't snap, and a snapped `Fit` equals
+  `Integer`'s placement; the `MAX_DRAW_PX` property holds on the
+  stretched path, the only one that draws into a texture.
+- **Split at step 7** (past 1,000 lines): the player's pick
+  (`Settings::scale`, `OptionRow::scale`, `ScaleMode::key`, its text and
+  the saved forms) is ticket 3240; the frame carries the game's
+  `DEFAULT_SCALE` until then. The `Fit` capture of the `render` and
+  `web-render` jobs is ticket 3241. 2314's, 2351's and 2110's
+  either-order clauses now name 3240.
+- **Split past 1,500 lines** (1,530 measured with it): step 6, the
+  check's comparison of each target's `scale` with the game's default
+  (`GameTools::scale`, the limit lines, `Fake`, the tools of
+  `BasicTools`, hello-grid and the template), is ticket 3242. Until it
+  lands nothing checks that `shuyi.ron` and `DEFAULT_SCALE` agree
+  (ADR-0139 says so).
+- Unticked acceptance boxes: the check's comparison (3242); the player's
+  pick (3240); the screenshots, which are of hello-grid at 1280 × 720
+  on the desktop in both modes, not at 1280 × 800 and 1920 × 1080 or on
+  the web: with the snap, a 384 × 384 frame on 1280 × 800 is 2× in both
+  modes, and the capture mode reads a window of the size the plan's
+  machine gives (3241 adds a filled capture on both).
+- The ticket had no size estimate (it was on
+  `tools/unestimated-tickets.txt`): written after the code had started,
+  and the id taken off the list.
+- `Fit` for a window of 0 pixels places the frame at 1×, as `Integer`
+  does (the fraction 0 is whole), instead of a rectangle of 0.
+
+Breaking: shuyi-cli: `project::Scale`: an alias of `shuyi_ui::frame::console::ScaleMode`, no longer an enum of its own; its variants and serde names are the same.
+
+```migration
+since: 0.1.0
+what: shuyi.ron's scale is the engine's ScaleMode.
+old: shuyi_cli::project::Scale
+new: shuyi_ui::frame::console::ScaleMode
+before: |
+  use shuyi_cli::project::Scale;
+  let s = Scale::Fit;
+after: |
+  use shuyi_ui::frame::console::ScaleMode;
+  let s = ScaleMode::Fit;
+find: ["project::Scale"]
+```
+
+Breaking: shuyi-cli: `contract::target::Factor`: a re-export of `shuyi_ui::frame::console::Factor`, with the same fields, `whole`, `of` and `shown`.
+
+```migration
+since: 0.1.0
+what: Factor lives in shuyi-ui; the CLI re-exports it.
+old: shuyi_cli::contract::target::Factor
+new: shuyi_ui::frame::console::Factor
+before: |
+  use shuyi_cli::contract::target::Factor;
+after: |
+  use shuyi_ui::frame::console::Factor;
+find: ["target::Factor"]
+```
+
+Behaviour: shuyi-cli: `check --target` checks a `fit` target's text at the scale the window draws: the whole scale when it is at least 9 / 10 of the fraction.
+
+Book: none, a game opts in through `GameSettings::DEFAULT_SCALE`, documented on the item, in ADR-0139 and in `docs/platform-backends.md`; the book's chapter follows the player's pick (3240).
+
+Searched the game (pin 50472bbc): a `grep` of its crates and `shuyi.ron`
+for `Scale::`, `target::Factor`, `scale_on` and `Presented::Game {`
+found none of the engine's; its targets all say `scale: integer`, so
+the snap changes nothing it checks.
+
+Measured: 1,371 counted lines (`cargo xtask pr-size`), after the two splits.
+
+Game: game#1320 moves the pin and sets `DEFAULT_SCALE = Fit`.

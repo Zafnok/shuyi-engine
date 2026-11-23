@@ -378,30 +378,6 @@ pub fn check_target(
 /// What the controls' check found on target `id` ([`FitProblem`]s), as
 /// target problems: errors, but for a screen that doesn't declare its
 /// actions, a warning.
-pub fn scale(id: &str, setting: &TargetSetting, drawn: Scale) -> Option<TargetProblem> {
-    (setting.scale != drawn).then(|| {
-        TargetProblem::display(
-            Level::Error,
-            TargetCheck::Fits,
-            format!("targets.\"{id}\".scale"),
-            format!(
-                "`{}` here, but the game draws `{}` by default (`GameSettings::DEFAULT_SCALE`)",
-                scale_name(setting.scale),
-                scale_name(drawn)
-            ),
-        )
-    })
-}
-
-/// A scale as `shuyi.ron` names it.
-fn scale_name(scale: Scale) -> &'static str {
-    match scale {
-        Scale::Integer => "integer",
-        Scale::Fit => "fit",
-    }
-}
-
-/// The problems of the game's controls on target `id` (ADR-0008 §3).
 pub fn controls(id: &str, found: Vec<FitProblem>) -> Vec<TargetProblem> {
     found
         .into_iter()

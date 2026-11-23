@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-11-23
 - **Related tickets:** 2333; 3240 (the player's pick), 3241 (the capture
-  of a filled frame); game#1320 (the request)
+  of a filled frame), 3242 (the check compares the game's default);
+  game#1320 (the request)
 - **Amends:** ADR-0008 §1 (the `desktop` row's "any, integer scale"), and
   for the engine game ADR-0012's integer-only rule
 
@@ -65,11 +66,9 @@ pixel-perfect picture for 5 % more of the screen.
 
 2. **`check --target` uses the same function**: `project::Scale` is
    `ScaleMode`, and `scale_on` is `console::scale`, so the text is
-   checked at the scale the window draws, the snap included. With the
-   game's tools it compares each asked target's `scale` with the game's
-   default (`GameTools::scale`) and fails a difference on
-   `targets."<id>".scale`; without them, its limits say the scale wasn't
-   compared.
+   checked at the scale the window draws, the snap included. Comparing
+   each target's `scale` with the game's default (below) is ticket 3242:
+   until then `shuyi.ron` and `DEFAULT_SCALE` are kept equal by hand.
 
 3. **The game picks, the frame carries it**: `GameSettings::DEFAULT_SCALE`
    (an associated const, `Integer` unless the game says otherwise), set
@@ -109,8 +108,8 @@ pixel-perfect picture for 5 % more of the screen.
 - The render target costs one texture of the frame at `draw_scale` (an
   800 × 512 frame at 2×: 1600 × 1024 RGBA, 6.5 MB of video memory) and
   one more draw a frame, only while a fraction shows.
-- `check --target` now fails a game whose tools report a scale other
-  than its targets': `shuyi.ron` says the truth or the check says so.
+- Until ticket 3242, nothing checks that `shuyi.ron`'s `scale` and the
+  game's `DEFAULT_SCALE` agree.
 - A filled frame's window isn't compared with the raster in CI until
   ticket 3241.
 

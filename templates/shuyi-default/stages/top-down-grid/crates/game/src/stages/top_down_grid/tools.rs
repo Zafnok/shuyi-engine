@@ -19,7 +19,6 @@ use shuyi::core::{Bot, Made, Pos, RandomBot, TerrainId, play};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::prelude::*;
-use shuyi::ui::frame::console::ScaleMode;
 use shuyi::ui::input::fit::Controls;
 use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::playtest::PlaytestInput;
@@ -259,10 +258,6 @@ impl GameTools for Tools {
 
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
         self.basic().controls()
-    }
-
-    fn scale(&self) -> Option<ScaleMode> {
-        self.basic().scale()
     }
 
     /// The engine's bake of the game's files, its stage's maps among them as

@@ -7,8 +7,6 @@ use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use shuyi_ui::frame::console::ScaleMode;
-
 use shuyi_assets::ContentError;
 use shuyi_assets::audio::{AudioManifest, Bytes as AudioBytes, CreditRef, Files, SoundCue};
 use shuyi_assets::bundle::{Bundle, Layer};
@@ -230,8 +228,6 @@ pub struct Fake {
     /// Its one-bit skin, or why it doesn't load; `None`: it doesn't offer
     /// one.
     pub one_bit: Option<Result<OneBitSkin, String>>,
-    /// What [`GameTools::scale`] answers; `None` doesn't offer it.
-    pub scale: Option<ScaleMode>,
     /// Its languages (empty English by default), or why they don't load.
     pub lang: Result<Lang, String>,
     /// Its font atlas, or why it doesn't load; `None`: it doesn't offer
@@ -265,7 +261,6 @@ impl Default for Fake {
             sources: Some(SOURCES),
             controls: None,
             one_bit: None,
-            scale: None,
             lang: Ok(Lang::default()),
             font_atlas: Some(Ok(FontAtlasDef::default())),
             sounds: None,
@@ -572,10 +567,6 @@ impl GameTools for Fake {
 
     fn one_bit(&self, _target: &str) -> Option<Result<OneBitSkin, String>> {
         self.one_bit.clone()
-    }
-
-    fn scale(&self) -> Option<ScaleMode> {
-        self.scale
     }
 
     fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
