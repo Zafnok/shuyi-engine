@@ -1,11 +1,11 @@
 ---
 id: "2602"
-title: "Parked: Host a turn-game preview as bounded actions and pixels"
+title: "Host a turn-game preview as bounded actions and pixels, built and tested locally"
 type: feature
-milestone: "Parked: networking"
+milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: max
-status: blocked
+status: todo
 blocked_by: []
 nick_input: none
 completed:
@@ -13,7 +13,7 @@ completed:
 
 # 2602 — Host a turn-game preview as actions and pixels
 
-> **Parked** The networking direction remains parked in the roadmap. Nick asked to preserve this countermeasure as a ticket, not to start its service now. Unpark only by Nick's product decision.
+> **Unparked** by Nick on 2026-11-23 ([`decisions.md`](../../docs/decisions.md#2026-11-23-the-hosted-preview-2602-unparked-built-and-tested-locally-only)): it runs locally and in CI only; no paid hosting until Nick approves its measured cost. The rest of networking stays parked.
 
 ## Context
 
@@ -36,6 +36,15 @@ None.
 - Exposing the existing MCP/Session API to visitors.
 - Real-time video/audio streaming, matchmaking or a hosted Shuyi business.
 - A claim that visible gameplay cannot be copied.
+- Paid hosting of any kind: no rented server, hosting account or public
+  deployment. The service runs on the developer's machine and in CI
+  only, until Nick approves the cost this ticket measures.
+
+**Estimated size:** about 1,600 lines (code 900, tests 500, docs 200).
+
+**Split:** past 1,000 lines, split off step 3 (the browser client, the
+load test and the accessibility review) into a new ticket after this
+one, and finish here with the worker, its action API and its quotas.
 
 ## Implementation steps
 
@@ -48,6 +57,7 @@ None.
 - [ ] A visitor can play a fixture turn game without downloading its executable or assets.
 - [ ] Arbitrary scripts, frame counts, scene, snapshot and log endpoints are unavailable externally.
 - [ ] p95 action-to-image delay, CPU/RAM per session, egress and concurrent-session limits are reported.
+- [ ] The completion notes turn those measurements into a plain monthly estimate for hosting a closed preview (machine size, traffic per session), for Nick to decide on; nothing is deployed or paid for.
 - [ ] Keyboard and screen-reader paths are usable for the fixture.
 - [ ] The book's chapter is updated (2802), or the completion notes have a Book: line saying why not.
 - [ ] All gates in the run-gates skill pass.

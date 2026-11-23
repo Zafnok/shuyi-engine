@@ -40,6 +40,8 @@ use crate::app_info::AppProblem;
 use crate::contract::codes;
 use crate::game::OneBitSkin;
 use crate::project::{Config, FILE, Scale, TargetSetting};
+use shuyi_ui::frame::console;
+pub use shuyi_ui::frame::console::Factor;
 
 /// The engine's target profiles, embedded.
 /// `build.rs` writes their table.
@@ -274,65 +276,17 @@ pub fn profile(config: &Config, root: &Path, id: &str) -> Result<Profile, (codes
     ))
 }
 
-/// The scale a frame is shown at, as a fraction: `num / den`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Factor {
-    /// Its numerator.
-    pub num: u32,
-    /// Its denominator, never 0.
-    pub den: u32,
-}
-
-impl Factor {
-    /// The whole number `n`.
-    pub const fn whole(n: u32) -> Self {
-        Self { num: n, den: 1 }
-    }
-
-    /// `px` times this, rounded down.
-    pub fn of(self, px: u16) -> u32 {
-        u32::from(px) * self.num / self.den
-    }
-
-    /// The smaller of two.
-    fn min(self, other: Self) -> Self {
-        // a/b < c/d when a·d < c·b; the numbers are u16 products.
-        if u64::from(self.num) * u64::from(other.den) <= u64::from(other.num) * u64::from(self.den)
-        {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// The factor as messages show it: `2`, or `1.60` rounded down.
-    pub fn shown(self) -> String {
-        if self.num.is_multiple_of(self.den) {
-            return (self.num / self.den).to_string();
-        }
-        let hundredths = u64::from(self.num) * 100 / u64::from(self.den);
-        format!("{}.{:02}", hundredths / 100, hundredths % 100)
-    }
-}
-
 /// The scale `scale` gives frame `(width, height)` on `space` (the
-/// display inside its safe area): for [`Scale::Integer`], the largest
-/// whole number that fits, which is 0 when even 1 doesn't; for
-/// [`Scale::Fit`], the largest factor that fits.
+/// display inside its safe area): [`console::scale`], the placement the
+/// window uses too (ADR-0140). For [`Scale::Integer`], the largest whole
+/// number that fits, which is 0 when even 1 doesn't; for [`Scale::Fit`],
+/// the largest factor that fits, or the whole one when that is close.
 pub fn scale_on(scale: Scale, (width, height): (u16, u16), space: &Size) -> Factor {
-    let across = Factor {
-        num: u32::from(space.width),
-        den: u32::from(width.max(1)),
-    };
-    let down = Factor {
-        num: u32::from(space.height),
-        den: u32::from(height.max(1)),
-    };
-    let fit = across.min(down);
-    match scale {
-        Scale::Integer => Factor::whole(fit.num / fit.den),
-        Scale::Fit => fit,
-    }
+    console::scale(
+        scale,
+        (u32::from(width), u32::from(height)),
+        (u32::from(space.width), u32::from(space.height)),
+    )
 }
 
 /// The game's `setting` for target `id` checked against `profile`: every

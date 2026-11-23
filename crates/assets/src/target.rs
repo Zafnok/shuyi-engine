@@ -1,6 +1,7 @@
 //! Export targets as data (ADR-0008 §1): a [`TargetProfile`] says what a
 //! target's display shows, how fast it runs, what the player can press,
-//! what a game may spend there, and which platform backend builds it. The
+//! what a game may spend there, how much motion it shows
+//! ([`GraphicsTier`]), and which platform backend builds it. The
 //! engine's profiles are the files of `targets/` at the repository's root
 //! (`playdate.ron`, `steam-deck.ron`, …); a game adds one, or overrides
 //! one by its id, with a file of its own. As a format (ADR-0007):
@@ -9,6 +10,8 @@
 //! Every unit is an integer: pixels are `u16`, milliseconds `u32`, bytes
 //! and instructions `u64`.
 use crate::prelude::*;
+
+use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
@@ -74,6 +77,10 @@ pub struct TargetProfile {
     /// What a game may spend there.
     #[serde(default)]
     pub budgets: Budgets,
+    /// How much motion a game shows there: [`GraphicsTier::Full`] unless
+    /// said.
+    #[serde(default)]
+    pub graphics: GraphicsTier,
     /// The platform backend that builds it: a crate (`shuyi-app`,
     /// `shuyi-playdate`), or `private` for a console's.
     pub backend: String,
@@ -152,6 +159,76 @@ pub enum Quit {
     /// Playdate's Home, a console's or a phone's home button), and a game
     /// shows no Quit.
     System,
+}
+
+/// How much a game moves and draws on a target, beyond its stills: one
+/// setting a game's skins ask before they draw a moving look (a tile that
+/// loops through frames, particles, an effect over the whole screen). The
+/// tiers are ordered, [`Minimal`](Self::Minimal) lowest: a moving look
+/// says the lowest tier it plays at, and below that it shows the still
+/// its game names for it. What each tier allows is a guide that a game
+/// keeps to, not a limit the engine enforces: the engine draws what a
+/// skin gives it.
+///
+/// A set that grows (ADR-0039 kind 6), a profile's field
+/// ([`TargetProfile::graphics`]) and a platform fact.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[non_exhaustive]
+pub enum GraphicsTier {
+    /// Stills only: no looping frames, no particles, no effect over the
+    /// screen. For a target whose every frame is spent on the game
+    /// itself.
+    Minimal,
+    /// Stills, with at most a few cheap moving looks a game picks (a
+    /// tile or two that loops through frames). No particles and no effect
+    /// over the screen. For a slow device or one with a small screen (the
+    /// Playdate).
+    Reduced,
+    /// Everything a game moves: looping tiles, particles and effects over
+    /// the screen. Every target unless its profile says otherwise.
+    #[default]
+    Full,
+}
+
+impl GraphicsTier {
+    /// Every tier, lowest first.
+    pub const ALL: [Self; 3] = [Self::Minimal, Self::Reduced, Self::Full];
+
+    /// Its name, as a profile writes it (`Full`).
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Minimal => "Minimal",
+            Self::Reduced => "Reduced",
+            Self::Full => "Full",
+        }
+    }
+
+    /// The tier named `name`, in any case (`reduced`, `Reduced`): as a
+    /// command line or a variable writes it.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|tier| tier.name().eq_ignore_ascii_case(name.trim()))
+    }
+
+    /// Whether it is [`Full`](Self::Full), the default.
+    pub fn is_full(&self) -> bool {
+        *self == Self::Full
+    }
+
+    /// Whether a moving look that plays from `lowest` up plays at this
+    /// tier; where it doesn't, a skin draws the look's still.
+    pub fn plays(self, lowest: Self) -> bool {
+        self >= lowest
+    }
+}
+
+impl fmt::Display for GraphicsTier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
 }
 
 /// Insets from each edge of a display, in device pixels.
@@ -272,6 +349,7 @@ impl TargetProfile {
             input,
             quit: Quit::default(),
             budgets: Budgets::default(),
+            graphics: GraphicsTier::Full,
             backend: backend.into(),
         }
     }
@@ -428,6 +506,43 @@ pub(crate) mod tests {
         // A profile from before `quit` and `windowed`: the game quits
         // itself, always full screen.
         assert_eq!((p.quit, p.display.windowed), (Quit::Game, false));
+        // And from before `graphics`: everything moves.
+        assert_eq!(p.graphics, GraphicsTier::Full);
+    }
+
+    #[test]
+    fn a_profile_says_its_graphics_tier() {
+        let with = |tier: &str| {
+            let field = format!("    graphics: {tier},\n    backend:");
+            profile("small", "").replace("    backend:", &field)
+        };
+        for tier in GraphicsTier::ALL {
+            let p = read("small", &with(tier.name())).unwrap();
+            assert_eq!(p.graphics, tier);
+        }
+        let errors = read("small", &with("Low")).unwrap_err();
+        assert!(errors[0].contains("Low"), "{errors:?}");
+    }
+
+    #[test]
+    fn graphics_tiers_are_ordered_and_named() {
+        use GraphicsTier::{Full, Minimal, Reduced};
+        assert!(Minimal < Reduced && Reduced < Full);
+        assert_eq!(GraphicsTier::default(), Full);
+        assert!(Full.is_full() && !Reduced.is_full() && !Minimal.is_full());
+        // A look that plays from Full up plays only at Full; one from
+        // Reduced up plays there too, never at Minimal.
+        assert!(Full.plays(Full) && !Reduced.plays(Full) && !Minimal.plays(Full));
+        assert!(Full.plays(Reduced) && Reduced.plays(Reduced) && !Minimal.plays(Reduced));
+        assert!(Minimal.plays(Minimal));
+        for tier in GraphicsTier::ALL {
+            assert_eq!(GraphicsTier::from_name(tier.name()), Some(tier));
+            assert_eq!(tier.to_string(), tier.name());
+        }
+        assert_eq!(GraphicsTier::from_name(" reduced "), Some(Reduced));
+        assert_eq!(GraphicsTier::from_name("MINIMAL"), Some(Minimal));
+        assert_eq!(GraphicsTier::from_name("low"), None);
+        assert_eq!(GraphicsTier::from_name(""), None);
     }
 
     #[test]
@@ -570,6 +685,7 @@ pub(crate) mod tests {
             input: Input::default(),
             quit: Quit::Game,
             budgets: Budgets::default(),
+            graphics: GraphicsTier::Full,
             backend: "shuyi-app".to_owned(),
         };
         let built = TargetProfile::new(

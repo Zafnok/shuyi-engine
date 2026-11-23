@@ -35,7 +35,7 @@ a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh
-cec8c4b0490e8d90 shuyi.ron
+5fea86150d94da42 shuyi.ron
 
 [grid] base, stage-top-down-grid
 83704d78ca4c46ba .cargo/config.toml
@@ -79,7 +79,7 @@ a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh
-96fe8467adc062cf shuyi.ron
+d8d35a12b2b409f9 shuyi.ron
 
 [blank+private] base, private-files
 83704d78ca4c46ba .cargo/config.toml
@@ -115,4 +115,4 @@ a75efbaa67fe12de rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 80f5f765cdace3d9 scripts/git-hooks/post-checkout
 bc1bd62c158563b5 scripts/setup-linux.sh
-45fdb3e0fe64b2f7 shuyi.ron
+27acf23c3d587275 shuyi.ron
