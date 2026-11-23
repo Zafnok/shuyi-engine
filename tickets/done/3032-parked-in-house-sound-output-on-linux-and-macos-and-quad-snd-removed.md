@@ -212,7 +212,7 @@ it came back, in every run. The one cell that failed in those runs was quad-snd'
 **Follow-up tickets:** 3347 (Linux without `libasound`), 3348 (macOS capture), 3349
 (macOS before 14.2), 3350 (`PULSE_LATENCY_MSEC`). 3084 waits on all four.
 
-Size: 1,193 counted lines, past the 1,000 planned: the CI evidence needed each fix
+Size: 1,198 counted lines, past the 1,000 planned: the CI evidence needed each fix
 above. A split would put macOS's job and `mac-floor.sh` (about 150 lines) apart.
 
 Game: game#1241 turns `in-house-sound` on, and now names `quad-alsa-sys`'s patch
