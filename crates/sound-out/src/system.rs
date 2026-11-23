@@ -14,15 +14,18 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{
-    BufferSize, ErrorKind, OutputCallbackInfo, SampleFormat, SizedSample, Stream, StreamConfig,
-    SupportedBufferSize,
-};
+use cpal::{ErrorKind, OutputCallbackInfo, SampleFormat, SizedSample, Stream, StreamConfig};
 
 use crate::convert_impl::{Boundary, DeviceSample};
 #[cfg(windows)]
 use crate::sys::raised::Raised;
 use crate::{Callback, OutputConfig, OutputError};
+
+mod rules;
+
+#[cfg(not(windows))]
+use rules::Raised;
+use rules::{FIXED_BUFFER, PASSING_BACKEND_ERRORS, Stall, buffer_size, ends_the_stream};
 
 /// How often the thread looks at the default device: well under the second a player
 /// has to be heard on the speakers again.
@@ -37,67 +40,6 @@ const MOVED_LOOKS: u32 = 2;
 /// Whether [`Dry`] reads this system's callbacks: only where the room a callback is
 /// given says how full the device's buffer is.
 const COUNTS_DRY: bool = cfg!(windows);
-
-/// Whether a stream asks for [`buffer_size`]'s frames rather than the system's own
-/// choice: on Linux, where ALSA's own choice through a sound server's plugin can be
-/// seconds of buffer (ticket 3032).
-const FIXED_BUFFER: bool = cfg!(target_os = "linux");
-
-/// The frames a stream asks to be called for: about 20 ms when `fixed`, inside what
-/// the device allows; otherwise the system's own choice, as on Windows and macOS.
-fn buffer_size(supported: &SupportedBufferSize, rate: u32, fixed: bool) -> BufferSize {
-    if !fixed {
-        return BufferSize::Default;
-    }
-    let want = (rate / 50).max(1);
-    match *supported {
-        SupportedBufferSize::Range { min, max } => BufferSize::Fixed(want.max(min).min(max)),
-        SupportedBufferSize::Unknown => BufferSize::Fixed(want),
-    }
-}
-
-/// Whether a system's errors with no kind of their own pass, as long as the stream
-/// still calls back: on Linux, ALSA's plugin for `PulseAudio` says an I/O error early
-/// in a stream that plays on (`snd_pcm_avail_delay`, 4 scenarios in 36 of CI run
-/// 45205209022), and building it again would cut the sound (ticket 3032). A stream
-/// that did end stops calling back, and [`Stall`] builds it again.
-const PASSING_BACKEND_ERRORS: bool = cfg!(target_os = "linux");
-
-/// Whether an error of `kind` ends a stream, so that it is built again at once: the
-/// device or the system is gone, the stream is no use, or the error is one the system
-/// couldn't name (`backend_passes`: unless such errors pass, as on Linux). A glitch, a
-/// reroute or a refused priority never reaches here.
-const fn ends_the_stream(kind: ErrorKind, backend_passes: bool) -> bool {
-    !matches!(kind, ErrorKind::BackendError if backend_passes)
-}
-
-/// How long a stream that plays may go without a callback before it counts as lost: a
-/// stream on ALSA's plugin for `PulseAudio` can stop calling back with no error at all (ticket
-/// 3032), and every system calls back many times a second.
-const STALLED: Duration = Duration::from_millis(500);
-
-/// Tells a stream that stopped calling back, as a lost one doesn't always say so.
-#[derive(Debug, Clone, Copy)]
-struct Stall {
-    calls: u32,
-    since: Instant,
-}
-
-impl Stall {
-    const fn new(calls: u32, now: Instant) -> Self {
-        Self { calls, since: now }
-    }
-
-    /// Whether a stream whose callbacks number `calls` at `now` has made none for
-    /// [`STALLED`]. A held stream is meant to be quiet, so it never has.
-    fn stalled(&mut self, calls: u32, held: bool, now: Instant) -> bool {
-        if held || calls != self.calls {
-            *self = Self::new(calls, now);
-            return false;
-        }
-        now.duration_since(self.since) >= STALLED
-    }
-}
 
 /// What the output's owner asks of its thread.
 enum Order {
@@ -490,25 +432,6 @@ fn run(
     }
 }
 
-/// The audio thread's priority, raised on Windows alone (ticket 3089): on Linux and
-/// macOS it is CPAL's own thread as CPAL makes it, whose priority ticket 3320 decides.
-#[cfg(not(windows))]
-#[derive(Debug)]
-enum Raised {
-    Not,
-}
-
-#[cfg(not(windows))]
-impl Raised {
-    const fn current() -> Self {
-        Self::Not
-    }
-
-    const fn is_raised(&self) -> bool {
-        !matches!(self, Self::Not)
-    }
-}
-
 /// With no device for now the mix still goes on, discarded, so that what plays ends
 /// when it should and the game's commands don't pile up.
 struct Quiet {
@@ -564,78 +487,6 @@ mod tests {
         }
         assert!(dry.ran_dry(1_000), "late: the device played it all");
         assert!(!dry.ran_dry(400));
-    }
-
-    /// Every error ends a stream on Windows and macOS; on Linux an unnamed one passes.
-    #[test]
-    fn an_unnamed_error_passes_only_where_it_should() {
-        for kind in [
-            ErrorKind::DeviceNotAvailable,
-            ErrorKind::HostUnavailable,
-            ErrorKind::StreamInvalidated,
-            ErrorKind::Other,
-        ] {
-            assert!(ends_the_stream(kind, true), "{kind:?}");
-            assert!(ends_the_stream(kind, false), "{kind:?}");
-        }
-        assert!(ends_the_stream(ErrorKind::BackendError, false));
-        assert!(!ends_the_stream(ErrorKind::BackendError, true));
-    }
-
-    /// A stream counts as stalled after half a second with no callback while it
-    /// plays, never while held, and a callback starts the wait again.
-    #[test]
-    fn a_stream_that_stops_calling_back_stalls() {
-        let start = Instant::now();
-        let at = |ms| start + Duration::from_millis(ms);
-        let mut stall = Stall::new(0, start);
-        assert!(!stall.stalled(0, false, at(200)));
-        assert!(!stall.stalled(0, false, at(499)));
-        assert!(stall.stalled(0, false, at(500)), "half a second with none");
-        assert!(!stall.stalled(1, false, at(600)), "a callback came");
-        assert!(!stall.stalled(1, false, at(1_000)));
-        assert!(stall.stalled(1, false, at(1_100)));
-        assert!(!stall.stalled(1, true, at(5_000)), "held: quiet on purpose");
-        assert!(
-            !stall.stalled(1, false, at(5_400)),
-            "the wait starts when let go"
-        );
-        assert!(stall.stalled(1, false, at(5_500)));
-    }
-
-    /// Linux asks for about 20 ms, inside what the device allows; elsewhere the
-    /// system chooses.
-    #[test]
-    fn a_fixed_buffer_is_20_ms_inside_the_devices_range() {
-        let range = |min, max| SupportedBufferSize::Range { min, max };
-        assert_eq!(
-            buffer_size(&range(64, 8192), 48_000, true),
-            BufferSize::Fixed(960)
-        );
-        assert_eq!(
-            buffer_size(&range(64, 8192), 44_100, true),
-            BufferSize::Fixed(882)
-        );
-        assert_eq!(
-            buffer_size(&range(2048, 8192), 48_000, true),
-            BufferSize::Fixed(2048)
-        );
-        assert_eq!(
-            buffer_size(&range(64, 512), 48_000, true),
-            BufferSize::Fixed(512)
-        );
-        assert_eq!(
-            buffer_size(&SupportedBufferSize::Unknown, 48_000, true),
-            BufferSize::Fixed(960)
-        );
-        assert_eq!(
-            buffer_size(&range(64, 8192), 48_000, false),
-            BufferSize::Default
-        );
-        assert_eq!(
-            buffer_size(&range(64, 8192), 0, true),
-            BufferSize::Fixed(64)
-        );
     }
 
     /// A first callback given less than the buffer: the empty buffer later is larger.
