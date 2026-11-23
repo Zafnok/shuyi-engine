@@ -1832,12 +1832,23 @@ fn every_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
                 "base: cargo +{NIGHTLY} public-api -p {krate} --simplified{listing} \
                  --target-dir {base_target}"
             ),
-            format!(
-                "head: cargo semver-checks check-release -p {krate} --baseline-root {base_root} \
-                 --release-type minor --color never{semver}"
-            ),
         ] {
             assert!(ran.contains(&command), "no `{command}` in {ran:#?}");
+        }
+        let semver_command = format!(
+            "head: cargo semver-checks check-release -p {krate} --baseline-root {base_root} \
+             --release-type minor --color never{semver}"
+        );
+        // An unchecked crate is listed on both sides and never semver-checked.
+        let checked = unchecked(krate).is_none();
+        assert_eq!(
+            ran.contains(&semver_command),
+            checked,
+            "`{semver_command}` in {ran:#?}"
+        );
+        if !checked {
+            let prefix = format!("head: cargo semver-checks check-release -p {krate} ");
+            assert!(!ran.iter().any(|c| c.starts_with(&prefix)), "{ran:#?}");
         }
     }
     let _ = fs::remove_dir_all(&root);
@@ -1893,6 +1904,125 @@ fn every_feature_of_each_crates_manifest_is_chosen_or_left_out() {
         covered.sort_unstable();
         assert_eq!(covered, declared, "{}", krate.name);
     }
+}
+
+/// `UNCHECKED` is exactly the workspace's proc-macro crates, each in the
+/// catalog with a reason (ticket 3506): `cargo-semver-checks` reads no
+/// other kind of target, and refuses a proc-macro.
+#[test]
+fn the_unchecked_crates_are_the_proc_macro_crates() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut proc_macros = Vec::new();
+    for entry in fs::read_dir(&crates).unwrap() {
+        let path = entry.unwrap().path().join("Cargo.toml");
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let manifest: toml::Table = toml::from_str(&text).unwrap();
+        let proc_macro = manifest
+            .get("lib")
+            .and_then(|lib| lib.get("proc-macro"))
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false);
+        if proc_macro {
+            proc_macros.push(manifest["package"]["name"].as_str().unwrap().to_string());
+        }
+    }
+    proc_macros.sort_unstable();
+    let mut listed: Vec<String> = UNCHECKED
+        .iter()
+        .map(|(name, _)| (*name).to_string())
+        .collect();
+    listed.sort_unstable();
+    assert_eq!(listed, proc_macros);
+    for (name, why) in UNCHECKED {
+        assert!(catalog_names().contains(name), "{name}");
+        assert!(!why.is_empty(), "{name}");
+    }
+}
+
+/// A run in which the unchecked crate lost a line of its listing and gained
+/// one, and every other crate is as in the base.
+fn unchecked_run(root: &Path) -> (Fake, &'static str) {
+    let (krate, _) = UNCHECKED[0];
+    let fake = Fake::new(root)
+        .with_tools()
+        .with_base("abc123")
+        .with_base_packages(&catalog_names())
+        .with_listing("base", krate, "pub mod m\npub macro m::a!\n")
+        .with_listing("head", krate, "pub mod m\npub macro m::b!\n");
+    (fake, krate)
+}
+
+#[test]
+fn an_unchecked_crate_is_listed_and_its_lost_line_is_a_break() {
+    let root = temp_root("unchecked");
+    let (fake, krate) = unchecked_run(&root);
+    let outcome = run(&root, &Options::default(), &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(outcome.warnings.is_empty(), "{:?}", outcome.warnings);
+    assert_eq!(outcome.label, Some(Label::Breaking));
+    let why = unchecked(krate).unwrap();
+    assert!(
+        outcome
+            .summary
+            .contains(&format!("| `{krate}` | 1 | 1 | 1, not run: {why} |")),
+        "{}",
+        outcome.summary
+    );
+    assert!(
+        outcome
+            .summary
+            .contains(&format!("- `{LISTING_LINE_REMOVED}`: pub macro m::a!")),
+        "{}",
+        outcome.summary
+    );
+    let ran = fake.ran();
+    for place in ["head", "base"] {
+        let listed = format!("{place}: cargo +{NIGHTLY} public-api -p {krate} --simplified");
+        assert!(ran.iter().any(|c| c.starts_with(&listed)), "{ran:#?}");
+    }
+    assert!(
+        !ran.iter()
+            .any(|c| c.contains(&format!("check-release -p {krate} "))),
+        "{ran:#?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_unchecked_crates_lost_line_needs_its_breaking_line() {
+    let root = temp_root("unchecked-rule");
+    let (krate, _) = UNCHECKED[0];
+    let options = Options {
+        base: Some("abc123".to_string()),
+        pr_branch: Some("t2100-a".to_string()),
+        ..Options::default()
+    };
+    fs::write(root.join("tickets/done/2100-a.md"), TICKET_2100).unwrap();
+    let (fake, _) = unchecked_run(&root);
+    let outcome = run(&root, &options, &fake);
+    assert!(
+        outcome
+            .errors
+            .iter()
+            .any(|e| e.contains(&format!("no `Breaking:` line naming {krate}"))),
+        "{:?}",
+        outcome.errors
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_unchecked_crates_added_line_is_an_addition() {
+    let base = lines(&["pub mod m"]);
+    let head = lines(&["pub mod m", "pub macro m::b!"]);
+    assert_eq!(unchecked_findings(&base, &head), Vec::new());
+    assert_eq!(
+        unchecked_findings(&head, &base),
+        vec![finding(LISTING_LINE_REMOVED, &["pub macro m::b!"])]
+    );
+    assert_eq!(unchecked("shuyi-core"), None);
 }
 
 #[test]

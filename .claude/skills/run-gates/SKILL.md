@@ -597,6 +597,13 @@ in its entry, or in the test's `LEFT_OUT` with the reason in the entry:
 a test fails on one in neither. A side whose manifest lacks the feature
 yet builds without it. That file's docs say the same.
 
+A proc-macro crate (`shuyi-embed-macros`) is in `UNCHECKED` there, with
+its reason: `cargo-semver-checks` reads library targets only, and fails
+on one. It is listed on both sides like every crate and never
+semver-checked; each line its listing loses is a break instead (a
+`listing_line_removed` finding), which needs its `Breaking:` line. A
+test fails on a proc-macro crate missing from `UNCHECKED` (ticket 3506).
+
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).
 
