@@ -224,7 +224,7 @@ from the two sections after **Out**.
 - handing a screen a response while it arrives, and bodies past the
   limits above;
 - remote content: fetched files as a bundle layer (2207) or a game's
-  remote settings. That is a later ticket and Nick's call, since content
+  remote settings: 2608 (parked), on this ticket, and Nick's call (3527), since content
   that changes after release changes what a record replays;
 - the consumers: sending crash reports (3047), high scores on a web
   service (a backend under 3054's `Leaderboards`), a mod-hosting

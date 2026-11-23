@@ -76,8 +76,9 @@ splits it.
   CPAL's Android and iOS hosts beside the desktop outputs, passing
   2573's playback scenarios on a device, and pausing with `Suspend`
   (3003) when the app goes to the background or a call takes the
-  audio. While quad-snd is still in the build, phones may ship on it
-  first; once 3079 is done, the phone builds wait for that ticket.
+  audio. **Either order with 3079:** if 3079 is done, quad-snd is gone,
+  so the phone builds wait for that phone sound ticket; if not, phones
+  may ship on quad-snd first, and 3079 keeps them in its matrix.
 - **The lifecycle.** Going to the background sends `Suspend` (3003). The
   game saves, and resumes where it was.
 - **Vibration.** Native phones' vibration is this ticket's (2408's

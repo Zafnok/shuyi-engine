@@ -270,6 +270,11 @@ Visions of Shuyi.
   the toy and the `()` form) goes to a follow-up ticket written with the
   `write-ticket` skill (After MVP, blocked by this one), and this PR
   keeps the rest.
+- **Either order with 3346:** if 3346 is done, `lifecycle.js` gets a row
+  in `crates/app/WORKAROUNDS.md`'s plugin table (`cargo xtask
+  check-pins` fails without one), and it passes strings and bytes at a
+  pointer and a length, never as `sapp_jsutils` objects; if not, nothing
+  to do (3346 lists the plugins that exist then).
 
 **Out (do not do):**
 - the game's pause and Keep or Mute policy: 3093;

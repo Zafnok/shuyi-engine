@@ -13,7 +13,7 @@ completed:
 
 # 2920 — Research: Epic Online Services and console online rules
 
-> **Parked:** this waits on Nick's answer to decision 3527 (whether
+> **Parked**: this waits on Nick's answer to decision 3527 (whether
 > Epic Online Services may sit behind an optional feature, like Steam).
 > Nobody starts it until Nick unparks it. If he says no to EOS, the EOS
 > half is dropped and the console half waits with the rest of

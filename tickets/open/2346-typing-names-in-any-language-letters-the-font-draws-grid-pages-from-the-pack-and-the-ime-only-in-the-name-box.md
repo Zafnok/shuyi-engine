@@ -262,8 +262,8 @@ as `Rows` (wide glyphs are there: 2301, done).
   the IME on macOS, Linux and the web: miniquad 0.4.11 has neither.
   3329 (parked, from 3034's research) does both on winit (ADR-0136
   §12), on the `Frame::typing` and the caret this ticket adds.
-- The clipboard and paste: a name box doesn't need them. Chat (1149,
-  parked) and the editor (2507, parked) will, when they start.
+- The clipboard, paste, a caret that moves and undo: 3232 (blocked by
+  this one) adds them to every text box, the name box included.
 - The profiles screen asking the system keyboard (`Ctx::system_keyboard`)
   when there is one, and checking its answer with the same rules: 2380
   (blocked by this one). It checks a whole name with the rule for one

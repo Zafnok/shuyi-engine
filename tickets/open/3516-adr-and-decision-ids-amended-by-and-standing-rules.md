@@ -65,12 +65,10 @@ Builds on: [ADR-0001](../../docs/adr/0001-record-architecture-decisions.md),
 the `write-adr` and `ask-nick` skills, and the docs map
 (`docs/README.md`).
 
-**Why it waits for 3034:** this ticket rewrites the Status line of every
-ADR that something amends, and regenerates the index. Open PR 532 (the
-macroquad research, ticket 3034) edits `docs/adr/README.md`, ADR-0021
-and ADR-0068 and adds ADR-0136. Working both at once means a conflict
-in nearly every file. When 3034 is in `done/`, ADR-0136 is on `main`
-and gets its lines like the rest.
+**ADR-0136 (3034, done):** this ticket rewrites the Status line of every
+ADR that something amends, and regenerates the index. The macroquad
+research added ADR-0136 and amended ADR-0021 and ADR-0068; they get
+their lines like the rest.
 
 ## Nick input
 

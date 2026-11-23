@@ -169,7 +169,7 @@ field and Hello, Grid's budget) into a new ticket.
    totals (uploads, upload bytes) and the live textures at the end.
 6. **The stress example**, `crates/app/examples/render_stress.rs`
    (`--features capture`), built as `render_card.rs` is: its pictures
-   are PNGs encoded in code, 16 images of 16 × 16 pixels, and its
+   are PNG files encoded in code, 16 images of 16 × 16 pixels, and its
    console is 80 × 40 cells with every cell in the clear colour (no
    fills drawn) unless the frame says. One `Renderer` draws the frames
    in this order, each a few frames and then captured and compared with

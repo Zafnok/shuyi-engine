@@ -345,6 +345,12 @@ None.
   so).
 - **For the game:** its web build gets `shell.js` from `cargo shuyi
   web` at its next pin bump. No API changes.
+- **Either order with 3346:** if 3346 is done, a workaround moved from
+  `index.html` into `shell.js` (the `register_plugin` global, the audio
+  resume on each gesture, the frame's focus, the key backstop) moves its
+  row in `crates/app/WORKAROUNDS.md` to the new file and marker (`cargo
+  xtask check-pins` fails otherwise); if not, nothing to do (3346 writes
+  the rows where the code is then).
 
 **Out (do not do):**
 - a fullscreen button on the page: the game's setting and shortcut

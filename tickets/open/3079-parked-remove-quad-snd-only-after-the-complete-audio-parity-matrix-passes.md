@@ -78,6 +78,11 @@ Missing mandatory automated evidence still blocks removal.
 - **From 3031 (done):** the root `Cargo.toml`'s `[patch.crates-io]` of `alsa-sys`
   and `tools/sound-parity/alsa-sys-held` go with quad-snd, as nothing needs them then
   ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)).
+- **Either order with 3015:** if 3015 (mobile, parked) is done, its
+  phone builds play through quad-snd's Android and iOS outputs: the
+  parity matrix gains a phone row, and quad-snd stays until the phone
+  sound ticket 3015 writes passes it; if not, nothing to do (3015 waits
+  for this ticket on phones).
 
 **Out (do not do):** weakening parity budgets, silently abandoning a port,
 new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.

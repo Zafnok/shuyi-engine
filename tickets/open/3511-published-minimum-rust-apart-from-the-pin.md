@@ -147,7 +147,8 @@ counted from the steps below and doubled. The code includes up to about
 ## Implementation steps
 
 1. Write the ADR (policy points 1 to 5 above). Link ADR-0108, the
-   2026-11-14 decision, ticket 2012 and, if it is done, 2005's version ADR.
+   2026-11-14 decision and ticket 2012. Link 2005's version ADR too when
+   one exists.
 2. Find the value. For each Rust from the pin down to pin minus 4:
    `rustup toolchain install 1.NN --profile minimal`, then
    `cargo +1.NN check --workspace --locked --features
