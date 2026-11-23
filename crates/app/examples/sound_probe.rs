@@ -196,7 +196,6 @@ async fn player(
         &files,
         "corpus".to_owned(),
         "corpus".to_owned(),
-        1,
     );
     Ok(player.await)
 }

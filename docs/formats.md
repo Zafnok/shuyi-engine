@@ -200,6 +200,28 @@ What each one reads:
   until the game stops it, and is started with a handle
   (`AudioQueue::start_sound`, ADR-0055). Left out, it is `false`, and
   the sound plays once.
+  **The cue rules** (ticket 2345, ADR-0139), each optional and flat on the
+  sound: `pick` says which file each play plays (`Random`, the default,
+  any file; `NoRepeat`, never the last again; `Shuffle`, each file once in
+  a random order, then a new order, never the same file twice in a row
+  across the seam; `InOrder`, the files in turn), and a cue of one file
+  plays it every time; `volume_min` makes each play pick a whole percent
+  from it to `volume` (left out, it plays at `volume`; written bare,
+  `volume_min: 45`), and one over `volume` is an error at the cue's line;
+  `min_gap_ms` drops a play less than that after the cue's last play that
+  sounded (0, the default: none is). `App` applies them for every
+  backend, in whole milliseconds, with a picker of its own, apart from the
+  simulation's RNG:
+
+  ```ron
+  (id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
+   volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+  ```
+
+  A play dropped is still asked for (the Harness's `sounds()`, `run`'s
+  `sounds`), and listed with why (`Harness::dropped_sounds`). A sound started with a handle is picked the same way, and is
+  never dropped. In Rust a cue takes them with `SoundCue::with_rules`
+  (`CueRules::DEFAULT.with_min_gap_ms(40)`).
   **A loop region** (ticket 2397): a looped track may say `loop_start_ms`
   and `loop_end_ms`, both or neither, with `0 <= start < end <=
   length_ms`. It plays from its start up to `loop_end_ms` once, then

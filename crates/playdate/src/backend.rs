@@ -109,8 +109,7 @@ impl<S: Sdk> Playdate<S> {
     pub fn start<G: GameData>(&mut self, game: &Game<G>) {
         let data = &game.ctx().game;
         let manifest = data.audio_manifest().clone();
-        let seed = u64::from(self.sdk.millis());
-        let player = audio::player(self.audio.backend_mut(), manifest, seed);
+        let player = audio::player(self.audio.backend_mut(), manifest);
         self.audio.set_player(player);
         self.pad.set_crank(data.keymap_def().crank);
         self.docked = None;

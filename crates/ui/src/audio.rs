@@ -98,7 +98,9 @@ pub struct AudioConfig {
     pub cancel_cue: &'static str,
     /// [`MenuSound::Denied`]'s cue.
     pub denied_cue: &'static str,
-    /// The cue a cursor plays once per step it moves.
+    /// The cue a cursor plays once per step it moves. Give it a
+    /// `min_gap_ms` in the manifest (`CueRules`, ADR-0139), so a cursor that
+    /// moves several cells in one frame ticks once.
     pub cursor_cue: &'static str,
 }
 
