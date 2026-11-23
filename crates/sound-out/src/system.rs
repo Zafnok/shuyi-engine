@@ -120,6 +120,10 @@ pub(crate) struct Stats {
     pub(crate) xruns: AtomicU32,
     /// How many streams were built again for making no callback ([`Stall`]).
     pub(crate) stalls: AtomicU32,
+    /// The latest error the system gave a stream, as it says it.
+    pub(crate) error: Mutex<String>,
+    /// Why a stream was last built again.
+    pub(crate) rebuilt: Mutex<String>,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
@@ -186,7 +190,13 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
         }
         // Rerouted, or a refused priority that it plays on through.
         ErrorKind::DeviceChanged | ErrorKind::RealtimeDenied => {}
-        _ => lost.store(true, Ordering::Release),
+        _ => {
+            // Never waited for: this may be the audio thread.
+            if let Ok(mut said) = counted.error.try_lock() {
+                *said = error.to_string();
+            }
+            lost.store(true, Ordering::Release);
+        }
     };
     // Raised at the first callback, the only way onto CPAL's thread, and let go with
     // the callback, which CPAL drops on that thread.
@@ -342,6 +352,14 @@ impl SystemOutput {
         )
     }
 
+    pub(crate) fn rebuilt(&self) -> String {
+        self.stats
+            .rebuilt
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
     pub(crate) fn glitches(&self) -> (u32, u32) {
         (
             self.stats.xruns.load(Ordering::Relaxed),
@@ -421,11 +439,21 @@ fn run(
         if stalled {
             stats.stalls.fetch_add(1, Ordering::Relaxed);
         }
-        if moved_looks >= MOVED_LOOKS
-            || stalled
-            || lost.swap(false, Ordering::AcqRel)
-            || current.is_none()
-        {
+        let erred = lost.swap(false, Ordering::AcqRel);
+        let why = if moved_looks >= MOVED_LOOKS {
+            Some("the default device moved".to_owned())
+        } else if stalled {
+            Some("no callback for half a second".to_owned())
+        } else if erred {
+            let said = stats.error.lock().unwrap_or_else(PoisonError::into_inner);
+            Some(format!("the system said: {said}"))
+        } else if current.is_none() {
+            Some("no stream".to_owned())
+        } else {
+            None
+        };
+        if let Some(why) = why {
+            *stats.rebuilt.lock().unwrap_or_else(PoisonError::into_inner) = why;
             // The old stream goes first: only one may hold the callback.
             moved_looks = 0;
             drop(current.take());

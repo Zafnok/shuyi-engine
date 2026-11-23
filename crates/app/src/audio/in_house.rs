@@ -730,6 +730,15 @@ impl InHouse {
             .map_or((0, 0), Output::calls)
     }
 
+    /// Why the output's stream was last built again. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_rebuilt_because(&self) -> String {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or_else(String::new, Output::rebuilt_because)
+    }
+
     /// How many times the output's system said its buffer ran dry, and how many streams
     /// were built again for stalling. For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]

@@ -251,6 +251,20 @@ impl Output {
         (0, 0)
     }
 
+    /// Why the system's stream was last built again, empty if it never was. Nothing
+    /// asks this but a probe.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn rebuilt_because(&self) -> String {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.rebuilt();
+        }
+        String::new()
+    }
+
     /// How many times the system said the device's buffer ran dry, and how many
     /// streams were built again for having stopped calling back. Nothing asks this but
     /// a probe; 0 and 0 where there is no stream.
