@@ -105,6 +105,11 @@ pub struct RangeShow {
     pub outline: bool,
     /// How raised they look.
     pub relief: Relief,
+    /// How strongly they tint, in percent of the look's own strength
+    /// ([`strength`](Self::strength)): 100 as the look is, more for tints
+    /// that must read over bright pictures (ticket 3243). A tint is never
+    /// stronger than the range's color itself.
+    pub strength_percent: u16,
 }
 
 impl Default for RangeShow {
@@ -121,6 +126,7 @@ impl RangeShow {
         wave: Wave::None,
         outline: false,
         relief: Relief::Flat,
+        strength_percent: 100,
     };
 
     /// This look, spreading out from where the ranges were opened.
@@ -148,6 +154,13 @@ impl RangeShow {
     #[must_use]
     pub const fn with_relief(mut self, relief: Relief) -> Self {
         self.relief = relief;
+        self
+    }
+
+    /// This look, its tints `percent` as strong as it makes them.
+    #[must_use]
+    pub const fn with_strength(mut self, percent: u16) -> Self {
+        self.strength_percent = percent;
         self
     }
 
@@ -207,11 +220,13 @@ impl RangeShow {
 
     /// How strongly the tile `at` of `scene` (right of and below its
     /// first) is tinted by each of its ranges now: [`blend`](Self::blend)
-    /// times [`spread_at`](Self::spread_at).
+    /// times [`spread_at`](Self::spread_at), times
+    /// [`strength_percent`](Self::strength_percent), at most 1.
     pub fn strength<U>(&self, scene: &MapScene<U>, at: (i32, i32)) -> f32 {
         let pos = Pos::new(scene.origin.x + at.0, scene.origin.y + at.1);
         let spread = self.spread_at(pos, scene.ranges_shown, scene.clock_ms);
-        spread * self.blend(at, scene.size, scene.clock_ms)
+        let scale = f32::from(self.strength_percent) / 100.0;
+        (spread * self.blend(at, scene.size, scene.clock_ms) * scale).min(1.0)
     }
 
     /// What this look draws over the tile `at` of `scene`, whose pixels are
