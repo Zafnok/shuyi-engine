@@ -105,8 +105,8 @@ pub fn jobs(audio: &GameAudio, root: &Path) -> Result<Vec<Job>, String> {
 pub fn decode(name: &str, bytes: &[u8]) -> Result<Vec<i16>, String> {
     let extension = Path::new(name).extension().and_then(|ext| ext.to_str());
     // A `.flac` or `.mp3` file `decode_to_wav` leaves is a WAV already.
-    let is_wav = extension.is_some_and(|ext| ["wav", "flac", "mp3"].contains(&ext))
-        || extension.is_some_and(|ext| ext.eq_ignore_ascii_case("wav"));
+    let is_wav = extension
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav") || ext == "flac" || ext == "mp3");
     let (channels, rate, samples) = match shuyi_assets::audio::decode_to_wav(name, bytes) {
         Some(wav) => wav.and_then(|wav| decode_wav(&wav)),
         None if is_wav => decode_wav(bytes),

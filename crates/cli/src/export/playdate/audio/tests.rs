@@ -198,7 +198,10 @@ fn a_flac_or_mp3_sound_is_baked_from_its_samples() {
     let pcm = pcm_wav(&[5, 6], 1);
     assert_eq!(decode("sfx/hooked.flac", &pcm), Ok(vec![5, 6]));
     let broken = decode("sfx/broken.flac", &flac[..40]).unwrap_err();
-    assert!(broken.starts_with("sfx/broken.flac: not a readable FLAC file"), "{broken}");
+    assert!(
+        broken.starts_with("sfx/broken.flac: not a readable FLAC file"),
+        "{broken}"
+    );
 }
 
 #[test]
