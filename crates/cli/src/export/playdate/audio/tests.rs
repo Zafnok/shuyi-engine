@@ -187,6 +187,24 @@ fn stereo_is_averaged_and_float_is_scaled() {
 }
 
 #[test]
+fn a_flac_or_mp3_sound_is_baked_from_its_samples() {
+    let flac = include_bytes!("../../../../../assets/tests/fixtures/formats/tone.flac");
+    // 50 ms of stereo, averaged to mono.
+    let mono = decode("sfx/tone.flac", flac).unwrap();
+    assert_eq!(mono.len(), 2205);
+    let mp3 = include_bytes!("../../../../../assets/tests/fixtures/formats/tone.mp3");
+    assert_eq!(decode("sfx/tone.mp3", mp3).map(|s| s.len()), Ok(2205));
+    // A hook's WAV under a FLAC's name is read as the WAV it is.
+    let pcm = pcm_wav(&[5, 6], 1);
+    assert_eq!(decode("sfx/hooked.flac", &pcm), Ok(vec![5, 6]));
+    let broken = decode("sfx/broken.flac", &flac[..40]).unwrap_err();
+    assert!(
+        broken.starts_with("sfx/broken.flac: not a readable FLAC file"),
+        "{broken}"
+    );
+}
+
+#[test]
 fn a_file_it_cannot_play_is_an_error_naming_it() {
     let spec = hound::WavSpec {
         channels: 1,

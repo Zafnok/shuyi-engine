@@ -12,13 +12,19 @@
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 //! An image's texture is made the first frame a sprite draws it
 //! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5).
+//!
+//! A picture's pixels come from `pixels`: a PNG decoded by macroquad, any
+//! other file by the formats of `Formats::standard()`, those whose feature
+//! of `shuyi-assets` the game turns on (JPEG, WebP, QOI, JPEG XL; ticket
+//! 2234). The font atlas stays a PNG.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use macroquad::prelude::*;
 use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
-use shuyi_assets::image::ImageId;
+use shuyi_assets::format::{AssetPath, DecodeCx, Formats};
+use shuyi_assets::image::{self as assets_image, ImageId, PNG_SIGNATURE};
 use shuyi_assets::lighting::Light;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::console::{ConsoleSpec, Layout, layout};
@@ -77,6 +83,8 @@ pub struct Renderer {
     remade: HashMap<ImageId, (u16, u16)>,
     /// The textures of the frame's painted pictures.
     painted: PaintedTextures<Texture2D>,
+    /// What decodes a picture that isn't a PNG ([`pixels`]).
+    formats: Formats,
 }
 
 impl Renderer {
@@ -102,7 +110,9 @@ impl Renderer {
         clear: Rgb,
         bytes: impl Fn(&str) -> Option<Cow<'static, [u8]>> + 'static,
     ) -> Result<Self, String> {
-        let texture = upload(png).map_err(|e| format!("font atlas image: {e}"))?;
+        let formats = Formats::standard();
+        let texture =
+            upload(&formats, "font atlas", png).map_err(|e| format!("font atlas image: {e}"))?;
         let read: Read = Box::new(bytes);
         Ok(Self {
             texture,
@@ -114,7 +124,13 @@ impl Renderer {
             warned_images: HashSet::new(),
             remade: HashMap::new(),
             painted: PaintedTextures::new(),
+            formats,
         })
+    }
+
+    /// What decodes a picture that isn't a PNG ([`pixels`]).
+    pub(crate) const fn formats(&self) -> &Formats {
+        &self.formats
     }
 
     /// Makes the textures of `fresh` again, from pictures that decoded. A
@@ -362,8 +378,10 @@ impl Renderer {
             // image's own colours.
             _ => (None, Rgb::new(255, 255, 255)),
         };
+        let path = sprite.image.path();
+        let formats = &self.formats;
+        let upload = |bytes: &[u8]| decode(formats, path, bytes).map(|image| texture_of(&image));
         if let Err(missing) = self.images.texture(sprite.image, upload) {
-            let path = sprite.image.path();
             match missing {
                 Missing::Undecodable(Some(e)) => {
                     log::warn!(target: "assets", "image {path}: {e}");
@@ -382,7 +400,7 @@ impl Renderer {
                 let source = self.images.source(sprite.image);
                 self.recoloured
                     .entry((sprite.image, recolour))
-                    .or_insert_with(|| recoloured(source?, recolour))
+                    .or_insert_with(|| recoloured(formats, path, source?, recolour))
                     .as_ref()
             }
         };
@@ -480,7 +498,6 @@ impl Renderer {
     }
 }
 
-/// The picture of PNG file `png`, or why it can't be decoded.
 /// Where a `spec` console goes in a window `logical` pixels big at a DPI
 /// factor of `dpi`, in the physical pixels [`Renderer::draw`] places it in
 /// (the window is `high_dpi`). The pointer maps the mouse back through it
@@ -491,26 +508,69 @@ pub(crate) fn placement(spec: ConsoleSpec, logical: (f32, f32), dpi: f32) -> Lay
     layout(spec, (logical.0 * dpi).round(), (logical.1 * dpi).round())
 }
 
-pub(crate) fn decode(png: &[u8]) -> Result<Image, String> {
-    Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())
+/// The pixels of the picture file at `path`, whose bytes are `bytes`: its
+/// width, height and RGBA bytes, or why it can't be decoded. A PNG is
+/// decoded by macroquad, as it always was; any other file by `formats`
+/// (`Formats::standard()`), whose error names the formats it has.
+pub(crate) fn pixels(
+    formats: &Formats,
+    path: &str,
+    bytes: &[u8],
+) -> Result<(u16, u16, Vec<u8>), String> {
+    if bytes.starts_with(PNG_SIGNATURE) {
+        let image = Image::from_file_with_format(bytes, Some(ImageFormat::Png))
+            .map_err(|e| e.to_string())?;
+        return Ok((image.width, image.height, image.bytes));
+    }
+    let decoded: assets_image::Image = formats
+        .decode(&AssetPath::new(path), bytes, &DecodeCx::new())
+        .map_err(|errors| {
+            let messages: Vec<String> = errors.into_iter().map(|e| e.message).collect();
+            messages.join("; ")
+        })?;
+    // A format's picture is at most `image::MAX_SIDE` (4096) on a side.
+    let side = |px: u32| u16::try_from(px).map_err(|_| format!("{px} pixels is too wide"));
+    Ok((side(decoded.width)?, side(decoded.height)?, decoded.rgba))
 }
 
-/// `image` as a texture drawn with nearest-pixel sampling.
-fn texture_of(image: &Image) -> Texture2D {
-    let texture = Texture2D::from_image(image);
+/// The picture file at `path` ([`pixels`]), as macroquad's image.
+pub(crate) fn decode(formats: &Formats, path: &str, bytes: &[u8]) -> Result<Image, String> {
+    let (width, height, bytes) = pixels(formats, path, bytes)?;
+    Ok(Image {
+        bytes,
+        width,
+        height,
+    })
+}
+
+/// A texture of `width × height` RGBA pixels, drawn with nearest-pixel
+/// sampling.
+pub(crate) fn upload_rgba(width: u16, height: u16, rgba: &[u8]) -> Texture2D {
+    let texture = Texture2D::from_rgba8(width, height, rgba);
     texture.set_filter(FilterMode::Nearest);
     texture
 }
 
-/// A texture of PNG file `png`, or why it can't be decoded.
-pub(crate) fn upload(png: &[u8]) -> Result<Texture2D, String> {
-    decode(png).map(|image| texture_of(&image))
+/// `image` as a texture drawn with nearest-pixel sampling.
+fn texture_of(image: &Image) -> Texture2D {
+    upload_rgba(image.width, image.height, &image.bytes)
 }
 
-/// A texture of PNG file `png` recoloured as `recolour`, or `None` if it
-/// can't be decoded.
-fn recoloured(png: &[u8], recolour: Recolour) -> Option<Texture2D> {
-    let mut picture = Image::from_file_with_format(png, Some(ImageFormat::Png)).ok()?;
+/// A texture of the picture file at `path` ([`pixels`]), or why it can't
+/// be decoded.
+pub(crate) fn upload(formats: &Formats, path: &str, bytes: &[u8]) -> Result<Texture2D, String> {
+    decode(formats, path, bytes).map(|image| texture_of(&image))
+}
+
+/// A texture of the picture file at `path` ([`pixels`]) recoloured as
+/// `recolour`, or `None` if it can't be decoded.
+fn recoloured(
+    formats: &Formats,
+    path: &str,
+    bytes: &[u8],
+    recolour: Recolour,
+) -> Option<Texture2D> {
+    let mut picture = decode(formats, path, bytes).ok()?;
     for pixel in picture.bytes.as_chunks_mut::<4>().0 {
         let own = Rgb::new(pixel[0], pixel[1], pixel[2]);
         let rgb = match recolour {
@@ -520,9 +580,7 @@ fn recoloured(png: &[u8], recolour: Recolour) -> Option<Texture2D> {
         };
         pixel[..3].copy_from_slice(&[rgb.r, rgb.g, rgb.b]);
     }
-    let texture = Texture2D::from_image(&picture);
-    texture.set_filter(FilterMode::Nearest);
-    Some(texture)
+    Some(texture_of(&picture))
 }
 
 /// `c` as macroquad's colour.
@@ -533,4 +591,77 @@ pub(crate) fn color(c: Rgb) -> Color {
 #[allow(clippy::cast_precision_loss)] // atlas coordinates are small
 fn source_rect(r: AtlasRect) -> Rect {
     Rect::new(r.x as f32, r.y as f32, r.w as f32, r.h as f32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A fixture of ticket 2203's, by file name.
+    macro_rules! fixture {
+        ($name:literal) => {
+            include_bytes!(concat!("../../assets/tests/fixtures/formats/", $name)).as_slice()
+        };
+    }
+
+    #[test]
+    fn a_picture_that_isnt_a_png_has_the_pixels_of_the_registry() {
+        let formats = Formats::standard();
+        let fixtures = [
+            ("a.jpg", fixture!("picture.jpg")),
+            ("a.webp", fixture!("picture.webp")),
+            ("a.webp", fixture!("lossless.webp")),
+            ("a.qoi", fixture!("picture.qoi")),
+            ("a.jxl", fixture!("picture.jxl")),
+            ("a.jxl", fixture!("lossless.jxl")),
+        ];
+        for (path, bytes) in fixtures {
+            let decoded: assets_image::Image = formats
+                .decode(&AssetPath::new(path), bytes, &DecodeCx::new())
+                .unwrap();
+            assert_eq!((decoded.width, decoded.height), (20, 12), "{path}");
+            assert_eq!(
+                pixels(&formats, path, bytes),
+                Ok((20, 12, decoded.rgba)),
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_png_is_decoded_by_macroquad_as_before() {
+        let png = fixture!("picture.png");
+        let before = Image::from_file_with_format(png, Some(ImageFormat::Png)).unwrap();
+        // With no format for it in the registry, it decodes the same.
+        let none = Formats::new();
+        for formats in [&none, &Formats::standard()] {
+            let (width, height, rgba) = pixels(formats, "a.png", png).unwrap();
+            assert_eq!((width, height), (before.width, before.height));
+            assert_eq!(rgba, before.bytes);
+        }
+        // The lossless fixtures hold the PNG's pixels.
+        let qoi = pixels(&Formats::standard(), "a.qoi", fixture!("picture.qoi"));
+        assert_eq!(qoi, Ok((20, 12, before.bytes)));
+    }
+
+    #[test]
+    fn bytes_no_format_reads_give_the_message_of_the_registry() {
+        let formats = Formats::standard();
+        let why = pixels(&formats, "a.bmp", b"BM junk").unwrap_err();
+        assert!(
+            why.starts_with("no image pixels format knows its bytes"),
+            "{why}"
+        );
+        assert!(why.contains("jpeg"), "it names the formats: {why}");
+        let none = pixels(&Formats::new(), "a.jpg", fixture!("picture.jpg")).unwrap_err();
+        assert!(
+            none.ends_with("no image pixels format is registered"),
+            "{none}"
+        );
+        // A broken PNG is macroquad's to refuse.
+        let png = fixture!("picture.png");
+        assert!(pixels(&formats, "a.png", &png[..20]).is_err());
+        // Each side fits macroquad's `u16`: a picture is at most 4096 wide.
+        assert!(u16::try_from(assets_image::MAX_SIDE).is_ok());
+    }
 }

@@ -69,14 +69,15 @@ impl PictureErrors {
     }
 }
 
-/// Each picture of `wanted` read with `read` and decoded with `decode`. What
+/// Each picture of `wanted` read with `read` and decoded with `decode`
+/// (given its path and its bytes). What
 /// decodes clears its error; what doesn't is left out, so its old texture
 /// stays, and its error is kept in `errors`.
 pub(crate) fn decode_each<T>(
     wanted: &[Remake],
     font_png: &str,
     read: impl Fn(&str) -> Option<Cow<'static, [u8]>>,
-    decode: impl Fn(&[u8]) -> Result<T, String>,
+    decode: impl Fn(&str, &[u8]) -> Result<T, String>,
     errors: &mut PictureErrors,
 ) -> Vec<Fresh<T>> {
     let mut fresh = Vec::new();
@@ -87,7 +88,7 @@ pub(crate) fn decode_each<T>(
         };
         let bytes = read(path).ok_or_else(|| "not among the game's files".to_owned());
         match bytes.and_then(|bytes| {
-            let decoded = decode(&bytes)?;
+            let decoded = decode(path, &bytes)?;
             Ok((bytes, decoded))
         }) {
             Ok((bytes, decoded)) => {
@@ -160,7 +161,7 @@ mod tests {
     }
 
     /// A decode of the test's files, to their first byte.
-    fn decode(bytes: &[u8]) -> Result<u8, String> {
+    fn decode(_path: &str, bytes: &[u8]) -> Result<u8, String> {
         (bytes == b"good")
             .then_some(bytes[0])
             .ok_or_else(|| "not a picture".to_owned())
@@ -251,11 +252,13 @@ mod tests {
     /// The real decode: what the backend hands [`decode_each`].
     #[test]
     fn junk_saved_over_a_png_does_not_decode() {
-        assert!(crate::render::decode(b"not a png").is_err());
+        let formats = shuyi_assets::format::Formats::standard();
+        let decode = |bytes| crate::render::decode(&formats, "a.png", bytes);
+        assert!(decode(b"not a png").is_err());
         let png = include_bytes!(
             "../../../templates/shuyi-default/base/crates/game/files/font/atlas.png"
         );
-        let image = crate::render::decode(png).unwrap();
+        let image = decode(png).unwrap();
         assert!(image.width > 0 && image.height > 0);
     }
 

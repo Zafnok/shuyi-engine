@@ -89,6 +89,10 @@ shuyi-embed = { path = "../embed" }
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.
 shuyi-cli = { path = ".", features = ["toy", "jis"] }
+# Ticket 2203's formats, so the tests paint them (ticket 2234). A game
+# turns on those it uses in its own `Cargo.toml`; this crate has no
+# feature of its own for them.
+shuyi-assets = { path = "../assets", features = ["png", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3"] }
 # The template loader and the composer, fed any input.
 proptest.workspace = true
 # The toy's perf summary and trace, as committed snapshots.

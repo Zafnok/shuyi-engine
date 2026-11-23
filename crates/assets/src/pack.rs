@@ -98,8 +98,8 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// index apart from each file, which has a checksum of its own (ticket
 /// 2263, ADR-0128 §2), version 19's index holds the span of each
 /// folder laid first (ticket 2265, ADR-0128 §3), version 20's music cue
-/// holds a loop region (ticket 2397), and version 21's target profile its
-/// graphics tier (ticket 3347).
+/// holds a loop region (ticket 2397), and version 21's sound cue holds its
+/// rules (ticket 2345, ADR-0139).
 pub const VERSION: u32 = 21;
 
 /// The bytes a baked file in a pack starts with.

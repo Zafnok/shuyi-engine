@@ -31,6 +31,13 @@ format can come later without touching that code. Standard formats (PNG, WAV, Og
 Vorbis) always load, and the text formats (RON files, `.map` grids, `.dlg` dialogue)
 stay the source of what is in a game.
 
+More picture and sound formats are a switch each, so a game pays only for those it
+uses: JPEG, WebP, QOI and JPEG XL pictures, FLAC and MP3 sounds and music. A game
+turns one on as a feature of `shuyi-assets` in its own `Cargo.toml` (`features =
+["jpeg", "flac"]`), and the window and `frame-png` then draw and play its files as
+they do a PNG, a WAV or an Ogg file. The audio manifest names a `.flac` or `.mp3`
+file as it does an `.ogg` one.
+
 ## A kind of the game's own
 
 The garden's plan is a kind of the game's own, plain data with a name for messages:
