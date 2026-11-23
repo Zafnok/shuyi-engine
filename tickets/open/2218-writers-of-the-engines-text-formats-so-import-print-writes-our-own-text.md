@@ -60,11 +60,12 @@ None.
   these use, through the shared helper if this ticket makes one, and
   keep its round trip. If not, nothing to do (2231 writes its own the
   way these are written).
-- **Either order with 2345:** if 2345 is done, the `AudioManifestRon`
-  writer writes a cue's rules flat on its sound entry, as 2345's RON
-  has them (`pick`, `volume_min` written bare, `min_gap_ms`), each only
-  when it isn't the default, and the round trip covers a cue with
-  rules. If not, nothing to do (2345 adds them to this writer).
+- **From 2345 (done):** a sound cue has `rules: CueRules`
+  (`crates/assets/src/audio.rs`, ADR-0139), read flat from its entry.
+  The `AudioManifestRon` writer writes them flat on the sound entry, as
+  2345's RON has them (`pick`, `volume_min` written bare, `min_gap_ms`),
+  each only when it isn't the default, and the round trip covers a cue
+  with rules.
 - **Either order with 2378:** if 2378 is done, the `AudioManifestRon`
   writer also writes a cue's `max_copies` (bare), `when_full` and
   `priority`, and the manifest's `max_voices` (bare), each only when it

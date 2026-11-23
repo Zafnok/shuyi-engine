@@ -3,7 +3,9 @@
 //! the headless backend's `Speaker` holds them as playing until they
 //! stop, and the audio while the system suspends the game.
 
+use shuyi_assets::audio::CueRules;
 use shuyi_platform::SystemEvent;
+use shuyi_platform::audio::cues::DropWhy;
 use shuyi_platform::harness::Harness;
 use shuyi_ui::audio::AudioRequest;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
@@ -190,4 +192,39 @@ fn a_suspend_holds_the_audio_until_the_resume_and_a_second_changes_nothing() {
     assert_eq!(playing(&h), [1]);
     let got = paused(&h);
     assert!(got.is_empty(), "{got:?}");
+}
+
+/// The toy's home, its `click` given a gap of `gap_ms`.
+fn clicking(gap_ms: u32) -> Harness<Toy> {
+    let mut ctx = toy::ctx();
+    if let Some(click) = ctx.game.audio.sounds.get_mut("click") {
+        click.rules = CueRules::DEFAULT.with_min_gap_ms(gap_ms);
+    }
+    let stack = ScreenStack::new(Box::new(Home::default()));
+    Harness::new(Game::with_stack(ctx, stack, GameHooks::default()))
+}
+
+/// Two clicks less than the gap apart: the game asked for both, and the
+/// cue rules dropped the second.
+#[test]
+fn a_click_inside_its_cues_gap_is_asked_for_and_dropped() {
+    let mut h = clicking(40);
+    // Confirm opens the menu; Confirm there clicks, twice 2 frames apart.
+    h.keys("f").clear_audio().keys("f f");
+    assert_eq!(h.sounds(), ["click", "click"]);
+    let dropped = h.dropped_sounds();
+    let got: Vec<_> = dropped
+        .iter()
+        .map(|(f, d)| (*f, d.cue.as_str(), d.why))
+        .collect();
+    assert_eq!(got, [(5, "click", DropWhy::Gap)]);
+    // Past the gap, it clicks again; a cleared log forgets the drop.
+    h.clear_audio().wait(0.05).keys("f");
+    assert_eq!(h.sounds(), ["click"]);
+    assert!(h.dropped_sounds().is_empty());
+    // With no gap, nothing is dropped.
+    let mut h = clicking(0);
+    h.keys("f f f");
+    assert_eq!(h.sounds(), ["click", "click"]);
+    assert!(h.dropped_sounds().is_empty());
 }

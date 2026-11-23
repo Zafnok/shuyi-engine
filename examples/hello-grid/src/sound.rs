@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 use crate::prelude::*;
 
-use shuyi::assets::audio::{AudioManifest, CreditRef, SoundCue};
+use shuyi::assets::audio::{AudioManifest, CreditRef, CueRules, SoundCue};
 #[cfg(feature = "std")]
 use shuyi::assets::audio::{Bytes, Files, SAMPLE_RATE};
 use shuyi::ui::audio::AudioConfig;
@@ -20,8 +20,13 @@ pub const BLIPS: [(&str, f32, u32); 4] = [
     ("cursor.wav", 990.0, 30),
 ];
 
+/// How soon the cursor's tick and the move's blip may play again, in
+/// milliseconds: a cursor that moves several cells in one frame ticks once.
+pub const STEP_GAP_MS: u32 = 40;
+
 /// The audio manifest: the engine's four sound cues ([`AudioConfig`]),
-/// each a blip of [`BLIPS`]; no music.
+/// each a blip of [`BLIPS`], the cursor's and the move's with a gap of
+/// [`STEP_GAP_MS`]; no music.
 pub fn manifest() -> AudioManifest {
     let config = AudioConfig::DEFAULT;
     let cues = [
@@ -32,7 +37,10 @@ pub fn manifest() -> AudioManifest {
     ];
     let mut audio = AudioManifest::default();
     for (cue, file) in cues {
-        let sound = SoundCue::new(vec![file.to_owned()], 60, CreditRef::Own);
+        let mut sound = SoundCue::new(vec![file.to_owned()], 60, CreditRef::Own);
+        if cue == config.cursor_cue || cue == config.move_cue {
+            sound = sound.with_rules(CueRules::DEFAULT.with_min_gap_ms(STEP_GAP_MS));
+        }
         audio.sounds.insert(cue.to_owned(), sound);
     }
     audio

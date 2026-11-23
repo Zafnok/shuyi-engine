@@ -421,17 +421,13 @@ fn shown(file: &str) -> String {
 }
 
 /// The player of `manifest` on `speaker`: its sounds loaded, from the `.pdx`.
-pub fn player<S: Sdk>(
-    speaker: &mut Speaker<S>,
-    manifest: AudioManifest,
-    seed: u64,
-) -> Player<Speaker<S>> {
+pub fn player<S: Sdk>(speaker: &mut Speaker<S>, manifest: AudioManifest) -> Player<Speaker<S>> {
     // No bytes come from here, as the Playdate reads a file for itself, and
     // what is left out was settled by the export.
     let files = Files::new(&|_| None, &shown, &|_| false, BAKED_MUSIC_DIR);
     let music = BAKED_MUSIC_DIR.to_owned();
     let voice = VOICE_DIR.to_owned();
-    ready_now(Player::load(speaker, manifest, &files, music, voice, seed))
+    ready_now(Player::load(speaker, manifest, &files, music, voice))
 }
 
 /// What `future` gives, when nothing it waits on is pending: on the SDK every

@@ -192,11 +192,16 @@ pub struct SoundCue {
     /// The sound group it plays in: `None` is `ui` for a menu's cue and
     /// `sfx` for the others.
     pub group: Option<String>,
+    /// How each play picks its file and volume, and how soon it may play
+    /// again ([`CueRules`], ADR-0139): [`CueRules::DEFAULT`], a file at
+    /// random at `volume` every time, unless the manifest says otherwise.
+    #[serde(default)]
+    pub rules: CueRules,
 }
 
 impl SoundCue {
     /// The sound of `files` (one picked each time), at `volume` percent,
-    /// made by `credit`, played once.
+    /// made by `credit`, played once, with the default rules.
     #[must_use]
     pub const fn new(files: Vec<String>, volume: u8, credit: CreditRef) -> Self {
         Self {
@@ -205,7 +210,15 @@ impl SoundCue {
             credit,
             looped: false,
             group: None,
+            rules: CueRules::DEFAULT,
         }
+    }
+
+    /// The same cue, played by `rules`.
+    #[must_use]
+    pub const fn with_rules(mut self, rules: CueRules) -> Self {
+        self.rules = rules;
+        self
     }
 
     /// The same cue, looped until it is stopped or not.
@@ -221,6 +234,83 @@ impl SoundCue {
         self.group = Some(group.into());
         self
     }
+}
+
+/// How a sound cue's plays are picked and spaced (ADR-0139): which file
+/// each plays, at what volume, and how soon after the last it may play.
+/// `App` keeps them (`shuyi_platform::audio::cues`), so every backend
+/// plays the same. In the manifest they are written flat on the sound,
+/// each left out for its default:
+///
+/// ```ron
+/// (id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
+///  volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+/// ```
+///
+/// Config (ADR-0039, kind 2): start from [`CueRules::DEFAULT`] and change
+/// it with the `with_` methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct CueRules {
+    /// How each play picks its file ([`Pick::Random`] by default).
+    pub pick: Pick,
+    /// The lowest volume a play picks, in percent: each play picks a whole
+    /// percent from this to the cue's `volume`. `None` (the default) plays
+    /// at `volume` every time.
+    pub volume_min: Option<u8>,
+    /// A play less than this many milliseconds after the cue's last play
+    /// that sounded is dropped (0, the default: none is).
+    pub min_gap_ms: u32,
+}
+
+impl CueRules {
+    /// The rules of a cue that names none: a file at random, at the cue's
+    /// volume, with no gap. Equal to `CueRules::default()`, for a `const`.
+    pub const DEFAULT: Self = Self {
+        pick: Pick::Random,
+        volume_min: None,
+        min_gap_ms: 0,
+    };
+
+    /// The same rules, picking files as `pick` says.
+    #[must_use]
+    pub const fn with_pick(mut self, pick: Pick) -> Self {
+        self.pick = pick;
+        self
+    }
+
+    /// The same rules, each play at a volume from `volume_min` up to the
+    /// cue's (`None`: at the cue's).
+    #[must_use]
+    pub const fn with_volume_min(mut self, volume_min: Option<u8>) -> Self {
+        self.volume_min = volume_min;
+        self
+    }
+
+    /// The same rules, dropping a play less than `min_gap_ms` after the
+    /// last that sounded.
+    #[must_use]
+    pub const fn with_min_gap_ms(mut self, min_gap_ms: u32) -> Self {
+        self.min_gap_ms = min_gap_ms;
+        self
+    }
+}
+
+/// How a sound cue picks the file each play plays. A cue of one file plays
+/// it every time, whatever its pick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum Pick {
+    /// Any file, at random each time: the same one may play twice in a row.
+    #[default]
+    Random,
+    /// At random, but never the file that played last.
+    NoRepeat,
+    /// Each file once, in a random order, then a new order, never starting
+    /// with the file that ended the last.
+    Shuffle,
+    /// The files in the order they are listed, then from the first again.
+    InOrder,
 }
 
 /// A music track. Data read from a file (ADR-0039, kind 5): build it with
@@ -423,6 +513,14 @@ struct RawSound {
     looped: bool,
     #[serde(default)]
     group: Option<String>,
+    // The cue rules, flat on the entry: `#[serde(flatten)]` doesn't work
+    // with `deny_unknown_fields`.
+    #[serde(default)]
+    pick: Pick,
+    #[serde(default)]
+    volume_min: Option<u8>,
+    #[serde(default)]
+    min_gap_ms: u32,
 }
 
 #[derive(Deserialize)]
@@ -787,14 +885,25 @@ impl Check<'_> {
             }
         }
         self.volume(&id, s.volume);
+        if let Some(min) = s.volume_min.filter(|&min| min > s.volume) {
+            let volume = s.volume;
+            let why = format!("volume_min {min} is over its volume {volume}");
+            self.err(&id, format!("sound \"{id}\": {why}"));
+        }
         self.credit_ref(&id, &s.credit);
         self.cue_group("sound", &id, s.group.as_deref());
+        let rules = CueRules {
+            pick: s.pick,
+            volume_min: s.volume_min,
+            min_gap_ms: s.min_gap_ms,
+        };
         let entry = SoundCue {
             files: s.files,
             volume: s.volume,
             credit: s.credit,
             looped: s.looped,
             group: s.group,
+            rules,
         };
         self.manifest.sounds.insert(id, entry);
     }
@@ -1233,6 +1342,75 @@ mod tests {
         ])"#;
         let m = from_source("a.ron", source, &all_files()).unwrap_or_default();
         assert_eq!(m.sounds.get("rain").map(|s| s.looped), Some(true));
+    }
+
+    /// Every cue of a manifest that names no rules has the default ones.
+    #[test]
+    fn a_cue_that_names_no_rules_has_the_default_ones() {
+        let m = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(m.sounds.len(), 2);
+        for (id, cue) in &m.sounds {
+            assert_eq!(cue.rules, CueRules::default(), "{id}");
+        }
+        assert_eq!(CueRules::DEFAULT, CueRules::default());
+    }
+
+    /// The rules are written flat on the sound, `volume_min` bare.
+    #[test]
+    fn a_cues_rules_are_read_from_its_entry() {
+        let rules =
+            "volume: 60, credit: Credit(\"steps\"), pick: NoRepeat, volume_min: 45, min_gap_ms: 60";
+        let source = FULL.replace("volume: 60, credit: Credit(\"steps\")", rules);
+        let m = from_source("a.ron", &source, &all_files());
+        let footfall = m.map(|m| m.sounds.get("footfall").map(|s| s.rules));
+        let want = CueRules::DEFAULT
+            .with_pick(Pick::NoRepeat)
+            .with_volume_min(Some(45))
+            .with_min_gap_ms(60);
+        assert_eq!(footfall, Ok(Some(want)));
+        assert_eq!(
+            (want.pick, want.volume_min, want.min_gap_ms),
+            (Pick::NoRepeat, Some(45), 60)
+        );
+        for (word, pick) in [
+            ("Random", Pick::Random),
+            ("Shuffle", Pick::Shuffle),
+            ("InOrder", Pick::InOrder),
+        ] {
+            let source = FULL.replace("volume: 60,", &format!("volume: 60, pick: {word},"));
+            let m = from_source("a.ron", &source, &all_files());
+            let got = m.map(|m| m.sounds.get("footfall").map(|s| s.rules.pick));
+            assert_eq!(got, Ok(Some(pick)), "{word}");
+        }
+    }
+
+    #[test]
+    fn a_lowest_volume_over_the_cues_volume_is_refused_at_its_line() {
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, volume_min: 60,")),
+            Vec::<String>::new(),
+            "a lowest volume equal to the volume plays at the volume"
+        );
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, volume_min: 61,")),
+            ["a.ron:5: sound \"footfall\": volume_min 61 is over its volume 60"]
+        );
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, gap_ms: 61,")).len(),
+            1,
+            "an unknown rule is refused"
+        );
+    }
+
+    /// `new` gives the default rules in a `const` item too.
+    #[test]
+    fn a_cue_built_in_a_const_has_the_default_rules_until_it_names_others() {
+        const PLAIN: SoundCue = SoundCue::new(Vec::new(), 60, CreditRef::Own);
+        const SPACED: SoundCue = SoundCue::new(Vec::new(), 60, CreditRef::Own)
+            .with_rules(CueRules::DEFAULT.with_min_gap_ms(40));
+        assert_eq!(PLAIN.rules, CueRules::default());
+        assert_eq!(SPACED.rules.min_gap_ms, 40);
+        assert_eq!(SPACED.rules.pick, Pick::Random);
     }
 
     #[test]
@@ -1847,6 +2025,7 @@ mod tests {
                 credit: CreditRef::Own,
                 looped: false,
                 group: None,
+                rules: CueRules::default(),
             }
         );
         assert!(

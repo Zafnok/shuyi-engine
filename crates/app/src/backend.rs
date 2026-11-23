@@ -220,7 +220,6 @@ impl Macroquad {
             sounds,
             audio::platform_folder(sounds.music_dir),
             voice_dir,
-            miniquad::date::now().to_bits(),
         )
         .await;
         self.sound.set_player(player);

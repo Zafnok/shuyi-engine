@@ -296,7 +296,7 @@ impl Speaker {
         match request {
             SoundRequest::Voice { clip } => self.voice = Some((clip.clone(), now)),
             SoundRequest::StopVoice => self.voice = None,
-            SoundRequest::Sound { cue, volume } => self.hear_added(cue, *volume, None),
+            SoundRequest::Sound { cue, volume, .. } => self.hear_added(cue, *volume, None),
             SoundRequest::Start {
                 id, cue, volume, ..
             } => {
