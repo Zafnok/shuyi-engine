@@ -333,6 +333,24 @@ mod tests {
         eprintln!("{path}: {length:?} ms; 20 clips: {before:?} KiB -> {after:?} KiB");
     }
 
+    /// An OGG Vorbis file's framing, as `ogg_length_ms` reads it: a first
+    /// page with a stereo 44.1 kHz identification header (30 bytes, as it
+    /// declares), then a last page that puts the stream at `samples`.
+    fn ogg_framing(samples: u64) -> Vec<u8> {
+        let mut ogg = b"OggS".to_vec();
+        ogg.extend_from_slice(&[0; 22]);
+        ogg.extend_from_slice(&[1, 30]);
+        ogg.extend_from_slice(b"vorbis    ");
+        ogg.extend_from_slice(&44_100_u32.to_le_bytes());
+        ogg.resize(28 + 30, 0);
+        ogg.extend_from_slice(b"OggS ");
+        ogg.extend_from_slice(&samples.to_le_bytes());
+        ogg.extend_from_slice(&[0; 12]);
+        ogg.extend_from_slice(&[1, 4]);
+        ogg.extend_from_slice(&[0; 4]);
+        ogg
+    }
+
     #[test]
     fn a_flac_track_is_its_wav_and_an_ogg_track_its_own_bytes() {
         let flac = include_bytes!("../../../assets/tests/fixtures/formats/tone.flac");
@@ -341,11 +359,10 @@ mod tests {
         assert_eq!(&wav[..4], b"RIFF");
         // 50 ms: 2,205 stereo frames of 16 bits, after the 44-byte header.
         assert_eq!((wav.len(), length), (44 + 2205 * 4, Some(50)));
-        let ogg = include_bytes!("../../../../tools/sound-parity/corpus/fmt_44k_s.ogg");
-        let (bytes, length) = track_bytes("music/fmt.ogg", ogg).unwrap();
-        assert!(matches!(bytes, Cow::Borrowed(b) if b == ogg));
-        assert_eq!(length, shuyi_assets::audio::ogg_length_ms(ogg));
-        assert!(length.is_some());
+        let ogg = ogg_framing(88_200);
+        let (bytes, length) = track_bytes("music/two.ogg", &ogg).unwrap();
+        assert!(matches!(bytes, Cow::Borrowed(b) if *b == *ogg));
+        assert_eq!(length, Some(2000));
         let broken = track_bytes("music/tone.flac", &flac[..40]);
         assert!(broken.is_err_and(|why| why.starts_with("not a readable FLAC file")));
     }

@@ -416,8 +416,8 @@ reaches them:
 - **Music.** On native, a FLAC or MP3 track is decoded to that WAV on
   the music's worker thread; on the web, the browser decodes the file as
   it is (Web Audio's `decodeAudioData`), off the page's thread. The
-  `in-house-sound` backend plays them as sounds; its streamed tracks get
-  them with ticket 2275.
+  in-house backend plays them as sounds; its streamed tracks get them
+  with ticket 2275.
 
 An MP3 starts and ends with silence its encoder added, and the
 decoders cut it only when a LAME tag says how much; the browser may
