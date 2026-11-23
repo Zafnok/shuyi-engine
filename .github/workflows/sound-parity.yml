@@ -341,6 +341,7 @@ jobs:
       # What a capture would need here, written down for the next try: the runner's
       # devices and what the backend made of them, playing the first scenario.
       - name: What this runner offers as sound
+        if: success() || failure()
         run: |
           sw_vers
           csrutil status || true

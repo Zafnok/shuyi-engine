@@ -75,9 +75,10 @@ Missing mandatory automated evidence still blocks removal.
 - Update architecture/dependency/platform docs and game pin handoff. The
   public player API should remain stable; record any actual break honestly.
 
-- **From 3031 (done):** the root `Cargo.toml`'s `[patch.crates-io]` of `alsa-sys`
-  and `tools/sound-parity/alsa-sys-held` go with quad-snd, as nothing needs them then
-  ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)).
+- **From 3031 and 3032 (done):** the root `Cargo.toml`'s `[patch.crates-io]` of
+  `quad-alsa-sys` and `tools/sound-parity/quad-alsa-sys-held` go with quad-snd, as
+  nothing needs them then ([ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)). CPAL's real `alsa-sys` stays: it
+  links `libasound.so.2`, which Linux packages still need.
 
 **Out (do not do):** weakening parity budgets, silently abandoning a port,
 new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.

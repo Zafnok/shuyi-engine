@@ -108,7 +108,7 @@ The retro of 2026-11-17 (the last 100 PRs) found what the list missed:
 
 The release ships with quad-snd as the default sound backend. While
 quad-snd is in the graph, the in-house backend needs the root
-`Cargo.toml`'s `[patch.crates-io]` of `alsa-sys` (ADR-0075), which a
+`Cargo.toml`'s `[patch.crates-io]` of `quad-alsa-sys` (ADR-0139), which a
 published crate can't carry. Making the in-house backend the default
 later (3084) breaks no game's code (2084, ADR-0068).
 

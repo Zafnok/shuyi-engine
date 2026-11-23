@@ -332,6 +332,10 @@ class Native:
         if refuse and underruns:
             raise LostFrames(f"quad-snd underran {len(underruns)} times ({'; '.join(underruns)})")
         sys.stdout.write(process.stdout)
+        # What the system's libraries said, ALSA's among them: the log's, not evidence.
+        for line in process.stderr.splitlines():
+            if line.strip() and not line.startswith(PREFIX):
+                print(f"{self.probe.name}: {line}", file=sys.stderr)
         lines = [line[len(PREFIX):] for line in process.stderr.splitlines() if line.startswith(PREFIX)]
         if process.returncode != 0:
             lines.append(json.dumps({"event": "failed", "text": f"exit {process.returncode}: {process.stderr[-300:]}"}))

@@ -281,8 +281,12 @@ fn say_output(backend: &SoundProbeBackend) {
     {
         let (rebuilds, silent) = backend.output_stats();
         let (dry, raised) = backend.output_dry();
+        // The system's output, or none and why (ticket 3032).
+        let problem = backend
+            .output_problem()
+            .map_or_else(|| "null".to_owned(), |why| format!("\"{}\"", clean(why)));
         say(&format!(
-            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised}}}"#
+            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised},"silent_because":{problem}}}"#
         ));
     }
     #[cfg(not(all(feature = "in-house-sound", not(target_arch = "wasm32"))))]

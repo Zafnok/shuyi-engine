@@ -564,6 +564,9 @@ pub struct InHouse {
     /// Whether a frame of the player's is open: its commands are held back until
     /// it closes, so that what it starts starts at one block (ticket 3089).
     framing: bool,
+    /// Why the output discards, for the probe's log, which has no logger (ticket 3032).
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    silent_because: Option<String>,
     #[cfg(test)]
     said: Vec<String>,
 }
@@ -587,6 +590,10 @@ impl InHouse {
             let (output, problem) = Output::open_or_null(config, move |out| side.fill(out));
             if let Some(problem) = problem {
                 self.say(&format!("the game runs silent: {problem}"));
+                #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+                {
+                    self.silent_because = Some(problem.to_string());
+                }
             }
             engine.output = Some(output);
             if self.framing {
@@ -688,6 +695,13 @@ impl InHouse {
             .as_ref()
             .and_then(|engine| engine.output.as_ref())
             .map_or((0, 0), Output::stats)
+    }
+
+    /// Why the output discards, if it does: the system's wouldn't open. For the probe's
+    /// log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_problem(&self) -> Option<&str> {
+        self.silent_because.as_deref()
     }
 
     /// How often the output's buffer ran dry, a gap heard, and whether its thread

@@ -18,7 +18,11 @@ trap 'rm -rf "$work"' EXIT
 status=0
 for program in "$@"; do
   for arch in $(lipo -archs "$program"); do
-    minos=$(vtool -arch "$arch" -show-build "$program" | awk '$1 == "minos" { print $2; exit }')
+    # `LC_BUILD_VERSION`'s `minos`, or on an older target (rustc's x86_64 default)
+    # `LC_VERSION_MIN_MACOSX`'s `version`.
+    minos=$(otool -arch "$arch" -l "$program" | awk '
+      /cmd LC_BUILD_VERSION/ { build = 1 } /cmd LC_VERSION_MIN_MACOSX/ { old = 1 }
+      build && $1 == "minos" { print $2; exit } old && $1 == "version" { print $2; exit }')
     [ -n "$minos" ] || { echo "mac-floor: $program ($arch) records no minos"; exit 1; }
     # `nm -m` names each undefined symbol's library; a weak one may be missing at
     # run time, so only the others can stop the program starting.

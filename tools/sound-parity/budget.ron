@@ -261,6 +261,6 @@
         "windows-in-house": NewBackend,
         "linux-in-house": NewBackend,
         "browser-in-house": NewBackend,
-        "macos": Blocked("3032 establishes capture first; hosted Mac capture is unproved"),
+        "macos": Blocked("3348: no hosted Mac capture route works yet (3032 built and tested the in-house backend there)"),
     },
 )
