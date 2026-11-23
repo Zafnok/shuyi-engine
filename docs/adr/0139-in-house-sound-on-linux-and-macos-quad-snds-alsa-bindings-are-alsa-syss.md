@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-23
-- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3347, 3348, 3349
+- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3347, 3348, 3349, 3350
 - **Amends:** ADR-0075 (its held `alsa-sys`)
 - **Extends:** ADR-0066, ADR-0067, ADR-0068
 
@@ -49,7 +49,12 @@ thread is as CPAL makes it, which 3320 decides.
 in-house probe beside quad-snd's on the one null sink: `linux-in-house` is a
 `NewBackend` in `budget.ron`, every cell mandatory, `old-new` cells against quad-snd,
 and a `device-loss` cell, for which the sink is unloaded while the probe plays and
-loaded again, and the time until it is heard is held to a second.
+loaded again, and the time until it is heard is held to a second. The in-house probe
+plays without the sink's `PULSE_LATENCY_MSEC`, which quad-snd needs there: through
+ALSA's PulseAudio plugin it stalls CPAL's stream after one callback, and nothing is
+heard (3350 is the player who sets it). On Linux the output asks ALSA for about 20 ms
+a callback (`BufferSize::Fixed`, inside the device's range), so its latency is its
+own, not the plugin's choice; Windows and macOS keep the system's.
 
 **What a Linux build needs, measured, not assumed.** Both probes name
 `libasound.so.2` in `DT_NEEDED` (a CI step fails otherwise): CPAL links ALSA, it doesn't

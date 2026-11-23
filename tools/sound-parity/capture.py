@@ -66,6 +66,12 @@ OGGENC = ["--quiet", "--quality=6", "--serial=2573"]
 # Chromium's real output path: the full browser in new-headless mode (the
 # headless shell has no sound), SwiftShader as in tools/web-check/check.py.
 CHROMIUM_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+# What the in-house probe plays without (ticket 3032). `PULSE_LATENCY_MSEC` is there for
+# quad-snd, which would otherwise get the null sink's largest blocks; through ALSA's
+# PulseAudio plugin it stalls CPAL's stream after its first callback (one callback,
+# nothing heard, in CI run 45163539957), and the in-house output asks for about 20 ms
+# itself. A player's system sets neither.
+IN_HOUSE_WITHOUT = ("PULSE_LATENCY_MSEC",)
 # How the sink is made, and made again after `write_native_device_loss` took it away.
 NULL_SINK = ["module-null-sink", f"sink_name={SINK}", f"rate={RATE}", "channels=2", "format=s16le"]
 # The silence a recording starts with before anything plays, in frames.
@@ -300,6 +306,12 @@ class Native:
     probe: Path
     stage: Path
     target: Sink
+    # The sink's settings this probe runs without (ticket 3032).
+    without: tuple[str, ...] = ()
+
+    @property
+    def env(self) -> dict[str, str]:
+        return {k: v for k, v in self.target.env.items() if k not in self.without}
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
         # A scenario's recording is judged as the sound itself, so one the backend
@@ -318,7 +330,7 @@ class Native:
         process = subprocess.run(
             [str(self.probe)],
             cwd=self.stage,
-            env=self.target.env,
+            env=self.env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -673,7 +685,7 @@ def native(args: argparse.Namespace) -> int:
     shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
     with sink() as target:
         old = Native(args.probe.resolve(), args.dir.resolve(), target)
-        new = Native(args.new_probe.resolve(), args.dir.resolve(), target) if args.new_probe else None
+        new = Native(args.new_probe.resolve(), args.dir.resolve(), target, IN_HOUSE_WITHOUT) if args.new_probe else None
         if args.only in (None, "linux-native"):
             base = args.dir / "linux-native"
             if not args.perf_only:
@@ -716,7 +728,7 @@ def write_native_device_loss(player: Native, target: Sink, base: Path) -> None:
 
     (player.stage / "probe.txt").write_text("scenario device_loss\n", encoding="utf-8", newline="\n")
     report: dict[str, object] = {}
-    process = subprocess.Popen([str(player.probe)], cwd=player.stage, env=target.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen([str(player.probe)], cwd=player.stage, env=player.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(2.5)
         modules = [line.split("\t") for line in pactl("list", "short", "modules").splitlines()]
