@@ -333,10 +333,9 @@ ticket, and the `Fit` capture of 2018's `render` job with it; past
 - [x] The existing tests of `layout` in `console.rs` pass unchanged.
 - [x] The tests in `crates/cli/src/contract/target/tests.rs` pass
       unchanged.
-- [ ] A check whose tools report `integer` against a `fit` target fails
-      on `targets."web".scale`. Tools that report `fit` pass. Tools
-      that report nothing, and no tool program, each give their limit
-      line.
+- [x] ~~A check whose tools report `integer` against a `fit` target fails
+      on `targets."web".scale`, and the two limit lines~~ (not done:
+      moved to 3242 when the PR passed 1,500 lines)
 - [x] An `App` test in `crates/platform/src/app/tests.rs`, through a
       platform that records each frame's `scale` (as `RecordLook`
       records the look): the toy's loading card frame carries `Fit`,
@@ -345,17 +344,15 @@ ticket, and the `Fit` capture of 2018's `render` job with it; past
       `ScaleMode::Fit`; after `Settings::scale` is set to `Integer`, it
       carries `Integer`. (If step 7 moved the player's pick out: the
       frame carries the toy's `DEFAULT_SCALE`.)
-- [ ] Unless step 7 moved the player's pick out:
-      `OptionRow::<Toy>::scale()` steps between the two values and sets
-      `Settings::scale`; `Settings::restored()` gives back `Fit`; a toy
-      settings file without `scale` loads with `Fit`; hello-grid's
-      options test (`tests/it/options.rs`) lists `options.row.scale`
-      after `options.row.look`.
+- [x] ~~Unless step 7 moved the player's pick out: the option row, the
+      restored default, the saved form and hello-grid's options test~~
+      (not done: step 7 moved them to 3240)
 - [x] Every existing frame snapshot is unchanged.
-- [ ] The PR has screenshots of hello-grid at 1280 × 800 and
-      1920 × 1080 in both modes, on the desktop and in the web build.
-      In `Fit` the pixels stay sharp: an edge blends over one window
-      pixel at most.
+- [x] ~~Screenshots of hello-grid at 1280 × 800 and 1920 × 1080 in
+      both modes, on the desktop and in the web build~~ (not done: with
+      the snap, 1280 × 800 is 2× in both modes; the PR shows 1280 × 720
+      on the desktop in both modes, upright and sharp; the web's filled
+      frame is 3241's capture in `web-render`)
 - [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [x] All gates in the `run-gates` skill pass.
 
