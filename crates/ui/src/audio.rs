@@ -487,7 +487,10 @@ pub struct MusicClock {
     /// The music cue sounding.
     pub cue: String,
     /// Seconds into the track: from 0 up to, never reaching, `length`. A
-    /// looped track is back at 0 each time it starts again.
+    /// looped track is back at 0 each time it starts again, and one that
+    /// goes round a loop region back at the region's start each time it
+    /// comes round: the platform says where it is, as it plays it
+    /// (ticket 2397).
     pub position: f32,
     /// The track's length in seconds (the manifest's `length_ms`).
     pub length: f32,
@@ -505,8 +508,12 @@ impl MusicClock {
     }
 
     /// The clock of `cue`, which started `elapsed` seconds ago (a negative
-    /// time counts as 0). `None` if the cue is unknown, or isn't looped and
-    /// has ended (or `elapsed` isn't a number).
+    /// time counts as 0), wrapped at its length if it is looped. A track
+    /// going round a loop region comes as the platform reports it, already
+    /// back by the region's length each time round, and so inside the track:
+    /// the region is the backend's to play, and whether it can is its own
+    /// (ticket 2397). `None` if the cue is unknown, or isn't looped and has
+    /// ended (or `elapsed` isn't a number).
     pub fn from_elapsed(manifest: &AudioManifest, cue: &str, elapsed: f64) -> Option<Self> {
         let track = manifest.music.get(cue)?;
         let length = f64::from(track.length_ms) / 1000.0;
@@ -1783,6 +1790,25 @@ mod tests {
         assert_eq!(position(false, 2.5 - 1e-12), None);
         assert_eq!(position(false, 2.5), None);
         assert_eq!(position(false, 3.0), None);
+    }
+
+    /// Ticket 2397: the platform reports a track going round a region where it
+    /// is, inside the track, and the clock says just that, whatever the cue's
+    /// region: one the backend couldn't play counts on whole.
+    #[test]
+    fn the_clock_of_a_track_with_a_region_is_where_the_platform_says() {
+        let mut m = one_track(true);
+        let region = shuyi_assets::audio::LoopRegion::new(1000, 2000);
+        if let (Some(t), Some(region)) = (m.music.get_mut("theme"), region) {
+            *t = t.clone().with_loop(region);
+        }
+        let at = |elapsed| MusicClock::from_elapsed(&m, "theme", elapsed).map(|c| c.position);
+        for (reported, position) in [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0), (1.999, 1.999)] {
+            assert!(close(at(reported), position), "{reported}");
+        }
+        // Played whole, past the region's end and round the whole length.
+        assert!(close(at(2.25), 2.25));
+        assert!(close(at(3.0), 0.5));
     }
 
     #[test]

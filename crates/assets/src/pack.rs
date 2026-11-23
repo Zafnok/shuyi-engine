@@ -96,9 +96,10 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// version 16 holds a font atlas's ink (ticket 3215, ADR-0124), version
 /// 17 its bold face (ticket 3216), version 18 checks the header and the
 /// index apart from each file, which has a checksum of its own (ticket
-/// 2263, ADR-0128 §2), and version 19's index holds the span of each
-/// folder laid first (ticket 2265, ADR-0128 §3).
-pub const VERSION: u32 = 19;
+/// 2263, ADR-0128 §2), version 19's index holds the span of each
+/// folder laid first (ticket 2265, ADR-0128 §3), and version 20's music cue
+/// holds a loop region (ticket 2397).
+pub const VERSION: u32 = 20;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";

@@ -407,7 +407,20 @@ handled sounds, fades and the music clock are
   `set_volume`, `stop`, `set_playing_volume`, `stop_playing`;
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
-  as recorded). The first `Unsupported` of each is one warning;
+  as recorded), and `set_loop_region` (ticket 2397, else a track loops whole).
+  The first `Unsupported` of each is one warning, and of `set_loop_region` only
+  for a cue that names a region;
+- **a loop region**: once a looped track has loaded, the player calls
+  `set_loop_region(track, region)` with the cue's `LoopRegion`, or `None` for a
+  cue without one, and the backend says the `Looping` it will play: the cue's,
+  else the region the file's tags name (an Ogg file's `LOOPSTART` and
+  `LOOPLENGTH`), else the whole track, or `Unread` with why the file's tags
+  don't read, which the player warns of naming the file. The way round is the
+  backend's to make exact (a worker's decoder, a device's own loop range), never
+  a seek at the moment it is heard. `music_playing` then says where in the track
+  it is: past the region's end, back by its length each time round, so
+  `MusicClock` reads what is heard. quad-snd and the headless `Speaker` loop whole
+  tracks, and the new sound backend that replaces quad-snd (ADR-0066) plays regions;
 - **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
   `add_sound`, which readies the samples as a sound, says the backend can't by
   default, and the cue then plays nothing, with a warning; `remove_sound` stops

@@ -989,3 +989,46 @@ fn an_edit_reads_a_dependency_by_its_name_whatever_its_version() {
             .is_err()
     );
 }
+
+/// Ticket 2397: `future_region` passes the intro once and the region after it, and
+/// fails quad-snd's whole-file loop, which plays the intro again at its join.
+#[test]
+fn the_regions_scenario_holds_the_intro_once_and_catches_a_whole_file_loop() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let plan: Plan =
+        read_ron(&root.join(TOOL).join("scenarios.ron")).unwrap_or_else(|e| panic!("{e}"));
+    let scenario = plan
+        .scenarios
+        .into_iter()
+        .find(|s| s.name == "future_region")
+        .unwrap_or_else(|| panic!("no future_region"));
+    let (marker, music) = (signal("marker.wav"), signal("intro_loop.wav"));
+    let region = &music[music.len() / 2..];
+    // The marker at 0, the track from 500 ms, stopped at 3700 ms.
+    let heard = |passes: &[&[i16]]| {
+        let mut all = marker.clone();
+        all.resize(frame_index(500), 0);
+        for pass in passes {
+            all.extend_from_slice(pass);
+        }
+        all.truncate(frame_index(3700));
+        all.resize(frame_index(scenario.end as usize), 0);
+        recording(10, &all)
+    };
+    let check = |recording: &Recording| {
+        check(
+            &scenario.expect,
+            scenario.end,
+            recording,
+            &done(),
+            &oracle,
+            &tolerance(),
+        )
+    };
+    let right = heard(&[&music, region, region, region]);
+    assert_eq!(check(&right), Vec::<String>::new());
+    let whole = heard(&[&music, &music]);
+    assert_ne!(check(&whole), Vec::<String>::new(), "the intro came back");
+    let late = heard(&[&music, &music[..music.len() / 4], region, region]);
+    assert_ne!(check(&late), Vec::<String>::new(), "an intro played twice");
+}

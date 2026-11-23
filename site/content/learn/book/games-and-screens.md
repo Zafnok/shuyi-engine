@@ -189,6 +189,12 @@ fade names its own, for that switch or stop only:
 A quiet moment before the next track is the screen's to time: it asks for the next
 track when the moment is over.
 
+A track can play an intro once and then go round part of itself: its cue in the audio
+manifest says where, as `loop_start_ms` and `loop_end_ms`, or its Ogg file does with
+the `LOOPSTART` and `LOOPLENGTH` tags many music tools write, and the cue wins where
+both say. `ctx.music_clock` follows it round. A backend that can only loop whole files
+plays the whole track, and the log says so once; the game needs nothing else for it.
+
 A game can also make a sound while it runs, from samples rather than a file: a synth, a
 mod's sounds, sounds read from a file the player gives it. `ctx.audio.add_sound(cue,
 samples)` makes the samples a cue, and from then on it plays as a cue of the manifest

@@ -200,6 +200,23 @@ What each one reads:
   until the game stops it, and is started with a handle
   (`AudioQueue::start_sound`, ADR-0055). Left out, it is `false`, and
   the sound plays once.
+  **A loop region** (ticket 2397): a looped track may say `loop_start_ms`
+  and `loop_end_ms`, both or neither, with `0 <= start < end <=
+  length_ms`. It plays from its start up to `loop_end_ms` once, then
+  from `loop_start_ms` to `loop_end_ms` again and again, half-open: the
+  end is where it comes round. Left out, a track goes round the region
+  its file names, an Ogg file's `LOOPSTART` and `LOOPLENGTH` comments
+  (in samples of one channel), and round the whole track if it names
+  none; the manifest's fields win over the file's. The check refuses a
+  region with one end, an end not after its start, one past `length_ms`
+  and one on a track that has `looped: false`, as written, never
+  clamped; tags that don't read are refused as the track loads, naming
+  the tag and the file, and it loops whole. A backend plays a
+  millisecond `ms` at frame `ms × rate / 1000`, rounded down
+  (`LoopRegion::frames`), and a file's own region at its exact frames.
+  A backend that can only loop whole files (quad-snd) plays the whole
+  track, and the log says so once. The pack holds the two fields since
+  version 20.
 - **The font atlas** reads the PNG beside its glyph map with the same
   name (`fonts/atlas.ron` and `fonts/atlas.png`). Whether it draws the
   game's text is a check across assets, once both load

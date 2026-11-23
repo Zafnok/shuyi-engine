@@ -243,7 +243,7 @@ pub(crate) const MANIFEST: &str = r#"(
         (id: "gone", files: ["sfx/gone.wav"], volume: 100, credit: Own),
         (id: "trim", files: ["sfx/trim.wav"], volume: 100, credit: Own),
     ],
-    music: [(id: "title", file: "title.ogg", volume: 80, length_ms: 2000, credit: Own)],
+    music: [(id: "title", file: "title.ogg", volume: 80, length_ms: 2000, credit: Own, loop_start_ms: 500, loop_end_ms: 2000)],
     pools: [],
     credits: [],
     groups: [(id: "ambience", parent: "sfx", volume: 80), (id: "music", volume: 90)],

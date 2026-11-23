@@ -12,7 +12,8 @@
 //!   thread, and a play sent after its sound always finds it (`Inbox::apply_with`).
 //! - **Music and voices** stream. A [`Feeding`] on a worker decodes ahead into a ring
 //!   a track's length doesn't change. It loops by starting its decoder again, so a
-//!   loop's way back is in the ring before the mix gets there. In the browser there
+//!   loop's way back is in the ring before the mix gets there; round a loop region
+//!   (ticket 2397), the decoder of an Ogg file seeks to the region's exact frame. In the browser there
 //!   are no threads, and the feeding is done as the page asks for frames.
 //!
 //! **What the web hands the adapters.** A library's panic stops the program there, as
@@ -26,13 +27,14 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use shuyi_platform::audio::player::Backend;
+use shuyi_assets::audio::LoopRegion;
+use shuyi_platform::audio::player::{Backend, Looping};
 use shuyi_sound::mix::queue::{Inbox, Remote};
 use shuyi_sound::mix::stream::{self, Feeder, LoopedRegion};
 use shuyi_sound::mix::{
     Config, Mixer, Params, Region, SharedPcm, SoundId, StreamId, UNITY, VoiceId,
 };
-use shuyi_sound::vorbis::VorbisSource;
+use shuyi_sound::vorbis::{SEEK_LEAD, VorbisSource};
 use shuyi_sound::wav::WavSource;
 use shuyi_sound::{Channels, Error, Limits, Pcm, PcmFormat, Source, read_all};
 use shuyi_sound_out::{HandOut, HandTo, Output, OutputConfig, handover};
@@ -99,23 +101,30 @@ fn pcm_of(samples: &Samples) -> Result<SharedPcm, String> {
     pcm.map(SharedPcm::new).map_err(|e| e.to_string())
 }
 
-/// `first`, and when `looped` every next pass from `open`, gapless and in the ring
-/// before the mix gets there.
-fn looping<S, F>(first: S, open: F, looped: bool) -> Box<dyn Source + Send>
+/// `first`, and when it has a `region` every next pass round it from `open`, gapless
+/// and in the ring before the mix gets there.
+fn looping<S, F>(first: S, open: F, region: Option<Region>) -> Box<dyn Source + Send>
 where
     S: Source + Send + 'static,
     F: FnMut() -> Result<S, Error> + Send + 'static,
 {
-    match Region::new(0, u64::MAX).filter(|_| looped) {
-        Some(whole) => Box::new(LoopedRegion::new(first, whole, open)),
+    match region {
+        Some(region) => Box::new(LoopedRegion::new(first, region, open)),
         None => Box::new(first),
     }
 }
 
-/// A source of a track's bytes, decoding as it is asked.
-fn track_source(track: &Track, looped: bool) -> Result<Box<dyn Source + Send>, String> {
-    // A long track's length is no limit here: it is never all in memory.
-    let limits = Limits::new(Limits::DEFAULT_MAX_RATE, u64::MAX);
+/// A long track's length is no limit here: it is never all in memory.
+fn track_limits() -> Limits {
+    Limits::new(Limits::DEFAULT_MAX_RATE, u64::MAX)
+}
+
+/// A source of a track's bytes, decoding as it is asked, going round `region` if it
+/// has one. An Ogg file's way round a region that starts far in is an exact seek
+/// (ticket 2397), so the intro isn't decoded again on the worker each time round:
+/// decoding a long one would hold the ring up past what it holds.
+fn track_source(track: &Track, region: Option<Region>) -> Result<Box<dyn Source + Send>, String> {
+    let limits = track_limits();
     let bytes = Arc::clone(&track.bytes);
     let failed = |e: Error| e.to_string();
     Ok(match track.kind {
@@ -124,16 +133,21 @@ fn track_source(track: &Track, looped: bool) -> Result<Box<dyn Source + Send>, S
             looping(
                 first,
                 move || WavSource::new(Arc::clone(&bytes), &limits),
-                looped,
+                region,
             )
         }
         Kind::Ogg => {
             let first = VorbisSource::new(Arc::clone(&bytes), &limits).map_err(failed)?;
-            looping(
-                first,
-                move || VorbisSource::new(Arc::clone(&bytes), &limits),
-                looped,
-            )
+            match region.filter(|region| region.start() > SEEK_LEAD) {
+                Some(far) => Box::new(LoopedRegion::landing(first, far, move || {
+                    VorbisSource::new_at(Arc::clone(&bytes), &limits, far.start())
+                })),
+                None => looping(
+                    first,
+                    move || VorbisSource::new(Arc::clone(&bytes), &limits),
+                    region,
+                ),
+            }
         }
     })
 }
@@ -144,20 +158,49 @@ pub struct Track {
     kind: Kind,
     /// How long it plays, if it is an OGG file.
     length_ms: Option<u32>,
+    /// Its frames a second.
+    rate: u32,
+    /// The loop region its file names (an Ogg file's `LOOPSTART` and `LOOPLENGTH`),
+    /// or why that doesn't read.
+    file_region: Result<Option<Region>, String>,
 }
 
 impl Track {
-    /// `bytes` as a track: a file whose headers don't read is an error now.
+    /// `bytes` as a track: a file whose headers don't read is an error now. Loop
+    /// tags that don't read aren't: the track loops whole, and the player says why.
     fn new(bytes: Vec<u8>) -> Result<Self, String> {
         let kind = Kind::of(&bytes)?;
         let length_ms = shuyi_assets::audio::ogg_length_ms(&bytes);
-        let track = Self {
+        let limits = track_limits();
+        let failed = |e: Error| e.to_string();
+        let (rate, file_region) = match kind {
+            Kind::Wav => {
+                let source = WavSource::new(&bytes[..], &limits).map_err(failed)?;
+                (source.format().rate, Ok(None))
+            }
+            Kind::Ogg => {
+                let source = VorbisSource::new(&bytes[..], &limits).map_err(failed)?;
+                (source.format().rate, source.loop_region().map_err(failed))
+            }
+        };
+        Ok(Self {
             bytes: bytes.into(),
             kind,
             length_ms,
-        };
-        track_source(&track, false)?;
-        Ok(track)
+            rate,
+            file_region,
+        })
+    }
+
+    /// Where `region`, in its frames, is in seconds.
+    fn seconds(&self, region: Region) -> Looping {
+        // Frames of a track, far below where a float stops counting them.
+        #[allow(clippy::cast_precision_loss)]
+        let secs = |frame: u64| frame as f64 / f64::from(self.rate);
+        Looping::Region {
+            start: secs(region.start()),
+            end: secs(region.end()),
+        }
     }
 }
 
@@ -174,6 +217,8 @@ pub enum Clip {
         track: Track,
         rate: Cell<u32>,
         voice: Cell<Option<VoiceId>>,
+        /// The region a looped play goes round: `None` for the whole track.
+        region: Cell<Option<Region>>,
     },
 }
 
@@ -584,9 +629,9 @@ impl InHouse {
         &mut self,
         track: &Track,
         params: Params,
-        looped: bool,
+        region: Option<Region>,
     ) -> Result<VoiceId, String> {
-        let source = track_source(track, looped)?;
+        let source = track_source(track, region)?;
         let engine = self.engine();
         engine.seat();
         let (feeder, feed) = stream::feed(source.format(), FEED_FRAMES);
@@ -756,11 +801,18 @@ impl Backend for InHouse {
                 }
                 played
             }
-            Clip::Stream { track, voice, .. } => {
+            Clip::Stream {
+                track,
+                voice,
+                region,
+                ..
+            } => {
                 if let Some(old) = voice.take() {
                     self.stop_playing(Some(old));
                 }
-                let played = self.start_stream(track, params, looped);
+                let whole = Region::new(0, u64::MAX);
+                let region = region.get().or(whole).filter(|_| looped);
+                let played = self.start_stream(track, params, region);
                 voice.set(played.as_ref().ok().copied());
                 played
             }
@@ -840,6 +892,34 @@ impl Backend for InHouse {
         Ok(())
     }
 
+    fn set_loop_region(
+        &mut self,
+        sound: &Clip,
+        region: Option<LoopRegion>,
+    ) -> Result<Looping, shuyi_platform::audio::player::Unsupported> {
+        let Clip::Stream {
+            track, region: at, ..
+        } = sound
+        else {
+            return Ok(Looping::Whole);
+        };
+        // The cue's, in the file's frames, wins over the file's own.
+        let found = match region {
+            Some(asked) => asked
+                .frames(track.rate)
+                .and_then(|(start, end)| Region::new(start, end)),
+            None => match &track.file_region {
+                Ok(found) => *found,
+                Err(why) => {
+                    at.set(None);
+                    return Ok(Looping::Unread(why.clone()));
+                }
+            },
+        };
+        at.set(found);
+        Ok(found.map_or(Looping::Whole, |found| track.seconds(found)))
+    }
+
     fn hold_output(&mut self, on: bool) {
         if let Some(output) = self.engine.as_ref().and_then(|e| e.output.as_ref()) {
             if on {
@@ -885,6 +965,7 @@ fn clip_of(track: Track) -> Clip {
         track,
         rate: Cell::new(shuyi_sound::mix::RATE_ONE),
         voice: Cell::new(None),
+        region: Cell::new(None),
     }
 }
 

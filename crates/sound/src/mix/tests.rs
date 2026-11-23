@@ -803,6 +803,34 @@ fn a_mono_regions_pre_roll_stops_exactly_at_the_regions_start() {
     assert_eq!(seen[..9], [1, 2, 3, 4, 5, 4, 5, 4, 5]);
 }
 
+/// Ticket 2397: a restart that lands on the region's start gives the same frames
+/// as one read from the first frame, and nothing before the region is read again.
+#[test]
+fn a_looped_region_that_lands_on_its_start_reads_nothing_before_it_again() {
+    let region = Region::new(3, 5).unwrap_or_else(|| panic!("frames"));
+    let sound = ramp(9);
+    let first = SharedSource::new(SharedPcm::clone(&sound));
+    let restarts = Shared::new(core::sync::atomic::AtomicU32::new(0));
+    let counted = Shared::clone(&restarts);
+    let mut source = LoopedRegion::landing(first, region, move || {
+        counted.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        let mut at = SharedSource::new(SharedPcm::clone(&sound));
+        at.rewind_to(3)?;
+        Ok(at)
+    });
+    let mut out = [0; 16];
+    let mut seen = Vec::new();
+    while seen.len() < 11 {
+        let frames = source.read(&mut out).unwrap_or_else(|e| panic!("{e}"));
+        assert!(frames > 0, "it comes round, it doesn't end");
+        seen.extend_from_slice(&out[..frames]);
+    }
+    assert_eq!(seen[..11], [1, 2, 3, 4, 5, 4, 5, 4, 5, 4, 5]);
+    // Once each way round: a source read from its first frame would have had
+    // three frames dropped from where it landed, and two of each pass lost.
+    assert_eq!(restarts.load(core::sync::atomic::Ordering::Relaxed), 3);
+}
+
 #[test]
 fn a_looped_region_after_the_files_end_ends_rather_than_spins() {
     let region = Region::new(5, 9).unwrap_or_else(|| panic!("frames"));
