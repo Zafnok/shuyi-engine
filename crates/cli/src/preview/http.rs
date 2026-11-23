@@ -10,8 +10,8 @@ use std::fmt::Write as _;
 use std::io::{self, Read, Write};
 use std::time::Instant;
 
-/// The longest request line and headers, in bytes.
-pub(crate) const MAX_HEAD: usize = 8 * 1_024;
+/// The longest request line and headers, in bytes: 8 KiB.
+pub(crate) const MAX_HEAD: usize = 8_192;
 
 /// The longest body, in bytes: an action's name is short.
 pub(crate) const MAX_BODY: usize = 1_024;
@@ -124,7 +124,7 @@ fn reason(status: u16) -> &'static str {
 pub(crate) fn read(stream: &mut impl Read, deadline: Instant) -> Result<Request, Answer> {
     let (mut bytes, mut chunk) = (Vec::new(), [0_u8; 1_024]);
     let mut more = |bytes: &mut Vec<u8>, most: usize| {
-        if Instant::now() > deadline {
+        if Instant::now() >= deadline {
             return Err(Answer::error(408, "the request took too long"));
         }
         let most = most.min(chunk.len());
