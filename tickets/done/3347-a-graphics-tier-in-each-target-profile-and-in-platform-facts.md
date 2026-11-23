@@ -139,7 +139,25 @@ ticket.
   are 2359, 2360, 2103 and 2370, parked; 3017's capabilities stay beside
   it.
 
+- Deviation: the profile's new field changes its binary form in a
+  pack, so the pack format is version 21 (`pack::VERSION`), and the
+  golden table's `target profile: target-ron` value is blessed
+  (`cargo xtask golden --bless`).
+
 Game: game#1314 moves the pin to this change.
+
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `graphics`, and a baked pack is of version 21; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 21, its target profiles with a graphics tier; a pack of version 20 is refused.
+old: "pack::VERSION == 20"
+new: "pack::VERSION == 21"
+before: |
+  cargo shuyi bake   # with the engine before 3347
+after: |
+  cargo shuyi bake   # again, with this engine
+```
 
 Behaviour: shuyi-ui: `PlatformFacts::from_profile` of the engine's `playdate` profile gives `graphics: Reduced`, so its facts no longer equal a copy of that profile without the field (a game keeping its own copy of `targets/playdate.ron` adds `graphics: Reduced` to it).
 Behaviour: shuyi-app: a build with the debug tools reads `SHUYI_GRAPHICS` at start and shows that tier in place of its target's.
