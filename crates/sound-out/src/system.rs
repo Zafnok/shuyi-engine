@@ -205,9 +205,20 @@ fn open_stream(
     held: bool,
 ) -> Result<(Stream, cpal::Device), OutputError> {
     let device = host.default_output_device().ok_or(OutputError::NoDevice)?;
-    let supported = device
+    let mut supported = device
         .default_output_config()
         .map_err(|e| device_error(&e))?;
+    if diag("SHUYI_DIAG_I16")
+        && let Some(i16) = device
+            .supported_output_configs()
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter(|range| range.sample_format() == SampleFormat::I16 && range.channels() == 2)
+            .find_map(|range| range.try_with_sample_rate(supported.sample_rate()))
+    {
+        supported = i16;
+    }
     let format = supported.sample_format();
     let mut stream_config: StreamConfig = supported.config();
     stream_config.buffer_size = buffer_size(

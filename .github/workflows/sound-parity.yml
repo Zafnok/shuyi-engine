@@ -302,8 +302,14 @@ jobs:
           with capture.sink() as target:
               print(subprocess.run(["aplay", "-L"], env=target.env, capture_output=True, text=True).stdout[:2000])
               (stage / "probe.txt").write_text("scenario onset" + chr(10))
-              for switches in [[], ["SHUYI_DIAG_NOWATCH"], ["SHUYI_DIAG_DEFAULTBUF"], ["SHUYI_DIAG_NOPLAY"], ["SHUYI_DIAG_NOWATCH", "SHUYI_DIAG_DEFAULTBUF"]]:
+              for switches in [["SHUYI_DIAG_I16"], ["NO_PULSE_LATENCY"], ["SHUYI_DIAG_I16", "NO_PULSE_LATENCY"], ["ALSA_PULSE"]]:
                   env = {**target.env, **{name: "1" for name in switches}}
+                  if "NO_PULSE_LATENCY" in switches:
+                      env.pop("PULSE_LATENCY_MSEC", None)
+                  if "ALSA_PULSE" in switches:
+                      ran = subprocess.run(["aplay", "-v", "-D", "default", "-d", "1", "/dev/zero", "-f", "FLOAT_LE", "-c", "2", "-r", "48000"], env=env, capture_output=True, text=True, timeout=20)
+                      print("APLAY", ran.returncode, ran.stderr[-1500:])
+                      continue
                   rec = capture.Recorder(target, stage / "onset.pcm")
                   rec.flowing()
                   ran = subprocess.run([str(probe)], cwd=stage, env=env, capture_output=True, text=True, timeout=30)
