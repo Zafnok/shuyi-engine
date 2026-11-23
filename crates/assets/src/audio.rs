@@ -552,8 +552,8 @@ pub const SAMPLE_RATE: u32 = 44_100;
 /// quad-snd panics on native, and never finishes loading on the web, on a
 /// file it can't read, so this runs before any file ships.
 pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
-    if let Some(problem) = decode::coded_problem(name, bytes) {
-        return problem;
+    if decode::is_coded(name) {
+        return decode::coded_problem(name, bytes);
     }
     if has_extension(name, &["wav"]) {
         return wav_problem(bytes);

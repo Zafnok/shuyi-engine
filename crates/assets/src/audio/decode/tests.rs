@@ -161,22 +161,23 @@ fn a_tracks_length_is_read_by_its_format() {
 
 #[test]
 fn a_flac_or_mp3_sound_is_checked_by_its_format() {
-    assert_eq!(coded_problem("a.flac", FLAC), Some(None));
-    assert_eq!(coded_problem("a.mp3", MP3), Some(None));
-    assert_eq!(coded_problem("a.ogg", MP3), None);
+    assert_eq!(coded_problem("a.flac", FLAC), None);
+    assert_eq!(coded_problem("a.mp3", MP3), None);
+    assert!(is_coded("a.flac") && is_coded("a.mp3"));
+    assert!(!is_coded("a.ogg") && !is_coded("a.wav") && !is_coded(".flac"));
     // Bytes a game's hook decoded are checked as a WAV.
-    assert_eq!(coded_problem("a.flac", &wav(2, 44_100, 1)), Some(None));
+    assert_eq!(coded_problem("a.flac", &wav(2, 44_100, 1)), None);
     assert_eq!(
-        coded_problem("a.mp3", &wav(2, 48_000, 1)),
-        Some(Some("48000 Hz; must be 44100 Hz".to_owned()))
+        coded_problem("a.mp3", &wav(2, 48_000, 1)).as_deref(),
+        Some("48000 Hz; must be 44100 Hz")
     );
     assert_eq!(
-        coded_problem("a.flac", b"junk"),
-        Some(Some("not a FLAC file".to_owned()))
+        coded_problem("a.flac", b"junk").as_deref(),
+        Some("not a FLAC file")
     );
     assert_eq!(
-        coded_problem("a.mp3", b"junk"),
-        Some(Some("not an MP3 file".to_owned()))
+        coded_problem("a.mp3", b"junk").as_deref(),
+        Some("not an MP3 file")
     );
 }
 

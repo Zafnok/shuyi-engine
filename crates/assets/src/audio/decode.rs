@@ -126,12 +126,16 @@ pub fn track_length_ms(name: &str, bytes: &[u8]) -> Option<u32> {
     track.ok().map(|track| track.length_ms)
 }
 
-/// For a sound file named `name` that ends in `.flac` or `.mp3`, why it
-/// isn't something the game can play, if it isn't (the inner `Option`);
-/// `None` for any other name.
-pub(super) fn coded_problem(name: &str, bytes: &[u8]) -> Option<Option<String>> {
+/// Whether a file named `name` is a FLAC or MP3 one, by its extension.
+pub(super) fn is_coded(name: &str) -> bool {
+    Coded::of(name).is_some()
+}
+
+/// Why a sound file named `name`, a FLAC or MP3 one ([`is_coded`]), isn't
+/// something the game can play, if it isn't.
+pub(super) fn coded_problem(name: &str, bytes: &[u8]) -> Option<String> {
     let coded = Coded::of(name)?;
-    Some(read_problem(name, bytes, coded, coded.sound_format()))
+    read_problem(name, bytes, coded, coded.sound_format())
 }
 
 /// Why a file of `coded`'s format isn't something the game can play: as a
