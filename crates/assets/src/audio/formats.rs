@@ -1,9 +1,15 @@
 //! The audio kinds and formats (ADR-0007): a sound file's header, a music
-//! track's, and the manifest. Only headers are read; the platform decodes
-//! the samples when it plays them.
+//! track's, and the manifest. Only headers are read here. The platform
+//! decodes a WAV's and an OGG's samples when it plays them; a FLAC's and
+//! an MP3's are decoded to a WAV for it first ([`decode_to_wav`](super::decode_to_wav),
+//! ticket 2234).
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "flac")]
+use super::NO_FLAC_LENGTH;
+#[cfg(feature = "mp3")]
+use super::NO_MP3_LENGTH;
 #[cfg(any(feature = "flac", feature = "mp3"))]
 use super::samples_ms;
 use super::{
@@ -313,12 +319,7 @@ impl Format for FlacTrack {
     ) -> Result<MusicTrack, Vec<ContentError>> {
         let sound = Flac.decode(file, bytes, cx)?;
         let samples = flac_format(bytes).and_then(|(_, _, samples)| samples);
-        track(
-            file,
-            sound,
-            samples,
-            "its length can't be read (its STREAMINFO has no sample count)",
-        )
+        track(file, sound, samples, NO_FLAC_LENGTH)
     }
 }
 
@@ -417,7 +418,7 @@ impl Format for Mp3Track {
     ) -> Result<MusicTrack, Vec<ContentError>> {
         let sound = Mp3.decode(file, bytes, cx)?;
         let samples = mp3_format(bytes, true).and_then(|(_, _, samples)| samples);
-        track(file, sound, samples, "its length can't be read (no frames)")
+        track(file, sound, samples, NO_MP3_LENGTH)
     }
 }
 

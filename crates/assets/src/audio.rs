@@ -6,15 +6,17 @@
 //! the bundle, and music in a folder shipped next to the game, which the
 //! game itself may not be able to read. [`from_source`] checks what it can
 //! see, including each track's `length_ms` against its file
-//! ([`ogg_length_ms`]).
+//! ([`track_length_ms`]).
 //!
 //! As formats (ADR-0007): a sound file's header is the [`Sound`] kind
 //! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
 //! ([`OggVorbisTrack`]), and the manifest is read by
 //! [`AudioManifestRon`]. FLAC and MP3 are formats of both kinds too, each
 //! behind its own feature (`flac`, `mp3`; ticket 2203): `Flac` and
-//! `FlacTrack`, `Mp3` and `Mp3Track`. The manifest still names only
-//! `.ogg` and `.wav` files, as the platform plays only those.
+//! `FlacTrack`, `Mp3` and `Mp3Track`. A sound may be a `.ogg`, `.wav`,
+//! `.flac` or `.mp3` file, a track a `.ogg`, `.flac` or `.mp3` one. The
+//! platform plays a FLAC or MP3 sound as the WAV [`decode_to_wav`] makes
+//! of it (ticket 2234).
 //!
 //! Every cue plays in a sound group (ADR-0091): the one its `group` names,
 //! else a sound in `ui` if it is a menu's and in `sfx` if not, and a track
@@ -46,6 +48,7 @@
 //! ```
 use crate::prelude::*;
 
+mod decode;
 mod formats;
 pub mod groups;
 
@@ -56,6 +59,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron_implicit_some;
 
+pub use decode::{MAX_DECODED_BYTES, decode_to_wav, pcm16_wav, track_length_ms};
 pub use formats::{
     AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
@@ -639,18 +643,30 @@ pub const SAMPLE_RATE: u32 = 44_100;
 
 /// Why `bytes` (a file named `name`) isn't something the game can play:
 /// its content must match its extension (OGG Vorbis for `.ogg`, PCM or
-/// float WAV for `.wav`), with one or two channels at [`SAMPLE_RATE`].
+/// float WAV for `.wav`, FLAC for `.flac`, MP3 for `.mp3`), with one or
+/// two channels at [`SAMPLE_RATE`]. A `.flac` or `.mp3` file whose bytes
+/// are a WAV (a game's hook decoded them) is checked as a WAV, and one
+/// whose format's feature is off (`flac`, `mp3`) is told to turn it on.
 /// quad-snd panics on native, and never finishes loading on the web, on a
 /// file it can't read, so this runs before any file ships.
 pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
-    let format = if has_extension(name, &["wav"]) {
-        wav_format(bytes).ok_or("not a PCM WAV file")
-    } else {
-        vorbis_format(bytes).ok_or("not an OGG Vorbis file")
-    };
-    match format {
-        Err(why) => Some(why.to_owned()),
-        Ok((channels, rate)) => playable_problem(channels, rate),
+    if decode::is_coded(name) {
+        return decode::coded_problem(name, bytes);
+    }
+    if has_extension(name, &["wav"]) {
+        return wav_problem(bytes);
+    }
+    match vorbis_format(bytes) {
+        None => Some("not an OGG Vorbis file".to_owned()),
+        Some((channels, rate)) => playable_problem(channels, rate),
+    }
+}
+
+/// Why `bytes` aren't a WAV the game can play, if they aren't.
+fn wav_problem(bytes: &[u8]) -> Option<String> {
+    match wav_format(bytes) {
+        None => Some("not a PCM WAV file".to_owned()),
+        Some((channels, rate)) => playable_problem(channels, rate),
     }
 }
 
@@ -871,8 +887,9 @@ impl Check<'_> {
         }
         for f in &s.files {
             let path = (self.files.sound_shown)(f);
-            if !has_extension(f, &["ogg", "wav"]) {
-                self.err(&id, format!("sound \"{id}\": \"{f}\" must be .ogg or .wav"));
+            if !has_extension(f, &SOUND_EXTENSIONS) {
+                let why = "must be .ogg, .wav, .flac or .mp3";
+                self.err(&id, format!("sound \"{id}\": \"{f}\" {why}"));
             } else if !(self.files.sound_left_out)(f) {
                 match (self.files.sound)(f) {
                     None => self.err(&id, format!("sound \"{id}\": file {path} not found")),
@@ -912,15 +929,16 @@ impl Check<'_> {
         let id = m.id;
         self.new_cue(&id);
         let f = &m.file;
-        if !has_extension(f, &["ogg"]) {
-            self.err(&id, format!("music \"{id}\": \"{f}\" must be .ogg"));
+        if !has_extension(f, &TRACK_EXTENSIONS) {
+            let why = "must be .ogg, .flac or .mp3";
+            self.err(&id, format!("music \"{id}\": \"{f}\" {why}"));
         } else if let Some(read) = self.files.music {
             let dir = self.files.music_dir;
             match read(f) {
                 None => self.err(&id, format!("music \"{id}\": file {dir}/{f} not found")),
                 Some(bytes) => {
                     let problem = format_problem(f, &bytes)
-                        .or_else(|| length_problem(m.length_ms, ogg_length_ms(&bytes)));
+                        .or_else(|| length_problem(f, m.length_ms, track_length_ms(f, &bytes)));
                     if let Some(why) = problem {
                         self.err(&id, format!("music \"{id}\": {dir}/{f}: {why}"));
                     }
@@ -970,15 +988,27 @@ impl Check<'_> {
     }
 }
 
-/// What a track whose length can't be read is told.
-const NO_LENGTH: &str = "its length can't be read (no last Ogg page)";
+/// The extensions a sound file may have.
+const SOUND_EXTENSIONS: [&str; 4] = ["ogg", "wav", "flac", "mp3"];
 
-/// Why a music cue's `length_ms` doesn't fit its file, which plays for
-/// `actual` milliseconds ([`ogg_length_ms`]): more than
-/// [`LENGTH_TOLERANCE_MS`] off, or the file's length can't be read. The
-/// message gives the value to write.
-fn length_problem(length_ms: u32, actual: Option<u32>) -> Option<String> {
+/// The extensions a music track may have.
+const TRACK_EXTENSIONS: [&str; 3] = ["ogg", "flac", "mp3"];
+
+/// What an OGG track whose length can't be read is told.
+const NO_LENGTH: &str = "its length can't be read (no last Ogg page)";
+/// What a FLAC track whose length can't be read is told.
+const NO_FLAC_LENGTH: &str = "its length can't be read (its STREAMINFO has no sample count)";
+/// What an MP3 track whose length can't be read is told.
+const NO_MP3_LENGTH: &str = "its length can't be read (no frames)";
+
+/// Why a music cue's `length_ms` doesn't fit its file `file`, which plays
+/// for `actual` milliseconds ([`track_length_ms`]): more than
+/// [`LENGTH_TOLERANCE_MS`] off, or the file's length can't be read (a
+/// message for its format). The message gives the value to write.
+fn length_problem(file: &str, length_ms: u32, actual: Option<u32>) -> Option<String> {
     match actual {
+        None if has_extension(file, &["flac"]) => Some(NO_FLAC_LENGTH.into()),
+        None if has_extension(file, &["mp3"]) => Some(NO_MP3_LENGTH.into()),
         None => Some(NO_LENGTH.into()),
         Some(ms) if ms.abs_diff(length_ms) > LENGTH_TOLERANCE_MS => Some(format!(
             "it plays for {ms} ms, but length_ms is {length_ms}; write length_ms: {ms}"
@@ -1043,10 +1073,11 @@ fn has_extension(file: &str, allowed: &[&str]) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use alloc::borrow::Cow;
 
     use super::*;
+    use crate::format::codec_tests::{FLAC, MP3};
 
     #[test]
     fn a_sounds_constructors_build_what_a_literal_built() {
@@ -1164,7 +1195,7 @@ mod tests {
 
     /// The start of a WAV file: a `LIST` chunk (odd-sized, so padded), then
     /// `fmt `.
-    fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
+    pub(super) fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
         let mut w = b"RIFF\0\0\0\0WAVELIST\x05\0\0\0abcde\0fmt \x10\0\0\0".to_vec();
         w.extend_from_slice(&encoding.to_le_bytes());
         w.extend_from_slice(&channels.to_le_bytes());
@@ -1198,7 +1229,7 @@ mod tests {
     /// A whole OGG Vorbis file's framing: the first page of [`ogg`],
     /// filled out to the 30 bytes it declares, then a last page that puts
     /// the stream at `samples`.
-    fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
+    pub(super) fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
         let mut o = ogg(2, rate);
         o.resize(29 + 30, 0);
         o.extend_from_slice(&ogg_page(samples, &[0; 40]));
@@ -1210,6 +1241,10 @@ mod tests {
     fn good(name: &str) -> Vec<u8> {
         if has_extension(name, &["wav"]) {
             wav(2, SAMPLE_RATE, 1)
+        } else if has_extension(name, &["flac"]) {
+            FLAC.to_vec()
+        } else if has_extension(name, &["mp3"]) {
+            MP3.to_vec()
         } else {
             ogg_file(SAMPLE_RATE, u64::from(SAMPLE_RATE) * 2)
         }
@@ -1463,14 +1498,14 @@ mod tests {
                 .contains(&"sfx/step_2.ogg".to_owned())
         );
         // Its name is still checked.
-        let wrong = FULL.replace("sfx/step_2.ogg", "sfx/step_2.mp3");
+        let wrong = FULL.replace("sfx/step_2.ogg", "sfx/step_2.aiff");
         let files = Files {
-            sound_left_out: &|p: &str| p == "sfx/step_2.mp3",
+            sound_left_out: &|p: &str| p == "sfx/step_2.aiff",
             ..reading(&no_step_2, None)
         };
         assert_eq!(
             errors_with(&wrong, &files),
-            ["a.ron:5: sound \"footfall\": \"sfx/step_2.mp3\" must be .ogg or .wav"]
+            ["a.ron:5: sound \"footfall\": \"sfx/step_2.aiff\" must be .ogg, .wav, .flac or .mp3"]
         );
     }
 
@@ -1745,22 +1780,96 @@ mod tests {
 
     #[test]
     fn file_formats_are_checked() {
-        let mp3 = FULL.replace("title.ogg", "title.mp3");
-        assert_eq!(
-            errors(&mp3),
-            ["a.ron:8: music \"title\": \"title.mp3\" must be .ogg"]
-        );
         let wav_music = FULL.replace("title.ogg", "title.wav");
-        assert_eq!(errors(&wav_music).len(), 1);
-        let flac = FULL.replace("ui_tick.wav", "ui_tick.flac");
         assert_eq!(
-            errors(&flac),
-            ["a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.flac\" must be .ogg or .wav"]
+            errors(&wav_music),
+            ["a.ron:8: music \"title\": \"title.wav\" must be .ogg, .flac or .mp3"]
         );
+        let aiff = FULL.replace("ui_tick.wav", "ui_tick.aiff");
+        assert_eq!(
+            errors(&aiff),
+            ["a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.aiff\" must be .ogg, .wav, .flac or .mp3"]
+        );
+        for sound in ["ui_tick.flac", "ui_tick.mp3"] {
+            let coded = FULL.replace("ui_tick.wav", sound);
+            assert_eq!(errors(&coded), Vec::<String>::new(), "{sound}");
+        }
         assert_eq!(errors(&FULL.replace("sfx/ui_tick.wav", ".wav")).len(), 1);
         assert_eq!(errors(&FULL.replace("sfx/ui_tick.wav", "wav")).len(), 1);
         let none = FULL.replace(r#"["sfx/ui_tick.wav"]"#, "[]");
         assert_eq!(errors(&none), ["a.ron:4: sound \"ui_tick\" has no files"]);
+    }
+
+    /// A manifest of a FLAC and an MP3 sound, and a FLAC and an MP3 track
+    /// `length_ms` long each.
+    fn coded(flac_ms: u32, mp3_ms: u32) -> String {
+        format!(
+            r#"(
+    music_fade_ms: 250,
+    sounds: [
+        (id: "chime", files: ["sfx/chime.flac", "sfx/chime.mp3"], volume: 100, credit: Own),
+    ],
+    music: [
+        (id: "lossless", file: "lossless.flac", volume: 80, length_ms: {flac_ms}, credit: Own),
+        (id: "small", file: "small.mp3", volume: 80, length_ms: {mp3_ms}, credit: Own),
+    ],
+    pools: [],
+    credits: [],
+)"#
+        )
+    }
+
+    #[test]
+    fn flac_and_mp3_sounds_and_tracks_are_checked() {
+        let mp3_ms = track_length_ms("a.mp3", MP3).unwrap();
+        assert_eq!(track_length_ms("a.flac", FLAC), Some(50));
+        assert_eq!(errors(&coded(50, mp3_ms)), Vec::<String>::new());
+        // A wrong length gets the value to write.
+        let wrong = mp3_ms + 100;
+        assert_eq!(
+            errors(&coded(500, wrong)),
+            [
+                "a.ron:7: music \"lossless\": music/lossless.flac: it plays for 50 ms, \
+                 but length_ms is 500; write length_ms: 50"
+                    .to_owned(),
+                format!(
+                    "a.ron:8: music \"small\": music/small.mp3: it plays for {mp3_ms} ms, \
+                     but length_ms is {wrong}; write length_ms: {mp3_ms}"
+                ),
+            ]
+        );
+        // Broken bytes: each format's own message.
+        let junk = reading(
+            &|_: &str| Some(Cow::Borrowed(&b"junk"[..])),
+            Some(&|_: &str| Some(Cow::Borrowed(&b"junk"[..]))),
+        );
+        assert_eq!(
+            errors_with(&coded(50, mp3_ms), &junk),
+            [
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.flac: not a FLAC file",
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.mp3: not an MP3 file",
+                "a.ron:7: music \"lossless\": music/lossless.flac: not a FLAC file",
+                "a.ron:8: music \"small\": music/small.mp3: not an MP3 file",
+            ]
+        );
+        // A sound a game's hook decoded is a WAV, and checked as one.
+        let hooked = reading(&|_: &str| Some(Cow::Owned(wav(1, 22_050, 1))), None);
+        assert_eq!(
+            errors_with(&coded(50, mp3_ms), &hooked),
+            [
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.flac: 22050 Hz; must be 44100 Hz",
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.mp3: 22050 Hz; must be 44100 Hz",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_track_whose_length_cant_be_read_is_told_for_its_format() {
+        let unread = |file| length_problem(file, 50, None);
+        assert_eq!(unread("a.ogg").as_deref(), Some(NO_LENGTH));
+        assert_eq!(unread("a.flac").as_deref(), Some(NO_FLAC_LENGTH));
+        assert_eq!(unread("a.mp3").as_deref(), Some(NO_MP3_LENGTH));
+        assert_eq!(length_problem("a.flac", 50, Some(70)), None);
     }
 
     #[test]

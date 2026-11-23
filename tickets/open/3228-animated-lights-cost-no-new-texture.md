@@ -184,7 +184,8 @@ None.
   wgpu renderer), and a game's own shaders and materials (parked 2327).
 - The wgpu renderer (parked 3325): only the ADR line and its **Scope**
   line above, and only if ADR-0136 is merged.
-- How `recoloured` decodes a picture (2234 moves it off PNG only).
+- How `recoloured` decodes a picture (2234 moved it off PNG only:
+  `render::pixels`).
 - The one-bit renderer: it computes each pixel already and makes no
   copy.
 

@@ -1230,17 +1230,17 @@ pub(crate) fn edited(source: &'static str) -> impl Strategy<Value = String> {
 }
 
 /// Random bytes.
-fn bytes() -> impl Strategy<Value = Vec<u8>> {
+pub(crate) fn bytes() -> impl Strategy<Value = Vec<u8>> {
     proptest::collection::vec(any::<u8>(), 0..300)
 }
 
 /// `magic`, then random bytes.
-fn after(magic: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
+pub(crate) fn after(magic: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
     bytes().prop_map(move |rest| [magic, &rest].concat())
 }
 
 /// Ticket 2203's fixtures, which [`damaged`] breaks.
-const CODEC_FIXTURES: &[&[u8]] = &[
+pub(crate) const CODEC_FIXTURES: &[&[u8]] = &[
     codec_tests::JPEG,
     codec_tests::WEBP,
     codec_tests::WEBP_LOSSLESS,
@@ -1253,7 +1253,7 @@ const CODEC_FIXTURES: &[&[u8]] = &[
 ];
 
 /// `fixture` with up to four bytes changed, then cut at a random length.
-fn damaged(fixture: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
+pub(crate) fn damaged(fixture: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
     let edit = (any::<prop::sample::Index>(), any::<u8>());
     (
         proptest::collection::vec(edit, 0..5),

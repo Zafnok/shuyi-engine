@@ -192,7 +192,10 @@ What each one reads:
 - **WAV and OGG Vorbis** read the header: one or two channels at
   44.1 kHz. A music track must be a whole file, whose last Ogg page gives
   its length. `audio::format_problem`, which the manifest check uses,
-  still requires a sound's content to match its extension.
+  still requires a sound's content to match its extension: WAV for
+  `.wav`, OGG Vorbis for `.ogg`, FLAC for `.flac` and MP3 for `.mp3`
+  (with their features, below). A `.flac` or `.mp3` file whose bytes are
+  a WAV (a game's hook decoded them) is checked as a WAV.
 - **The audio manifest** reads its sound files beside it (`audio/audio.ron`
   names `sfx/a.wav`, the bundle's `audio/sfx/a.wav`). The music folder
   isn't in the bundle, so its tracks are checked by a tool that can see
@@ -414,11 +417,34 @@ With it on, `Formats::standard()` registers its formats, so
 `ImageTable::load_with` sizes the files, `Formats::load::<Image>` gives
 their pixels and `Formats::load::<MusicTrack>` a track's length.
 
-**Not drawn or played yet.** `shuyi-app` and `frame-png` decode only a
-PNG's pixels, and macroquad plays only WAV and OGG, so a game that loads
-one of these files can read it but not show or play it, and the audio
-manifest still names only `.wav` and `.ogg` files. Ticket 2234 draws and
-plays them.
+**What draws and plays them** (ticket 2234), with no feature of
+`shuyi-app` or `shuyi-cli`, since the game's feature of `shuyi-assets`
+reaches them:
+
+- **Pictures.** `shuyi-app` decodes a PNG with macroquad, as it always
+  has, and any other picture with the formats of `Formats::standard()`;
+  `frame-png` (`frame_png::decode_image`) does the same beside its own
+  PNG decoder, so it still paints what players see. A file no format
+  reads is drawn as a magenta rectangle, and its error names the formats
+  the build has. The font atlas stays a PNG.
+- **Sounds.** The audio manifest takes `.flac` and `.mp3` sound files
+  beside `.ogg` and `.wav`, and `.flac` and `.mp3` tracks beside `.ogg`,
+  checking a track's `length_ms` against `audio::track_length_ms`. Every
+  backend gets a FLAC or MP3 sound as a 16-bit WAV in memory:
+  `audio::decode_to_wav`, which the shared player's
+  `Backend::load_sound_file` calls on every target. A file that doesn't
+  decode is a warning and never reaches the backend, and a WAV is never
+  over `audio::MAX_DECODED_BYTES` (256 MiB, about 25 minutes of stereo).
+- **Music.** On native, a FLAC or MP3 track is decoded to that WAV on
+  the music's worker thread; on the web, the browser decodes the file as
+  it is (Web Audio's `decodeAudioData`), off the page's thread. The
+  in-house backend plays them as sounds; its streamed tracks get them
+  with ticket 2275.
+
+An MP3 starts and ends with silence its encoder added, and the
+decoders cut it only when a LAME tag says how much; the browser may
+not. A looped MP3 track can then have a gap at its loop: loop an OGG or
+a FLAC.
 
 What each one reads:
 
@@ -498,8 +524,8 @@ library with no feature on (674,911 bytes), measured on 2026-11-22.
 JPEG XL costs the most by far: its decoder renders every coding tool
 the format has. A game that ships to the web and has few JPEG XL files
 saves more by converting them to WebP or PNG than they save it. FLAC
-and MP3 read only headers here, so most of their decoders' code for
-samples isn't in these numbers; 2234, which plays them, adds it.
+and MP3 read only headers here: decoding their samples
+(`audio::decode_to_wav`, ticket 2234) adds to these numbers, unmeasured.
 
 ### The kinds of ADR-0007 §1
 
