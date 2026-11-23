@@ -2218,7 +2218,7 @@ mod tests {
         m.sounds.insert("chime".into(), chime);
         let mut fake = Fake::default();
         let (music, voice) = ("music".into(), "voice".into());
-        let mut audio = block_on(Audio::load(&mut fake, m, &files, music, voice, 1));
+        let mut audio = block_on(Audio::load(&mut fake, m, &files, music, voice));
         assert_eq!(
             audio.take_warnings(),
             [format!("sound \"chime\": bundle/sfx/broken.flac: {why}")]
