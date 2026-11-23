@@ -495,6 +495,15 @@ for `Scale::`, `target::Factor`, `scale_on` and `Presented::Game {`
 found none of the engine's; its targets all say `scale: integer`, so
 the snap changes nothing it checks.
 
-Measured: 1,371 counted lines (`cargo xtask pr-size`), after the two splits.
+Measured: 1,410 counted lines (`cargo xtask pr-size`), after the two
+splits and the mutants' tests.
+
+Merged main at f66e4968, which didn't build its own tests: #536 took
+`Audio::load`'s `seed` away and #537 added a test that still passed
+one (`crates/platform/src/audio/player.rs`,
+`a_flac_sound_reaches_the_backend_as_a_wav`). The argument is dropped
+here, in a commit of its own. No ticket: a one-argument fix of main's
+own break, which this PR can't pass CI without. ADR-0139 went to 2345's
+cue rules in #536, so this ticket's is ADR-0140.
 
 Game: game#1320 moves the pin and sets `DEFAULT_SCALE = Fit`.
