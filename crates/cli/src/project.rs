@@ -288,16 +288,10 @@ pub struct TargetSetting {
     pub text_px: u16,
 }
 
-/// How a frame is scaled to a display.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Scale {
-    /// By the largest whole number that fits: pixels stay square and
-    /// sharp.
-    Integer,
-    /// By the largest factor that fits, whole or not, smaller than 1 too.
-    Fit,
-}
+/// How a frame is scaled to a display: the frame's own placement's mode
+/// ([`shuyi_ui::frame::console::place`], ADR-0139), so the check and the
+/// window agree.
+pub type Scale = shuyi_ui::frame::console::ScaleMode;
 
 /// The game's tool program: a program of the game that runs
 /// [`crate::main_with`] with the game's [`crate::GameTools`]. `shuyi`

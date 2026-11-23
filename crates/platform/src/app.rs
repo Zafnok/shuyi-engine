@@ -869,7 +869,7 @@ impl<G: GameData> App<G> {
         match &self.phase {
             Phase::Loading {
                 card, shown: true, ..
-            } => platform.present(&card_frame(card, self.load_ran.progress)),
+            } => platform.present(&card_frame::<G>(card, self.load_ran.progress)),
             Phase::Loading { .. } => {}
             Phase::Running(game) => present_tagged(platform, game, self.look),
             Phase::Failed(errors) => platform.present(&Frame::new(Show::Errors(errors))),
@@ -1218,7 +1218,7 @@ impl<G: GameData> App<G> {
                     loading = load.take();
                 } else {
                     *shown = true;
-                    platform.present(&card_frame(card, self.load_ran.progress));
+                    platform.present(&card_frame::<G>(card, self.load_ran.progress));
                     drain(platform, &mut self.lists.input);
                 }
             }
@@ -1326,7 +1326,7 @@ impl<G: GameData> App<G> {
             Ran::More(step) => {
                 if let Phase::Loading { card, load, .. } = &mut self.phase {
                     *load = Some(Pending::Next(step));
-                    platform.present(&card_frame(card, self.load_ran.progress));
+                    platform.present(&card_frame::<G>(card, self.load_ran.progress));
                     self.load_ran.left = true;
                 }
             }
@@ -1608,8 +1608,12 @@ impl<G: GameData> App<G> {
 }
 
 /// The frame of the loading `card`, with the load's last `count`.
-fn card_frame(card: &Card, count: Option<(u32, u32)>) -> Frame<'_> {
-    Frame::new(Show::Card(card)).with_loading(count)
+/// The loading card's frame, at the game's scale (`G`'s
+/// [`GameSettings::DEFAULT_SCALE`]: the player's settings aren't read yet).
+fn card_frame<G: GameData>(card: &Card, count: Option<(u32, u32)>) -> Frame<'_> {
+    let mut frame = Frame::new(Show::Card(card)).with_loading(count);
+    frame.scale = <G::Settings as GameSettings>::DEFAULT_SCALE;
+    frame
 }
 
 /// Reads the input into `input`, where nothing takes it: it stays there
@@ -1759,6 +1763,7 @@ fn present_game<G: GameData>(
     frame.frame_cap = ctx.settings().frame_cap;
     frame.frame_cap_serial = ctx.frame_cap_serial();
     frame.reload_errors = ctx.reload_errors();
+    frame.scale = <G::Settings as GameSettings>::DEFAULT_SCALE;
     platform.present(&frame);
 }
 
