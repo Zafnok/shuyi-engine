@@ -97,19 +97,17 @@ pub(crate) fn preview_graphics(
     let Some(asked) = asked else {
         return (facts, None);
     };
-    match GraphicsTier::from_name(asked) {
-        Some(tier) => (facts.with_graphics(tier), None),
-        None => {
-            let known: Vec<&str> = GraphicsTier::ALL.iter().map(|t| t.name()).collect();
-            let warning = format!(
-                "{}: no graphics tier \"{asked}\"; the tiers are {}, and the target's, {}, stays",
-                shuyi_platform::GRAPHICS_VAR,
-                known.join(", "),
-                facts.graphics
-            );
-            (facts, Some(warning))
-        }
+    if let Some(tier) = GraphicsTier::from_name(asked) {
+        return (facts.with_graphics(tier), None);
     }
+    let known: Vec<&str> = GraphicsTier::ALL.iter().map(|t| t.name()).collect();
+    let warning = format!(
+        "{}: no graphics tier \"{asked}\"; the tiers are {}, and the target's, {}, stays",
+        shuyi_platform::GRAPHICS_VAR,
+        known.join(", "),
+        facts.graphics
+    );
+    (facts, Some(warning))
 }
 
 /// What [`preview_graphics`] reads: the variable, in a build with the
