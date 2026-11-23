@@ -24,6 +24,9 @@
     ),
     // The player leaves through the system's Home: a game shows no Quit.
     quit: System,
+    // Stills, and at most a few cheap moving looks a game picks: no
+    // particles, no effects over the screen.
+    graphics: Reduced,
     budgets: (
         // Provisional: half of 168 MHz ÷ 30, leaving the rest to the SDK,
         // the display and audio. 3011 measures it on the device.

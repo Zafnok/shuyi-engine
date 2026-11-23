@@ -51,6 +51,12 @@ machine, with a screen you couldn't test:
 - `keyboard`, `pointer` and `touch` say what the player has.
 - `can_drop_files()` is true where the player can drop a file on the game's window (the desktop) or
   its page (the web): a screen says "drop a file here" only there.
+- `graphics` is the target's graphics tier (`GraphicsTier`): `Full` unless its profile says
+  `graphics: Reduced` (the Playdate) or `Minimal`. A skin draws a moving look (a tile that loops
+  through frames, particles, an effect over the screen) where `graphics.plays(lowest)` for the
+  lowest tier the look plays at, and the look's still below it. A debug build on the desktop
+  shows another tier when `SHUYI_GRAPHICS` names one (`SHUYI_GRAPHICS=reduced`), to see a lesser
+  target's stills without the device.
 
 A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
 `start()` one) as

@@ -588,6 +588,11 @@ async fn run<G: GameData>(
     let _ = recipient();
     // Which target this build is: an unknown one is the load's error.
     let (start, facts) = facts::start_as(facts::this_target(), start);
+    // A debug build may show a lesser target's graphics tier.
+    let (facts, warning) = facts::preview_graphics(facts, facts::asked_graphics().as_deref());
+    if let Some(warning) = warning {
+        log::warn!(target: "platform", "{warning}");
+    }
     #[cfg(feature = "capture")]
     if let Some(plan) = capture::requested() {
         capture::run(config, start, plan, facts).await;

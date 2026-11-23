@@ -472,7 +472,9 @@ the window reaches the game (`file_drops`: the backend's to say with
 `desktop` and `web`), where the game's storage is (`storage_place`, with
 `with_storage_place`: its folder, or the browser's site storage under its
 prefix) and whether a file picker opens (`file_picker`, with
-`with_file_picker`: `Opens` on the web alone). Read them from the target's
+`with_file_picker`: `Opens` on the web alone), and how much motion it shows
+(`graphics`, the profile's `GraphicsTier`; `shuyi-app` shows another in a
+debug build when `SHUYI_GRAPHICS` names one, with `with_graphics`). Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
