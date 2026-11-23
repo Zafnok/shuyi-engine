@@ -159,7 +159,33 @@ None.
      The colour is `Paint::Solid`, or the page's own colours with
      `Paint::Image`. An outline is the glyph drawn one pixel away in
      eight directions. A shadow is one copy at an offset.
-  7. **Out:** rasterising at run time, SDF and MSDF, shaping,
+  7. **A run is shaped glyphs, not characters**, so a shaper or
+     right-to-left text (parked 2908) can come later without breaking
+     2334's API. The layout 2334 builds turns a string into a list of
+     `ShapedGlyph { glyph: GlyphRef, cluster: u32, advance: i32,
+     offset: (i32, i32) }`:
+     - `GlyphRef` names a glyph of the font. It is opaque (its field is
+       private, `Copy + Eq + Hash`). Today it holds the glyph's `char`,
+       since every glyph of a BMFont or a baked font has one. A shaped
+       font's glyphs may have none (a ligature, a joining form), so a
+       later `GlyphRef` can hold an index into the font instead;
+     - `cluster` is the byte offset in the run's text of the characters
+       the glyph came from, so a caret, a hit test or a cut maps back to
+       the text without assuming one glyph per `char`;
+     - `advance` and `offset` are in pixels, with the kerning already
+       added to the advance. Positions come only from these, never from
+       the text's order, so a later pass may reorder or merge glyphs;
+     - turning characters into glyphs is one function (the font's
+       character map, then its kerning, through
+       `ProportionalFont::glyph(char) -> Option<GlyphRef>` and
+       `ProportionalFont::kerning(GlyphRef, GlyphRef) -> i16`). Layout
+       never reads `glyphs` or `kerning` by `char` itself. A shaper
+       replaces that one function;
+     - `ProportionalFont` and `Glyph` are `#[non_exhaustive]`, so a
+       table of glyphs with no character, and kerning between them, can
+       be added later without a break. `kerning` stays keyed by
+       `(char, char)` in the file, as BMFont writes it.
+  8. **Out:** rasterising at run time, SDF and MSDF, a shaper itself,
      right-to-left text (2908), emoji, styled spans (2347), and kerning
      read from a TTF's `kern` or `GPOS` tables.
   - The `Status` lines of ADR-0003, ADR-0004 and ADR-0007 name the new
@@ -183,6 +209,13 @@ None.
       pub advance: u16,
   }
   ```
+  - both `#[non_exhaustive]`, with a `new` for each, as the ADR's
+    shaped-glyph item says;
+  - `GlyphRef` (opaque, `Copy + Eq + Hash`, holding a `char` today),
+    `ProportionalFont::glyph(char) -> Option<GlyphRef>`,
+    `ProportionalFont::get(GlyphRef) -> Option<&Glyph>` and
+    `ProportionalFont::kerning(GlyphRef, GlyphRef) -> i16` (0 for no
+    pair), the only way 2334's layout reads the font;
   - `Debug, Clone, PartialEq, Eq` and serde derives, for the RON form and
     the pack's binary form (ADR-0023 §6); `AtlasRect` gains serde derives
     too;
@@ -384,7 +417,9 @@ clauses with 2350 and 2301. The completion notes say so.
 ## Acceptance criteria
 
 - [ ] The ADR is written, and ADR-0003's, ADR-0004's and ADR-0007's
-      `Status` lines and `docs/adr/README.md` name it.
+      `Status` lines and `docs/adr/README.md` name it. It says a run is
+      shaped glyphs (`GlyphRef`, cluster, advance, offset), not
+      characters.
 - [ ] The BMFont fixture and its RON twin load through
       `Formats::standard()` as equal `ProportionalFont`s (test).
 - [ ] A rect outside its page, a page the bundle lacks, a missing
@@ -417,6 +452,8 @@ clauses with 2350 and 2301. The completion notes say so.
 ## Tests required
 
 - Unit: `ProportionalFont::problems` and `page_problems`, one case each;
+  `glyph`, `get` and `kerning` on the fixture (a pair, no pair, a
+  character the font lacks);
   each BMFont tag, quoted values with spaces, a dropped kerning pair, and
   each refusal; page names resolved beside the font file; `rasterize` on
   bytes that aren't a font; the cell size from a TTF, with `--cell` and

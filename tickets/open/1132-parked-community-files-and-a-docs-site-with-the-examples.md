@@ -68,9 +68,21 @@ take it out of *Still open*.
 - `CONTRIBUTING.md` holds Nick's contribution policy (above): what is
   accepted, the DCO sign-off if chosen, and that the gates are the
   review. It covers how AI-assisted work is judged and that issues come
-  first for large changes.
+  first for large changes. It links the ADR on agent-written code and
+  provenance that 2847 writes (the GPL-in-a-session rule and the
+  license-text check); if 2847 is not done yet, it says only that
+  AI-assisted work is judged by the gates.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and issue and PR
   templates.
+- **Either order with 2849:** if 2849 is done, `CODE_OF_CONDUCT.md`, the
+  issue forms, the PR template and `SECURITY.md` exist; check them
+  against Nick's contribution policy and change only what the policy
+  changes; if not, write them as this Scope says (2849 then adds only
+  what is missing).
+- **Either order with 3529:** if 3529 is done, the answer on who may
+  send code (DCO, CLA, the relicensing promise) is in
+  `docs/decisions.md`, and this ticket doesn't ask it again and only
+  turns it on; if not, ask it here as the Nick input says.
 - `SECURITY.md`, which 2005 writes (this ticket writes it if it lands
   first), with:
   - a *Supported versions* line: before the first release, `main` only;

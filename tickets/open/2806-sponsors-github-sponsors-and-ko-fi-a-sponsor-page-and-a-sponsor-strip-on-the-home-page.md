@@ -67,11 +67,14 @@ and tells Nick in one line each. Neither was checked on 2026-10-20.
 - **The home page's sponsor strip:** the sponsors' names or logos, and a
   "Sponsor" button. It hides the list when `sponsors.toml` is empty.
 - **The README:** a line and a link to the Sponsor page.
-- **`docs/continuity.md`** (2016): rows for GitHub Sponsors and Ko-fi:
-  what each controls, that Nick holds it, where its settings are (a
-  settings page, never a value), and this ticket. No payout, bank or tax
-  details. **Either order with 2016:** if 2016 is done, add the rows; if
-  not, 2016 adds them.
+- **`docs/continuity.md`** (2849 or 2016): rows for GitHub Sponsors and
+  Ko-fi: what each controls, that Nick holds it, where its settings are
+  (a settings page, never a value), and this ticket. No payout, bank or
+  tax details. If `docs/continuity.md` exists (2849 or 2016 wrote it),
+  add the rows. If not, the ticket that writes it adds them: 2849 reads
+  the accounts that exist on the day, and 2016 lists these two.
+  **Either order with 2016:** if 2016 is done, add the rows; if not, add
+  them only if 2849 wrote the file, and otherwise 2016 adds them.
 - A sponsor's logo is their own mark, shown with their permission. It
   isn't the engine's asset, so it goes in `THIRD_PARTY_ASSETS.md` as
   "shown with permission", not under a license.
@@ -89,8 +92,8 @@ and tells Nick in one line each. Neither was checked on 2026-10-20.
 1. Wait for Nick's setup and his text.
 2. Check both platforms' fees and terms; tell Nick.
 3. Write `FUNDING.yml`, the page, the data file, the strip and the
-   README line, and the two rows in `docs/continuity.md` if 2016 is
-   done.
+   README line, and the two rows in `docs/continuity.md` if it exists
+   (2849 or 2016).
 4. Run the gates, and ask for the sign-off.
 
 ## Acceptance criteria
@@ -99,8 +102,8 @@ and tells Nick in one line each. Neither was checked on 2026-10-20.
 - [ ] The Sponsor page is live with Nick's text and both buttons.
 - [ ] With an empty `sponsors.toml` the home page shows the button and no
       empty list; with one entry it shows the entry.
-- [ ] If 2016 is done, `docs/continuity.md` has a row each for GitHub
-      Sponsors and Ko-fi, with no payout, bank or tax detail.
+- [ ] If `docs/continuity.md` exists (2849 or 2016), it has a row each
+      for GitHub Sponsors and Ko-fi, with no payout, bank or tax detail.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

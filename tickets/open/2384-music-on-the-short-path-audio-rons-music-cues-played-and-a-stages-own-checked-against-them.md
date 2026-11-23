@@ -83,6 +83,11 @@ None.
   it adds music (2225 gives it its menu sounds);
 - crossfades (2341) and ducking (2343), which work on any game's music
   once it plays.
+- **Either order with 2786:** if 2786 is done, add short-path music
+  (`audio.ron`'s music cues) to `skills/shuyi-audio/SKILL.md` and its
+  worked example, and a `music` recipe to `examples/cookbook/` (with its
+  README row); if not, nothing to do (2786 writes them from this
+  ticket's work).
 
 ## Implementation steps
 

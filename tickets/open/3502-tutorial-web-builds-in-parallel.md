@@ -135,6 +135,13 @@ None.
 measure with it: steps 1 and 7 should take about as long as the others
 after the first.
 
+**Either order with 3508:** if 3508 is done, the new `web-tutorial` job
+carries `timeout-minutes`, and its rust-cache step the `save-if` that
+`cargo xtask check-workflows` requires
+(`${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}`),
+or that gate fails it; if not, nothing to do (3508 adds them to every
+job).
+
 **Estimated size:** about 250 lines (the workflow 90, gates.rs 10, the
 ADR amendments and docs 150).
 

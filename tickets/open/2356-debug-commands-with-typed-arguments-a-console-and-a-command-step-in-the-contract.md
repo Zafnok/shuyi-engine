@@ -266,6 +266,12 @@ None.
       the line, Delete deletes the last character, Cancel closes the
       console. Actions are ignored while it types, as `NameBox::handle`
       ignores them, so a letter bound to an action types the letter.
+      **Either order with 3232:** if 3232 is done, the input line is a
+      `shuyi_ui::widgets::text_field::TextField` (printable ASCII, at
+      most 120 characters, not `end_only`), which brings the caret,
+      selection, undo and paste; if not, build the line as this bullet
+      says, with `push` and `pop` as `NameBox::handle` does, and 3232
+      moves it onto `TextField`.
     - It shows the log's last lines that fit, then `> ` and the input.
     - Without a keyboard (`ctx.platform.keyboard`, from 3053, done), it
       shows one line

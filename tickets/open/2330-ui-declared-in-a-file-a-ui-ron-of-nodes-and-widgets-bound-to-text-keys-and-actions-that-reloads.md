@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
-blocked_by: ["2329", "2220", "2355"]
+blocked_by: ["2329", "2220", "2355", "3230"]
 nick_input: none
 completed:
 ---
@@ -93,6 +93,14 @@ None.
     - **From 2006 (done):** add the folder of the moved engine
       screen's `.ui.ron` to the root `shuyi.ron`'s `check_keys`
       `assets`, unless a folder there covers it already;
+  - **From 3230:** a `Widget(kind: "name", id: ..., args: (...))` node
+    builds a game's own widget through `GameData::widget_kinds` (3230's
+    `WidgetKinds::build`), with every `Style` field and `focus` field
+    like any widget. An unknown kind, or args its builder refuses, is
+    an error naming the file, the node path and the builder's message.
+    `DocScreen` holds its widgets as `Box<dyn Widget<G>>` and lays them
+    out, focuses and paints them through the contract. `Slot(id)` stays
+    for a part the game paints that is not a widget;
   - errors name the file, the node path (`root.children[1]`) and the
     problem.
 - **`DocScreen<G>`**, a screen built from a `UiDoc`: it lays out with

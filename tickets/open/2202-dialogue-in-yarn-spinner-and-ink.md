@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
-blocked_by: ["2201"]
+blocked_by: ["2201", "2140"]
 nick_input: none
 completed:
 ---
@@ -45,7 +45,12 @@ None.
    format, list its features and how each maps to our scenes:
    - lines with speakers;
    - choices;
-   - variables and conditions;
+   - variables and conditions, onto `shuyi_core::story` (2140): Yarn's
+     `<<declare>>`, `<<set>>` and `<<if>>`, Ink's `VAR`, `~ x = …` and
+     conditionals; a fractional number is refused with the file and
+     line. Say whether a condition on one reply option, or a variable's
+     value shown in a line (`{$gold}`), is in common use, and if so
+     write the follow-up ticket;
    - commands (our `@music`, portraits). For Ink, write the rule that
      tells a tag that is a command from any other tag (metadata, say);
    - line ids for voice and translation (game ADR-0045, game ADR-0046);

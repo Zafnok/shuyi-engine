@@ -6,7 +6,7 @@ milestone: "Engine: action RPGs"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
-blocked_by: ["2746", "2354"]
+blocked_by: ["2746", "2354", "2142"]
 nick_input: none
 completed:
 ---
@@ -35,6 +35,14 @@ pointer: a click picks an item up and a click drops it, no drag (2405
 left drag out), through the hit areas the grid widget's painter
 records (`GlyphBuffer::hit`, `crates/ui/src/frame/hit.rs`) and
 `PointerInput::clicked`.
+
+3233 adds a pointer drag (`PointerInput::drag`, `DragAndDrop`). When
+this ticket starts it may take drags too, beside the click to pick up
+and click to drop.
+
+**From 2142 (through 2746):** the items placed in the grid are
+`shuyi_core::items::Stack`s, and `Grid { w, h }` is a limit beside
+2142's `Capacity` kinds, kept in `shuyi-rpg`.
 
 **Either order with 2409:** if 2409 is done, each cell's hit item is
 2409's `grid_item(row, col)`; if not, the painter records each cell
