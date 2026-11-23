@@ -748,14 +748,25 @@ def write_native_device_loss(player: Native, target: Sink, base: Path) -> None:
         pactl("set-sink-volume", SINK, "100%")
         back = time.monotonic()
         recording = subprocess.Popen(RECORD, env=target.env, stdout=subprocess.PIPE)
+        # A null sink made anew renders its first block at its largest, about 2
+        # seconds, before its monitor gives anything: the wall clock measures that, not
+        # the backend. So the time is the sink's own, the frames recorded before the
+        # first sound, and the wall clock's is in the report beside it.
         heard = None
+        frames = 0
         try:
-            while heard is None and time.monotonic() < back + 5:
+            while heard is None and time.monotonic() < back + 8:
                 chunk = recording.stdout.read1(4096)
                 if not chunk:
                     break
-                if any(chunk):
-                    heard = time.monotonic() - back
+                samples = array.array("h")
+                samples.frombytes(chunk[: len(chunk) // 4 * 4])
+                loud = next((i for i, s in enumerate(samples) if s), None)
+                if loud is None:
+                    frames += len(samples) // 2
+                else:
+                    heard = (frames + loud // 2) / RATE
+                    report["wall_ms"] = (time.monotonic() - back) * 1000
         finally:
             recording.terminate()
             recording.wait(10)
