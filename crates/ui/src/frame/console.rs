@@ -1,8 +1,10 @@
 //! The console's size, which the game picks ([`ConsoleSpec`]), and how it
-//! fits the window (game ADR-0012).
+//! fits the window (game ADR-0012): by a whole scale, or filling it
+//! ([`place`], ADR-0140).
 
-#[cfg(not(feature = "std"))]
-use crate::float::Float;
+mod place;
+
+pub use place::{Factor, MAX_DRAW_PX, Placement, SNAP, ScaleMode, place, scale};
 
 /// A console's size: `cols × rows` cells of `cell_w × cell_h` logical
 /// pixels. The frame ([`GlyphBuffer`](super::GlyphBuffer)) keeps the spec
@@ -69,44 +71,64 @@ impl Layout {
     /// the layout was made in), rounded down; `None` in the letterbox, or
     /// for a place that isn't a number. It inverts the placement: each
     /// console pixel's `scale × scale` window pixels give it back
-    /// (ADR-0134 §2).
+    /// (ADR-0134 §2). [`Placement::frame_px`] for a whole scale.
     pub fn frame_px(self, spec: ConsoleSpec, window: (f32, f32)) -> Option<(i32, i32)> {
-        #[allow(clippy::cast_precision_loss)] // scale ≤ 2^24 for any real window
-        let scale = self.scale.max(1) as f32;
-        let (width, height) = spec.px();
-        let axis = |at: f32, offset: f32, side: i32| -> Option<i32> {
-            let px = ((at - offset) / scale).floor();
-            #[allow(clippy::cast_precision_loss)] // a console's side is far below 2^24
-            let inside = px >= 0.0 && px < side as f32;
-            // `px` is a whole number in `0..side` here.
+        let edge = |offset: f32| {
+            // An offset is a whole number of pixels; `as` saturates.
             #[allow(clippy::cast_possible_truncation)]
-            inside.then_some(px as i32)
+            let edge = libm::floorf(offset) as i32;
+            edge
         };
-        Some((
-            axis(window.0, self.offset_x, width)?,
-            axis(window.1, self.offset_y, height)?,
-        ))
+        let scale = self.scale.max(1);
+        let placed = Placement {
+            scale: Factor::whole(scale),
+            draw_scale: scale,
+            x: edge(self.offset_x),
+            y: edge(self.offset_y),
+            w: 0,
+            h: 0,
+        };
+        placed.frame_px(frame_of(spec), window)
+    }
+}
+
+/// A `spec` console's width and height in logical pixels, as [`place`]
+/// takes a frame.
+pub fn frame_of(spec: ConsoleSpec) -> (u32, u32) {
+    (
+        u32::from(spec.cols) * u32::from(spec.cell_w),
+        u32::from(spec.rows) * u32::from(spec.cell_h),
+    )
+}
+
+/// A window side in whole pixels: rounded down, and 0 for one below 0 or
+/// not a number.
+fn whole_px(side: f32) -> u32 {
+    if side.is_finite() {
+        // `as` saturates: below 0 is 0.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let px = libm::floorf(side) as u32;
+        px
+    } else {
+        0
     }
 }
 
 /// Fits a `spec` console into a `screen_w × screen_h` window: the largest
 /// integer scale that fits (at least 1, so a too-small window crops the
-/// edges evenly), centred on whole pixels so glyphs stay crisp.
+/// edges evenly), centred on whole pixels so glyphs stay crisp. It is
+/// [`place`] with [`ScaleMode::Integer`].
 pub fn layout(spec: ConsoleSpec, screen_w: f32, screen_h: f32) -> Layout {
-    let console_w = f32::from(spec.cols) * f32::from(spec.cell_w);
-    let console_h = f32::from(spec.rows) * f32::from(spec.cell_h);
-    let finite = |v: f32| if v.is_finite() { v } else { 0.0 };
-    let (screen_w, screen_h) = (finite(screen_w), finite(screen_h));
-    let fit = (screen_w / console_w).min(screen_h / console_h).floor();
-    // `fit` is in 0..=f32::MAX here; `as` saturates anyway.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let scale = (fit.max(1.0) as u32).max(1);
-    #[allow(clippy::cast_precision_loss)] // scale ≤ 2^24 for any real window
-    let s = scale as f32;
+    let placed = place(
+        ScaleMode::Integer,
+        frame_of(spec),
+        (whole_px(screen_w), whole_px(screen_h)),
+    );
+    #[allow(clippy::cast_precision_loss)] // a window's pixels are far below 2^24
     Layout {
-        scale,
-        offset_x: ((screen_w - console_w * s) / 2.0).floor(),
-        offset_y: ((screen_h - console_h * s) / 2.0).floor(),
+        scale: placed.draw_scale,
+        offset_x: placed.x as f32,
+        offset_y: placed.y as f32,
     }
 }
 

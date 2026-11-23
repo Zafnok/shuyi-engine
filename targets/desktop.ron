@@ -1,5 +1,7 @@
-// Windows, Linux and macOS (ADR-0008 §1 and §6). A window takes any size,
-// so a game shows its frame at an integer scale of its choosing.
+// Windows, Linux and macOS (ADR-0008 §1 and §6). A window takes any size:
+// a game shows its frame at the largest whole scale that fits, or filling
+// the window, drawn sharp (`scale: fit`, its `GameSettings::DEFAULT_SCALE`;
+// ADR-0139).
 (
     id: "desktop",
     status: Supported,

@@ -302,11 +302,13 @@ fn the_platform_keeps_the_last_frame_it_was_shown() {
         look: None,
     };
     frame.fullscreen = true;
+    frame.scale = ScaleMode::Fit;
     p.present(&frame);
     let kept = Presented::Game {
         buffer: b,
         background: Rgb::new(1, 2, 3),
         fullscreen: true,
+        scale: ScaleMode::Fit,
     };
     assert_eq!(p.last_frame(), Some(&kept));
     p.present(&Frame::new(Show::Errors("no font")));
@@ -576,6 +578,7 @@ fn the_game_constructor_builds_what_a_literal_built() {
         buffer: glyphs.clone(),
         background: Rgb::new(1, 2, 3),
         fullscreen: true,
+        scale: ScaleMode::Integer,
     };
     assert_eq!(Presented::game(glyphs, Rgb::new(1, 2, 3), true), literal);
 }
