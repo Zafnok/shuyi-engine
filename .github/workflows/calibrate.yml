@@ -90,6 +90,8 @@ jobs:
     uses: ./.github/workflows/sound-parity.yml
     with:
       suffix: -run-${{ matrix.run }}
+      # Only the jobs whose timings a calibration measures.
+      ports: false
 
   summary:
     name: summary

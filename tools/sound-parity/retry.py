@@ -16,7 +16,7 @@ import json
 import sys
 
 # The platforms whose timings `capture.py` measures again on this job's runner.
-HERE = ("linux-native", "browser-chromium", "browser-in-house")
+HERE = ("linux-native", "linux-in-house", "browser-chromium", "browser-in-house")
 
 
 def again(matrix: dict) -> tuple[list[str], list[str]]:

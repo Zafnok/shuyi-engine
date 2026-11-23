@@ -42,6 +42,12 @@ class Again(unittest.TestCase):
         self.assertEqual(done.returncode, 0)
         self.assertEqual(done.stdout.split(), ["browser-in-house"])
 
+    def test_an_inconclusive_linux_in_house_cell_is_measured_again(self):
+        matrix = {"cells": [cell("linux-native", "perf:cpu_ms", "passed"), cell("linux-in-house", "old-new:cpu_ms", "inconclusive")]}
+        done = run(matrix)
+        self.assertEqual(done.returncode, 0)
+        self.assertEqual(done.stdout.split(), ["linux-in-house"])
+
     def test_each_platform_of_this_job_is_measured_again_once(self):
         matrix = {
             "cells": [

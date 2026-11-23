@@ -34,10 +34,12 @@ undocumented_unsafe_blocks = "warn"
 shuyi-sound = { path = "../sound" }
 thiserror.workspace = true
 
-# Windows' output (ADR-0066): none of its features, so no ASIO. Linux and macOS come
-# with ticket 3032; until then they have only the output that discards.
-[target.'cfg(windows)'.dependencies]
+# The system's output (ADR-0066): none of its features, so no ASIO, JACK or PipeWire.
+# On Linux it is ALSA's default device; on macOS, Core Audio's.
+[target.'cfg(any(windows, target_os = "linux", target_os = "macos"))'.dependencies]
 cpal = { version = "0.18.2", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
 # The audio thread's priority (ticket 3089): CPAL's own needs its `realtime` feature,
 # whose crate is MPL-2.0. The same `windows` CPAL already builds on.
 windows = { version = "0.62.2", default-features = false, features = ["Win32_Foundation", "Win32_System_Threading"] }

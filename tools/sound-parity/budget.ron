@@ -7,7 +7,7 @@
 // in the browser from 59 (ticket 2046). Change one only with new runs that justify
 // it, written here, and raise `version`: never to pass.
 (
-    version: 8,
+    version: 9,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -144,6 +144,16 @@
             // over 0.50). The median still holds: a buffer of 10 ms more is about 1.75.
             "latency_ms": (max_ratio: 1.25, max_spread: 2.28, slows: false),
         },
+        // Linux's new backend against itself (ticket 3032): PROVISIONAL, linux-native's
+        // limits until the calibration runs set them.
+        "linux-in-house": {
+            "file_io_ms": (max_ratio: 1.12, max_spread: 0.17, slows: true),
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.12, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.09, max_spread: 0.24, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.22, slows: false),
+            "latency_ms": (max_ratio: 1.20, max_spread: 0.46, slows: false),
+        },
         // Its own noise, over the 20 runs of CI run 41595469804, stays inside the
         // limits `browser-chromium` had before ticket 2042 (latency medians 0.906 to
         // 1.051, spread at most 0.150; Ogg decode 0.989 to 1.006, 0.052), so they stay.
@@ -223,6 +233,12 @@
             "peak_kib": (max_ratio: 0.85, max_spread: 0.05, slows: false),
             "latency_ms": (max_ratio: 0.35, max_spread: 0.10, slows: false),
         },
+        // PROVISIONAL (ticket 3032): wide until the calibration runs set them.
+        "linux-in-house": {
+            "cpu_ms": (max_ratio: 10.0, max_spread: 2.0, slows: false),
+            "peak_kib": (max_ratio: 2.0, max_spread: 0.5, slows: false),
+            "latency_ms": (max_ratio: 2.0, max_spread: 1.0, slows: false),
+        },
         "browser-in-house": {
             "cpu_ms": (max_ratio: 1.35, max_spread: 0.10, slows: false),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
@@ -234,6 +250,7 @@
     // headphones came out, in milliseconds.
     device_loss_ms: {
         "windows-in-house": 1000,
+        "linux-in-house": 1000,
     },
     // Each platform's evidence. Only a `Captured` one can support a parity claim,
     // and every cell of it is mandatory. `Blocked` says who must establish it.
@@ -242,6 +259,7 @@
         "browser-chromium": Captured,
         "windows": Captured,
         "windows-in-house": NewBackend,
+        "linux-in-house": NewBackend,
         "browser-in-house": NewBackend,
         "macos": Blocked("3032 establishes capture first; hosted Mac capture is unproved"),
     },

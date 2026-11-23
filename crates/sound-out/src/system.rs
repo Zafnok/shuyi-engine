@@ -1,8 +1,11 @@
-//! Windows' output: CPAL on the default device, written from its documentation
-//! (ADR-0066). A stream lives on a thread of this module's, which also watches for
-//! its device going away: CPAL's documentation leaves open whether a stream follows
-//! the default device here, so it covers both ways, a stream rerouted and one lost,
-//! and a default that changed under a stream still running.
+//! The system's output through CPAL, on its default device, written from CPAL's
+//! documentation (ADR-0066): WASAPI on Windows, ALSA on Linux, Core Audio on macOS. A
+//! stream lives on a thread of this module's, which also watches for its device going
+//! away: CPAL's documentation leaves open whether a stream follows the default device,
+//! so it covers both ways, a stream rerouted and one lost, and a default that changed
+//! under a stream still running. On Linux the default is ALSA's `default` device,
+//! which the system's sound server or its card stands behind: what goes away there is
+//! the stream, which errs, and the watch then builds another (ADR-0139).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -14,6 +17,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, ErrorKind, SampleFormat, SizedSample, Stream, StreamConfig};
 
 use crate::convert_impl::{Boundary, DeviceSample};
+#[cfg(windows)]
 use crate::sys::raised::Raised;
 use crate::{Callback, OutputConfig, OutputError};
 
@@ -34,7 +38,7 @@ enum Order {
 }
 
 /// See the [module docs](self).
-pub(crate) struct WindowsOutput {
+pub(crate) struct SystemOutput {
     orders: Sender<Order>,
     thread: Option<JoinHandle<()>>,
     stats: Arc<Stats>,
@@ -172,7 +176,7 @@ fn open_stream(
     Ok((stream, device))
 }
 
-impl WindowsOutput {
+impl SystemOutput {
     pub(crate) fn open(config: OutputConfig, callback: Callback) -> Result<Self, OutputError> {
         let (orders, inbox) = mpsc::channel();
         let (opened, answer) = mpsc::channel();
@@ -218,7 +222,7 @@ impl WindowsOutput {
     }
 }
 
-impl Drop for WindowsOutput {
+impl Drop for SystemOutput {
     fn drop(&mut self) {
         let _ = self.orders.send(Order::Close);
         if let Some(thread) = self.thread.take() {
@@ -281,6 +285,25 @@ fn run(
         if current.is_none() && !held {
             quiet.run(callback);
         }
+    }
+}
+
+/// The audio thread's priority, raised on Windows alone (ticket 3089): on Linux and
+/// macOS it is CPAL's own thread as CPAL makes it, whose priority ticket 3320 decides.
+#[cfg(not(windows))]
+#[derive(Debug)]
+enum Raised {
+    Not,
+}
+
+#[cfg(not(windows))]
+impl Raised {
+    const fn current() -> Self {
+        Self::Not
+    }
+
+    const fn is_raised(&self) -> bool {
+        !matches!(self, Self::Not)
     }
 }
 
