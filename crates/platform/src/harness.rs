@@ -49,6 +49,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, Start, SystemHook};
+use crate::audio::cues::DroppedSound;
 use crate::dropped::DroppedFile;
 use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
@@ -115,6 +116,8 @@ pub struct Harness<G: GameData> {
     played: Played,
     /// Every frame's audio requests, oldest first.
     audio: Vec<Vec<AudioRequest<G::Voice>>>,
+    /// The plays the cue rules dropped, each with its frame, oldest first.
+    dropped: Vec<(u32, DroppedSound)>,
     /// Every music command of the run, in order.
     music: Vec<MusicCommand>,
     /// The kind of controller [`pad`](Self::pad) presses buttons on.
@@ -278,6 +281,7 @@ impl<G: GameData> Harness<G> {
             playback: None,
             played: Played::default(),
             audio: Vec::new(),
+            dropped: Vec::new(),
             music: Vec::new(),
             pad_kind: PadKind::default(),
             crank: Crank::new(CrankDef::default()),
@@ -665,6 +669,9 @@ impl<G: GameData> Harness<G> {
     fn note_frame(&mut self) {
         self.frames += 1;
         self.audio.push(self.app.audio().to_vec());
+        let frame = self.frames;
+        let dropped = self.app.dropped_sounds().iter();
+        self.dropped.extend(dropped.map(|d| (frame, d.clone())));
         let music = self.app.music();
         self.music.extend_from_slice(music);
         self.music_frames
@@ -730,6 +737,14 @@ impl<G: GameData> Harness<G> {
                 _ => None,
             })
             .collect()
+    }
+
+    /// The plays the cue rules dropped since the last
+    /// [`clear_audio`](Self::clear_audio) (ADR-0139), in order, each with
+    /// its frame. [`sounds`](Self::sounds) still lists them: the game asked
+    /// for them.
+    pub fn dropped_sounds(&self) -> Vec<(u32, &DroppedSound)> {
+        self.dropped.iter().map(|(frame, d)| (*frame, d)).collect()
     }
 
     /// The sounds started with a handle that are still playing, as the
@@ -811,6 +826,7 @@ impl<G: GameData> Harness<G> {
     /// what comes after.
     pub fn clear_audio(&mut self) -> &mut Self {
         self.audio.clear();
+        self.dropped.clear();
         self.music.clear();
         self.music_frames.clear();
         self

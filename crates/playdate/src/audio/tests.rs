@@ -55,7 +55,7 @@ impl Rig {
     fn new() -> Self {
         let sdk = sdk();
         let mut speaker = Speaker::new(sdk.clone());
-        let mut player = player(&mut speaker, manifest(), 7);
+        let mut player = player(&mut speaker, manifest());
         assert_eq!(player.take_warnings(), [] as [String; 0]);
         Self {
             sdk,
@@ -69,8 +69,11 @@ impl Rig {
     }
 }
 
+/// A play of `cue` at `volume`, as `App` sends it: its first file, at the
+/// cue's own volume in the tests' manifest (the cue rules picked them).
 fn sound(cue: &str, volume: f32) -> SoundRequest {
-    SoundRequest::sound(cue, volume)
+    let own = manifest().sounds.get(cue).map_or(0, |c| c.volume);
+    SoundRequest::sound(cue, volume).with_pick(0, own)
 }
 
 fn load(cue: &str) -> MusicCommand {
@@ -136,7 +139,7 @@ fn cues_that_share_a_file_load_it_once() {
 fn a_sound_the_pdx_lacks_is_a_warning_naming_its_path() {
     let sdk = FakeSdk::default();
     let mut speaker = Speaker::new(sdk);
-    let mut player = player(&mut speaker, manifest(), 1);
+    let mut player = player(&mut speaker, manifest());
     let warnings = player.take_warnings();
     assert!(
         warnings.contains(&"sound \"click\": audio/sfx/click: not in the .pdx".to_owned()),
@@ -456,7 +459,7 @@ fn the_device_is_the_players_warnings_in_the_console() {
         [] as [(String, f32); 0],
         "not loaded"
     );
-    let loaded = player(device.backend_mut(), manifest(), 1);
+    let loaded = player(device.backend_mut(), manifest());
     device.set_player(loaded);
     device.play(&frame, Millis(0));
     assert_eq!(sdk.sounding_samples().len(), 1);

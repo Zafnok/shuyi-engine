@@ -40,7 +40,7 @@ Missing mandatory automated evidence still blocks removal.
 - Fresh complete 2573 matrix for Windows GNU, Linux, both Mac architectures
   and the actual current browser loader, with all required playback,
   decoder/format, clock, copy/admission, pause/rate, two-stream/fade and
-  region-loop scenarios. 2234 supplies optional-format playback; 2378
+  region-loop scenarios. 2234 and 2275 supply optional-format playback; 2378
   supplies the single App admission policy. No stale, unsupported, noisy
   or missing mandatory case counts as passed. Retain existing stage
   sign-offs and recorded manual-hardware limits.

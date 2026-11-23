@@ -156,7 +156,7 @@ None.
   and `Start`, and that a backend plays it through `set_rate` or at
   the normal rate).
 - **An ADR** (the `write-adr` skill, the next free number). 2345's ADR
-  says pitch waits for a backend that can play it, and an accepted
+  (ADR-0139, §5) says pitch waits for a backend that can play it, and an accepted
   ADR's decision is never rewritten, so this one extends it and
   3029's: the pitch is a whole-percent range in the cue rules, picked
   in `Cues` after the file and the volume, and only when the range is
