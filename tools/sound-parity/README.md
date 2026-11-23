@@ -44,7 +44,12 @@ python3 tools/sound-parity/capture.py native --dir target/sound-parity --probe t
 With `--new-probe`, a probe built with `--features sound-probe,in-house-sound` too, it
 records the in-house backend beside quad-snd as `linux-in-house` (ticket 3032), and
 with `--take-device` unloads the null sink while that one plays and loads it again,
-for the `device-loss` cell. CI copies each build aside first, as both are
+for the `device-loss` cell, timed on the sink's own clock: a null sink made anew
+renders its first block at its largest, about 2 seconds, before its monitor gives
+anything. The in-house probe plays without `PULSE_LATENCY_MSEC`, which quad-snd needs
+here and which stalls CPAL's stream on ALSA's PulseAudio plugin (3350), and mixes at the
+sink's 44,100 Hz (`SHUYI_SOUND_PROBE_RATE`), as the plugin says 48,000 Hz whatever the
+sink runs at. CI copies each build aside first, as both are
 `target/release/examples/sound_probe`.
 
 A scenario quad-snd's own output underran in is never judged either: ALSA ran dry,
