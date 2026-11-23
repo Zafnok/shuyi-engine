@@ -56,6 +56,11 @@ fn buffer_size(supported: &SupportedBufferSize, rate: u32, fixed: bool) -> Buffe
     }
 }
 
+/// TEMPORARY (ticket 3032): an experiment's switch, removed before the PR is ready.
+fn diag(name: &str) -> bool {
+    std::env::var_os(name).is_some()
+}
+
 /// What the output's owner asks of its thread.
 enum Order {
     Hold(bool),
@@ -208,7 +213,7 @@ fn open_stream(
     stream_config.buffer_size = buffer_size(
         supported.buffer_size(),
         stream_config.sample_rate,
-        FIXED_BUFFER,
+        FIXED_BUFFER && !diag("SHUYI_DIAG_DEFAULTBUF"),
     );
     let (shared, flag, counted) = (Arc::clone(callback), Arc::clone(lost), Arc::clone(stats));
     let stream = match format {
@@ -220,7 +225,7 @@ fn open_stream(
         SampleFormat::U8 => build::<u8>(&device, stream_config, config, shared, flag, counted),
         other => Err(OutputError::Device(format!("a device format of {other:?}"))),
     }?;
-    if !held {
+    if !held && !diag("SHUYI_DIAG_NOPLAY") {
         stream.play().map_err(|e| device_error(&e))?;
     }
     let named = format!(
@@ -353,9 +358,10 @@ fn run(
             }
             Err(RecvTimeoutError::Timeout) => {}
         }
-        let moved = current
-            .as_ref()
-            .is_some_and(|(_, device)| host.default_output_device().as_ref() != Some(device));
+        let moved = !diag("SHUYI_DIAG_NOWATCH")
+            && current
+                .as_ref()
+                .is_some_and(|(_, device)| host.default_output_device().as_ref() != Some(device));
         moved_looks = if moved { moved_looks + 1 } else { 0 };
         if moved_looks >= MOVED_LOOKS || lost.swap(false, Ordering::AcqRel) || current.is_none() {
             // The old stream goes first: only one may hold the callback.

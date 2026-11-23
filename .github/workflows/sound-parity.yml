@@ -302,14 +302,16 @@ jobs:
           with capture.sink() as target:
               print(subprocess.run(["aplay", "-L"], env=target.env, capture_output=True, text=True).stdout[:2000])
               (stage / "probe.txt").write_text("scenario onset" + chr(10))
-              rec = capture.Recorder(target, stage / "onset.pcm")
-              rec.flowing()
-              ran = subprocess.run([str(probe)], cwd=stage, env=target.env, capture_output=True, text=True, timeout=30)
-              time.sleep(0.5)
-              rec.stop()
-              print(ran.stdout[-2000:]); print(ran.stderr[-3000:])
-              a = array.array("h"); a.frombytes((stage / "onset.pcm").read_bytes())
-              print("peak", max(map(abs, a)) if a else 0)
+              for switches in [[], ["SHUYI_DIAG_NOWATCH"], ["SHUYI_DIAG_DEFAULTBUF"], ["SHUYI_DIAG_NOPLAY"], ["SHUYI_DIAG_NOWATCH", "SHUYI_DIAG_DEFAULTBUF"]]:
+                  env = {**target.env, **{name: "1" for name in switches}}
+                  rec = capture.Recorder(target, stage / "onset.pcm")
+                  rec.flowing()
+                  ran = subprocess.run([str(probe)], cwd=stage, env=env, capture_output=True, text=True, timeout=30)
+                  time.sleep(0.5)
+                  rec.stop()
+                  out = [line for line in ran.stderr.splitlines() if '"output"' in line or not line.startswith("shuyi-sound-probe")]
+                  a = array.array("h"); a.frombytes((stage / "onset.pcm").read_bytes())
+                  print("EXPERIMENT", switches, "peak", max(map(abs, a)) if a else 0, out[-6:])
               print(subprocess.run(["pactl", "list", "sink-inputs"], env=target.env, capture_output=True, text=True).stdout)
           PY
 
