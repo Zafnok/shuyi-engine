@@ -246,9 +246,11 @@ pub(crate) fn main(project: &Project, args: &[String], game: &dyn GameTools) -> 
             return fail(codes::WRONG_ARGUMENTS, &error, Some(help));
         }
     };
-    // A worker is this program again, started as `shuyi` starts it.
-    let before = project.config.game.as_ref().map_or(&[][..], |game| &game.args);
-    let (args, root) = (options.worker_args(before), project.root.clone());
+    // A worker is this program again, started as `shuyi` starts it: after
+    // the arguments the project puts first.
+    let tools = project.config.game.as_ref();
+    let first = tools.map_or(&[][..], |tools| &tools.args);
+    let (args, root) = (options.worker_args(first), project.root.clone());
     let launch = move || Worker::process(&program, &args, &root);
     let server = Arc::new(Server::new(options.limits, Box::new(launch)));
     match listener.local_addr() {
