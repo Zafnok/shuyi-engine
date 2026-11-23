@@ -236,6 +236,21 @@ impl Output {
         false
     }
 
+    /// How far ahead of their playing a callback's samples were at the most, as the
+    /// system predicts it: the device's buffer, which a sound waits behind. Nothing
+    /// asks this but a probe; zero where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn ahead(&self) -> std::time::Duration {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.ahead();
+        }
+        std::time::Duration::ZERO
+    }
+
     /// The system's device and format its stream plays on, as the system names them:
     /// for a probe's log, to say where the sound went. Empty where there is no stream.
     #[cfg_attr(

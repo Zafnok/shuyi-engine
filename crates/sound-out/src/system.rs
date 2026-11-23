@@ -14,7 +14,10 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BufferSize, ErrorKind, SampleFormat, SizedSample, Stream, StreamConfig};
+use cpal::{
+    BufferSize, ErrorKind, OutputCallbackInfo, SampleFormat, SizedSample, Stream, StreamConfig,
+    SupportedBufferSize,
+};
 
 use crate::convert_impl::{Boundary, DeviceSample};
 #[cfg(windows)]
@@ -34,6 +37,24 @@ const MOVED_LOOKS: u32 = 2;
 /// Whether [`Dry`] reads this system's callbacks: only where the room a callback is
 /// given says how full the device's buffer is.
 const COUNTS_DRY: bool = cfg!(windows);
+
+/// Whether a stream asks for [`buffer_size`]'s frames rather than the system's own
+/// choice: on Linux, where ALSA's own choice through a sound server's plugin can be
+/// seconds of buffer (ticket 3032).
+const FIXED_BUFFER: bool = cfg!(target_os = "linux");
+
+/// The frames a stream asks to be called for: about 20 ms when `fixed`, inside what
+/// the device allows; otherwise the system's own choice, as on Windows and macOS.
+fn buffer_size(supported: &SupportedBufferSize, rate: u32, fixed: bool) -> BufferSize {
+    if !fixed {
+        return BufferSize::Default;
+    }
+    let want = (rate / 50).max(1);
+    match *supported {
+        SupportedBufferSize::Range { min, max } => BufferSize::Fixed(want.max(min).min(max)),
+        SupportedBufferSize::Unknown => BufferSize::Fixed(want),
+    }
+}
 
 /// What the output's owner asks of its thread.
 enum Order {
@@ -61,6 +82,9 @@ pub(crate) struct Stats {
     pub(crate) raised: AtomicBool,
     /// The latest stream's device and format, as CPAL names them (ticket 3032).
     pub(crate) device: Mutex<String>,
+    /// The most a callback's samples were ahead of their playing, as the system
+    /// predicts it, in microseconds: the device's buffer.
+    pub(crate) ahead_us: AtomicU32,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
@@ -130,7 +154,12 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
     device
         .build_output_stream::<T, _, _>(
             stream,
-            move |out: &mut [T], _| {
+            move |out: &mut [T], info: &OutputCallbackInfo| {
+                let when = info.timestamp();
+                let ahead = when.playback.duration_since(when.callback).as_micros();
+                stats
+                    .ahead_us
+                    .fetch_max(u32::try_from(ahead).unwrap_or(u32::MAX), Ordering::Relaxed);
                 if raised.is_none() {
                     let now = Raised::current();
                     stats.raised.store(now.is_raised(), Ordering::Relaxed);
@@ -167,7 +196,11 @@ fn open_stream(
         .map_err(|e| device_error(&e))?;
     let format = supported.sample_format();
     let mut stream_config: StreamConfig = supported.config();
-    stream_config.buffer_size = BufferSize::Default;
+    stream_config.buffer_size = buffer_size(
+        supported.buffer_size(),
+        stream_config.sample_rate,
+        FIXED_BUFFER,
+    );
     let (shared, flag, counted) = (Arc::clone(callback), Arc::clone(lost), Arc::clone(stats));
     let stream = match format {
         SampleFormat::F32 => build::<f32>(&device, stream_config, config, shared, flag, counted),
@@ -182,7 +215,7 @@ fn open_stream(
         stream.play().map_err(|e| device_error(&e))?;
     }
     let named = format!(
-        "{} ({}): {format:?}, {} channels at {} Hz",
+        "{} ({}): {format:?}, {} channels at {} Hz, {:?}",
         device
             .id()
             .map_or_else(|e| e.to_string(), |id| id.to_string()),
@@ -191,6 +224,7 @@ fn open_stream(
             .map_or_else(|e| e.to_string(), |about| about.to_string()),
         stream_config.channels,
         stream_config.sample_rate,
+        stream_config.buffer_size,
     );
     *stats.device.lock().unwrap_or_else(PoisonError::into_inner) = named;
     Ok((stream, device))
@@ -239,6 +273,10 @@ impl SystemOutput {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .clone()
+    }
+
+    pub(crate) fn ahead(&self) -> Duration {
+        Duration::from_micros(u64::from(self.stats.ahead_us.load(Ordering::Relaxed)))
     }
 
     pub(crate) fn dry_callbacks(&self) -> u32 {
@@ -390,6 +428,41 @@ mod tests {
         }
         assert!(dry.ran_dry(1_000), "late: the device played it all");
         assert!(!dry.ran_dry(400));
+    }
+
+    /// Linux asks for about 20 ms, inside what the device allows; elsewhere the
+    /// system chooses.
+    #[test]
+    fn a_fixed_buffer_is_20_ms_inside_the_devices_range() {
+        let range = |min, max| SupportedBufferSize::Range { min, max };
+        assert_eq!(
+            buffer_size(&range(64, 8192), 48_000, true),
+            BufferSize::Fixed(960)
+        );
+        assert_eq!(
+            buffer_size(&range(64, 8192), 44_100, true),
+            BufferSize::Fixed(882)
+        );
+        assert_eq!(
+            buffer_size(&range(2048, 8192), 48_000, true),
+            BufferSize::Fixed(2048)
+        );
+        assert_eq!(
+            buffer_size(&range(64, 512), 48_000, true),
+            BufferSize::Fixed(512)
+        );
+        assert_eq!(
+            buffer_size(&SupportedBufferSize::Unknown, 48_000, true),
+            BufferSize::Fixed(960)
+        );
+        assert_eq!(
+            buffer_size(&range(64, 8192), 48_000, false),
+            BufferSize::Default
+        );
+        assert_eq!(
+            buffer_size(&range(64, 8192), 0, true),
+            BufferSize::Fixed(64)
+        );
     }
 
     /// A first callback given less than the buffer: the empty buffer later is larger.

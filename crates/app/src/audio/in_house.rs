@@ -704,6 +704,16 @@ impl InHouse {
         self.silent_because.as_deref()
     }
 
+    /// How far ahead of their playing the output's samples were at the most, in
+    /// milliseconds. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_ahead_ms(&self) -> f64 {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or(0.0, |output| output.ahead().as_secs_f64() * 1000.0)
+    }
+
     /// The device and format the output plays on, empty with none. For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     pub fn output_device(&self) -> String {
