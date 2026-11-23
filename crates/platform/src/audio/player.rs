@@ -1700,7 +1700,7 @@ mod tests {
             ["play wav400 0.40", "play wav200 0.20"],
             "the third file, nothing for the failed second or a fourth past the end, then the first"
         );
-        assert!(audio.take_warnings().is_empty());
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
     }
 
     #[test]

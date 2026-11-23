@@ -142,7 +142,7 @@ fn a_gap_drops_the_plays_inside_it_in_one_frame_and_across_frames() {
         &[play("tick"), play("click"), play("tick")],
     );
     assert_eq!(picks(&out).len(), 2, "one tick and the click: {out:?}");
-    assert_eq!(dropped, [gap.clone()]);
+    assert_eq!(dropped, core::slice::from_ref(&gap));
     let (out, dropped) = apply(&mut cues, &m, 139, &[play("tick")]);
     assert_eq!((out.len(), dropped), (0, vec![gap.clone()]), "39 ms after");
     let (out, dropped) = apply(&mut cues, &m, 140, &[play("tick")]);
@@ -249,13 +249,12 @@ fn two_cues(files: usize, rules: CueRules) -> AudioManifest {
     manifest(&[("a", cue(files, 90, rules)), ("b", cue(files, 70, rules))])
 }
 
+/// A play's cue, its time, and its file and volume or `None` when dropped.
+type Heard = (&'static str, u64, Option<(usize, u8)>);
+
 /// What `plays` give, one by one: each play's cue, time, and its file and
 /// volume or `None` when dropped.
-fn run(
-    m: &AudioManifest,
-    seed: u64,
-    plays: &[(u64, bool)],
-) -> Vec<(&'static str, u64, Option<(usize, u8)>)> {
+fn run(m: &AudioManifest, seed: u64, plays: &[(u64, bool)]) -> Vec<Heard> {
     let mut cues = Cues::new(seed);
     let mut now = 0;
     plays

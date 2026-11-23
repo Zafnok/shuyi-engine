@@ -221,10 +221,10 @@ fn a_click_inside_its_cues_gap_is_asked_for_and_dropped() {
     // Past the gap, it clicks again; a cleared log forgets the drop.
     h.clear_audio().wait(0.05).keys("f");
     assert_eq!(h.sounds(), ["click"]);
-    assert!(h.dropped_sounds().is_empty());
+    assert_eq!(h.dropped_sounds().len(), 0);
     // With no gap, nothing is dropped.
     let mut h = clicking(0);
     h.keys("f f f");
     assert_eq!(h.sounds(), ["click", "click"]);
-    assert!(h.dropped_sounds().is_empty());
+    assert_eq!(h.dropped_sounds().len(), 0);
 }
