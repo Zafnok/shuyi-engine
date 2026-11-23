@@ -1,5 +1,8 @@
 //! Blits a [`GlyphBuffer`] to the window with the font atlas (game ADR-0003):
-//! integer-scaled, centred, black letterbox. The buffer's items are drawn
+//! integer-scaled, centred, black letterbox; or, for a game that fills the
+//! window ([`ScaleMode::Fit`], ADR-0139), drawn at a whole scale into a
+//! texture that is then stretched to fill with linear filtering ("sharp
+//! bilinear": a pixel's edge blends over one window pixel at most). The buffer's items are drawn
 //! scaled, in the order they were added: `Under` ones after the cell
 //! backgrounds, `Over` ones after the glyphs. A rectangle (game ADR-0018) is a
 //! solid fill; a sprite (game ADR-0038) is part of an image's texture, or of a
@@ -21,7 +24,7 @@ use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::ImageId;
 use shuyi_assets::lighting::Light;
 use shuyi_ui::frame::Rgb;
-use shuyi_ui::frame::console::{ConsoleSpec, Layout, layout};
+use shuyi_ui::frame::console::{ConsoleSpec, Layout, Placement, ScaleMode, frame_of, place};
 use shuyi_ui::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, Sprite};
 use shuyi_ui::frame::painted::{PaintedSprite, PaintedTable};
 
@@ -77,6 +80,11 @@ pub struct Renderer {
     remade: HashMap<ImageId, (u16, u16)>,
     /// The textures of the frame's painted pictures.
     painted: PaintedTextures<Texture2D>,
+    /// How the frame fills the window ([`set_scale`](Self::set_scale)).
+    scale: ScaleMode,
+    /// What a frame shown at a fraction is drawn into first, kept between
+    /// frames ([`Stretch`]).
+    stretch: Stretch,
 }
 
 impl Renderer {
@@ -114,6 +122,8 @@ impl Renderer {
             warned_images: HashSet::new(),
             remade: HashMap::new(),
             painted: PaintedTextures::new(),
+            scale: ScaleMode::Integer,
+            stretch: Stretch::default(),
         })
     }
 
@@ -150,24 +160,66 @@ impl Renderer {
         self.clear = clear;
     }
 
+    /// Sets how the frame fills the window (the frame's
+    /// [`scale`](shuyi_platform::Frame::scale)).
+    pub fn set_scale(&mut self, scale: ScaleMode) {
+        self.scale = scale;
+    }
+
     /// Draws `buf` scaled to the current window size.
     ///
-    /// The layout is computed in physical framebuffer pixels (the window is
-    /// `high_dpi`), so the integer scale holds on scaled Windows displays;
+    /// The placement is computed in physical framebuffer pixels (the window
+    /// is `high_dpi`), so the scale holds on scaled Windows displays;
     /// coordinates are divided by the DPI factor only because macroquad's
-    /// default camera works in logical units.
+    /// default camera works in logical units. A placement at a whole scale
+    /// is drawn straight into the window; one at a fraction is drawn at
+    /// its [`draw_scale`](Placement::draw_scale) into a texture first
+    /// ([`Stretch`]), then stretched into its rectangle.
     ///
     /// With a backdrop (game ADR-0048) the order is: the clear colour, the
     /// scene inside its window, then the console over it, whose
     /// see-through cells have no background.
     pub fn draw(&mut self, buf: &GlyphBuffer) {
         let dpi = screen_dpi_scale();
-        let fit = placement(buf.spec(), (screen_width(), screen_height()), dpi);
-        let window_h = (screen_height() * dpi).round();
+        let placed = placement(
+            buf.spec(),
+            self.scale,
+            (screen_width(), screen_height()),
+            dpi,
+        );
+        clear_background(BLACK);
+        let frame = frame_of(buf.spec());
+        if placed.is_whole(frame) {
+            #[allow(clippy::cast_precision_loss)] // whole pixels of a window
+            let fit = Layout {
+                scale: placed.draw_scale,
+                offset_x: placed.x as f32,
+                offset_y: placed.y as f32,
+            };
+            let window_h = (screen_height() * dpi).round();
+            self.draw_frame(buf, &fit, dpi, Surface::Window { height: window_h });
+        } else {
+            let mut stretch = core::mem::take(&mut self.stretch);
+            stretch.draw(frame, placed, dpi, |target| {
+                let fit = Layout {
+                    scale: placed.draw_scale,
+                    offset_x: 0.0,
+                    offset_y: 0.0,
+                };
+                self.draw_frame(buf, &fit, 1.0, Surface::Target(target));
+            });
+            self.stretch = stretch;
+        }
+        self.painted.end_frame();
+    }
+
+    /// Draws `buf` with its top-left corner and scale `fit` (in physical
+    /// pixels), on `surface`: the clear colour, the backdrop, the layers.
+    /// `dpi` turns physical pixels into the camera's units.
+    fn draw_frame(&mut self, buf: &GlyphBuffer, fit: &Layout, dpi: f32, surface: Surface<'_>) {
         #[allow(clippy::cast_precision_loss)] // scale is small
         let scale = fit.scale as f32 / dpi;
         let (offset_x, offset_y) = (fit.offset_x / dpi, fit.offset_y / dpi);
-        clear_background(BLACK);
         draw_rectangle(
             offset_x,
             offset_y,
@@ -177,7 +229,7 @@ impl Renderer {
         );
         let pictures = buf.pictures();
         if let Some(backdrop) = buf.backdrop() {
-            self.draw_backdrop(backdrop, pictures, &fit, window_h);
+            self.draw_backdrop(backdrop, pictures, fit, surface);
         }
         // Over a scene, a cell in the clear colour must hide it.
         let fills = if buf.backdrop().is_some() {
@@ -186,7 +238,6 @@ impl Renderer {
             Fills::NotClear
         };
         self.draw_layers((buf, pictures), (offset_x, offset_y), scale, fills);
-        self.painted.end_frame();
     }
 
     /// Draws `backdrop`'s scene in its window: every scene pixel
@@ -196,16 +247,17 @@ impl Renderer {
     /// The window clips it with a camera whose view is exactly the window,
     /// one unit per physical pixel: what falls outside a camera's view
     /// isn't drawn. (macroquad's scissor is only reachable through an
-    /// `unsafe` call, which this workspace forbids.) `window_h` is the
-    /// window's height in physical pixels: a viewport counts rows from the
-    /// bottom. Its painted items show the frame's `pictures`.
+    /// `unsafe` call, which this workspace forbids.) On the window, a
+    /// viewport counts rows from the bottom; on a target, from its first
+    /// row, which is the frame's top ([`Stretch`]). Its painted items show
+    /// the frame's `pictures`. It gives the surface back its own camera.
     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // whole pixels
     fn draw_backdrop(
         &mut self,
         backdrop: &Backdrop,
         pictures: &PaintedTable,
         fit: &Layout,
-        window_h: f32,
+        surface: Surface<'_>,
     ) {
         let scale = fit.scale as f32;
         let clip = backdrop.clip_px();
@@ -214,10 +266,15 @@ impl Renderer {
             fit.offset_y + clip.y as f32 * scale,
         );
         let (w, h) = (clip.w as f32 * scale, clip.h as f32 * scale);
+        let (row, render_target) = match surface {
+            Surface::Window { height } => (height - y - h, None),
+            Surface::Target(target) => (y, Some(target.clone())),
+        };
         set_camera(&Camera2D {
             target: vec2(w / 2.0, h / 2.0),
             zoom: vec2(2.0 / w, 2.0 / h),
-            viewport: Some((x as i32, (window_h - y - h) as i32, w as i32, h as i32)),
+            viewport: Some((x as i32, row as i32, w as i32, h as i32)),
+            render_target,
             ..Default::default()
         });
         let (dx, dy) = backdrop.scene_offset(fit.scale);
@@ -228,7 +285,10 @@ impl Renderer {
             scene_scale,
             Fills::NotClear,
         );
-        set_default_camera();
+        match surface {
+            Surface::Window { .. } => set_default_camera(),
+            Surface::Target(target) => set_camera(&target_camera(target)),
+        }
     }
 
     /// Draws `buf`'s cells and items with its top-left corner at `origin`
@@ -481,14 +541,121 @@ impl Renderer {
 }
 
 /// The picture of PNG file `png`, or why it can't be decoded.
-/// Where a `spec` console goes in a window `logical` pixels big at a DPI
-/// factor of `dpi`, in the physical pixels [`Renderer::draw`] places it in
-/// (the window is `high_dpi`). The pointer maps the mouse back through it
-/// ([`pointer`](crate::pointer)).
-pub(crate) fn placement(spec: ConsoleSpec, logical: (f32, f32), dpi: f32) -> Layout {
-    // Rounded: logical size × DPI can land a hair under the real pixel
-    // count (913.714 × 1.75 = 1599.99…), which would drop a whole scale step.
-    layout(spec, (logical.0 * dpi).round(), (logical.1 * dpi).round())
+/// Where a `spec` console goes, scaled as `mode`, in a window `logical`
+/// pixels big at a DPI factor of `dpi`, in the physical pixels
+/// [`Renderer::draw`] places it in (the window is `high_dpi`). The pointer
+/// maps the mouse back through it ([`pointer`](crate::pointer)).
+pub(crate) fn placement(
+    spec: ConsoleSpec,
+    mode: ScaleMode,
+    logical: (f32, f32),
+    dpi: f32,
+) -> Placement {
+    place(mode, frame_of(spec), physical(logical, dpi))
+}
+
+/// A window `logical` pixels big at a DPI factor of `dpi`, in whole
+/// physical pixels. Rounded: logical size × DPI can land a hair under the
+/// real pixel count (913.714 × 1.75 = 1599.99…), which would drop a whole
+/// scale step.
+pub(crate) fn physical(logical: (f32, f32), dpi: f32) -> (u32, u32) {
+    let whole = |side: f32| {
+        let px = (side * dpi).round();
+        // In 0..=f32::MAX after the check; `as` saturates.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let px = if px.is_finite() {
+            px.max(0.0) as u32
+        } else {
+            0
+        };
+        px
+    };
+    (whole(logical.0), whole(logical.1))
+}
+
+/// What a frame is drawn on: the window, `height` physical pixels tall, or
+/// a [`Stretch`]'s target.
+#[derive(Clone, Copy)]
+enum Surface<'a> {
+    Window { height: f32 },
+    Target(&'a RenderTarget),
+}
+
+/// The texture a picture shown at a fraction of a pixel is drawn into at
+/// a whole scale first, then stretched from with linear filtering, so a
+/// pixel's edge blends over one window pixel at most (ADR-0139). It is
+/// kept between frames and made again when its size changes.
+///
+/// Its camera has one unit per texture pixel and `y` down. macroquad turns
+/// `y` the other way for a render target (its `Camera2D::matrix`), so the
+/// frame's top row is the texture's first row, which a draw of the texture
+/// puts at the top: neither is flipped.
+#[derive(Default)]
+pub(crate) struct Stretch {
+    target: Option<RenderTarget>,
+}
+
+impl Stretch {
+    /// Draws a `frame`-pixel picture shown at `placed`: `paint` draws it at
+    /// [`draw_scale`](Placement::draw_scale) on the target (whose camera
+    /// is set), then the target is stretched into `placed`'s rectangle,
+    /// divided by `dpi`. A rectangle of 0 pixels draws nothing.
+    pub(crate) fn draw(
+        &mut self,
+        frame: (u32, u32),
+        placed: Placement,
+        dpi: f32,
+        paint: impl FnOnce(&RenderTarget),
+    ) {
+        if placed.w == 0 || placed.h == 0 {
+            return;
+        }
+        let size = (
+            frame.0.saturating_mul(placed.draw_scale).max(1),
+            frame.1.saturating_mul(placed.draw_scale).max(1),
+        );
+        let target = self.target_of(size);
+        set_camera(&target_camera(&target));
+        clear_background(BLACK);
+        paint(&target);
+        set_default_camera();
+        #[allow(clippy::cast_precision_loss)] // whole pixels of a window
+        let params = DrawTextureParams {
+            dest_size: Some(vec2(placed.w as f32 / dpi, placed.h as f32 / dpi)),
+            ..Default::default()
+        };
+        #[allow(clippy::cast_precision_loss)] // whole pixels of a window
+        let (x, y) = (placed.x as f32 / dpi, placed.y as f32 / dpi);
+        draw_texture_ex(&target.texture, x, y, WHITE, params);
+    }
+
+    /// The target, `size` pixels big: the one kept, or a new one.
+    fn target_of(&mut self, size: (u32, u32)) -> RenderTarget {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // a texture's side
+        let kept = self.target.as_ref().filter(|target| {
+            let texture = &target.texture;
+            (texture.width() as u32, texture.height() as u32) == size
+        });
+        if let Some(target) = kept {
+            return target.clone();
+        }
+        let target = render_target(size.0, size.1);
+        target.texture.set_filter(FilterMode::Linear);
+        self.target = Some(target.clone());
+        target
+    }
+}
+
+/// The camera that draws on `target`: one unit per pixel, `y` down from
+/// its top-left corner ([`Stretch`]).
+fn target_camera(target: &RenderTarget) -> Camera2D {
+    let (w, h) = (target.texture.width(), target.texture.height());
+    Camera2D {
+        target: vec2(w / 2.0, h / 2.0),
+        zoom: vec2(2.0 / w, 2.0 / h),
+        render_target: Some(target.clone()),
+        ..Default::default()
+    }
 }
 
 pub(crate) fn decode(png: &[u8]) -> Result<Image, String> {

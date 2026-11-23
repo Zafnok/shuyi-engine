@@ -356,7 +356,10 @@ fn the_card_and_the_game_ask_for_the_games_scale() {
     assert!(matches!(p.headless.last_frame(), Some(Presented::Card(_))));
     assert_eq!(p.scales, [ScaleMode::Fit]);
     let _ = app.frame(&mut p, Millis(16));
-    assert!(matches!(p.headless.last_frame(), Some(Presented::Game { .. })));
+    assert!(matches!(
+        p.headless.last_frame(),
+        Some(Presented::Game { .. })
+    ));
     assert_eq!(p.scales.last(), Some(&ScaleMode::Fit));
 }
 

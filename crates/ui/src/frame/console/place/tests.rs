@@ -47,7 +47,15 @@ fn an_800_by_512_frame_in_the_common_windows() {
         (
             (2560, 1440),
             whole(2, (1600, 1024), (480, 208)),
-            at(Factor { num: 1440, den: 512 }, 3, (2250, 1440), (155, 0)),
+            at(
+                Factor {
+                    num: 1440,
+                    den: 512,
+                },
+                3,
+                (2250, 1440),
+                (155, 0),
+            ),
         ),
         (
             (3840, 2160),
@@ -56,7 +64,11 @@ fn an_800_by_512_frame_in_the_common_windows() {
         ),
     ];
     for (window, integer, fit) in rows {
-        assert_eq!(place(ScaleMode::Integer, WIDE, window), integer, "{window:?}");
+        assert_eq!(
+            place(ScaleMode::Integer, WIDE, window),
+            integer,
+            "{window:?}"
+        );
         assert_eq!(place(ScaleMode::Fit, WIDE, window), fit, "{window:?}");
     }
 }
@@ -71,12 +83,28 @@ fn other_frames_and_windows() {
     assert_eq!(place(ScaleMode::Fit, square, (1280, 800)), deck);
     assert_eq!(
         place(ScaleMode::Fit, square, (1920, 1080)),
-        at(Factor { num: 1080, den: 384 }, 3, (1080, 1080), (420, 0))
+        at(
+            Factor {
+                num: 1080,
+                den: 384
+            },
+            3,
+            (1080, 1080),
+            (420, 0)
+        )
     );
     // 2.4× rounds up to 3, but 3 × 1600 passes 4096: drawn at 2.
     assert_eq!(
         place(ScaleMode::Fit, (1600, 1000), (3840, 2600)),
-        at(Factor { num: 3840, den: 1600 }, 2, (3840, 2400), (0, 100))
+        at(
+            Factor {
+                num: 3840,
+                den: 1600
+            },
+            2,
+            (3840, 2400),
+            (0, 100)
+        )
     );
     // Too small: Integer crops at 1×, Fit shrinks.
     assert_eq!(
@@ -95,19 +123,43 @@ fn other_frames_and_windows() {
 #[test]
 fn the_scale_of_each_mode() {
     let deck = (1280, 800);
-    assert_eq!(scale(ScaleMode::Integer, (640, 400), deck), Factor::whole(2));
-    assert_eq!(scale(ScaleMode::Integer, WIDE, (400, 240)), Factor::whole(0));
-    assert_eq!(scale(ScaleMode::Fit, WIDE, deck), Factor { num: 800, den: 512 });
-    assert_eq!(scale(ScaleMode::Fit, WIDE, (400, 240)), Factor { num: 240, den: 512 });
+    assert_eq!(
+        scale(ScaleMode::Integer, (640, 400), deck),
+        Factor::whole(2)
+    );
+    assert_eq!(
+        scale(ScaleMode::Integer, WIDE, (400, 240)),
+        Factor::whole(0)
+    );
+    assert_eq!(
+        scale(ScaleMode::Fit, WIDE, deck),
+        Factor { num: 800, den: 512 }
+    );
+    assert_eq!(
+        scale(ScaleMode::Fit, WIDE, (400, 240)),
+        Factor { num: 240, den: 512 }
+    );
     // Snapped: 2 is 95 % of 1080 / 512.
     assert_eq!(scale(ScaleMode::Fit, WIDE, (1920, 1080)), Factor::whole(2));
     // A side of 0 counts as 1.
     assert_eq!(scale(ScaleMode::Fit, (0, 0), deck), Factor::whole(800));
     // Just at the snap: 9 / 10 of 10 / 9 is 1; just under it doesn't.
     assert_eq!(scale(ScaleMode::Fit, (9, 9), (10, 10)), Factor::whole(1));
-    assert_eq!(scale(ScaleMode::Fit, (90, 90), (101, 101)), Factor { num: 101, den: 90 });
-    assert_eq!(scale(ScaleMode::Fit, (900, 900), (1000, 1000)), Factor::whole(1));
-    assert_eq!(scale(ScaleMode::Fit, (900, 900), (1001, 1001)), Factor { num: 1001, den: 900 });
+    assert_eq!(
+        scale(ScaleMode::Fit, (90, 90), (101, 101)),
+        Factor { num: 101, den: 90 }
+    );
+    assert_eq!(
+        scale(ScaleMode::Fit, (900, 900), (1000, 1000)),
+        Factor::whole(1)
+    );
+    assert_eq!(
+        scale(ScaleMode::Fit, (900, 900), (1001, 1001)),
+        Factor {
+            num: 1001,
+            den: 900
+        }
+    );
 }
 
 #[test]
@@ -128,7 +180,10 @@ fn factors() {
 #[test]
 fn the_modes_are_named_as_shuyi_ron_names_them() {
     assert_eq!(ron::to_string(&ScaleMode::Fit).unwrap(), "fit");
-    assert_eq!(ron::from_str::<ScaleMode>("integer").unwrap(), ScaleMode::Integer);
+    assert_eq!(
+        ron::from_str::<ScaleMode>("integer").unwrap(),
+        ScaleMode::Integer
+    );
 }
 
 #[test]

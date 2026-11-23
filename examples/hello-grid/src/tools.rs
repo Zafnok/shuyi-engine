@@ -39,8 +39,10 @@ use shuyi::platform::harness::Harness;
 use shuyi::platform::headless::PresentHook;
 use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::platform::{Frame, Show};
+use shuyi::ui::frame::console::ScaleMode;
 use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
+use shuyi::ui::settings::GameSettings;
 use shuyi::ui::{Game, GameData, GameHooks};
 use shuyi_cli::contract::autobalance::AutobalanceInput;
 use shuyi_cli::contract::import::Importers;
@@ -60,6 +62,7 @@ use crate::screens::StageScreen;
 /// The game's record format, kept beside the stage screen, whose play it
 /// records for a crash report too.
 pub use crate::screens::stage::StageRecord;
+use crate::settings::Prefs;
 use crate::{Action, FONT_PNG, Hello, MapLook};
 pub use crate::{FONT_1BIT, PATTERN_MAP};
 
@@ -355,6 +358,10 @@ impl GameTools for HelloTools {
     }
 
     /// Its keymap and every screen it can show ([`crate::screens::all`]).
+    fn scale(&self) -> Option<ScaleMode> {
+        Some(<Prefs as GameSettings>::DEFAULT_SCALE)
+    }
+
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
         Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
     }

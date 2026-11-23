@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
 use shuyi_assets::font;
 use shuyi_assets::target::Color;
+use shuyi_ui::frame::console::ScaleMode;
 
 use super::codes::Code;
 use super::target::{self, Level, TargetReport};
@@ -194,6 +195,7 @@ pub fn targets(
             None
         }
     };
+    let drawn = game.and_then(GameTools::scale);
     let app = config
         .app
         .as_ref()
@@ -232,6 +234,9 @@ pub fn targets(
                 )),
             }
         }
+        if let Some(drawn) = drawn {
+            problems.extend(target::scale(id, setting, drawn));
+        }
         if let Some(app) = &app {
             problems.extend(target::app(app.clone()));
         }
@@ -241,12 +246,13 @@ pub fn targets(
             problems,
         });
     }
+    limits.extend(scale_limit(game.is_some(), drawn));
     if app.is_none() {
         limits.push(format!("the identity isn't checked: {FILE} has no `app`"));
     }
     limits.push(
-        "only the frame's fit, the text's size, the controls, one-bit patterns and the identity \
-         are checked yet"
+        "only the frame's fit, the text's size, the controls, the scale, one-bit patterns and \
+         the identity are checked yet"
             .to_owned(),
     );
     let ok = !reports.iter().any(TargetReport::failed);
@@ -255,6 +261,24 @@ pub fn targets(
         targets: reports,
     };
     Answer::new(Op::Check, ok, output, limits)
+}
+
+/// The limit `check --target` notes when it can't compare the targets'
+/// scales with the game's `drawn` one: the game's tools don't offer it, or
+/// there are no `tools`.
+fn scale_limit(tools: bool, drawn: Option<ScaleMode>) -> Option<String> {
+    match (tools, drawn) {
+        (_, Some(_)) => None,
+        (true, None) => Some(
+            "the scale isn't compared with the game's: the game's tools don't offer it \
+             (GameTools::scale)"
+                .to_owned(),
+        ),
+        (false, None) => Some(format!(
+            "the scale isn't compared with the game's: it needs the game's tools, and {FILE} \
+             names no game tool program (`game`)"
+        )),
+    }
 }
 
 /// `check`'s arguments (`--json` taken out): none, `--baked`, or
@@ -686,9 +710,11 @@ mod tests {
             [
                 "the controls aren't checked: they need the game's tools, and shuyi.ron names no \
                  game tool program (`game`)",
+                "the scale isn't compared with the game's: it needs the game's tools, and \
+                 shuyi.ron names no game tool program (`game`)",
                 "the identity isn't checked: shuyi.ron has no `app`",
-                "only the frame's fit, the text's size, the controls, one-bit patterns and the \
-                 identity are checked yet"
+                "only the frame's fit, the text's size, the controls, the scale, one-bit patterns \
+                 and the identity are checked yet"
             ]
         );
         let all = targets(&config, root, &on("all"), None);
@@ -704,7 +730,7 @@ mod tests {
             "{}",
             text(out)
         );
-        assert_eq!(all.limits.len(), 5, "desktop takes any size");
+        assert_eq!(all.limits.len(), 6, "desktop takes any size");
         assert_eq!(
             all.limits[2],
             "playdate's one-bit patterns aren't checked: they need the game's tools, and \
@@ -738,6 +764,63 @@ mod tests {
                 .error
                 .unwrap()
                 .starts_with("the target profiles don't load: no-such-folder: ")
+        );
+    }
+
+    #[test]
+    fn each_targets_scale_is_compared_with_the_games() {
+        let config = crate::project::Config::parse(
+            r#"(targets: {
+    "desktop": (frame: (800, 512), scale: integer, text_px: 16),
+    "web": (frame: (800, 512), scale: fit, text_px: 16),
+})"#,
+        )
+        .unwrap();
+        let root = Path::new(".");
+        let tools = |scale| Fake {
+            scale,
+            ..Fake::default()
+        };
+        // The game draws `integer`: the web target's `fit` fails.
+        let integer = tools(Some(ScaleMode::Integer));
+        let answer = targets(&config, root, &on("all"), Some(&integer));
+        assert!(!answer.ok);
+        let out = answer.result.as_ref().unwrap();
+        let web = out.targets.iter().find(|r| r.target == "web").unwrap();
+        let found: Vec<(Level, TargetCheck, &str, &str)> = web
+            .problems
+            .iter()
+            .map(|p| (p.level, p.check, p.setting.as_str(), p.message.as_str()))
+            .collect();
+        assert_eq!(
+            found,
+            [(
+                Level::Error,
+                TargetCheck::Fits,
+                "targets.\"web\".scale",
+                "`fit` here, but the game draws `integer` by default \
+                 (`GameSettings::DEFAULT_SCALE`)"
+            )]
+        );
+        let desktop = out.targets.iter().find(|r| r.target == "desktop").unwrap();
+        assert!(desktop.problems.is_empty());
+        assert!(!answer.limits.iter().any(|l| l.contains("scale isn't")));
+        // The game draws `fit`: the web target passes, the desktop's fails.
+        let fit = tools(Some(ScaleMode::Fit));
+        let answer = targets(&config, root, &on("web"), Some(&fit));
+        assert!(answer.ok);
+        let answer = targets(&config, root, &on("desktop"), Some(&fit));
+        assert!(!answer.ok);
+        // Tools that don't offer it: a limit, and nothing fails on it.
+        let none = tools(None);
+        let answer = targets(&config, root, &on("web"), Some(&none));
+        assert!(answer.ok);
+        assert!(
+            answer.limits.contains(
+                &"the scale isn't compared with the game's: the game's tools don't offer it \
+              (GameTools::scale)"
+                    .to_owned()
+            )
         );
     }
 

@@ -27,7 +27,7 @@ use macroquad::input::{
 };
 use macroquad::window::{screen_dpi_scale, screen_height, screen_width};
 use shuyi_ui::RawInputEvent;
-use shuyi_ui::frame::console::ConsoleSpec;
+use shuyi_ui::frame::console::{ConsoleSpec, ScaleMode, frame_of};
 
 use crate::render::placement;
 
@@ -76,13 +76,18 @@ pub(crate) struct Reading {
     pub wheel: f32,
 }
 
-/// The console pixel of a `spec` frame under the mouse a `reading` gives,
-/// placed as [`Renderer::draw`](crate::render::Renderer::draw) places it;
-/// `None` in the letterbox.
-pub(crate) fn console_px(spec: ConsoleSpec, reading: &Reading) -> Option<(i32, i32)> {
+/// The console pixel of a `spec` frame shown as `mode` under the mouse a
+/// `reading` gives, placed as
+/// [`Renderer::draw`](crate::render::Renderer::draw) places it; `None` in
+/// the letterbox.
+pub(crate) fn console_px(
+    spec: ConsoleSpec,
+    mode: ScaleMode,
+    reading: &Reading,
+) -> Option<(i32, i32)> {
     let dpi = reading.dpi;
     let physical = (reading.at.0 * dpi, reading.at.1 * dpi);
-    placement(spec, reading.window, dpi).frame_px(spec, physical)
+    placement(spec, mode, reading.window, dpi).frame_px(frame_of(spec), physical)
 }
 
 /// The wheel's raw deltas in whole notches of `unit`, the rest kept for
@@ -145,7 +150,8 @@ impl PointerReader {
     }
 
     /// The pointer's events in a frame `reading` gives, over the last frame
-    /// drawn, whose console was `spec` (none before the first game frame).
+    /// drawn, whose console was `spec` shown as its mode (none before the
+    /// first game frame).
     /// In order (ADR-0134 §2): the place, if it changed (`PointerLeft` into
     /// the letterbox), the press, the release, the wheel, and after a
     /// finger's release, `PointerLeft`.
@@ -155,14 +161,14 @@ impl PointerReader {
     /// (the button is up and no release came).
     pub(crate) fn events(
         &mut self,
-        spec: Option<ConsoleSpec>,
+        drawn: Option<(ConsoleSpec, ScaleMode)>,
         reading: &Reading,
     ) -> Vec<RawInputEvent> {
         let mut out = Vec::new();
-        let Some(spec) = spec else {
+        let Some((spec, mode)) = drawn else {
             return out;
         };
-        let place = console_px(spec, reading);
+        let place = console_px(spec, mode, reading);
         if place != self.place {
             out.push(match place {
                 Some((x, y)) => RawInputEvent::PointerMoved { x, y },
@@ -224,6 +230,9 @@ mod tests {
     /// 100 × 32 text cells: 800 × 512 console pixels.
     const WIDE: ConsoleSpec = ConsoleSpec::text(100, 32);
 
+    /// `WIDE`, drawn at a whole scale.
+    const DRAWN: Option<(ConsoleSpec, ScaleMode)> = Some((WIDE, ScaleMode::Integer));
+
     fn moved(x: i32, y: i32) -> RawInputEvent {
         RawInputEvent::PointerMoved { x, y }
     }
@@ -242,10 +251,47 @@ mod tests {
 
     #[test]
     fn the_mouse_inside_the_frame_is_in_console_pixels() {
-        assert_eq!(console_px(WIDE, &over((160.0, 28.0))), Some((0, 0)));
-        assert_eq!(console_px(WIDE, &over((161.9, 29.9))), Some((0, 0)));
-        assert_eq!(console_px(WIDE, &over((162.0, 30.0))), Some((1, 1)));
-        assert_eq!(console_px(WIDE, &over((1759.0, 1051.0))), Some((799, 511)));
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &over((160.0, 28.0))),
+            Some((0, 0))
+        );
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &over((161.9, 29.9))),
+            Some((0, 0))
+        );
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &over((162.0, 30.0))),
+            Some((1, 1))
+        );
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &over((1759.0, 1051.0))),
+            Some((799, 511))
+        );
+    }
+
+    #[test]
+    fn a_frame_that_fills_the_window_maps_by_its_fraction() {
+        // 1280 × 720: `WIDE` at 720 / 512 = 1.40625, 1125 × 720 at (77, 0).
+        let filled = |at: (f32, f32)| Reading {
+            at,
+            window: (1280.0, 720.0),
+            dpi: 1.0,
+            ..Reading::default()
+        };
+        let px = |at| console_px(WIDE, ScaleMode::Fit, &filled(at));
+        assert_eq!(px((77.0, 0.0)), Some((0, 0)));
+        assert_eq!(px((78.5, 1.5)), Some((1, 1)));
+        assert_eq!(px((640.0, 360.0)), Some((400, 256)));
+        assert_eq!(px((1201.9, 719.9)), Some((799, 511)));
+        assert_eq!(px((76.0, 360.0)), None);
+        assert_eq!(px((1202.0, 360.0)), None);
+        // The same window at a whole scale: 1×, bars of 240 and 104.
+        let whole = console_px(WIDE, ScaleMode::Integer, &filled((640.0, 360.0)));
+        assert_eq!(whole, Some((400, 256)));
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &filled((100.0, 50.0))),
+            None
+        );
     }
 
     #[test]
@@ -256,7 +302,11 @@ mod tests {
             (900.0, 27.0),
             (900.0, 1052.0),
         ] {
-            assert_eq!(console_px(WIDE, &over(at)), None, "{at:?}");
+            assert_eq!(
+                console_px(WIDE, ScaleMode::Integer, &over(at)),
+                None,
+                "{at:?}"
+            );
         }
     }
 
@@ -272,19 +322,36 @@ mod tests {
             ..Reading::default()
         };
         assert_eq!(
-            console_px(WIDE, &scaled((480.5 / 1.75, 208.5 / 1.75))),
+            console_px(
+                WIDE,
+                ScaleMode::Integer,
+                &scaled((480.5 / 1.75, 208.5 / 1.75))
+            ),
             Some((0, 0))
         );
         // The middle of the window is the middle of the frame.
         assert_eq!(
-            console_px(WIDE, &scaled((1280.5 / 1.75, 720.5 / 1.75))),
+            console_px(
+                WIDE,
+                ScaleMode::Integer,
+                &scaled((1280.5 / 1.75, 720.5 / 1.75))
+            ),
             Some((400, 256))
         );
         // The last physical pixel of the frame, and the first past it.
         let last = (2079.5 / 1.75, 1231.5 / 1.75);
-        assert_eq!(console_px(WIDE, &scaled(last)), Some((799, 511)));
-        assert_eq!(console_px(WIDE, &scaled((2080.5 / 1.75, 700.0))), None);
-        assert_eq!(console_px(WIDE, &scaled((479.5 / 1.75, 400.0))), None);
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &scaled(last)),
+            Some((799, 511))
+        );
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &scaled((2080.5 / 1.75, 700.0))),
+            None
+        );
+        assert_eq!(
+            console_px(WIDE, ScaleMode::Integer, &scaled((479.5 / 1.75, 400.0))),
+            None
+        );
     }
 
     #[test]
@@ -302,7 +369,7 @@ mod tests {
     #[test]
     fn the_place_is_sent_when_its_console_pixel_changes() {
         let mut reader = PointerReader::new(120.0);
-        let mut at = |x, y| reader.events(Some(WIDE), &over((x, y)));
+        let mut at = |x, y| reader.events(DRAWN, &over((x, y)));
         assert_eq!(at(161.0, 29.0), [moved(0, 0)]);
         assert_eq!(at(161.5, 29.5), [], "the same console pixel");
         assert_eq!(at(165.0, 29.0), [moved(2, 0)]);
@@ -321,7 +388,7 @@ mod tests {
             ..over((961.0, 541.0))
         };
         assert_eq!(
-            reader.events(Some(WIDE), &click),
+            reader.events(DRAWN, &click),
             [moved(400, 256), PointerDown, PointerUp, Wheel(-1)]
         );
     }
@@ -334,21 +401,18 @@ mod tests {
             down: true,
             ..over((961.0, 541.0))
         };
-        assert_eq!(
-            reader.events(Some(WIDE), &press),
-            [moved(400, 256), PointerDown]
-        );
+        assert_eq!(reader.events(DRAWN, &press), [moved(400, 256), PointerDown]);
         let held = Reading {
             down: true,
             ..over((10.0, 10.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &held), [PointerLeft]);
+        assert_eq!(reader.events(DRAWN, &held), [PointerLeft]);
         let release = Reading {
             released: true,
             ..over((10.0, 10.0))
         };
         assert_eq!(
-            reader.events(Some(WIDE), &release),
+            reader.events(DRAWN, &release),
             [PointerUp],
             "in the letterbox"
         );
@@ -362,12 +426,12 @@ mod tests {
             down: true,
             ..over((10.0, 10.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &press), []);
+        assert_eq!(reader.events(DRAWN, &press), []);
         let release = Reading {
             released: true,
             ..over((961.0, 541.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &release), [moved(400, 256)]);
+        assert_eq!(reader.events(DRAWN, &release), [moved(400, 256)]);
     }
 
     #[test]
@@ -378,12 +442,9 @@ mod tests {
             down: true,
             ..over((961.0, 541.0))
         };
-        let _ = reader.events(Some(WIDE), &press);
-        assert_eq!(
-            reader.events(Some(WIDE), &over((961.0, 541.0))),
-            [PointerUp]
-        );
-        assert_eq!(reader.events(Some(WIDE), &over((961.0, 541.0))), []);
+        let _ = reader.events(DRAWN, &press);
+        assert_eq!(reader.events(DRAWN, &over((961.0, 541.0))), [PointerUp]);
+        assert_eq!(reader.events(DRAWN, &over((961.0, 541.0))), []);
     }
 
     #[test]
@@ -394,17 +455,17 @@ mod tests {
             down: true,
             ..over((961.0, 541.0))
         };
-        let _ = reader.events(Some(WIDE), &press);
+        let _ = reader.events(DRAWN, &press);
         let again = Reading {
             released: true,
             ..press
         };
-        assert_eq!(reader.events(Some(WIDE), &again), [PointerUp, PointerDown]);
+        assert_eq!(reader.events(DRAWN, &again), [PointerUp, PointerDown]);
         let up = Reading {
             released: true,
             ..over((961.0, 541.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &up), [PointerUp]);
+        assert_eq!(reader.events(DRAWN, &up), [PointerUp]);
     }
 
     #[test]
@@ -418,7 +479,7 @@ mod tests {
             ..over((961.0, 541.0))
         };
         assert_eq!(
-            reader.events(Some(WIDE), &tap),
+            reader.events(DRAWN, &tap),
             [
                 moved(400, 256),
                 PointerDown,
@@ -429,7 +490,7 @@ mod tests {
         );
         // The next tap at the same place comes in again.
         assert_eq!(
-            reader.events(Some(WIDE), &tap),
+            reader.events(DRAWN, &tap),
             [
                 moved(400, 256),
                 PointerDown,
@@ -445,13 +506,13 @@ mod tests {
             touches: 1,
             ..over((161.0, 29.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &down), [moved(0, 0), PointerDown]);
+        assert_eq!(reader.events(DRAWN, &down), [moved(0, 0), PointerDown]);
         let lifted = Reading {
             released: true,
             touches: 1,
             ..over((161.0, 29.0))
         };
-        assert_eq!(reader.events(Some(WIDE), &lifted), [PointerUp, PointerLeft]);
+        assert_eq!(reader.events(DRAWN, &lifted), [PointerUp, PointerLeft]);
     }
 
     #[test]
@@ -462,8 +523,8 @@ mod tests {
             released: true,
             ..over((961.0, 541.0))
         };
-        let _ = reader.events(Some(WIDE), &click);
-        assert_eq!(reader.events(Some(WIDE), &over((961.0, 541.0))), []);
+        let _ = reader.events(DRAWN, &click);
+        assert_eq!(reader.events(DRAWN, &over((961.0, 541.0))), []);
     }
 
     /// The notches of `deltas` one after the other, on a wheel of `unit`.

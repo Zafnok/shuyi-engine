@@ -18,7 +18,9 @@ use shuyi_platform::harness::Harness;
 use shuyi_platform::session::{SessionRecord, Stamps};
 use shuyi_ui::GameData;
 use shuyi_ui::basic::{BasicData, FONT_PNG};
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
+use shuyi_ui::settings::GameSettings;
 
 use crate::contract::session::{Headless, Session};
 use crate::frame_png::{Image, Painter, Script, Shot};
@@ -143,6 +145,12 @@ impl<A: ActionSet, T: Debug + 'static> GameTools for BasicTools<A, T> {
     fn font_atlas(&self) -> Option<Result<FontAtlasDef, String>> {
         let data = self.game.data().map_err(|errors| in_lines(&errors));
         Some(data.map(|data| data.font))
+    }
+
+    /// The engine's default: a short-path game has the engine's settings
+    /// (`()`), so its frame is placed at a whole scale.
+    fn scale(&self) -> Option<ScaleMode> {
+        Some(<() as GameSettings>::DEFAULT_SCALE)
     }
 
     /// Its keymap and every screen it can show (`BasicGame::screens`).
