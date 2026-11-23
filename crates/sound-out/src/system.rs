@@ -56,6 +56,34 @@ fn buffer_size(supported: &SupportedBufferSize, rate: u32, fixed: bool) -> Buffe
     }
 }
 
+/// How long a stream that plays may go without a callback before it counts as lost: a
+/// stream on ALSA's plugin for `PulseAudio` can stop calling back with no error at all (ticket
+/// 3032), and every system calls back many times a second.
+const STALLED: Duration = Duration::from_millis(500);
+
+/// Tells a stream that stopped calling back, as a lost one doesn't always say so.
+#[derive(Debug, Clone, Copy)]
+struct Stall {
+    calls: u32,
+    since: Instant,
+}
+
+impl Stall {
+    const fn new(calls: u32, now: Instant) -> Self {
+        Self { calls, since: now }
+    }
+
+    /// Whether a stream whose callbacks number `calls` at `now` has made none for
+    /// [`STALLED`]. A held stream is meant to be quiet, so it never has.
+    fn stalled(&mut self, calls: u32, held: bool, now: Instant) -> bool {
+        if held || calls != self.calls {
+            *self = Self::new(calls, now);
+            return false;
+        }
+        now.duration_since(self.since) >= STALLED
+    }
+}
+
 /// What the output's owner asks of its thread.
 enum Order {
     Hold(bool),
@@ -88,6 +116,10 @@ pub(crate) struct Stats {
     /// How many callbacks the system made, and the frames they asked for.
     pub(crate) callbacks: AtomicU32,
     pub(crate) frames: AtomicU32,
+    /// How many times the system said the device's buffer ran dry (`ErrorKind::Xrun`).
+    pub(crate) xruns: AtomicU32,
+    /// How many streams were built again for making no callback ([`Stall`]).
+    pub(crate) stalls: AtomicU32,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
@@ -146,9 +178,14 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
     );
     let silence = T::from_mix(0);
     let channels = usize::from(stream.channels).max(1);
+    let counted = Arc::clone(&stats);
     let on_error = move |error: cpal::Error| match error.kind() {
-        // Rerouted, or a glitch or a refused priority that it plays on through.
-        ErrorKind::DeviceChanged | ErrorKind::Xrun | ErrorKind::RealtimeDenied => {}
+        // A glitch that it plays on through, counted for a probe to read.
+        ErrorKind::Xrun => {
+            counted.xruns.fetch_add(1, Ordering::Relaxed);
+        }
+        // Rerouted, or a refused priority that it plays on through.
+        ErrorKind::DeviceChanged | ErrorKind::RealtimeDenied => {}
         _ => lost.store(true, Ordering::Release),
     };
     // Raised at the first callback, the only way onto CPAL's thread, and let go with
@@ -305,6 +342,13 @@ impl SystemOutput {
         )
     }
 
+    pub(crate) fn glitches(&self) -> (u32, u32) {
+        (
+            self.stats.xruns.load(Ordering::Relaxed),
+            self.stats.stalls.load(Ordering::Relaxed),
+        )
+    }
+
     pub(crate) fn ahead(&self) -> Duration {
         Duration::from_micros(u64::from(self.stats.ahead_us.load(Ordering::Relaxed)))
     }
@@ -351,6 +395,7 @@ fn run(
     };
     let mut quiet = Quiet::new(config);
     let mut moved_looks = 0;
+    let mut stall = Stall::new(stats.callbacks.load(Ordering::Relaxed), Instant::now());
     loop {
         match inbox.recv_timeout(if current.is_some() {
             WATCH
@@ -371,12 +416,22 @@ fn run(
             .as_ref()
             .is_some_and(|(_, device)| host.default_output_device().as_ref() != Some(device));
         moved_looks = if moved { moved_looks + 1 } else { 0 };
-        if moved_looks >= MOVED_LOOKS || lost.swap(false, Ordering::AcqRel) || current.is_none() {
+        let calls = stats.callbacks.load(Ordering::Relaxed);
+        let stalled = current.is_some() && stall.stalled(calls, held, Instant::now());
+        if stalled {
+            stats.stalls.fetch_add(1, Ordering::Relaxed);
+        }
+        if moved_looks >= MOVED_LOOKS
+            || stalled
+            || lost.swap(false, Ordering::AcqRel)
+            || current.is_none()
+        {
             // The old stream goes first: only one may hold the callback.
             moved_looks = 0;
             drop(current.take());
             current = open_stream(&host, config, callback, &lost, stats, held).ok();
             stats.rebuilds.fetch_add(1, Ordering::Relaxed);
+            stall = Stall::new(stats.callbacks.load(Ordering::Relaxed), Instant::now());
         }
         if current.is_none() && !held {
             quiet.run(callback);
@@ -458,6 +513,27 @@ mod tests {
         }
         assert!(dry.ran_dry(1_000), "late: the device played it all");
         assert!(!dry.ran_dry(400));
+    }
+
+    /// A stream counts as stalled after half a second with no callback while it
+    /// plays, never while held, and a callback starts the wait again.
+    #[test]
+    fn a_stream_that_stops_calling_back_stalls() {
+        let start = Instant::now();
+        let at = |ms| start + Duration::from_millis(ms);
+        let mut stall = Stall::new(0, start);
+        assert!(!stall.stalled(0, false, at(200)));
+        assert!(!stall.stalled(0, false, at(499)));
+        assert!(stall.stalled(0, false, at(500)), "half a second with none");
+        assert!(!stall.stalled(1, false, at(600)), "a callback came");
+        assert!(!stall.stalled(1, false, at(1_000)));
+        assert!(stall.stalled(1, false, at(1_100)));
+        assert!(!stall.stalled(1, true, at(5_000)), "held: quiet on purpose");
+        assert!(
+            !stall.stalled(1, false, at(5_400)),
+            "the wait starts when let go"
+        );
+        assert!(stall.stalled(1, false, at(5_500)));
     }
 
     /// Linux asks for about 20 ms, inside what the device allows; elsewhere the
