@@ -346,8 +346,12 @@ it is technical.
     so `FUZZ_TOOLCHAIN` stays outside it. Add one line to its
     `bump-rust` skill's *Don'ts*: the fuzz nightly moves on its own, by
     the comment in `fuzz.yml`;
-  - with 2203: formats it has already added behind features join
-    `fuzz`'s list; formats it adds later follow the skills' line;
+  - from 2203 (done): its features `jpeg`, `webp`, `qoi`, `jpeg-xl`,
+    `flac` and `mp3` join `fuzz`'s list (`register_standard` registers
+    their formats under them). Their fixtures are the constants of
+    `crates/assets/src/format/codec_tests.rs`, over
+    `tests/fixtures/formats/`; its `no_bytes_panic_a_codec`
+    (`builtin_tests.rs`) is their property test today;
   - from 2116 (done): its `crates/assets/src/format/golden_tests.rs`
     takes its fixtures and inputs from `builtin_tests.rs`; point it at
     `crate::fuzz::fixtures()` when the one in `builtin_tests.rs` is

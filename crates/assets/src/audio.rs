@@ -11,7 +11,10 @@
 //! As formats (ADR-0007): a sound file's header is the [`Sound`] kind
 //! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
 //! ([`OggVorbisTrack`]), and the manifest is read by
-//! [`AudioManifestRon`].
+//! [`AudioManifestRon`]. FLAC and MP3 are formats of both kinds too, each
+//! behind its own feature (`flac`, `mp3`; ticket 2203): `Flac` and
+//! `FlacTrack`, `Mp3` and `Mp3Track`. The manifest still names only
+//! `.ogg` and `.wav` files, as the platform plays only those.
 //!
 //! Every cue plays in a sound group (ADR-0091): the one its `group` names,
 //! else a sound in `ui` if it is a menu's and in `sfx` if not, and a track
@@ -56,6 +59,10 @@ use crate::ron::parse_ron_implicit_some;
 pub use formats::{
     AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
+#[cfg(feature = "flac")]
+pub use formats::{Flac, FlacTrack};
+#[cfg(feature = "mp3")]
+pub use formats::{Mp3, Mp3Track};
 pub use groups::{DuckRule, GroupDef};
 
 /// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
@@ -531,8 +538,13 @@ fn vorbis_format(bytes: &[u8]) -> Option<(u16, u32)> {
 /// `bytes` isn't a whole OGG Vorbis file.
 pub fn ogg_length_ms(bytes: &[u8]) -> Option<u32> {
     let (_, rate) = vorbis_format(bytes)?;
+    samples_ms(last_granule(bytes)?, rate)
+}
+
+/// How long `samples` samples a channel play at `rate` Hz, in milliseconds
+/// (to the nearest); `None` at 0 Hz or past `u32::MAX` ms.
+fn samples_ms(samples: u64, rate: u32) -> Option<u32> {
     let rate = u64::from(rate);
-    let samples = last_granule(bytes)?;
     let ms = samples
         .checked_mul(1000)?
         .checked_add(rate / 2)?

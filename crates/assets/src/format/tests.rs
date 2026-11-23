@@ -658,17 +658,24 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     use crate::palette::PaletteDef;
     use crate::target::TargetProfile;
 
+    // With the features of ticket 2203's formats, which the crate's own
+    // tests turn on.
     let formats = Formats::standard();
-    assert_eq!(formats.ids::<ImageInfo>(), ["png", "one-bit"]);
-    assert_eq!(formats.extensions::<ImageInfo>(), ["png"]);
-    assert_eq!(formats.ids::<Image>(), ["png"]);
+    let images = ["png", "one-bit", "jpeg", "webp", "qoi", "jpeg-xl"];
+    assert_eq!(formats.ids::<ImageInfo>(), images);
+    let extensions = ["png", "jpg", "jpeg", "webp", "qoi", "jxl"];
+    assert_eq!(formats.extensions::<ImageInfo>(), extensions);
+    assert_eq!(
+        formats.ids::<Image>(),
+        ["png", "jpeg", "webp", "qoi", "jpeg-xl"]
+    );
     assert_eq!(
         formats.ids::<crate::bitmap::OneBitPicture>(),
         ["one-bit", "dithered"]
     );
-    assert_eq!(formats.ids::<Sound>(), ["wav", "ogg-vorbis"]);
-    assert_eq!(formats.extensions::<Sound>(), ["wav", "ogg"]);
-    assert_eq!(formats.ids::<MusicTrack>(), ["ogg-vorbis"]);
+    assert_eq!(formats.ids::<Sound>(), ["wav", "ogg-vorbis", "flac", "mp3"]);
+    assert_eq!(formats.extensions::<Sound>(), ["wav", "ogg", "flac", "mp3"]);
+    assert_eq!(formats.ids::<MusicTrack>(), ["ogg-vorbis", "flac", "mp3"]);
     assert_eq!(formats.ids::<AudioManifest>(), ["audio-manifest"]);
     assert_eq!(formats.ids::<CreditsFile>(), ["credits"]);
     assert_eq!(formats.ids::<FontAtlasDef>(), ["font-atlas"]);

@@ -7,10 +7,11 @@ use std::sync::OnceLock;
 use proptest::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::codec_tests;
 use super::*;
 use crate::audio::{
-    self, AudioManifest, AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack,
-    Sound, Wav, format_problem,
+    self, AudioManifest, AudioManifestRon, Flac, FlacTrack, MAX_SOUND_BYTES, Mp3, Mp3Track,
+    MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav, format_problem,
 };
 use crate::bitmap::{self, MAGIC, OneBitInfo};
 use crate::bundle::Layer;
@@ -24,8 +25,8 @@ use crate::dialogue::{
 use crate::font::{FontAtlasDef, FontAtlasRon};
 use crate::grid_map::{self, MapFormat, MapText, NoFeature};
 use crate::image::{
-    Image, ImageId, ImageInfo, ImageTable, MAX_PNG_BYTES, MAX_SIDE, PNG_SIGNATURE, Png, PngInfo,
-    png_header,
+    Image, ImageId, ImageInfo, ImageTable, Jpeg, JpegInfo, JpegXl, JpegXlInfo, MAX_PNG_BYTES,
+    MAX_SIDE, PNG_SIGNATURE, Png, PngInfo, Qoi, QoiInfo, WebP, WebPInfo, png_header,
 };
 use crate::keymap::{KeymapDef, KeymapRon, sample};
 use crate::lang::{
@@ -1238,6 +1239,37 @@ fn after(magic: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
     bytes().prop_map(move |rest| [magic, &rest].concat())
 }
 
+/// Ticket 2203's fixtures, which [`damaged`] breaks.
+const CODEC_FIXTURES: &[&[u8]] = &[
+    codec_tests::JPEG,
+    codec_tests::WEBP,
+    codec_tests::WEBP_LOSSLESS,
+    codec_tests::QOI,
+    codec_tests::JPEG_XL,
+    codec_tests::JPEG_XL_LOSSLESS,
+    codec_tests::FLAC,
+    codec_tests::MP3,
+    codec_tests::MP3_UNTAGGED,
+];
+
+/// `fixture` with up to four bytes changed, then cut at a random length.
+fn damaged(fixture: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
+    let edit = (any::<prop::sample::Index>(), any::<u8>());
+    (
+        proptest::collection::vec(edit, 0..5),
+        any::<prop::sample::Index>(),
+    )
+        .prop_map(move |(edits, cut)| {
+            let mut bytes = fixture.to_vec();
+            for (at, byte) in edits {
+                let i = at.index(bytes.len());
+                bytes[i] = byte;
+            }
+            bytes.truncate(cut.index(bytes.len() + 1));
+            bytes
+        })
+}
+
 /// Printable text.
 const TEXT: &str = "[ -~\n]{0,300}";
 
@@ -1307,6 +1339,38 @@ proptest! {
             decodes(&Wav, "a.wav", bytes);
             decodes(&OggVorbis, "a.ogg", bytes);
             decodes(&OggVorbisTrack, "a.ogg", bytes);
+        }
+    }
+
+    #[test]
+    fn no_bytes_panic_a_codec(
+        random in bytes(),
+        jpeg in after(&[0xff, 0xd8, 0xff]),
+        webp in after(b"RIFF\0\0\0\0WEBP"),
+        qoi in after(b"qoif"),
+        jpeg_xl in after(&[0xff, 0x0a]),
+        flac in after(b"fLaC"),
+        mp3 in after(&[0xff, 0xfb]),
+        damaged in prop::sample::select(CODEC_FIXTURES).prop_flat_map(damaged),
+    ) {
+        let standard = Formats::standard();
+        let cx = DecodeCx::new();
+        for bytes in [&random, &jpeg, &webp, &qoi, &jpeg_xl, &flac, &mp3, &damaged] {
+            decodes(&JpegInfo, "a.jpg", bytes);
+            decodes(&Jpeg, "a.jpg", bytes);
+            decodes(&WebPInfo, "a.webp", bytes);
+            decodes(&WebP, "a.webp", bytes);
+            decodes(&QoiInfo, "a.qoi", bytes);
+            decodes(&Qoi, "a.qoi", bytes);
+            decodes(&JpegXlInfo, "a.jxl", bytes);
+            decodes(&JpegXl, "a.jxl", bytes);
+            decodes(&Flac, "a.flac", bytes);
+            decodes(&FlacTrack, "a.flac", bytes);
+            decodes(&Mp3, "a.mp3", bytes);
+            decodes(&Mp3Track, "a.mp3", bytes);
+            let file = AssetPath::new("a");
+            let _ = standard.decode::<Image>(&file, bytes, &cx);
+            let _ = standard.decode::<MusicTrack>(&file, bytes, &cx);
         }
     }
 

@@ -138,7 +138,9 @@ fn a_one_bit_pack_reads_as_its_sources_did_for_sizes_and_kinds() {
     let info = formats.load::<ImageInfo>(&pack, "images/gradient.png");
     assert_eq!(info, Ok(ImageInfo::new(16, 16)));
     let shown = OneBitInfo.id();
-    assert_eq!(formats.ids::<ImageInfo>(), ["png", shown]);
+    // The one-bit size is read beside the PNG (and before the formats
+    // behind a feature, which the crate's tests turn on).
+    assert_eq!(formats.ids::<ImageInfo>()[..2], ["png", shown]);
     // A palette is no picture: it went in as it was.
     let palette = formats.load::<PaletteDef>(&pack, "data/palette");
     assert!(palette.is_ok(), "{palette:?}");

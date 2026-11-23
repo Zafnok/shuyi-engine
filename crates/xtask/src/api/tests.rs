@@ -1768,7 +1768,19 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-core", &["std", "schema", "toy"]),
     (
         "shuyi-assets",
-        &["std", "png", "sample-actions", "golden", "parse-count"],
+        &[
+            "std",
+            "png",
+            "sample-actions",
+            "golden",
+            "parse-count",
+            "jpeg",
+            "webp",
+            "qoi",
+            "jpeg-xl",
+            "flac",
+            "mp3",
+        ],
     ),
     (
         "shuyi-ui",

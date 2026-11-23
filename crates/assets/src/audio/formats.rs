@@ -4,6 +4,8 @@
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(any(feature = "flac", feature = "mp3"))]
+use super::samples_ms;
 use super::{
     AudioManifest, Files, NO_LENGTH, from_source, ogg_length_ms, playable_problem, vorbis_format,
     wav_format,
@@ -199,6 +201,223 @@ impl Format for OggVorbisTrack {
             sample_rate,
             length_ms,
         })
+    }
+}
+
+/// The track of `sound` (from the file `file`), `samples` samples a channel
+/// long if they are known; else `no_length` is the error.
+#[cfg(any(feature = "flac", feature = "mp3"))]
+fn track(
+    file: &AssetPath,
+    sound: Sound,
+    samples: Option<u64>,
+    no_length: &str,
+) -> Result<MusicTrack, Vec<ContentError>> {
+    let length_ms = samples
+        .and_then(|samples| samples_ms(samples, sound.sample_rate))
+        .ok_or_else(|| vec![ContentError::new(file.shown(), no_length)])?;
+    Ok(MusicTrack {
+        channels: sound.channels,
+        sample_rate: sound.sample_rate,
+        length_ms,
+    })
+}
+
+/// The first four bytes of every FLAC file.
+#[cfg(feature = "flac")]
+const FLAC_MAGIC: &[u8; 4] = b"fLaC";
+
+/// A FLAC file's (channels, sample rate, samples a channel if known), from
+/// its `STREAMINFO`, read by `claxon`; `None` if it isn't one.
+#[cfg(feature = "flac")]
+fn flac_format(bytes: &[u8]) -> Option<(u16, u32, Option<u64>)> {
+    let options = claxon::FlacReaderOptions {
+        metadata_only: true,
+        read_vorbis_comment: false,
+    };
+    let info = claxon::FlacReader::new_ext(bytes, options)
+        .ok()?
+        .streaminfo();
+    let channels = u16::try_from(info.channels).ok()?;
+    Some((channels, info.sample_rate, info.samples))
+}
+
+/// FLAC (`flac`, `.flac`), read for a sound, with the `flac` feature: its
+/// `STREAMINFO`, by `claxon`.
+#[cfg(feature = "flac")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Flac;
+
+#[cfg(feature = "flac")]
+impl Format for Flac {
+    type Asset = Sound;
+
+    fn id(&self) -> &'static str {
+        "flac"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["flac"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        bytes.starts_with(FLAC_MAGIC)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_SOUND_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Sound, Vec<ContentError>> {
+        let format = flac_format(bytes).map(|(channels, rate, _)| (channels, rate));
+        sound(file, format, "not a FLAC file")
+    }
+}
+
+/// FLAC (`flac`, `.flac`), read for a music track, with the `flac`
+/// feature: its `STREAMINFO`, whose sample count gives its length.
+#[cfg(feature = "flac")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FlacTrack;
+
+#[cfg(feature = "flac")]
+impl Format for FlacTrack {
+    type Asset = MusicTrack;
+
+    fn id(&self) -> &'static str {
+        "flac"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["flac"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        bytes.starts_with(FLAC_MAGIC)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_SOUND_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        cx: &DecodeCx<'_>,
+    ) -> Result<MusicTrack, Vec<ContentError>> {
+        let sound = Flac.decode(file, bytes, cx)?;
+        let samples = flac_format(bytes).and_then(|(_, _, samples)| samples);
+        track(
+            file,
+            sound,
+            samples,
+            "its length can't be read (its STREAMINFO has no sample count)",
+        )
+    }
+}
+
+/// Whether `bytes` start as an MP3 file: an `ID3v2` tag, or a frame's sync
+/// (eleven bits set).
+#[cfg(feature = "mp3")]
+fn mp3_sniff(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"ID3") || matches!(bytes, [0xff, second, ..] if second & 0xe0 == 0xe0)
+}
+
+/// An MP3 file's (channels, sample rate, samples a channel if known), read
+/// by `nanomp3` past its tags; `None` if it has no frame. With `scan`, it
+/// walks every frame for the length (gapless: the encoder's delay and
+/// padding off, when its LAME tag says them); without, it reads the
+/// first frame only.
+#[cfg(feature = "mp3")]
+fn mp3_format(bytes: &[u8], scan: bool) -> Option<(u16, u32, Option<u64>)> {
+    let options = nanomp3::Options::default().skip_scan(!scan);
+    let reader = nanomp3::SliceReader::<i16>::with_options(bytes, options);
+    let channels = match reader.channels()? {
+        nanomp3::Channels::Mono => 1,
+        nanomp3::Channels::Stereo => 2,
+    };
+    Some((channels, reader.sample_rate(), reader.total_samples()))
+}
+
+/// MP3 (`mp3`, `.mp3`), read for a sound, with the `mp3` feature: its
+/// first frame's header, by `nanomp3`.
+#[cfg(feature = "mp3")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Mp3;
+
+#[cfg(feature = "mp3")]
+impl Format for Mp3 {
+    type Asset = Sound;
+
+    fn id(&self) -> &'static str {
+        "mp3"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["mp3"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        mp3_sniff(bytes)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_SOUND_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Sound, Vec<ContentError>> {
+        let format = mp3_format(bytes, false).map(|(channels, rate, _)| (channels, rate));
+        sound(file, format, "not an MP3 file")
+    }
+}
+
+/// MP3 (`mp3`, `.mp3`), read for a music track, with the `mp3` feature:
+/// its first frame's header, and every frame for its length, without the
+/// silence its encoder added at the ends when its LAME tag says how much.
+#[cfg(feature = "mp3")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Mp3Track;
+
+#[cfg(feature = "mp3")]
+impl Format for Mp3Track {
+    type Asset = MusicTrack;
+
+    fn id(&self) -> &'static str {
+        "mp3"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["mp3"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        mp3_sniff(bytes)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_SOUND_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        cx: &DecodeCx<'_>,
+    ) -> Result<MusicTrack, Vec<ContentError>> {
+        let sound = Mp3.decode(file, bytes, cx)?;
+        let samples = mp3_format(bytes, true).and_then(|(_, _, samples)| samples);
+        track(file, sound, samples, "its length can't be read (no frames)")
     }
 }
 
