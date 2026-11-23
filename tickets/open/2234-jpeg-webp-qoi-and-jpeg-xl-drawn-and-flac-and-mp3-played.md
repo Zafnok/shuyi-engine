@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2203"]
 nick_input: none
 completed:
@@ -26,9 +26,13 @@ to this ticket.
 
 Nothing reads them at run time today:
 
-- **Pictures in `shuyi-app`.** `Renderer::new`
-  (`crates/app/src/render.rs`) uploads each picture with `upload`, and
-  `recoloured` makes the recoloured copies. Both decode with
+- **Pictures in `shuyi-app`.** The `Renderer`
+  (`crates/app/src/render.rs`) makes each picture's texture the first
+  frame a sprite draws it (`ImageTextures`, ADR-0128 §5) with `upload`,
+  and `recoloured` makes the recoloured copies. A picture saved under
+  `--watch` is decoded again with `render::decode`, a loading card's
+  picture with `upload` (`backend.rs`), and the window capture's
+  painter decodes its pictures with `capture::decode`. All decode with
   macroquad's `Image::from_file_with_format`, as
   `ImageFormat::Png`. A JPEG fails, is logged, and every sprite of it
   is drawn as a magenta rectangle (`MISSING_COLOR`).
@@ -38,8 +42,9 @@ Nothing reads them at run time today:
   a `shuyi_ui::frame::raster::Image` (2332 moved the painter there). A
   JPEG doesn't decode, and its sprites are drawn in
   `raster::MISSING_COLOR`: the same magenta.
-- **Sounds.** `Audio::load` (`crates/app/src/audio.rs`) hands each
-  sound file's bytes to `Backend::load_sound`, macroquad's
+- **Sounds.** `Player::load` (`crates/platform/src/audio/player.rs`)
+  readies each sound file with `Backend::load_sound_file`, whose
+  default hands its bytes to `Backend::load_sound`, macroquad's
   `load_sound_from_bytes`. On native, quad-snd 0.2.8 decodes with
   `audrey`, built for WAV and Ogg Vorbis only, and `unwrap`s, so a FLAC
   sound would panic the game.
@@ -117,10 +122,13 @@ None.
     &DecodeCx::new())`. Its error is the registry's message, which
     names the formats it has. The sides fit in `u16`
     (`image::MAX_SIDE` is 4096).
-  - `Renderer::new` uploads each picture from `pixels` with the
+  - The `Renderer` makes each picture's texture from `pixels` with the
     nearest filter, and `recoloured` recolours the pixels `pixels`
     gives. A file no format reads is logged and drawn in
-    `MISSING_COLOR`, as today.
+    `MISSING_COLOR`, as today. The other places that decode a picture
+    go through `pixels` too: a picture saved under `--watch`
+    (`render::decode`), a loading card's picture, and the window
+    capture's painter (`capture::decode`).
   - **Either order with 2222:** if 2222 is done, `render.rs` already
     uploads atlas pages from their pixels: upload a picture with that
     function. If not, write `upload_rgba(width, height, rgba) ->
@@ -205,11 +213,13 @@ None.
     `format_problem` beside its `.sfx.ron` one, and make `sfx::to_wav`
     call `pcm16_wav` with one channel, so the crate has one WAV
     writer. If not, nothing to do (2225 adds `.sfx.ron` beside these).
-- **Sounds in `shuyi-app`** (`crates/app/src/audio.rs` and
-  `audio/native_music.rs`):
-  - `Audio::load` runs each sound file's bytes through
+- **Sounds in `shuyi-platform` and `shuyi-app`**
+  (`crates/platform/src/audio/player.rs`, `crates/app/src/audio.rs`
+  and `audio/native_music.rs`):
+  - The default `Backend::load_sound_file`, which `Player::load` calls
+    for each sound file, runs its bytes through
     `audio::decode_to_wav` before `Backend::load_sound`, on every
-    target (sounds are short). `None` hands the bytes over as today,
+    target and backend (sounds are short). `None` hands the bytes over as today,
     `Some(Ok(wav))` hands the WAV, and `Some(Err(why))` is a warning,
     `sound "<cue>": <file>: <why>`. Those bytes never reach the
     backend, since quad-snd panics on a file it can't read.
@@ -220,13 +230,12 @@ None.
   - Web music: `load_music` (wasm32) takes the length from
     `track_length_ms` and hands the file to the browser as it is.
   - The docs of `Backend::length` and `Clip` say OGG, FLAC or MP3.
-  - **From 3031 (done):** supply FLAC/MP3 through 2210's source contract and
-    the external decoder adapters in bounded chunks, on native and
-    the current-loader web path: `Kind` and `track_source` in
-    `crates/app/src/audio/in_house.rs` are where a format joins the stream.
-    Do not turn a streamed replacement track into one whole WAV/AudioBuffer.
-    Its comparative tests use 2573's correctness/speed checks and retain the old
-    reference until 3079.
+  - **From 3031 (done), split to 2269:** FLAC and MP3 tracks streamed
+    through 2210's source contract in bounded chunks, on the
+    `in-house-sound` backend (`Kind` and `track_source` in
+    `crates/app/src/audio/in_house.rs`), are ticket 2269's. Here that
+    backend gets FLAC and MP3 sounds as WAV through
+    `load_sound_file`, as every backend does.
 
 - **No feature of their own.** `shuyi-app` and `shuyi-cli` add none.
   With every format feature off nothing changes: no new dependency in
@@ -275,7 +284,15 @@ None.
 - the rest of the replacement sound (2210, 3030–3032, parked), the
   initial parity gate (2573) and final quad-snd removal (3079). The
   legacy path still receives short effects as WAV; replacement PCM
-  sources use the adapters above.
+  sources use the adapters of 2269;
+- FLAC and MP3 stream sources for the `in-house-sound` backend (2269).
+
+**Estimated size:** about 1,250 lines (code 550, tests 550, docs 150),
+without the in-house stream adapters, which would add about 500.
+
+**Split:** past 1,000 lines, split off the in-house FLAC and MP3 stream
+sources (`shuyi-sound` adapters, `Kind` and `track_source`) into ticket
+2269, written in this PR.
 
 ## Implementation steps
 
@@ -291,7 +308,7 @@ None.
    `track_length_ms`, with their tests.
 4. Change the manifest check: `Check::sound`, `Check::music` and
    `format_problem`.
-5. Run sounds through `decode_to_wav` in `Audio::load`, write
+5. Run sounds through `decode_to_wav` in `load_sound_file`, write
    `track_bytes` for native music, and change the web's `load_music`.
 6. Decode pictures through the registry in `render.rs` and
    `frame_png::decode_image`.
@@ -324,7 +341,7 @@ None.
 - [ ] `decode_to_wav` gives `None` for a `.wav`, an `.ogg`, and a
       `.flac` whose bytes are already a WAV, and an error for broken
       bytes.
-- [ ] `Audio::load` hands a `.flac` sound to the backend as a WAV (the
+- [ ] `load_sound_file` hands a `.flac` sound to the backend as a WAV (the
       `Fake` backend's test), and a broken one is a warning that never
       reaches the backend.
 - [ ] `track_bytes` gives a FLAC track's WAV and its length, and an
@@ -358,7 +375,7 @@ None.
   - the manifest check: the new names, a wrong `length_ms`, broken
     bytes, and the message with the feature off.
 - Unit, `shuyi-app`: `pixels` on each image fixture and a PNG;
-  `Audio::load` with a `.flac` and a broken `.flac` (the `Fake`
+  `load_sound_file` with a `.flac` and a broken `.flac` (the `Fake`
   backend); `track_bytes` on a FLAC and an OGG.
 - Unit, `shuyi-cli`: the `Painter` with each image fixture against its
   PNG twin; a file no format reads draws in `MISSING_COLOR`.

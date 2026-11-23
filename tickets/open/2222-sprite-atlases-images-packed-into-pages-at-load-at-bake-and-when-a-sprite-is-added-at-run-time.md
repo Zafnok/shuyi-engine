@@ -80,11 +80,11 @@ None.
   sprite draws it (`ImageTextures`, `crates/app/src/image_textures.rs`):
   a page is uploaded when it is first drawn, as a picture is, and again
   when it changes.
-  **Either order with 2234** (pictures in 2203's formats): if 2234 is
-  done, `crates/app/src/render.rs` has `upload_rgba(width, height,
-  rgba)`, which uploads pixels as a texture with the nearest filter:
-  upload a page with it. If not, write it there and upload pages with
-  it, and 2234 uploads its pictures with it.
+  **From 2234 (done):** `crates/app/src/render.rs` has
+  `upload_rgba(width, height, rgba)`, which uploads pixels as a texture
+  with the nearest filter, and every picture is uploaded through it
+  (from `render::pixels`, which reads 2203's formats too): upload a page
+  with it.
 - **In the raster** (`shuyi_ui::frame::raster`): atlas pages and inserted
   sprites are drawn as the window draws them, so `frame-png` keeps
   showing what players see. Add an atlas sprite and an inserted one to

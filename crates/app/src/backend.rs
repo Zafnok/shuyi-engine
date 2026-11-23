@@ -26,7 +26,7 @@ use std::borrow::Cow;
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
-use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_assets::format::{DecodeWatch, Decoded, Formats, watch_decodes};
 #[cfg(target_arch = "wasm32")]
 use shuyi_platform::ChosenFile;
 use shuyi_platform::audio::player::{Player, PlayerDevice};
@@ -302,11 +302,12 @@ impl Macroquad {
         let files = self.files;
         let wanted = remakes(&self.changed, self.font_png, look.images);
         self.changed.clear();
+        let formats = renderer.formats();
         let fresh = decode_each(
             &wanted,
             self.font_png,
             |path| pictures::read(files, path),
-            decode,
+            |path, bytes| decode(formats, path, bytes),
             &mut self.picture_errors,
         );
         renderer.remake(fresh, look.font);
@@ -417,7 +418,7 @@ impl Macroquad {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
                     let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
-                        .and_then(|png| upload(&png));
+                        .and_then(|bytes| upload(&Formats::standard(), path, &bytes));
                     if let Err(e) = &texture {
                         log::warn!(target: "assets", "loading card: {path}: {e}");
                     }

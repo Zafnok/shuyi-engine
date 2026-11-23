@@ -41,6 +41,7 @@ use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use macroquad::prelude::*;
+use shuyi_assets::format::Formats;
 use shuyi_platform::capture::{Plan, PlannedFrame};
 use shuyi_platform::script::FRAME_DT;
 use shuyi_platform::{
@@ -338,7 +339,7 @@ impl Platform for Capturing {
 }
 
 /// The raster's painter of `look`, its pictures decoded as the renderer
-/// decodes its textures (`render::upload`), over `background`. A picture
+/// decodes its textures (`render::pixels`), over `background`. A picture
 /// that doesn't decode is left out, as the renderer leaves its texture
 /// out.
 fn painter(
@@ -347,24 +348,26 @@ fn painter(
     files: fn(&str) -> Option<Cow<'static, [u8]>>,
     font_png: &str,
 ) -> Result<Painter, String> {
-    let atlas = decode(&files(font_png).unwrap_or_default())
+    let formats = Formats::standard();
+    let decode = |path: &str, bytes: &[u8]| decode(&formats, path, bytes);
+    let atlas = decode(font_png, &files(font_png).unwrap_or_default())
         .map_err(|e| format!("font atlas image: {e}"))?;
     let images = look
         .images
         .ids()
-        .filter_map(|id| Some((id, decode(&files(id.path())?).ok()?)))
+        .filter_map(|id| Some((id, decode(id.path(), &files(id.path())?).ok()?)))
         .collect();
     Ok(Painter::new(look.font.clone(), atlas, images, background))
 }
 
-/// PNG file `png` decoded as the renderer decodes it.
-fn decode(png: &[u8]) -> Result<raster::Image, String> {
-    let image =
-        Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())?;
+/// The picture file at `path` decoded as the renderer decodes it
+/// ([`render::pixels`](crate::render::pixels)).
+fn decode(formats: &Formats, path: &str, bytes: &[u8]) -> Result<raster::Image, String> {
+    let (width, height, rgba) = crate::render::pixels(formats, path, bytes)?;
     Ok(raster::Image {
-        width: u32::from(image.width),
-        height: u32::from(image.height),
-        rgba: image.bytes,
+        width: u32::from(width),
+        height: u32::from(height),
+        rgba,
     })
 }
 

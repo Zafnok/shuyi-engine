@@ -8,6 +8,7 @@
 //! main thread only polls for the result, then plays, fades and stops the
 //! track by sending messages to that context's mixer.
 
+use std::borrow::Cow;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -79,7 +80,7 @@ impl Contexts {
 /// its samples and returns the context to the pool.
 pub struct Music {
     sound: Sound,
-    /// How long it plays, if the file is an OGG.
+    /// How long it plays, if the file is an OGG, a FLAC or an MP3.
     length_ms: Option<u32>,
     /// Always `Some` until dropped.
     ctx: Option<AudioContext>,
@@ -89,8 +90,8 @@ pub struct Music {
 impl Music {
     /// Reads and decodes the music file at `path`. Runs on a worker thread.
     pub(crate) fn load(path: &str, contexts: Contexts) -> Result<Self, String> {
-        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-        let length_ms = shuyi_assets::audio::ogg_length_ms(&bytes);
+        let file = std::fs::read(path).map_err(|e| e.to_string())?;
+        let (bytes, length_ms) = track_bytes(path, &file)?;
         let ctx = contexts.take();
         // quad-snd `unwrap`s the decode; a corrupt file must not cost the
         // context (its mixer thread would idle forever unused).
@@ -110,7 +111,8 @@ impl Music {
         }
     }
 
-    /// How long it plays, in milliseconds, if the file is an OGG.
+    /// How long it plays, in milliseconds, if the file is an OGG, a FLAC
+    /// or an MP3.
     pub(crate) fn length_ms(&self) -> Option<u32> {
         self.length_ms
     }
@@ -132,6 +134,23 @@ impl Music {
             self.sound.stop(ctx);
         }
     }
+}
+
+/// What quad-snd decodes of the track file at `path`, whose bytes are
+/// `file`, and how long it plays: a FLAC or MP3 file as the WAV
+/// [`decode_to_wav`](shuyi_assets::audio::decode_to_wav) makes of it, any
+/// other as it is (ticket 2234). Its length is
+/// [`track_length_ms`](shuyi_assets::audio::track_length_ms)'s.
+pub(crate) fn track_bytes<'a>(
+    path: &str,
+    file: &'a [u8],
+) -> Result<(Cow<'a, [u8]>, Option<u32>), String> {
+    let length_ms = shuyi_assets::audio::track_length_ms(path, file);
+    let bytes = match shuyi_assets::audio::decode_to_wav(path, file) {
+        None => Cow::Borrowed(file),
+        Some(wav) => Cow::Owned(wav?),
+    };
+    Ok((bytes, length_ms))
 }
 
 impl Drop for Music {
@@ -312,6 +331,35 @@ mod tests {
         assert!(first.is_ok() && clips.iter().all(Result::is_ok));
         let length = first.ok().and_then(|m| m.length_ms());
         eprintln!("{path}: {length:?} ms; 20 clips: {before:?} KiB -> {after:?} KiB");
+    }
+
+    #[test]
+    fn a_flac_track_is_its_wav_and_an_ogg_track_its_own_bytes() {
+        let flac = include_bytes!("../../../assets/tests/fixtures/formats/tone.flac");
+        let (wav, length) = track_bytes("music/tone.flac", flac).unwrap();
+        assert!(matches!(wav, Cow::Owned(_)));
+        assert_eq!(&wav[..4], b"RIFF");
+        // 50 ms: 2,205 stereo frames of 16 bits, after the 44-byte header.
+        assert_eq!((wav.len(), length), (44 + 2205 * 4, Some(50)));
+        let ogg = include_bytes!("../../../../tools/sound-parity/corpus/fmt_44k_s.ogg");
+        let (bytes, length) = track_bytes("music/fmt.ogg", ogg).unwrap();
+        assert!(matches!(bytes, Cow::Borrowed(b) if b == ogg));
+        assert_eq!(length, shuyi_assets::audio::ogg_length_ms(ogg));
+        assert!(length.is_some());
+        let broken = track_bytes("music/tone.flac", &flac[..40]);
+        assert!(broken.is_err_and(|why| why.starts_with("not a readable FLAC file")));
+    }
+
+    #[test]
+    fn a_broken_flac_track_fails_before_touching_the_device() {
+        let path = std::env::temp_dir().join(format!("shuyi-2234-{}.flac", std::process::id()));
+        std::fs::write(&path, b"fLaC and nothing more").unwrap();
+        let contexts = Contexts::default();
+        let result = Music::load(&path.to_string_lossy(), contexts.clone());
+        std::fs::remove_file(&path).ok();
+        assert!(result.is_err());
+        let pooled = contexts.0.lock().map_or_default(|c| c.len());
+        assert_eq!(pooled, 0, "no context was opened");
     }
 
     #[test]

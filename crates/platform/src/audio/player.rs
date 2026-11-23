@@ -35,7 +35,7 @@ use alloc::format;
 use core::fmt;
 use core::future::Future;
 
-use shuyi_assets::audio::{AudioManifest, Files, LoopRegion, MusicCue};
+use shuyi_assets::audio::{AudioManifest, Files, LoopRegion, MusicCue, decode_to_wav};
 use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SharedSamples, SoundGroups, SoundId};
 
 use self::voice::Voices;
@@ -101,7 +101,7 @@ pub trait Backend {
     /// The track, once `loading` has finished (called once per frame).
     fn poll_music(&mut self, loading: &mut Self::Loading) -> Option<Result<Self::Sound, String>>;
     /// How long `sound` plays, in seconds, if that is known: it is for an
-    /// OGG file loaded with [`load_music`](Self::load_music).
+    /// OGG, FLAC or MP3 file loaded with [`load_music`](Self::load_music).
     fn length(&self, sound: &Self::Sound) -> Option<f64>;
     /// Plays `sound` from the start at `volume` (0–1): this playback.
     fn play(&mut self, sound: &Self::Sound, volume: f32, looped: bool) -> Self::Playing;
@@ -116,18 +116,26 @@ pub trait Backend {
 
     /// Readies the sound file `file` of the manifest. By default it reads
     /// the file with `files` and decodes it with
-    /// [`load_sound`](Self::load_sound); a device that loads a sound from
-    /// its own path says so here.
+    /// [`load_sound`](Self::load_sound): a FLAC or MP3 file as the WAV
+    /// [`decode_to_wav`] makes of it, which every backend reads (ticket
+    /// 2234), and one that doesn't decode is an error that never reaches
+    /// the backend. A device that loads a sound from its own path says so
+    /// here.
     fn load_sound_file(
         &mut self,
         file: &str,
         files: &Files<'_>,
     ) -> impl Future<Output = Result<Self::Sound, String>> {
         let bytes = (files.sound)(file);
+        let decoded = bytes
+            .as_deref()
+            .and_then(|bytes| decode_to_wav(file, bytes));
         async move {
-            match bytes {
-                Some(bytes) => self.load_sound(&bytes).await,
-                None => Err("not in the asset bundle".to_owned()),
+            match (bytes, decoded) {
+                (None, _) => Err("not in the asset bundle".to_owned()),
+                (Some(bytes), None) => self.load_sound(&bytes).await,
+                (Some(_), Some(Ok(wav))) => self.load_sound(&wav).await,
+                (Some(_), Some(Err(why))) => Err(why),
             }
         }
     }
@@ -2153,6 +2161,42 @@ mod tests {
         let mut backend = Required::default();
         let player = loaded(&mut backend);
         (backend, player)
+    }
+
+    /// Ticket 2203's FLAC fixture: 50 ms of stereo at 44.1 kHz.
+    const FLAC: &[u8] = include_bytes!("../../../assets/tests/fixtures/formats/tone.flac");
+
+    /// The files of a FLAC sound, `sfx/tone.flac`, and of a broken one.
+    fn flac_files(file: &str) -> Bytes {
+        match file {
+            "sfx/tone.flac" => Some(Cow::Borrowed(FLAC)),
+            "sfx/broken.flac" => Some(Cow::Borrowed(&FLAC[..40])),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_flac_sound_reaches_the_backend_as_a_wav() {
+        let files = Files::new(&flac_files, &shown, &|_: &str| false, "music");
+        // The fake reads only a PCM WAV: 2,205 frames of two samples.
+        let loaded = block_on(Fake::default().load_sound_file("sfx/tone.flac", &files));
+        assert_eq!(loaded, Ok("wav4410".to_owned()));
+        // A backend that takes anything never gets the broken one.
+        let broken = block_on(Required::default().load_sound_file("sfx/broken.flac", &files));
+        let why = broken.unwrap_err();
+        assert!(why.starts_with("not a readable FLAC file: "), "{why}");
+        // The player warns, as for any sound that doesn't load.
+        let mut m = AudioManifest::default();
+        let files_of = ["sfx/tone.flac", "sfx/broken.flac"].map(str::to_owned);
+        let chime = SoundCue::new(files_of.to_vec(), 100, CreditRef::Own);
+        m.sounds.insert("chime".into(), chime);
+        let mut fake = Fake::default();
+        let (music, voice) = ("music".into(), "voice".into());
+        let mut audio = block_on(Audio::load(&mut fake, m, &files, music, voice, 1));
+        assert_eq!(
+            audio.take_warnings(),
+            [format!("sound \"chime\": bundle/sfx/broken.flac: {why}")]
+        );
     }
 
     #[test]

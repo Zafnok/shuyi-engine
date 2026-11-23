@@ -136,10 +136,9 @@ None.
     text (as `AudioManifestRon` reads the bundle) or the WAV a game's
     hook rendered, and `SfxRon` fills the `Sound` kind's `length_ms`; if
     not, nothing to do (2225 does it).
-  - **Either order with 2234:** if 2234 is done, `sound_length_ms`
-    gives a `.flac` or `.mp3` file the length of 2234's
-    `audio::track_length_ms`, so a FLAC sound of a cue with
-    `max_copies` has a length; if not, nothing to do (2234 does it).
+  - **From 2234 (done):** `sound_length_ms` gives a `.flac` or `.mp3`
+    file the length of `audio::track_length_ms`, so a FLAC sound of a
+    cue with `max_copies` has a length.
 - **Copies in `Cues`** (`crates/platform/src/audio/cues.rs`, `no_std`,
   integers only):
   - `CopyId`: a `Copy`, `Ord` id around a `u64` counter that `Cues`
