@@ -2024,3 +2024,28 @@ he chose **"Unpark research now"**, then:
 - The rest of the platform layer's order stands: controllers (2903) stay
   parked, and unparking 3034 unparks nothing else. File embedding (2215)
   was unparked on its own the same day (above).
+
+## 2026-11-23: the hosted preview (2602) unparked, built and tested locally only
+
+Source: Nick, in a Claude Code session, asking what was left before the
+reverse-engineering research scripts could be removed (2093, after 3083,
+after 2602). Told that 2602 builds the preview server but that building
+and testing it costs nothing, that only running it publicly for real
+invitees costs a machine and its traffic, and that it could be unparked
+with the line "runs locally and in CI only; no paid hosting until Nick
+approves its measured cost", he said:
+
+> "ok sure do that"
+
+**Rules:**
+
+- **2602 is unparked** and may be worked now.
+- **2602 runs on Nick's machine and in CI only.** No server is rented,
+  no hosting account is opened, and nothing is deployed where the
+  public can reach it. Its measured CPU, memory, traffic and session
+  limits are the cost estimate Nick decides a real deployment from.
+- **Paid hosting waits for Nick's go-ahead** on that measured cost, as
+  any server does (2026-10-14, *Networking, if it doesn't cost the
+  game*).
+- Unparking 2602 unparks nothing else: 2603, 3083 and 2093 stay parked,
+  and the rest of networking stays parked.
