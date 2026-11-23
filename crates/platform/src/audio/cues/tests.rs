@@ -181,6 +181,12 @@ fn a_lowest_volume_over_the_cues_volume_in_code_plays_at_the_cues() {
     )]);
     let (out, _) = apply(&mut Cues::new(3), &m, 0, &[play("loud"), play("loud")]);
     assert_eq!(picks(&out), [(0, 50), (0, 50)]);
+    // One equal to it draws nothing: the files picked are as with none.
+    let at = |min| manifest(&[("step", cue(3, 50, CueRules::DEFAULT.with_volume_min(min)))]);
+    let steps = [play("step"), play("step"), play("step"), play("step")];
+    let (equal, _) = apply(&mut Cues::new(3), &at(Some(50)), 0, &steps);
+    let (none, _) = apply(&mut Cues::new(3), &at(None), 0, &steps);
+    assert_eq!(picks(&equal), picks(&none));
 }
 
 #[test]

@@ -208,10 +208,11 @@ impl Cues {
 }
 
 /// Whether a play at `now` is inside the gap `rules` leave after the play
-/// `sounded` last: a clock that goes backwards counts as no time passing.
+/// `sounded` last (none with a gap of 0): a clock that goes backwards
+/// counts as no time passing.
 fn too_soon(rules: CueRules, sounded: Option<Millis>, now: Millis) -> bool {
     let gap = u64::from(rules.min_gap_ms);
-    gap > 0 && sounded.is_some_and(|at| now.0.saturating_sub(at.0) < gap)
+    sounded.is_some_and(|at| now.0.saturating_sub(at.0) < gap)
 }
 
 /// A play's volume in percent: a whole percent from `min` to `volume`, or

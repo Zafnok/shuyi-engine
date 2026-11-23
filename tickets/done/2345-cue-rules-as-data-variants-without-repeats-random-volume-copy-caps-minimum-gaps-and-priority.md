@@ -486,7 +486,7 @@ before: |
   let player = Player::load(backend, manifest, &files, music, voice, seed).await;
 after: |
   let player = Player::load(backend, manifest, &files, music, voice).await;
-find: ["Player::load("]
+find: ["voice, seed)"]
 ```
 
 Breaking: shuyi-playdate: `audio::player`: it takes no `seed`; a front end drops the last argument.
@@ -500,7 +500,7 @@ before: |
   let player = audio::player(speaker, manifest, seed);
 after: |
   let player = audio::player(speaker, manifest);
-find: ["audio::player("]
+find: ["manifest, seed)"]
 ```
 
 Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form has its rules, and a baked pack is of version 21; a pack baked before is refused, so a game bakes again with `shuyi bake`.
