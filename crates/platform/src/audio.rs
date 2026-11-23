@@ -224,7 +224,10 @@ pub trait Audio {
     /// started (once its file had loaded), or `None` in silence: nothing
     /// asked for, a track still loading or whose file failed. Of two
     /// tracks sounding (a crossfade), the newest: the old one until the
-    /// new one has loaded.
+    /// new one has loaded. A track that goes round a loop region says where
+    /// it is in the track: past the region's end, back by its length as
+    /// often as it has gone round (ticket 2397); one played whole counts on,
+    /// and `ui` wraps it at its length.
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)>;
 
     /// The voice clip sounding at `now`, by its file

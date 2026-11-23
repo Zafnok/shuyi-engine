@@ -23,7 +23,9 @@ use shuyi_core::{BalanceSettings, Balanced, Stop};
 
 use super::codes::Code;
 use super::playtest::options_text;
-use super::playtest::{DEFAULT_TRIES, check_tries, checks_of, choose, played, seconds, threads};
+use super::playtest::{
+    DEFAULT_TRIES, check_tries, checks_of, choose, played, rounded, seconds, threads,
+};
 use super::{Answer, Op, codes};
 use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
 
@@ -121,8 +123,8 @@ pub struct AutobalanceOutput {
     pub after: PlaytestReport,
     /// With `apply`: the files the game wrote, none when nothing changed.
     pub written: Option<Vec<String>>,
-    /// The search's wall time, in seconds: the one number that changes
-    /// with the machine and the thread count.
+    /// The search's wall time, in seconds to the millisecond: the one
+    /// number that changes with the machine and the thread count.
     pub seconds: f64,
 }
 
@@ -184,7 +186,7 @@ pub fn autobalance(game: &dyn GameTools, input: &AutobalanceInput) -> Answer<Aut
         Ok(searched) => searched,
         Err(e) => return failed(codes::GAME_ERROR, e),
     };
-    let seconds = started.elapsed().as_secs_f64();
+    let seconds = rounded(started.elapsed().as_secs_f64(), 3);
     let found = searched.balanced;
     let limits = limits(&found, input.time, settings.tries.turns);
     let (written, write_error) = match searched.written {

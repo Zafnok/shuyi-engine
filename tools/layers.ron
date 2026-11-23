@@ -71,6 +71,14 @@
                 // The pack (ADR-0023): its binary form and its compression.
                 "postcard",
                 "lz4_flex",
+                // More picture and sound formats, each behind its feature
+                // (ticket 2203): JPEG, WebP, QOI, JPEG XL, FLAC and MP3.
+                "zune-jpeg",
+                "image-webp",
+                "qoi",
+                "jxl-oxide",
+                "claxon",
+                "nanomp3",
             ]),
             devices: false,
             floats: true,

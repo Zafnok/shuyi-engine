@@ -27,6 +27,19 @@ golden = []
 # `message::parse_count`, which counts `Message::parse` on the thread: a
 # test that no frame parses a text turns it on (ticket 2266).
 parse-count = ["std"]
+# More picture and sound formats (ticket 2203, ADR-0007 §3), each its own
+# switch so a game pays only for what it uses: `Formats::standard()`
+# registers a format once its feature is on. Pictures: the pixels
+# (`image::Image`) and the size (`image::ImageInfo`). Sounds: the header
+# (`audio::Sound`) and a music track's header and length
+# (`audio::MusicTrack`). The decoders are scalar, so a picture's pixels
+# are the same on every target (ADR-0007 §5).
+jpeg = ["dep:zune-jpeg"]
+webp = ["std", "dep:image-webp"]
+qoi = ["dep:qoi"]
+jpeg-xl = ["std", "dep:jxl-oxide"]
+flac = ["std", "dep:claxon"]
+mp3 = ["dep:nanomp3"]
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -47,6 +60,15 @@ png = { version = "0.18", optional = true }
 # LZ4 in safe code, with its decoder checked so broken bytes are an error.
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 lz4_flex = { version = "0.14", default-features = false, features = ["alloc", "safe-encode", "safe-decode", "checked-decode"] }
+# The decoders of the formats above (ticket 2203), each only with its
+# feature: no SIMD (`x86`, `neon`), no threads (`rayon`), no layers I and
+# II of MPEG audio.
+zune-jpeg = { version = "0.5", optional = true, default-features = false }
+image-webp = { version = "0.2", optional = true, default-features = false }
+qoi = { version = "0.4", optional = true, default-features = false, features = ["alloc"] }
+jxl-oxide = { version = "0.12", optional = true, default-features = false }
+claxon = { version = "0.4", optional = true, default-features = false }
+nanomp3 = { version = "0.2", optional = true, default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 proptest.workspace = true
@@ -54,6 +76,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden", "parse-count"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3"] }
 # The heap counter `tests/lang_load.rs` reads (ticket 2266).
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

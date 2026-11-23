@@ -446,6 +446,8 @@ mod tests {
             length_ms: 1000,
             credit,
             group: None,
+            loop_start_ms: None,
+            loop_end_ms: None,
         }
     }
 

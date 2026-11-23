@@ -36,6 +36,8 @@
         "music_b": ("music_b.ogg", 6000),
         // A WAV as a stream, so that every frame of a loop's join has one right answer.
         "stream_loop": ("loop.wav", 500),
+        // No region in its cue: the file's `LOOPSTART` and `LOOPLENGTH` name it (2397).
+        "intro_loop": ("intro_loop.ogg", 2000),
     },
     scenarios: [
         (
@@ -375,15 +377,24 @@
         ),
         (
             // `intro_loop.ogg`: the 440 Hz intro once, then the 880 Hz region
-            // again and again, with no 440 Hz after the first pass.
+            // again and again, with no 440 Hz after the first pass. It comes round
+            // at 2500 and 3500, from its file's own tags (2397); quad-snd loops the
+            // whole file, so the intro comes back at 2500 there.
             name: "future_region",
-            backends: Some([]),
-            steps: [],
-            end: 4000,
+            backends: Some(["in-house", "in-house-web"]),
+            setup: [Load("intro_loop")],
+            settle: 500,
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Music("intro_loop", 1.0)),
+                (at: 3700, do: StopMusic("intro_loop")),
+            ],
+            end: 4300,
             expect: [
                 Tone(from: 650, to: 1350, ch: Both, hz: 440.0, amp: 0.5),
-                Tone(from: 1650, to: 3400, ch: Both, hz: 880.0, amp: 0.5),
-                Tone(from: 1650, to: 3400, ch: Both, hz: 440.0, amp: 0.0),
+                Tone(from: 1650, to: 3550, ch: Both, hz: 880.0, amp: 0.5),
+                Tone(from: 1650, to: 3550, ch: Both, hz: 440.0, amp: 0.0),
+                Silent(from: 3950, to: 4200),
             ],
         ),
     ],

@@ -9,6 +9,7 @@
 //!   [`read_all`].
 //! - [`mix`]: the integer [`Mixer`](mix::Mixer), its [`queue`](mix::queue) from
 //!   another thread, and the [`stream`](mix::stream) feed from a worker.
+//! - [`tags`]: the loop region a file's comments name.
 //! - [`error`]: what can go wrong, [`Error`].
 //! - `wav` (feature `wav`): `WavSource`, over the `hound` crate.
 //! - `vorbis` (feature `vorbis`): `VorbisSource`, over the `lewton` crate, with
@@ -31,6 +32,7 @@ pub mod error;
 pub mod mix;
 pub mod pcm;
 pub mod source;
+pub mod tags;
 
 #[cfg(any(feature = "wav", feature = "vorbis"))]
 mod guard;

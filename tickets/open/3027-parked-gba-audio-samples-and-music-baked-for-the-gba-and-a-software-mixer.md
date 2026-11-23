@@ -42,12 +42,17 @@ multiply) against the `gba` budget.
 **From 2902 (done):** keep tracker/PCM playback separate from desktop
 library decoders and CPAL. This GBA backend does not require live Vorbis/MP3 decoding.
 
-**Either order with 2397:** if 2397 is done, map its loop-region fields
-to tracker positions and the song's restart point only where exactly
-representable. Test the time conversion, intro once and wrap behavior;
-an unrepresentable region uses the provided method's `Unsupported`
-result and one explicit fallback warning. If not, nothing to do (2397
-adds the common fields, mapping and tests).
+**From 2397 (done):** a looped `MusicCue` may name a loop region
+(`MusicCue::loop_region`, a half-open `LoopRegion` in milliseconds), and
+the shared player calls the provided `Backend::set_loop_region(sound,
+region)` once a looped track loads; the backend answers the `Looping` it
+plays, and the clock follows that
+([ADR-0137](../../docs/adr/0137-a-tracks-loop-region-is-the-cues-or-its-files-played-by-the-backend-and-the-clock-told-where-it-is.md)).
+Implement it here: map the region to tracker positions and the song's
+restart point only where exactly representable, with checked conversion.
+Test the time conversion, intro once and wrap behavior; an
+unrepresentable region answers `Err(Unsupported)`, which the player warns
+of once and plays whole, rather than rounding arbitrary milliseconds.
 
 ## Nick input
 

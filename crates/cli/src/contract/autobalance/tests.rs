@@ -271,6 +271,9 @@ fn a_stage_too_hard_is_eased_into_its_band() {
     let got = game.wrote.lock().unwrap();
     assert!(got.is_empty(), "{got:?}");
     assert!(output.seconds >= 0.0);
+    // To the millisecond.
+    let millis = output.seconds * 1e3;
+    assert!((millis - millis.round()).abs() < 1e-6, "{}", output.seconds);
     // At the default quick runs of 20 tries, the stage as authored plays
     // quick too, and -3 and -2 in full: three runs more.
     let output = found(&game, &AutobalanceInput::default());

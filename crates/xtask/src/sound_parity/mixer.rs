@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use shuyi_sound::mix::stream::{LoopedRegion, feed};
 use shuyi_sound::mix::{Config, Full, Mixer, Params, Region, SharedPcm};
+use shuyi_sound::vorbis::VorbisSource;
 use shuyi_sound::{Channels, Error, Limits, Pcm, PcmFormat, SharedSource, Source};
 
 use super::corpus::{self, Signal};
@@ -24,6 +25,8 @@ const PLATFORM: &str = "mixer";
 const BLOCK_FRAMES: usize = 512;
 /// How many frames of a stream a worker holds ready.
 const RING_FRAMES: usize = 4096;
+/// The corpus's file whose tags name a region (`LOOPSTART`, `LOOPLENGTH`).
+const INTRO_LOOP: &[u8] = include_bytes!("../../../../tools/sound-parity/corpus/intro_loop.ogg");
 /// One rounding step each way: what arithmetic in floats and in fixed point may
 /// differ by.
 const ROUNDING: i32 = 1;
@@ -236,6 +239,52 @@ fn region_from_a_worker() -> Case {
     let mut block = vec![0; BLOCK_FRAMES * 2];
     while out.len() < expected.len() {
         feeder.fill_from(&mut decoder).map_err(|e| e.to_string())?;
+        mixer.render(&mut block);
+        out.extend_from_slice(&block);
+    }
+    out.truncate(expected.len());
+    if mixer.underrun_frames() > 0 {
+        return Err(format!("{} frames underran", mixer.underrun_frames()));
+    }
+    Ok((out, expected, 0))
+}
+
+/// Ticket 2397: the corpus's Ogg file round the region its own tags name, as the
+/// backend plays a track: a worker going back by an exact seek, into a ring a
+/// quarter of `RING_FRAMES` that wraps over and over, fed only every other block
+/// and drained to empty between. The intro once and the region twice, each frame
+/// the whole decode's: nothing added, lost or doubled at a join or a page's edge.
+fn region_from_the_file() -> Case {
+    let limits = Limits::default();
+    let failed = |e: Error| e.to_string();
+    let mut whole = VorbisSource::new(INTRO_LOOP, &limits).map_err(failed)?;
+    let whole = shuyi_sound::read_all(&mut whole, &limits).map_err(failed)?;
+    let first = VorbisSource::new(INTRO_LOOP, &limits).map_err(failed)?;
+    let region = first.loop_region().map_err(failed)?;
+    let region = region.ok_or("intro_loop.ogg names no region")?;
+    let start = region.start();
+    let restart = move || VorbisSource::new_at(INTRO_LOOP, &limits, start);
+    let mut decoder = LoopedRegion::landing(first, region, restart);
+    let (mut feeder, ring) = feed(decoder.format(), RING_FRAMES / 4);
+    let mut mixer = stereo(whole.format().rate, 1);
+    mixer.stream(ring, Params::new()).map_err(full)?;
+    let index = |frame: u64| usize::try_from(frame * 2).unwrap_or(usize::MAX);
+    let samples = whole.samples();
+    let round = samples
+        .get(index(start)..index(region.end()))
+        .ok_or("the region is past the decode")?;
+    let mut expected = samples[..index(region.end())].to_vec();
+    expected.extend_from_slice(round);
+    expected.extend_from_slice(round);
+    let mut out = Vec::new();
+    let mut block = vec![0; BLOCK_FRAMES * 2];
+    for at in 0.. {
+        if out.len() >= expected.len() {
+            break;
+        }
+        if at % 2 == 0 {
+            feeder.fill_from(&mut decoder).map_err(failed)?;
+        }
         mixer.render(&mut block);
         out.extend_from_slice(&block);
     }
@@ -494,7 +543,7 @@ fn fault_cells() -> Vec<Value> {
 
 /// The mixer stage's correctness: every case, the memory, and the faults.
 pub(crate) fn correctness_cells(memory: MixerMemory) -> Vec<Value> {
-    let cases: [(&str, Run); 14] = [
+    let cases: [(&str, Run); 15] = [
         ("pause", pause),
         ("rate-double", || at_rate("fmt_48k_s.wav", 131_072, 48_000)),
         ("rate-half", || at_rate("tone.wav", 32_768, 44_100)),
@@ -505,6 +554,7 @@ pub(crate) fn correctness_cells(memory: MixerMemory) -> Vec<Value> {
         ("loop", looped),
         ("region-in-the-mix", region_in_the_mix),
         ("region-from-a-worker", region_from_a_worker),
+        ("region-from-the-file", region_from_the_file),
         ("two-streams", two_streams),
         ("gains", gains),
         ("clamp", clamps),

@@ -368,3 +368,157 @@ fn samples_written_as_a_wav_read_back_the_same() {
         }
     }
 }
+
+/// The parity gates' file with a region: a second at 440 Hz, a second at 880 Hz, and
+/// `LOOPSTART` and `LOOPLENGTH` naming the second second.
+const INTRO_LOOP: &[u8] = include_bytes!("../../../../../tools/sound-parity/corpus/intro_loop.ogg");
+
+/// `bytes` decoded whole, as the mixer would hear them played once.
+fn decoded(bytes: &[u8]) -> Vec<i16> {
+    let limits = Limits::default();
+    let pcm = VorbisSource::new(bytes, &limits).and_then(|mut s| read_all(&mut s, &limits));
+    pcm.unwrap_or_else(|e| panic!("{e}")).samples().to_vec()
+}
+
+/// The first `samples` samples of `clip`'s looped play, read from its source in
+/// chunks of an odd size, as a worker would.
+fn looped_samples(clip: &Clip, samples: usize) -> Vec<i16> {
+    let Clip::Stream { track, region, .. } = clip else {
+        panic!("a track");
+    };
+    // As a looped play has it: the whole track where there is no region.
+    let region = region.get().or(Region::new(0, u64::MAX));
+    let mut source = track_source(track, region).unwrap_or_else(|e| panic!("{e}"));
+    let mut out = Vec::new();
+    let mut chunk = [0; 1234];
+    while out.len() < samples {
+        let read = source.read(&mut chunk).unwrap_or_else(|e| panic!("{e}"));
+        assert!(read > 0, "a looped track doesn't end");
+        out.extend_from_slice(&chunk[..read * 2]);
+    }
+    out.truncate(samples);
+    out
+}
+
+/// What the intro once, then `region` (in stereo frames) twice and a half, are.
+fn intro_then_round(whole: &[i16], start: usize, end: usize) -> Vec<i16> {
+    let round = &whole[start * 2..end * 2];
+    let mut expected = whole[..end * 2].to_vec();
+    expected.extend_from_slice(round);
+    expected.extend_from_slice(round);
+    expected.extend_from_slice(&round[..round.len() / 2]);
+    expected
+}
+
+/// Ticket 2397: the file's own region, from its tags, exact at every way round.
+#[test]
+fn an_ogg_files_own_region_is_gone_round_exactly() {
+    let (mut backend, _side) = backend();
+    let clip = stream(INTRO_LOOP.to_vec());
+    let looping = backend.set_loop_region(&clip, None);
+    assert_eq!(
+        looping,
+        Ok(Looping::Region {
+            start: 1.0,
+            end: 2.0
+        })
+    );
+    let whole = decoded(INTRO_LOOP);
+    let expected = intro_then_round(&whole, 44_100, 88_200);
+    assert!(looped_samples(&clip, expected.len()) == expected);
+}
+
+/// A cue's region wins, in the file's frames, both near the start (read again from
+/// the first frame) and far in (an exact seek).
+#[test]
+fn a_cues_region_wins_over_the_files_in_its_frames() {
+    let (mut backend, _side) = backend();
+    let whole = decoded(INTRO_LOOP);
+    for (start_ms, end_ms, start, end) in [(500, 1500, 22_050, 66_150), (100, 1999, 4410, 88_155)] {
+        let clip = stream(INTRO_LOOP.to_vec());
+        let asked = LoopRegion::new(start_ms, end_ms);
+        let looping = backend.set_loop_region(&clip, asked);
+        let secs = |frame: u32| f64::from(frame) / 44_100.0;
+        let said = Looping::Region {
+            start: secs(start),
+            end: secs(end),
+        };
+        assert_eq!(looping, Ok(said), "{start_ms}");
+        let (start, end) = (start as usize, end as usize);
+        let expected = intro_then_round(&whole, start, end);
+        assert!(
+            looped_samples(&clip, expected.len()) == expected,
+            "{start_ms}"
+        );
+    }
+}
+
+#[test]
+fn a_track_with_no_region_or_tags_that_do_not_read_loops_whole() {
+    let (mut backend, _side) = backend();
+    let plain = stream(wav(3));
+    assert_eq!(backend.set_loop_region(&plain, None), Ok(Looping::Whole));
+    let mut track = Track::new(INTRO_LOOP.to_vec()).unwrap_or_else(|e| panic!("{e}"));
+    track.file_region = Err("LOOPLENGTH is 0: a region has a frame at least".to_owned());
+    let unread = clip_of(track);
+    let looping = backend.set_loop_region(&unread, None);
+    let why = "LOOPLENGTH is 0: a region has a frame at least".to_owned();
+    assert_eq!(looping, Ok(Looping::Unread(why)));
+    let whole = decoded(INTRO_LOOP);
+    let twice = [whole.as_slice(), whole.as_slice()].concat();
+    assert!(looped_samples(&unread, twice.len()) == twice);
+    // A sound of the bank has nothing to go round but itself.
+    let effect = effect(&mut backend, &wav(3));
+    let asked = LoopRegion::new(0, 1);
+    assert_eq!(backend.set_loop_region(&effect, asked), Ok(Looping::Whole));
+}
+
+/// Through the worker and the mix: a cue's region of a WAV track, exact at the mixer's
+/// own rate, and a play once ignores it.
+#[test]
+fn a_tracks_region_is_heard_through_the_mix_and_a_play_once_plays_through() {
+    let (mut backend, mut side) = backend();
+    let clip = stream(wav(200));
+    // 1 ms to 3 ms at 48 kHz: frames 48 to 144, which are numbered 49 to 144.
+    let looping = backend.set_loop_region(&clip, LoopRegion::new(1, 3));
+    assert_eq!(
+        looping,
+        Ok(Looping::Region {
+            start: 0.001,
+            end: 0.003
+        })
+    );
+    backend.play(&clip, 1.0, true);
+    let mut heard = Vec::new();
+    until(&mut side, "the region never came round", |side| {
+        heard.extend(left(side, 16).into_iter().filter(|sample| *sample != 0));
+        heard.len() >= 500
+    });
+    let expected = (1..=144).chain((0..).flat_map(|_| 49..=144));
+    for (index, (sample, expected)) in heard.iter().zip(expected).enumerate() {
+        assert_eq!(*sample, expected, "{index}");
+    }
+    backend.play(&clip, 1.0, false);
+    let once = left(&mut side, 210);
+    assert_eq!(once[..200], (1..=200).collect::<Vec<i16>>()[..]);
+}
+
+/// Far into a long file, the way round is a seek that lands on the frame: what
+/// comes out is still exactly the whole decode's.
+#[test]
+fn a_region_far_into_a_long_file_is_gone_round_by_a_seek_exactly() {
+    const LONG: &[u8] = include_bytes!("../../../../../tools/sound-parity/corpus/long.ogg");
+    let (mut backend, _side) = backend();
+    let clip = stream(LONG.to_vec());
+    let looping = backend.set_loop_region(&clip, LoopRegion::new(5000, 6000));
+    assert_eq!(
+        looping,
+        Ok(Looping::Region {
+            start: 5.0,
+            end: 6.0
+        })
+    );
+    let whole = decoded(LONG);
+    let expected = intro_then_round(&whole, 220_500, 264_600);
+    assert!(looped_samples(&clip, expected.len()) == expected);
+}

@@ -176,6 +176,9 @@ pub struct LoopedRegion<S, F> {
     region: Region,
     /// The next frame `source` gives.
     at: u64,
+    /// Whether `restart` gives the source at the region's start, not its first
+    /// frame.
+    lands: bool,
 }
 
 impl<S: Source, F: FnMut() -> Result<S, Error>> LoopedRegion<S, F> {
@@ -186,12 +189,31 @@ impl<S: Source, F: FnMut() -> Result<S, Error>> LoopedRegion<S, F> {
             restart,
             region,
             at: 0,
+            lands: false,
+        }
+    }
+
+    /// `source`, from its first frame, looping `region`, where `restart` gives the
+    /// source at the region's first frame exactly (an exact seek, as
+    /// `VorbisSource::seek_exact` makes): nothing before the region is read again,
+    /// so a long intro costs nothing on the way round.
+    pub const fn landing(source: S, region: Region, restart: F) -> Self {
+        Self {
+            source,
+            restart,
+            region,
+            at: 0,
+            lands: true,
         }
     }
 
     /// Goes back to the start of the region.
     fn back(&mut self) -> Result<(), Error> {
         self.source = (self.restart)()?;
+        if self.lands {
+            self.at = self.region.start();
+            return Ok(());
+        }
         self.at = 0;
         let channels = usize::from(self.source.format().channels.count());
         let mut chunk = [0; CHUNK_SAMPLES];
