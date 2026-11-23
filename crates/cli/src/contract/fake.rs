@@ -27,7 +27,7 @@ use super::autobalance::AutobalanceInput;
 use super::perf::PerfRead;
 use super::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use super::replay::{Record, ReplayRun, ReplayStep};
-use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
+use super::session::{Dropped, Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{
     AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
@@ -136,9 +136,18 @@ impl Session for FakeSession {
     }
 
     fn sounds(&self) -> Vec<Sound> {
-        vec![Sound {
+        let click = Sound {
             frame: 1,
             cue: "click".to_owned(),
+        };
+        vec![click.clone(), click]
+    }
+
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        vec![Dropped {
+            frame: 1,
+            cue: "click".to_owned(),
+            why: "gap".to_owned(),
         }]
     }
 

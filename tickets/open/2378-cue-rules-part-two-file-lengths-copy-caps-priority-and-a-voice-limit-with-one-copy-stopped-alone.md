@@ -36,9 +36,10 @@ What the code has since 2345 (done):
   each sound's file and volume, and drops a play inside its cue's gap as
   `DroppedSound { cue, why: DropWhy::Gap }`. `DropWhy` is
   `#[non_exhaustive]`, and `DropWhy::word` names a reason (`gap`). The
-  Harness lists the drops (`Harness::dropped_sounds`). `run`'s answer
-  lists them under `dropped` once 3419 is done (`Dropped { frame, cue,
-  why }`, `why` being `DropWhy::word`).
+  Harness lists the drops (`Harness::dropped_sounds`). **From 3419
+  (done):** `run`'s answer lists them under `dropped` (`Dropped { frame,
+  cue, why }` in `crates/cli/src/contract/session.rs`, `why` being
+  `DropWhy::word`).
 - `SoundRequest::Sound` is `{ cue, volume, variant, cue_volume }`.
   Nothing counts the copies playing.
 - `shuyi-app`'s `Backend::play` (`crates/app/src/audio.rs`) returns
@@ -178,14 +179,13 @@ None.
     `crates/platform/src/audio.rs`'s tests,
     `crates/platform/src/app/tests.rs` and
     `crates/platform/src/headless/tests.rs`.
-- **The contract. Either order with 3419:** `DropWhy::word` names the
-  new reasons `copies`, `voices` and `cut`. If 3419 is done, `run`'s
-  `dropped` gives them as `why` with no change of shape; if the schemas
-  change (a doc comment that lists the words, say), raise
-  `contract::VERSION` (`crates/cli/src/contract.rs`), regenerate them
-  and add the line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
-  If not, nothing to do (3419 answers every reason `DropWhy::word`
-  names).
+- **The contract (from 3419, done):** `DropWhy::word` names the new
+  reasons `copies`, `voices` and `cut`, and `run`'s `dropped` gives them
+  as `why` with no change of shape. `Dropped::why`'s doc comment lists
+  the words (`gap` today): add the new ones there and in
+  `docs/contract.md`'s `run` row, raise `contract::VERSION`
+  (`crates/cli/src/contract.rs`), regenerate the schemas and add the
+  line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
 - **`shuyi-app` stops one copy alone** (`crates/app/src/audio.rs`,
   `crates/app/src/backend.rs`):
   - **From 2344 (done):** `Backend::play` returns `Self::Playing`, one
@@ -334,8 +334,8 @@ version and the 2225 clause. That PR adds it to this ticket's
 - [ ] In the Harness, with the toy game's `click` given `max_copies: 1`
       and a length of 500 ms (on its `lengths_ms`), Confirm on the menu
       overlay twice 100 ms apart lists the second click in
-      `dropped_sounds()` as `Copies`, and, if 3419 is done, `run`
-      answers it under `dropped` with `why: copies`.
+      `dropped_sounds()` as `Copies`, and `run` answers it under
+      `dropped` with `why: copies`.
 - [ ] `shuyi-app`'s player, against its fake backend: of two copies of
       one file, `StopCopy` stops exactly the copy it names and no other
       copy of the same file, and a copy whose length has passed gives

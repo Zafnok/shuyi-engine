@@ -187,6 +187,7 @@ impl Attached {
             frame,
             events: Vec::new(),
             sounds: Vec::new(),
+            dropped: Vec::new(),
             sounds_added: Vec::new(),
             log: log.lines.into_iter().map(log_entry).collect(),
             modules: Vec::new(),

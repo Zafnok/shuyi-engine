@@ -219,6 +219,22 @@ pub struct Sound {
     pub cue: String,
 }
 
+/// A play the cue rules dropped (ADR-0139): it is under the answer's
+/// sounds too, as the game asked for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct Dropped {
+    /// The frame it was asked for in.
+    pub frame: u32,
+    /// The cue.
+    pub cue: String,
+    /// Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`
+    /// after its last play that sounded.
+    pub why: String,
+}
+
 /// A sound the game made at run time
 /// ([`AudioQueue::add_sound`](shuyi_ui::audio::AudioQueue::add_sound)) and
 /// hasn't removed: its cue and the shape of its samples, never the samples.
@@ -453,6 +469,12 @@ pub trait Session {
 
     /// The sound cues asked for, in order.
     fn sounds(&self) -> Vec<Sound>;
+
+    /// The plays the cue rules dropped, in order (none by default). Each
+    /// is under [`sounds`](Self::sounds) too.
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        Vec::new()
+    }
 
     /// The sounds the game added at run time and hasn't removed, in cue
     /// order (none by default).
@@ -838,6 +860,18 @@ impl<G: GameData> Session for Headless<G> {
                     })
                 }
                 _ => None,
+            })
+            .collect()
+    }
+
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        self.harness
+            .dropped_sounds()
+            .into_iter()
+            .map(|(frame, dropped)| Dropped {
+                frame,
+                cue: dropped.cue.clone(),
+                why: dropped.why.word().to_owned(),
             })
             .collect()
     }
