@@ -230,11 +230,11 @@ impl GameTools for ToyTools {
             let platform = HeadlessPlatform::new()
                 .with_clock(PerfClock::fake())
                 .with_fake_memory();
-            return Ok(Box::new(Headless::new(Harness::on(game, platform))));
+            return Ok(painted(Harness::on(game, platform)));
         };
         let mut h = Harness::on(game, HeadlessPlatform::new());
         h.set_present_hook(Some(Box::new(move |_: &Frame<'_>| fixture())));
-        Ok(Box::new(Headless::new(h)))
+        Ok(painted(h))
     }
 
     /// The toy on the Playdate's console, as [`frame_one_bit`] draws it,
@@ -277,6 +277,14 @@ impl GameTools for ToyTools {
 
 /// The painter of the toy in `h`: its box font, its images as the
 /// missing colour, its blank cell's background as the clear colour.
+/// A session of `h`, its frame painted as `frame-png` paints it.
+fn painted(h: Harness<Toy>) -> Box<dyn Session> {
+    let picture = |h: &Harness<Toy>, scale: Option<u32>| {
+        Ok(painter(h)?.render(h.game().buffer(), scale.unwrap_or(2)))
+    };
+    Box::new(Headless::new(h).with_picture(picture))
+}
+
 fn painter(h: &Harness<Toy>) -> Result<Painter, String> {
     let ctx = h.ctx();
     let (atlas, png) = box_atlas()?;

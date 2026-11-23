@@ -6,20 +6,22 @@ milestone: "Parked: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2602", "2915"]
+blocked_by: ["2602", "2611", "2915"]
 nick_input: none
 completed:
 ---
 
 # 3083 — Mark closed previews and limit supported capture
 
-> **Parked** This follows the hosted preview service (2602). Nick's request puts the work on the ticket track, not into the current MVP. Nobody starts it until Nick unparks it.
+> **Parked** This follows the hosted preview service (2602, then 2609, 2610 and 2611). Nick's request puts the work on the ticket track, not into the current MVP. Nobody starts it until Nick unparks it.
 
 ## Context
 
 An authenticated preview can add a visible per-recipient mark and platform capture controls. Windows WDA_EXCLUDEFROMCAPTURE and Android FLAG_SECURE impede selected software recorders; Microsoft says the Windows flag is not DRM and cannot stop a camera. A public Steam trailer is transcoded and cannot carry the game's window policy. **From 2915 (done):** [its report](../../docs/research/2915-capture-controls-marks-and-ai-signals.md) sets the scope. A faint per-recipient mark named the right 1 of 1,000 recipients on YouTube's encode and a real phone film, but a person could see it on flat backgrounds and a short cleanup erased it, so call it faint and removable, never invisible. Windows' exclusion blocked all five software paths tested and a phone filmed every frame. A tiled visible code stayed readable but missed the readability screen, so a visible mark here must be drawn away from or behind the game's text and pass that screen. macOS and Android flags were read about, not run: this ticket's matrix runs them, and Apple documents `sharingType` as not to be used for this. Test on real art, in a live session, whether the detector still works without a clean frame. Magnifiers with the flag on are also untested. The report's `verify_public.py` checks are the starting point for the public-build test.
 
 **From 3302 (done):** a closed build's copy carries a recipient's code (`shuyi_assets::recipient::Code`, 8 characters with a check) in its program, its pack and one picture, recorded in a signed ledger ([ADR-0118](../../docs/adr/0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md)). `shuyi_app::recipient()` gives a copy's code, for the faint corner text a game may draw. A preview's visible mark can carry the same code and read the same ledger. Hosted previews and their marks stay this ticket's.
+
+**From 2602 (done):** a visitor's game runs in a worker of its own, `preview-worker`, which paints each frame and its text after the game's frame is drawn (`shuyi_cli::preview::worker::Visit::shown`): a mark painted there is outside the game's rules. The server's sessions (2609), whose ids an invitation can bind to, and the page that shows the mark (2611) come after it ([ADR-0141](../../docs/adr/0141-the-hosted-preview-a-worker-per-visitor-actions-in-pictures-out.md)).
 
 ## Nick input
 

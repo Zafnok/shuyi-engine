@@ -107,6 +107,20 @@ mod toy {
     }
 
     #[test]
+    fn a_visitors_session_has_no_debug_tools_and_presses_what_a_player_rebinds() {
+        assert_eq!(Bare.for_visitor(), None);
+        let mut s = session();
+        s.harness.ctx_mut().debug_tools = true;
+        let pressable = s.actions();
+        let visitor = s.for_visitor().unwrap();
+        assert!(!s.harness().ctx().debug_tools);
+        assert!(pressable.contains(&"Debug".to_owned()), "{pressable:?}");
+        let expected: Vec<String> = pressable.into_iter().filter(|a| a != "Debug").collect();
+        assert_eq!(visitor, expected);
+        assert!(visitor.contains(&"Confirm".to_owned()));
+    }
+
+    #[test]
     fn a_session_lists_its_games_modules() {
         assert_eq!(session().modules(), []);
         let game = toy::game().with_module(Shade).unwrap();
