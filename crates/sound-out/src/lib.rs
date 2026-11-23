@@ -265,19 +265,19 @@ impl Output {
         String::new()
     }
 
-    /// How many times the system said the device's buffer ran dry, and how many
-    /// streams were built again for having stopped calling back. Nothing asks this but
-    /// a probe; 0 and 0 where there is no stream.
+    /// How many times the system said the device's buffer ran dry, how many streams
+    /// were built again for having stopped calling back, and how many other errors the
+    /// system gave. Nothing asks this but a probe; zeros where there is no stream.
     #[cfg_attr(
         not(any(windows, target_os = "linux", target_os = "macos")),
         allow(clippy::unused_self)
     )]
-    pub fn glitches(&self) -> (u32, u32) {
+    pub fn glitches(&self) -> (u32, u32, u32) {
         #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         if let Inner::System(output) = &self.inner {
             return output.glitches();
         }
-        (0, 0)
+        (0, 0, 0)
     }
 
     /// How far ahead of their playing a callback's samples were at the most, as the

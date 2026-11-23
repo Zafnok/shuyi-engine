@@ -288,10 +288,10 @@ fn say_output(backend: &SoundProbeBackend) {
         let device = clean(&backend.output_device());
         let ahead = backend.output_ahead_ms();
         let (calls, frames) = backend.output_calls();
-        let (xruns, stalls) = backend.output_glitches();
+        let (xruns, stalls, errors) = backend.output_glitches();
         let rebuilt = clean(&backend.output_rebuilt_because());
         say(&format!(
-            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised},"silent_because":{problem},"device":"{device}","ahead_ms":{ahead:.1},"callbacks":{calls},"frames":{frames},"xruns":{xruns},"stalls":{stalls},"rebuilt_because":"{rebuilt}"}}"#
+            r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised},"silent_because":{problem},"device":"{device}","ahead_ms":{ahead:.1},"callbacks":{calls},"frames":{frames},"xruns":{xruns},"stalls":{stalls},"errors":{errors},"rebuilt_because":"{rebuilt}"}}"#
         ));
     }
     #[cfg(not(all(feature = "in-house-sound", not(target_arch = "wasm32"))))]

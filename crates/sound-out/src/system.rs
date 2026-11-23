@@ -56,6 +56,21 @@ fn buffer_size(supported: &SupportedBufferSize, rate: u32, fixed: bool) -> Buffe
     }
 }
 
+/// Whether a system's errors with no kind of their own pass, as long as the stream
+/// still calls back: on Linux, ALSA's plugin for `PulseAudio` says an I/O error early
+/// in a stream that plays on (`snd_pcm_avail_delay`, 4 scenarios in 36 of CI run
+/// 45205209022), and building it again would cut the sound (ticket 3032). A stream
+/// that did end stops calling back, and [`Stall`] builds it again.
+const PASSING_BACKEND_ERRORS: bool = cfg!(target_os = "linux");
+
+/// Whether an error of `kind` ends a stream, so that it is built again at once: the
+/// device or the system is gone, the stream is no use, or the error is one the system
+/// couldn't name (`backend_passes`: unless such errors pass, as on Linux). A glitch, a
+/// reroute or a refused priority never reaches here.
+const fn ends_the_stream(kind: ErrorKind, backend_passes: bool) -> bool {
+    !matches!(kind, ErrorKind::BackendError if backend_passes)
+}
+
 /// How long a stream that plays may go without a callback before it counts as lost: a
 /// stream on ALSA's plugin for `PulseAudio` can stop calling back with no error at all (ticket
 /// 3032), and every system calls back many times a second.
@@ -120,8 +135,10 @@ pub(crate) struct Stats {
     pub(crate) xruns: AtomicU32,
     /// How many streams were built again for making no callback ([`Stall`]).
     pub(crate) stalls: AtomicU32,
-    /// The latest error the system gave a stream, as it says it.
+    /// The latest error the system gave a stream, as it says it, and how many it gave
+    /// that weren't glitches it plays on through.
     pub(crate) error: Mutex<String>,
+    pub(crate) errors: AtomicU32,
     /// Why a stream was last built again.
     pub(crate) rebuilt: Mutex<String>,
 }
@@ -183,18 +200,23 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
     let silence = T::from_mix(0);
     let channels = usize::from(stream.channels).max(1);
     let counted = Arc::clone(&stats);
-    let on_error = move |error: cpal::Error| match error.kind() {
-        // A glitch that it plays on through, counted for a probe to read.
-        ErrorKind::Xrun => {
+    let on_error = move |error: cpal::Error| {
+        let kind = error.kind();
+        if kind == ErrorKind::Xrun {
             counted.xruns.fetch_add(1, Ordering::Relaxed);
         }
-        // Rerouted, or a refused priority that it plays on through.
-        ErrorKind::DeviceChanged | ErrorKind::RealtimeDenied => {}
-        _ => {
-            // Never waited for: this may be the audio thread.
-            if let Ok(mut said) = counted.error.try_lock() {
-                *said = error.to_string();
-            }
+        if matches!(
+            kind,
+            ErrorKind::Xrun | ErrorKind::DeviceChanged | ErrorKind::RealtimeDenied
+        ) {
+            return;
+        }
+        // Never waited for: this may be the audio thread.
+        if let Ok(mut said) = counted.error.try_lock() {
+            *said = error.to_string();
+        }
+        counted.errors.fetch_add(1, Ordering::Relaxed);
+        if ends_the_stream(kind, PASSING_BACKEND_ERRORS) {
             lost.store(true, Ordering::Release);
         }
     };
@@ -360,10 +382,11 @@ impl SystemOutput {
             .clone()
     }
 
-    pub(crate) fn glitches(&self) -> (u32, u32) {
+    pub(crate) fn glitches(&self) -> (u32, u32, u32) {
         (
             self.stats.xruns.load(Ordering::Relaxed),
             self.stats.stalls.load(Ordering::Relaxed),
+            self.stats.errors.load(Ordering::Relaxed),
         )
     }
 
@@ -541,6 +564,22 @@ mod tests {
         }
         assert!(dry.ran_dry(1_000), "late: the device played it all");
         assert!(!dry.ran_dry(400));
+    }
+
+    /// Every error ends a stream on Windows and macOS; on Linux an unnamed one passes.
+    #[test]
+    fn an_unnamed_error_passes_only_where_it_should() {
+        for kind in [
+            ErrorKind::DeviceNotAvailable,
+            ErrorKind::HostUnavailable,
+            ErrorKind::StreamInvalidated,
+            ErrorKind::Other,
+        ] {
+            assert!(ends_the_stream(kind, true), "{kind:?}");
+            assert!(ends_the_stream(kind, false), "{kind:?}");
+        }
+        assert!(ends_the_stream(ErrorKind::BackendError, false));
+        assert!(!ends_the_stream(ErrorKind::BackendError, true));
     }
 
     /// A stream counts as stalled after half a second with no callback while it
