@@ -121,6 +121,45 @@ fn other_frames_and_windows() {
 }
 
 #[test]
+fn the_picture_drawn_before_the_stretch_stays_within_max_draw_px() {
+    // 2048 × 2 = 4096 exactly: drawn at 2.
+    let edge = place(ScaleMode::Fit, (2048, 1024), (3000, 1500));
+    assert_eq!(
+        edge.scale,
+        Factor {
+            num: 3000,
+            den: 2048
+        }
+    );
+    assert_eq!(edge.draw_scale, 2);
+    // A frame wider than 4096 shown smaller still draws at 1.
+    let wide = place(ScaleMode::Fit, (5000, 5000), (2500, 2500));
+    assert_eq!(
+        wide.scale,
+        Factor {
+            num: 2500,
+            den: 5000
+        }
+    );
+    assert_eq!(wide.draw_scale, 1);
+}
+
+#[test]
+fn a_placement_is_whole_only_at_a_whole_scale_and_its_size() {
+    let frame = (800, 512);
+    let whole = whole(2, (1600, 1024), (0, 0));
+    assert!(whole.is_whole(frame));
+    assert!(!Placement { w: 1601, ..whole }.is_whole(frame));
+    assert!(!Placement { h: 1025, ..whole }.is_whole(frame));
+    // The size of a whole scale, but a fraction: stretched, not whole.
+    let fraction = Placement {
+        scale: Factor { num: 3, den: 2 },
+        ..whole
+    };
+    assert!(!fraction.is_whole(frame));
+}
+
+#[test]
 fn the_scale_of_each_mode() {
     let deck = (1280, 800);
     assert_eq!(

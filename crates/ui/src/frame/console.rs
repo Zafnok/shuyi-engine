@@ -104,8 +104,8 @@ pub fn frame_of(spec: ConsoleSpec) -> (u32, u32) {
 /// A window side in whole pixels: rounded down, and 0 for one below 0 or
 /// not a number.
 fn whole_px(side: f32) -> u32 {
-    if side.is_finite() && side > 0.0 {
-        // In 0..=f32::MAX here; `as` saturates.
+    if side.is_finite() {
+        // `as` saturates: below 0 is 0.
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let px = libm::floorf(side) as u32;
         px

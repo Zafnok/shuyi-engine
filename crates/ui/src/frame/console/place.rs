@@ -201,9 +201,10 @@ pub fn place(mode: ScaleMode, frame: (u32, u32), window: (u32, u32)) -> Placemen
         (shown, fit_draw_scale(shown, frame))
     };
     let (w, h) = (scale.times(frame.0), scale.times(frame.1));
+    // Half the difference of two `u32`s lies in `i32`'s range.
     let centre = |space: u32, side: u32| -> i32 {
         let at = (i64::from(space) - i64::from(side)).div_euclid(2);
-        i32::try_from(at).unwrap_or(if at < 0 { i32::MIN } else { i32::MAX })
+        i32::try_from(at).unwrap_or_default()
     };
     Placement {
         scale,
@@ -216,14 +217,11 @@ pub fn place(mode: ScaleMode, frame: (u32, u32), window: (u32, u32)) -> Placemen
 }
 
 /// The whole scale a frame shown at `fit` is drawn at: `fit` rounded up,
-/// at least 1, lowered while the frame times it passes [`MAX_DRAW_PX`].
+/// but no more than keeps the frame's longer side within [`MAX_DRAW_PX`],
+/// and at least 1.
 fn fit_draw_scale(fit: Factor, frame: (u32, u32)) -> u32 {
-    let side = u64::from(frame.0.max(frame.1));
-    let mut draw = fit.ceil().max(1);
-    while draw > 1 && side * u64::from(draw) > u64::from(MAX_DRAW_PX) {
-        draw -= 1;
-    }
-    draw
+    let side = frame.0.max(frame.1).max(1);
+    fit.ceil().min(MAX_DRAW_PX / side).max(1)
 }
 
 #[cfg(test)]
