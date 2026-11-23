@@ -232,6 +232,13 @@ switches when a game frame's changes, and a card's or the errors' frames
 leave the window as it is (they carry `Frame::new`'s windowed); a device
 that is always full screen ignores it. *The window and the cursor (desktop)*, below,
 says how a desktop window opens and leaves fullscreen.
+`frame.scale` is how the frame fills a window, the game's
+`GameSettings::DEFAULT_SCALE` (ADR-0139): a windowed backend places the
+frame, and a card's picture, with `shuyi_ui::frame::console::place`, draws
+a whole-scale placement straight in and a fraction at the placement's
+`draw_scale` into a texture stretched with linear filtering ("sharp
+bilinear"), and maps the pointer back with `Placement::frame_px`; a
+backend that shows its display 1:1 ignores it.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a

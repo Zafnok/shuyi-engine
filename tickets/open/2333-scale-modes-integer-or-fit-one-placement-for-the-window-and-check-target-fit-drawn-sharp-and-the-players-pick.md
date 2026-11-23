@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2511"]
 nick_input: none
 completed:
@@ -96,14 +96,19 @@ game's choice, through its `engine-change` skill.
   - `scale(mode, frame: (u32, u32), space: (u32, u32)) -> Factor`: what
     `scale_on` computes today, a frame side of 0 counted as 1.
     `Integer` is the largest whole number that fits, 0 when even 1
-    doesn't. `Fit` is the largest fraction that fits, below 1 too;
+    doesn't. `Fit` is the largest fraction that fits, below 1 too,
+    **or the largest whole number when that is at least `SNAP` (9 / 10)
+    of the fraction** (amended 2026-11-23 for game#1320, Nick's OK: on
+    1080p and 4K the whole scale covers about 95 % of an 800 × 512
+    frame's height, and stays pixel-perfect);
   - `place(mode, frame, window) -> Placement`, with `Placement { scale:
     Factor, draw_scale: u32, x: i32, y: i32, w: u32, h: u32 }`: where
     the frame goes, in window pixels:
     - `Integer`: `scale` at least 1 (a too-small window crops the edges
       evenly, as today), and `w = frame_w × scale`;
     - `Fit`: `w = frame_w × num / den` and `h = frame_h × num / den`,
-      rounded down, so the limiting side equals the window's;
+      rounded down, so the limiting side equals the window's; when
+      `scale` snapped to a whole number, `Integer`'s placement;
     - centred with `div_euclid`, so a leftover odd pixel rounds down
       and a 799-pixel-wide window gives `x = -1`, as today;
     - `draw_scale` is the whole scale the frame is drawn at. For
@@ -130,34 +135,14 @@ game's choice, through its `engine-change` skill.
     put it beside `DEFAULT_FRAME_CAP` and `FRAME_CAP_CHOICES` in
     `GameSettings`, and `scale` beside `frame_cap` in `Settings`, the
     toy's `File` and the `()` form's `EngineOnly`;
-  - `Settings::scale: ScaleMode`. `Settings::default()` takes the
-    game's default, so "Restore defaults" (`Settings::restored`)
-    returns to it;
-  - `OptionRow::scale()`: a choice row, label `options.row.scale`
-    ("Picture"), values `options.value.sharp` ("Sharp pixels") and
-    `options.value.fill` ("Fill the screen"). Either order with 2314:
-    if 2314 is done, build it with `OptionRow::choice`; if not, write
-    it like `OptionRow::text_speed`, and 2314 moves it;
   - the toy (`crates/ui/src/toy.rs`) sets `DEFAULT_SCALE =
     ScaleMode::Fit`, so a test can tell the game's default from the
-    engine's. It saves `scale` in its settings file (`File` is already
-    `#[serde(default)]`, so a file without it loads with the default),
-    and its `toy/en.ron` gets the row's text for the row's test;
-  - hello-grid keeps the default `Integer`. It gets the row on its
-    options screen (`option_rows` in `examples/hello-grid/src/screens.rs`,
-    after the map look), the text in `files/en.ron`, and `scale` in its
-    saved form (`src/settings.rs`, whose `File` is already
-    `#[serde(default)]`). The templates don't get the row: a game opts
-    in;
-  - **Either order with 2351:** if it is done, the English of
-    `options.row.scale`, `options.value.sharp` and `options.value.fill`
-    goes only in the engine's `crates/ui/lang/en/ui.ron`, and neither
-    `en.ron` gets it; if not, as written, and 2351 moves it;
-  - 2511's `()` saved form (`impl GameSettings for ()` in
-    `crates/ui/src/settings.rs`) keeps `scale` with `serde(default)`,
-    as the toy's does. **Either order with 2110:** if it is done, that
-    is a new `VERSION` of the `()` form with its fixture, as 2110's
-    guard asks; if not, 2110's version 1 has it.
+    engine's;
+  - **moved to 3240 at step 7** (this PR passed 600 lines): the
+    player's pick, `Settings::scale`, `OptionRow::scale` and its text,
+    and `scale` in the toy's, hello-grid's and the `()` form's saved
+    forms, with the clauses about the option rows, the engine's English
+    and the save versions that went with them;
 - **The frame carries it:** `shuyi_platform::Frame::scale: ScaleMode`
   (`Frame` is `#[non_exhaustive]`; `Frame::new` gives `Integer`).
   `present_game` (`crates/platform/src/app.rs`) sets it from the
@@ -304,6 +289,13 @@ its arguments and starts `scale` at `Integer`). The game's PR that moves the pin
 follows this one. 2010's `api` job shows the new items. The new public
 types follow ADR-0039.
 
+**Estimated size:** about 1,400 lines with the player's pick (code 600,
+tests 500, docs 300); about 1,000 without it (written 2026-11-23, after
+the code had started: see the completion notes).
+
+**Split:** past 1,000 lines, step 7's player's pick goes to its own
+ticket, and the `Fit` capture of 2018's `render` job with it.
+
 ## Implementation steps
 
 1. Read `console.rs`, `render.rs`, `backend.rs` (`present`,
@@ -346,15 +338,21 @@ types follow ADR-0039.
   | ------ | --------- | -------------------- |
   | 1280 × 800 | 1×: 800 × 512 at (240, 144) | 1250 × 800 at (15, 0) (2) |
   | 1366 × 768 | 1×: 800 × 512 at (283, 128) | 1200 × 768 at (83, 0) (2) |
-  | 1920 × 1080 | 2×: 1600 × 1024 at (160, 28) | 1687 × 1080 at (116, 0) (3) |
+  | 1280 × 720 | 1×: 800 × 512 at (240, 104) | 1125 × 720 at (77, 0) (2) |
+  | 1920 × 1080 | 2×: 1600 × 1024 at (160, 28) | snapped: as `Integer` (2) |
   | 2560 × 1440 | 2×: 1600 × 1024 at (480, 208) | 2250 × 1440 at (155, 0) (3) |
-  | 3840 × 2160 | 4×: 3200 × 2048 at (320, 56) | 3375 × 2160 at (232, 0) (5) |
+  | 3840 × 2160 | 4×: 3200 × 2048 at (320, 56) | snapped: as `Integer` (4) |
 
   Also: a 384 × 384 frame on 1280 × 800 is 2×, 768 × 768 at (256, 16),
-  and in `Fit` 800 × 800 at (240, 0) (3). A 1600 × 1000 frame on
-  3840 × 2160 in `Fit` has `draw_scale` 2, since 3 would make a
+  in both modes (2 is 96 % of 800 / 384: snapped), and on 1920 × 1080 in
+  `Fit` 1080 × 1080 at (420, 0) (3). A 1600 × 1000 frame on 3840 × 2600
+  in `Fit` (3840 × 2400) has `draw_scale` 2, since 3 would make a
   4800-pixel picture. An 800 × 512 frame on 640 × 400 is 1× at
-  (-80, -56), and in `Fit` 625 × 400 at (7, 0) (1).
+  (-80, -56), and in `Fit` 625 × 400 at (7, 0) (1). (Amended with the
+  snap: the 1920 × 1080 and 3840 × 2160 rows were 1687 × 1080 at
+  (116, 0) (3) and 3375 × 2160 at (232, 0) (5), the 384 × 384 case on
+  1280 × 800 was 800 × 800 at (240, 0) (3), and the 1600 × 1000 case was
+  on 3840 × 2160, where it now snaps.)
 - [ ] The existing tests of `layout` in `console.rs` pass unchanged.
 - [ ] The tests in `crates/cli/src/contract/target/tests.rs` pass
       unchanged.

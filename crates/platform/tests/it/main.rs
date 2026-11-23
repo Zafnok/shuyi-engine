@@ -58,7 +58,11 @@ fn a_game_frame_built_by_its_constructor_is_the_one_presented() {
     h.keys("f");
     let ctx = h.ctx();
     let blank = ctx.game.blank_cell(&ctx.palette).bg;
-    let expected = Presented::game(h.game().buffer().clone(), blank, false);
+    let mut expected = Presented::game(h.game().buffer().clone(), blank, false);
+    // The constructor starts at a whole scale; the toy fills the window.
+    if let Presented::Game { scale, .. } = &mut expected {
+        *scale = ScaleMode::Fit;
+    }
     assert_eq!(h.platform().last_frame(), Some(&expected));
 }
 

@@ -46,10 +46,10 @@ None.
 **In:**
 - The trait and the builder, documented.
 - `text_speed` (and any other engine row of the same shape) uses it.
-- **Either order with 2333:** if 2333 is done, its `OptionRow::scale`
+- **Either order with 3240:** if 3240 is done, its `OptionRow::scale`
   (over `ScaleMode::ALL` and `ScaleMode::key`) moves onto
   `OptionRow::choice` like `text_speed`, its tests unchanged; if not,
-  nothing to do (2333 builds the row with `OptionRow::choice`).
+  nothing to do (3240 builds the row with `OptionRow::choice`).
 - **Either order with 2340:** if 2340 is done, its `OptionRow::motion`
   moves onto `OptionRow::choice` too, and `Motion` implements
   `ChoiceSetting`; if not, nothing to do (2340 builds it on `choice`).
