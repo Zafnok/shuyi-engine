@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 2345 — Cue rules as data
@@ -174,8 +174,9 @@ None.
     turns the frame's requests, in order, into `SoundRequest`s: each
     `PlaySound` through the rules below, every other request through
     `SoundRequest::from_request` as today;
-  - the variant RNG: `VariantRng` moves here from `shuyi-app` with its
-    tests. `Cues::new` seeds it with `splitmix64(seed ^ SALT)`
+  - the variant RNG: `VariantRng` moves here from the shared player
+    (`crates/platform/src/audio/player.rs`, where 3029 had moved it from
+    `shuyi-app`) with its tests. `Cues::new` seeds it with `splitmix64(seed ^ SALT)`
     (`shuyi_ui::audio::splitmix64`, a fixed `SALT`), so it doesn't
     repeat the music pool's picks. It never touches the simulation's
     RNG;
@@ -210,14 +211,16 @@ None.
     to decode (warned at load, as now). An empty slot plays nothing;
   - `play_sound` plays the slot `variant` names at
     `percent(cue_volume) * volume * sound_volume`. Its `rng` field goes;
-  - `proptest` leaves `shuyi-app`'s dev-dependencies: its one use,
-    `VariantRng`'s test, moves (`cargo machete` would flag it).
+  - `proptest` already left `shuyi-app`'s dev-dependencies with 3029,
+    and stays a dev-dependency of `shuyi-platform`;
+  - `Player::load` (and the Playdate's `audio::player`) lose their
+    `seed`: the player picks nothing.
 - **Seen in tests and by agents:**
   - the Harness records `App::dropped_sounds` every frame and gives
     them out with `Harness::dropped_sounds(&self) -> Vec<(u32,
     &DroppedSound)>`, each with its frame; `clear_audio` clears them
     with the rest, and `sounds()` still lists the cues asked for;
-  - `run`'s answer (`RunOutput`) gets `dropped: Vec<Dropped>`, a new
+  - **Moved to 3419** (the PR passed 1,500 counted lines): `run`'s answer (`RunOutput`) gets `dropped: Vec<Dropped>`, a new
     type beside `Sound` in `crates/cli/src/contract/session.rs`:
     `Dropped { frame: u32, cue: String, why: String }`, `why` being
     `gap` (2378 adds `copies`, `voices` and `cut` with no change of
@@ -352,42 +355,42 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every manifest in the repository's tests loads with the default
+- [x] Every manifest in the repository's tests loads with the default
       rules; a test loads `FULL` and finds `CueRules::default()` on
       each cue.
-- [ ] A cue with `pick: NoRepeat, volume_min: 45, min_gap_ms: 60`,
+- [x] A cue with `pick: NoRepeat, volume_min: 45, min_gap_ms: 60`,
       written bare as above, loads to those values; `volume_min` over
       `volume` is an error naming the cue, at its line.
-- [ ] With the default rules, `Cues` passes every request in order,
+- [x] With the default rules, `Cues` passes every request in order,
       voice requests among them, each sound at its cue's volume, and
       drops nothing.
-- [ ] `NoRepeat` never plays the same file twice in a row, and
+- [x] `NoRepeat` never plays the same file twice in a row, and
       `Shuffle` plays each of n files once in every n plays and never
       the same file twice in a row across a reshuffle (property tests,
       n from 2 to 8). `InOrder` plays the files in turn, and a cue of
       one file plays it each time (unit tests).
-- [ ] The volume picked is always within `volume_min..=volume`
+- [x] The volume picked is always within `volume_min..=volume`
       (property test).
-- [ ] Two plays of a cue that both sound are at least `min_gap_ms`
+- [x] Two plays of a cue that both sound are at least `min_gap_ms`
       apart (property test), and two plays of a cue with a gap in one
       frame play once (unit test).
-- [ ] A dropped play draws nothing: the same requests with the dropped
+- [x] A dropped play draws nothing: the same requests with the dropped
       ones taken out give the same files and volumes (property test).
-- [ ] The same seed and the same requests give the same plays and
+- [x] The same seed and the same requests give the same plays and
       drops.
-- [ ] In the Harness, with the toy game's `click` given
+- [x] In the Harness, with the toy game's `click` given
       `min_gap_ms: 40` (`Toy::audio` is public), Confirm on the menu
       overlay (`crates/ui/src/toy.rs`) twice less than 40 ms apart
-      lists the second click in `dropped_sounds()` as `Gap`, `sounds()`
-      lists both, and `run` answers it under `dropped`.
-- [ ] `shuyi-app`'s player, against its fake backend, plays the file
+      lists the second click in `dropped_sounds()` as `Gap`, and `sounds()`
+      lists both (`run` answering it under `dropped` moved to 3419).
+- [x] The shared player (`shuyi-app`'s since 3029), against its fake backend, plays the file
       `variant` names at `cue_volume`; when a cue's second file fails
       to load, `variant: 2` still plays its third file and `variant: 1`
       plays nothing.
-- [ ] `contract::VERSION` and `pack::VERSION` are each one higher, with
-      the schemas, `versions.json` and the pack snapshot updated.
-- [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `pack::VERSION` is one higher, with the pack snapshot updated
+      (`contract::VERSION`, the schemas and `versions.json` moved to 3419).
+- [x] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -398,11 +401,146 @@ None.
   `SoundRequest::from_request` for the requests that skip the rules.
 - Property: `NoRepeat` and `Shuffle`; the volume range; the gap; a
   dropped play draws nothing; the moved variant-picking test.
-- Integration: the Harness test above; `run` with drops through the fake
-  session and through the toy game; `shuyi-app`'s player against its
+- Integration: the Harness test above (`run` with drops moved to 3419);
+  the shared player against its
   fake backend (the file, the volume, a failed file's slot).
-- Snapshot: the pack's pinned binary forms; the contract's schemas.
+- Snapshot: the pack's pinned binary forms.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done:
+
+- **The data** (`crates/assets/src/audio.rs`): `CueRules` (`pick`,
+  `volume_min`, `min_gap_ms`) on `SoundCue::rules`, with `const
+  CueRules::DEFAULT` and `const` `with_pick`, `with_volume_min`,
+  `with_min_gap_ms` (ADR-0039 kind 2), `SoundCue::with_rules`, and
+  `Pick` (`Random`, `NoRepeat`, `Shuffle`, `InOrder`). The RON is flat on
+  the sound entry; `from_source` already read with
+  `parse_ron_implicit_some`, so `volume_min: 45` is written bare. The
+  check refuses `volume_min` over `volume` at the cue's line.
+  `pack::VERSION` is 21.
+- **`Cues`** (`crates/platform/src/audio/cues.rs`, `no_std`, integers):
+  the gap, then the file, then the volume; a dropped play draws nothing;
+  a started sound is picked, never dropped and starts no gap.
+  `VariantRng` moved in with its tests, seeded `splitmix64(seed ^ SALT)`.
+- **`App`** keeps a `Cues` from `ctx.music_seed` (`running`, and the
+  load's end), runs each frame's requests through it, and gives the
+  drops with `App::dropped_sounds`; the Harness records them with their
+  frame (`Harness::dropped_sounds`), cleared by `clear_audio`.
+- **`SoundRequest::Sound` and `Start`** carry `variant` and `cue_volume`
+  (`SoundRequest::sound` and `start` give 0 and 100, `with_pick` sets
+  them). The shared player keeps one slot per file and plays the slot
+  named at `percent(cue_volume) × volume × gain`; it has no picker, and
+  `Player::load` and the Playdate's `audio::player` lose their seed.
+- **hello-grid** gives its cursor and move cues `min_gap_ms: 40`
+  (`STEP_GAP_MS`); `AudioConfig::cursor_cue`'s doc says to.
+- **ADR-0139** decides every cue rule, part two's copy cap and voice rule
+  too; ADR-0004 §6, ADR-0024 §2 and ADR-0063 name it.
+- Docs: `docs/formats.md`, `docs/platform-backends.md`, the book's
+  chapter on saves and settings (`site/content/learn/book/saves-and-settings.md`).
+
+Deviations:
+
+- **The ticket was a month old** (2026-10-21) and named code 3029 had
+  moved: `VariantRng` was in the shared player
+  (`crates/platform/src/audio/player.rs`), not `shuyi-app`, and
+  `proptest` had already left `shuyi-app`. Fixed in the ticket's Scope.
+  The acceptance test of "`shuyi-app`'s player" is the shared player's,
+  against its fake backend
+  (`the_file_a_request_names_plays_at_its_volume_and_a_failed_file_plays_nothing`).
+- **`run`'s `dropped` moved to 3419.** With it the PR was 1,661 counted
+  lines; the contract's part (`Dropped`, `Session::dropped_sounds`,
+  `RunOutput::dropped`, the contract's version and schemas,
+  `docs/contract.md`) lands apart, so it is ticket 3419, and 2378's
+  contract clause waits on it. `contract::VERSION` doesn't change here.
+- **`Player::load` loses its `seed` parameter** (and
+  `shuyi_playdate::audio::player` too): the ticket said the player's
+  `rng` field goes, and a seed nothing reads would mislead.
+- `SoundRequest::sound` and `start` give `cue_volume: 100` (full), so a
+  request built by hand plays its first file at the file's own
+  loudness; `App` always sends the picked values.
+- A frame's gains come from `game.gains()` after the update, not from
+  the frame's output, which borrows the game while the manifest is read
+  (the same value, `Game::frame` builds it so).
+- **Not checked by ear** on the desktop or the web: this session can't
+  hear. `cargo shuyi run --script "Down Down Up Up Enter"` on hello-grid
+  lists every `ui_move` and the `ui_select` under its sounds, and the
+  two presses two frames (33 ms) apart dropped as `gap` (the engine's
+  hold repeat is 55 ms, so a held key still ticks each step); the
+  player's tests play the file and volume through the fake backend, and
+  the Playdate's through its fake SDK.
+
+Size: 1,621 counted lines (with the tests the mutants asked for), the rest can't land apart: the player plays the file and volume `Cues` picks, so without `Cues` and `App`'s use of it every sound would play its first file at full volume, and the data without `Cues` would read rules that do nothing; the contract's part, which can land apart, is 3419.
+
+Follow-up: 3419 (`run`'s answer lists the drops). 2378 (part two) is
+unblocked.
+
+Breaking: shuyi-platform: `audio::player::Player::load`: it takes no `seed`; a backend drops the last argument.
+
+```migration
+since: 0.1.0
+what: The shared audio player picks no file, so Player::load takes no seed.
+old: "Player::load(backend, manifest, files, music_dir, voice_dir, seed)"
+new: "Player::load(backend, manifest, files, music_dir, voice_dir)"
+before: |
+  let player = Player::load(backend, manifest, &files, music, voice, seed).await;
+after: |
+  let player = Player::load(backend, manifest, &files, music, voice).await;
+find: ["voice, seed)"]
+```
+
+Breaking: shuyi-playdate: `audio::player`: it takes no `seed`; a front end drops the last argument.
+
+```migration
+since: 0.1.0
+what: The Playdate's audio::player takes no seed.
+old: "shuyi_playdate::audio::player(speaker, manifest, seed)"
+new: "shuyi_playdate::audio::player(speaker, manifest)"
+before: |
+  let player = audio::player(speaker, manifest, seed);
+after: |
+  let player = audio::player(speaker, manifest);
+find: ["manifest, seed)"]
+```
+
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form has its rules, and a baked pack is of version 21; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 21, its sound cues with their rules; a pack of version 20 is refused.
+old: "pack::VERSION == 20"
+new: "pack::VERSION == 21"
+before: |
+  cargo shuyi bake   # with the engine before 2345
+after: |
+  cargo shuyi bake   # again, with this engine
+```
+
+Breaking: shuyi-platform: a session record's frame hashes: each frame's hash covers the sounds sent with their file and volume, so a record kept before plays differently from its first sound; a game blesses its kept records again (hello-grid's `tests/sessions/stage.session.ron` is).
+
+```migration
+since: 0.1.0
+what: A session record's frame hashes hold each sound's file and volume, so a kept record is blessed again.
+old: "a frame hash over SoundRequest::Sound { cue, volume }"
+new: "a frame hash over SoundRequest::Sound { cue, volume, variant, cue_volume }"
+before: |
+  assert_session(start(), kept("run.session.ron"));   # passes on the old engine
+after: |
+  SHUYI_BLESS=1 cargo test   # write the record again, then assert_session as before
+```
+
+Behaviour: shuyi-platform: which file of a cue plays is picked in `App` from `ctx.music_seed` (salted), no longer from the backend's clock, so the same seed and requests play the same files on every backend; a file that failed to load no longer shifts the others, it plays nothing when picked.
+
+Behaviour: shuyi-platform: `SoundRequest::Sound` and `Start` carry `variant` and `cue_volume`, and a backend plays them as told; a request built with `SoundRequest::sound` or `start` alone plays the cue's first file at full volume, not at the cue's `volume`.
+
+Behaviour: shuyi-assets: the audio manifest reads `pick`, `volume_min` and `min_gap_ms` on a sound, and refuses `volume_min` over the cue's `volume` at its line.
+
+Behaviour: shuyi-platform: a play of a cue with `min_gap_ms` less than that after its last play that sounded is dropped: `App::dropped_sounds` and `Harness::dropped_sounds` list it, and the Harness's `sounds()` still does. No cue has a gap unless its manifest gives one.
+
+Book: the chapter on saves and settings says how a cue picks its files and volume and spaces its plays (`site/content/learn/book/saves-and-settings.md`).
+
+Game: nothing to adopt, the game builds its cues with `SoundCue::new` (the rules start at their defaults), implements no audio `Backend` and calls neither `Player::load` nor `shuyi_playdate::audio::player` (game#1170's front end will call the latter without a seed); the pin move blesses its kept Quick Battle session again, as each frame's hash now holds a sound's file and volume. `gh search code --repo Zafnok/visions-of-shuyi` for `SoundCue`, `SoundRequest`, `Player::load`, `audio::player`, `impl Backend for` and `assert_session` found its `SoundCue::new` calls, the pins log, and `crates/ui/tests/it/sessions.rs` with `quick_battle.session.ron`.
+
+**Nick:** nothing changes in how the game sounds until its manifest names
+rules. A game can now keep footsteps from repeating the same file, vary
+a sound's loudness, and stop a cursor from ticking several times at once.

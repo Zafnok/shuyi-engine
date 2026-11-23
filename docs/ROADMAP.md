@@ -838,13 +838,15 @@ The parked ones are under *Parked* below.
 | 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
 | 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
 | 2136 (done) | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
-| 2234 | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
+| 2234 (done) | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
+| 2275 | FLAC and MP3 tracks streamed by the in-house sound backend (after 2234) |
 | 2235 | Nine-slice frames in a data file, baked in the pack and read by `BasicData` (after 2338) |
 | 2236 | Frozen format fixtures: each release's copy read while the version rule covers it |
 | 2374 | Eight-way on square maps: the path arrow, steering and an eight-way choice in the grid template (after 2117) |
 | 2375 | The log on screen in debug builds: a `log` channel and the console's newest lines (after 2315 and 2356) |
 | 2377 | The system's reduced-motion preference as the default of the player's motion setting |
 | 2378 | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
+| 3419 | `run`'s answer lists the plays the cue rules dropped (after 2345) |
 | 2380 | The profiles screen asks the system keyboard for a name (after 2346) |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2552 | `shuyi module new`: an outside module's crate, metadata, README and skill (after 2526) |

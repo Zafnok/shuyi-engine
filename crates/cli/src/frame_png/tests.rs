@@ -748,3 +748,4 @@ fn a_drop_step_is_read_and_its_file_must_be_there() {
 }
 
 mod capture;
+mod formats;

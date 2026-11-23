@@ -1,7 +1,7 @@
 # ADR-0008: Export targets: profiles as data, platform backends, controls that fit, 1-bit graphics, performance budgets
 
 - **Status:** Accepted; §1's `desktop` row ("any, integer scale")
-  amended by ADR-0139 (a frame may fill the window at a fraction, drawn
+  amended by ADR-0140 (a frame may fill the window at a fraction, drawn
   sharp); extended by ADR-0057 (§4's "an image's sidecar"
   is its import settings file, `<image>.meta`); extended by ADR-0058
   (export packages: paths remapped and searched, the Linux floor); §2's

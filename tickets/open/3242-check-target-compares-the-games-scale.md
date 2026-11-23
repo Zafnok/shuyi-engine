@@ -17,7 +17,7 @@ completed:
 
 Split off 2333 (its PR passed 1,500 counted lines with it; its step 6).
 2333 made `check --target` place a frame with the window's own function
-(`shuyi_ui::frame::console::scale`, ADR-0139), and gave a game
+(`shuyi_ui::frame::console::scale`, ADR-0140), and gave a game
 `GameSettings::DEFAULT_SCALE`, which `shuyi-app` draws. Nothing checks
 that a target's `scale` in `shuyi.ron` is what the game draws: a game
 whose `shuyi.ron` says `fit` and whose settings say `Integer` passes the
@@ -55,7 +55,7 @@ None.
   GameSettings>::DEFAULT_SCALE)`; the top-down grid template's tools
   delegate to `self.basic().scale()`. Bless the template's plans
   (`SHUYI_BLESS=1 cargo test -p shuyi-cli --lib template`).
-- `docs/contract.md`'s `check --target` row says it; ADR-0139 §2's
+- `docs/contract.md`'s `check --target` row says it; ADR-0140 §2's
   sentence on this ticket becomes what it does.
 
 **Out:** the player's pick (3240); the capture (3241).

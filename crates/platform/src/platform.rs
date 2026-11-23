@@ -220,7 +220,7 @@ pub struct Frame<'a> {
     pub loading: Option<(u32, u32)>,
     /// How the frame fills a window (the game's
     /// [`GameSettings::DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE),
-    /// ADR-0139): a windowed backend places it with
+    /// ADR-0140): a windowed backend places it with
     /// [`place`](shuyi_ui::frame::console::place); a backend that shows
     /// its display 1:1 ignores it.
     pub scale: ScaleMode,

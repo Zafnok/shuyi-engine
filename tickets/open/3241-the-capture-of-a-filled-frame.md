@@ -18,7 +18,7 @@ completed:
 Split off 2333 at its step 7 (its PR passed about 600 counted lines
 without it). 2333 made `shuyi-app` draw a `ScaleMode::Fit` frame at a
 whole `draw_scale` into a render target (`Stretch` in
-`crates/app/src/render.rs`), then stretch it into the window (ADR-0139).
+`crates/app/src/render.rs`), then stretch it into the window (ADR-0140).
 The capture mode (`shuyi-app`'s `capture` feature,
 `crates/app/src/capture.rs`, from 2018) compares the window with the
 raster in CI's `render` job, and CI's `web-render` job runs the same

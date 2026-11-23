@@ -129,11 +129,13 @@ None.
     `frame × SAMPLE_RATE / rate`, rounded down, for the start and the
     length. One test covers a 48 kHz `intro_loop`-shaped track. If not,
     nothing to do here (3334 scales the region when it bakes one).
-- **Either order with 2234:** if 2234 is done, the 16-bit WAV that its
-  FLAC or MP3 decode hands to quad-snd also goes through
-  `at_quad_snd_rate`, and the manifest's FLAC and MP3 messages name
-  `SAMPLE_RATES` as the others do. If not, nothing to do (2234 routes its
-  WAV through `at_quad_snd_rate` when it lands).
+- **From 2234 (done):** the 16-bit WAV that `audio::decode_to_wav`
+  makes of a FLAC or MP3 file (called by the default
+  `Backend::load_sound_file` in `shuyi-platform` for sounds, and by
+  `native_music::track_bytes` for native tracks) also goes through
+  `at_quad_snd_rate`, and the manifest's FLAC and MP3 messages (from
+  `playable_problem`, through 2203's `Sound` formats) name
+  `SAMPLE_RATES` as the others do.
 - **Either order with 3239:** if 3239 is done, `resample` uses the
   interpolation 3239 shipped in the mixer
   (`crates/sound/src/mix/resample.rs`), not linear, and the agreement
@@ -195,7 +197,7 @@ None.
    OGG play to the length their header gives.
 5. `crates/cli/src/export/playdate/audio.rs`: resample in `decode`, and
    report each converted file. Settle the 3334 clause.
-6. Settle the 2234 and 3239 clauses, then write the docs.
+6. Do 2234's handoff and settle the 3239 clause, then write the docs.
 
 ## Acceptance criteria
 
@@ -219,7 +221,7 @@ None.
       `#![deny(clippy::float_arithmetic)]`, as `shuyi-sound` does. A unit
       test pins `shuyi_core::state_hash` of its output for a fixed sweep
       (48 kHz to 44.1 kHz, stereo, 1,000 frames).
-- [ ] Each *Either order* item (2234, 3239, 3334) is settled: done here, or
+- [ ] 2234's handoff is done, and each *Either order* item (3239, 3334) is settled: done here, or
       noted in the other ticket.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.

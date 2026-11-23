@@ -1,12 +1,12 @@
 //! Where a frame goes in a window, in whole numbers: by a whole scale, or
-//! by a fraction that fills the window (ADR-0139). One function places it
+//! by a fraction that fills the window (ADR-0140). One function places it
 //! for every backend and for `shuyi check --target`, so the check can't
 //! pass what the window doesn't draw.
 
 use alloc::format;
 use alloc::string::{String, ToString};
 
-/// How a frame is scaled to a window or a display (game ADR-0012, ADR-0139).
+/// How a frame is scaled to a window or a display (game ADR-0012, ADR-0140).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
 )]

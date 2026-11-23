@@ -225,7 +225,7 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// game says otherwise ([`frame_cap::CHOICES`]).
     const FRAME_CAP_CHOICES: &'static [FrameCap] = &frame_cap::CHOICES;
 
-    /// How the game's frame fills a window ([`ScaleMode`], ADR-0139): by
+    /// How the game's frame fills a window ([`ScaleMode`], ADR-0140): by
     /// the largest whole scale, letterboxed ([`ScaleMode::Integer`]),
     /// unless the game says otherwise. A backend that shows its display
     /// 1:1 ignores it.

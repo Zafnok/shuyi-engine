@@ -17,7 +17,7 @@ completed:
 
 Split off 2333 at its step 7 (its PR passed about 600 counted lines
 without it). 2333 built the placement (`ScaleMode`, `place`,
-ADR-0139), `GameSettings::DEFAULT_SCALE`, `Frame::scale` and the sharp
+ADR-0140), `GameSettings::DEFAULT_SCALE`, `Frame::scale` and the sharp
 drawing in `shuyi-app`; a frame carries the game's default today. This
 ticket lets the player choose, as `frame_cap` lets them choose the frame
 rate (2321, done: the shape to copy).
@@ -78,7 +78,7 @@ that moves the pin follows this one.
    screen.
 5. Save it in the toy's, hello-grid's and `()`'s forms.
 6. Docs: `docs/platform-backends.md`'s `frame.scale` line says it is the
-   player's setting; the ADR-0139 index row notes this ticket.
+   player's setting; the ADR-0140 index row notes this ticket.
 
 ## Acceptance criteria
 

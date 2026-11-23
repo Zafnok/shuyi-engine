@@ -399,7 +399,7 @@ pub fn merge(file: &CreditsFile, audio: &AudioManifest, bought: &[&str]) -> Cred
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audio::{Credit, CreditRef, MusicCue, SoundCue};
+    use crate::audio::{Credit, CreditRef, CueRules, MusicCue, SoundCue};
 
     const FILE: &str = r#"(credits: [
     (id: "font", group: Fonts, title: "A Font", author: "Ann",
@@ -458,6 +458,7 @@ mod tests {
             credit,
             looped: false,
             group: None,
+            rules: CueRules::DEFAULT,
         }
     }
 

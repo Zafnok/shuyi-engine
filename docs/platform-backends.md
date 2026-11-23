@@ -233,7 +233,7 @@ leave the window as it is (they carry `Frame::new`'s windowed); a device
 that is always full screen ignores it. *The window and the cursor (desktop)*, below,
 says how a desktop window opens and leaves fullscreen.
 `frame.scale` is how the frame fills a window, the game's
-`GameSettings::DEFAULT_SCALE` (ADR-0139): a windowed backend places the
+`GameSettings::DEFAULT_SCALE` (ADR-0140): a windowed backend places the
 frame, and a card's picture, with `shuyi_ui::frame::console::place`, draws
 a whole-scale placement straight in and a fraction at the placement's
 `draw_scale` into a texture stretched with linear filtering ("sharp
@@ -378,8 +378,9 @@ The sound device:
   `gains.voice()`, each a `Gain` in units of 1/4096), and a change reaches what
   is already playing. The sound groups behind them are worked out before
   the backend; it never sees the tree. Then play the `SoundRequest`s in
-  order (a sound cue at its manifest volume times its own and its gain; a sound
-  started with a handle, looped if its cue says so, kept by its id as
+  order (a sound cue's file `variant`, an index into its `files`, at
+  `volume` times `cue_volume` percent times its gain; a sound
+  started with a handle the same way, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the
   clips coming, to load ahead; the clips kept, loaded whichever is asked
@@ -405,9 +406,18 @@ keeps the volume it is given and sounds at it when it is released, and
 holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes on it (its
 `in-house-sound` backend pauses), and the headless `Speaker` does as it does.
 
-**Don't write the rules of playing yourself.** Variants, a cue's volume,
-handled sounds, fades and the music clock are
-`shuyi_platform::audio::player::Player`'s (ADR-0063). A backend writes its
+**Play what you are told.** Which file of a cue plays, at what volume, and
+which plays are dropped are the cue rules', which `App` applies before the
+device (`shuyi_platform::audio::cues`, ADR-0139), so every backend plays the
+same: a `SoundRequest::Sound` or `Start` already names its file (`variant`)
+and its volume (`cue_volume`), and a backend never picks. A sound the game
+added (`SoundRequest::Add`) plays at its own volume, full.
+
+**Don't write the rules of playing yourself.** A cue's files, handled
+sounds, fades and the music clock are
+`shuyi_platform::audio::player::Player`'s (ADR-0063). It keeps a slot for
+each file of a cue's `files`, so `variant` names the same file when one
+failed to load, which then plays nothing. A backend writes its
 `Backend` trait and returns a `PlayerDevice` from `audio()`:
 
 - **required:** `load_sound`, `load_music`, `poll_music`, `length`, `play`,
