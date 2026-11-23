@@ -1,12 +1,15 @@
-//! `shuyi preview-worker` on Hello, Grid, the engine's turn game: one
-//! visitor's game in a process of its own, the game's tool program that
-//! `shuyi` builds with cargo, played by action over its pipes. It answers
+//! `shuyi preview-worker` and `shuyi preview` on Hello, Grid, the engine's
+//! turn game: one visitor's game in a process of its own, the game's tool
+//! program that `shuyi` builds with cargo, played by action over its pipes,
+//! and the server in front of such workers, played over HTTP. Each answers
 //! with a picture and the text of each frame, refuses what isn't a player's
 //! action, and ends when its input closes.
 
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpStream;
 use std::path::Path;
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 use shuyi_cli::codec::decode_png;
@@ -92,4 +95,89 @@ fn a_visitor_plays_hello_grid_in_a_worker_of_its_own() {
     // Its input closed, it ends.
     drop(stdin);
     assert!(worker.wait().unwrap().success());
+}
+
+/// The status and the JSON body (`null` if none) of `method` on `path`
+/// with `body`, from the server at `address`.
+fn http(address: &str, method: &str, path: &str, body: &str) -> (u16, Value) {
+    let mut stream = TcpStream::connect(address).unwrap_or_else(|e| panic!("{address}: {e}"));
+    let waits = stream.set_read_timeout(Some(Duration::from_secs(120)));
+    waits.unwrap_or_else(|e| panic!("{e}"));
+    let length = body.len();
+    let request = format!(
+        "{method} {path} HTTP/1.1\r\nHost: {address}\r\nContent-Length: {length}\r\n\r\n{body}"
+    );
+    let mut text = String::new();
+    let answered =
+        (stream.write_all(request.as_bytes())).and_then(|()| stream.read_to_string(&mut text));
+    answered.unwrap_or_else(|e| panic!("{method} {path}: {e}"));
+    let (head, body) = (text.split_once("\r\n\r\n")).unwrap_or_else(|| panic!("{text}"));
+    let status = head[9..12]
+        .parse()
+        .unwrap_or_else(|e| panic!("{e}: {head}"));
+    (status, serde_json::from_str(body).unwrap_or(Value::Null))
+}
+
+#[test]
+fn a_visitor_plays_hello_grid_over_http_as_pictures_and_text() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
+    let args = "preview --port 0 --deadline 60 --until-stdin-closes --stage";
+    let mut server = Command::new(env!("CARGO_BIN_EXE_shuyi"))
+        .args(args.split(' '))
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("spawn shuyi preview: {e}"));
+    let mut lines = BufReader::new(server.stdout.take().unwrap()).lines();
+    let address = loop {
+        let line = lines.next().expect("the server's address").unwrap();
+        if let Some(url) = line.strip_prefix("preview: listening on http://") {
+            break url.trim_end_matches('/').to_owned();
+        }
+    };
+
+    let (status, first) = http(&address, "POST", "/session", "");
+    assert_eq!(status, 200, "{first}");
+    // The player's six actions, on the stage with both pieces.
+    let actions = ["Up", "Down", "Left", "Right", "Confirm", "Cancel"];
+    assert_eq!(first["actions"], json!(actions));
+    let (width, height, pixels) = picture(&first);
+    assert_eq!((width, height), (384, 384));
+    let text = first["text"].as_str().unwrap();
+    assert!(text.starts_with(" Turn 1"), "{text}");
+    let session = format!("/session/{}", first["session"].as_str().unwrap());
+
+    // The developer's Debug key, an unknown action and what isn't one are
+    // refused, and the session goes on; nothing but sessions is served.
+    let refused = [
+        r#"{"action": "Debug"}"#,
+        r#"{"action": "Jump"}"#,
+        r#"{"script": "F2"}"#,
+    ];
+    for body in refused {
+        assert_eq!(http(&address, "POST", &session, body).0, 400, "{body}");
+    }
+    let snapshot = format!("{session}/snapshot");
+    for unserved in ["/", "/scene", "/files/stage.map", &snapshot] {
+        assert_eq!(http(&address, "GET", unserved, "").0, 404, "{unserved}");
+    }
+    // Your piece picked up, steered up and right, and sent: it walks, and
+    // the foe steps.
+    let mut last = Value::Null;
+    for action in ["Confirm", "Up", "Right", "Confirm"] {
+        let body = json!({ "action": action }).to_string();
+        let (status, frame) = http(&address, "POST", &session, &body);
+        assert_eq!((status, &frame["ended"]), (200, &json!(false)), "{action}");
+        last = frame;
+    }
+    let text = last["text"].as_str().unwrap();
+    assert!(text.starts_with(" Turn 2"), "{text}");
+    assert_ne!(picture(&last).2, pixels);
+
+    assert_eq!(http(&address, "DELETE", &session, "").0, 204);
+    assert_eq!(http(&address, "DELETE", &session, "").0, 404);
+    // Its standard input closed, the server ends every worker and stops.
+    drop(server.stdin.take());
+    assert!(server.wait().unwrap().success());
 }

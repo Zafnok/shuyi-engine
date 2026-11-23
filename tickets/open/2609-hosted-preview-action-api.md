@@ -1,11 +1,11 @@
 ---
 id: "2609"
-title: "The hosted preview's action API: sessions over HTTP, one frame an action, deadlines and expiry"
+title: "The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines"
 type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2602"]
 nick_input: none
 completed:
@@ -41,15 +41,15 @@ None.
 
 **In:**
 - `preview [--port N] [--bind ADDRESS] [--sessions N] [--frames N]
-  [--scale N] [--idle SECONDS] [--lifetime SECONDS] [--deadline SECONDS]
-  [--until-stdin-closes] [the game's options]`, run in the game's tool
-  program (`shuyi` runs it there, as `frame-png`), on 127.0.0.1:8000 by
-  default. It checks at start that the game offers a preview.
+  [--scale N] [--deadline SECONDS] [--until-stdin-closes] [the game's
+  options]`, run in the game's tool program (`shuyi` runs it there, as
+  `frame-png`), on 127.0.0.1:8000 by default. It checks at start that the
+  game offers a preview.
 - Each session's worker is `std::env::current_exe()` run as
-  `preview-worker` in the project's root, with the server's options:
-  stdin and stdout piped, reply lines read after their mark, a reply at
-  most 32 MiB, the worker killed past `--deadline` and when its session
-  ends.
+  `preview-worker`, after the project's `game.args` as `shuyi` runs the
+  tool program, in the project's root, with the server's options: stdin
+  and stdout piped, reply lines read after their mark, a reply at most 32
+  MiB, the worker killed past `--deadline` and when its session ends.
 - HTTP/1.1 of our own: one request a connection, a head of at most 8 KiB,
   a body of at most 1 KiB, a request's deadline, no chunked body, no two
   lengths, no bytes past the body; every answer `no-store`, `nosniff`,
@@ -59,12 +59,14 @@ None.
   /session/<id>`; `405` for another method there, `404` for every other
   path. An answer is the frame's `session`, `png`, `text`, `actions` and
   `ended`, or `{"error": "…"}`.
-- Sessions ended when idle past `--idle` or older than `--lifetime`, at
-  most `--sessions` at once, and at most 64 connections served at once.
+- At most `--sessions` sessions at once, those starting among them.
 
 **Out (do not do):**
 - The per-address limits, the actions' count and rate, the game's time, a
   worker's memory and the bytes sent: 2610.
+- The idle and lifetime expiry (`--idle`, `--lifetime`) and the cap on
+  connections served at once: 2610, split off for size (the completion
+  notes).
 - A page for visitors, a load test, the cost: 2611.
 - Deploying it, renting a machine or opening a hosting account.
 
@@ -85,7 +87,8 @@ expiry) into 2610, which bounds a session's time too.
    with only this ticket's flags.
 3. Wire `preview` in `crates/cli/src/lib.rs`: `COMMANDS`, the usage, the
    dispatch (the game's tools, else `game::run_in_game_program`).
-4. The reaper: idle and lifetime expiry, and its test.
+4. ~~The reaper: idle and lifetime expiry, and its test.~~ Split off into
+   2610 with the cap on connections, for size.
 5. The end-to-end test: `shuyi preview --port 0 --until-stdin-closes
    --stage` in `examples/hello-grid`, over HTTP: a start, the actions
    Confirm, Up, Right and Confirm (Turn 2), Debug and an unknown action
@@ -103,8 +106,8 @@ expiry) into 2610, which bounds a session's time too.
       frame's five fields or an error: no script, frame count, scene,
       snapshot, log or file is served.
 - [ ] A worker that doesn't answer within `--deadline` is killed and its
-      session ended; a session idle past `--idle` or older than
-      `--lifetime` is ended; `--sessions` bounds the sessions at once.
+      session ended; `--sessions` bounds the sessions at once. (A session
+      idle past `--idle` or older than `--lifetime` is 2610's now.)
 - [ ] With `--until-stdin-closes`, closing its standard input stops it and
       every worker.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
@@ -113,8 +116,9 @@ expiry) into 2610, which bounds a session's time too.
 ## Tests required
 
 - Integration (workers on threads running the toy): an allowed action, a
-  refused action and body, a worker past its deadline, an expired session,
-  the session cap, and every unserved path over a real connection.
+  refused action and body, a worker past its deadline, the session cap,
+  and every unserved path over a real connection. (An expired session is
+  2610's now.)
 - Unit: the HTTP reader's refusals, an answer's headers.
 - End-to-end: Hello, Grid through `shuyi preview`, its workers real
   processes.

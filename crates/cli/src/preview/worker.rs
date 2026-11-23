@@ -30,7 +30,7 @@ use crate::mcp::base64;
 pub(crate) const REPLY: &str = "shuyi-preview-reply ";
 
 /// The most frames an action runs by default: five seconds of the game.
-const FRAMES: u32 = 300;
+pub(crate) const FRAMES: u32 = 300;
 
 /// The longest request line a worker reads, in bytes.
 const MAX_LINE: u64 = 1_024;

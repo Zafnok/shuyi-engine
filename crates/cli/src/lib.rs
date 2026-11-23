@@ -9,7 +9,9 @@
 //! private files' repository, keys and secrets (its `--help`; not part
 //! of the library's API: it acts on the developer's GitHub account); `reveal`,
 //! the reveal kit, the evidence a game keeps before its first public
-//! footage (its `--help`; not part of the library's API); `preview-worker`,
+//! footage (its `--help`; not part of the library's API); `preview`, the
+//! hosted preview, the game served to visitors as pictures from this
+//! machine (its `--help`; not part of the library's API); `preview-worker`,
 //! one visitor's session of the hosted preview, the game played as pictures
 //! from this machine (not part of the library's API); `bench`, which plays the game's benchmark scenarios
 //! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
@@ -103,6 +105,7 @@ pub const COMMANDS: &[&str] = &[
     "reveal",
     "bench",
     "bench-play",
+    "preview",
     "preview-worker",
     "trim-targets",
     "seed-target",
@@ -182,6 +185,8 @@ commands:
                                      instructions per frame (Valgrind), the heap's peak and
                                      the package's size against its targets' budgets
   web [--release] [--<feature>...]   build and package the web (WASM) build
+  preview [--port N] [...]           serve the game to visitors as pictures from this
+                                     machine, never its program or files (preview --help)
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
   repos [--dry-run] [--json] [...]   put the game on GitHub: it creates its repository, its
                                      private files' one, their deploy keys and secrets on
@@ -393,6 +398,10 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             None => Ok(game::run_in_game_program(project, name, args)),
         },
         "web" => web(project, args),
+        "preview" => match game {
+            Some(game) => Ok(preview::main(project, args, game)),
+            None => Ok(game::run_in_game_program(project, name, args)),
+        },
         "preview-worker" => Ok(preview_worker(project, args, game)),
         "private-assets" => private_assets(project, args),
         "repos" => Ok(repos::main(project, args)),
