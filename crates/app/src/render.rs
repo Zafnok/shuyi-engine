@@ -174,7 +174,7 @@ impl Renderer {
     /// default camera works in logical units. A placement at a whole scale
     /// is drawn straight into the window; one at a fraction is drawn at
     /// its [`draw_scale`](Placement::draw_scale) into a texture first
-    /// ([`Stretch`]), then stretched into its rectangle.
+    /// (a render target kept between frames), then stretched into its rectangle.
     ///
     /// With a backdrop (game ADR-0048) the order is: the clear colour, the
     /// scene inside its window, then the console over it, whose

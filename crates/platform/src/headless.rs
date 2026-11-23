@@ -54,7 +54,7 @@ pub enum Presented {
         background: Rgb,
         /// Whether it asked to fill the screen.
         fullscreen: bool,
-        /// How it asked to fill a window ([`Frame::scale`]).
+        /// How it asked to fill a window ([`Frame::scale`](crate::Frame::scale)).
         scale: ScaleMode,
     },
 }

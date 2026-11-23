@@ -792,7 +792,7 @@ impl<G: GameData> Harness<G> {
         )
     }
 
-    /// How the last game frame asked to fill a window ([`Frame::scale`]):
+    /// How the last game frame asked to fill a window ([`Frame::scale`](crate::Frame::scale)):
     /// the game's [`DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE);
     /// `None` before one.
     pub fn scale(&self) -> Option<ScaleMode> {
