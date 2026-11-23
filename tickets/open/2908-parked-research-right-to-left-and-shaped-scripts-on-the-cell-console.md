@@ -93,9 +93,9 @@ cell, with nothing joined or reordered:
 - 2226: `LangCode` as BCP 47 tags, whose script tells a reading direction.
 - 2353: a pseudo-language walked over every screen. Its `Out` leaves a
   fake right-to-left language to this research.
-- 3034 (parked): winit for text input and IME, and a 2D renderer over
-  wgpu. Its ADR decides whether that renderer shapes text at run time
-  through a library (either order with this ticket, scope 3).
+- 3034 (done, ADR-0136): winit for text input and the IME (3329), and
+  a 2D renderer over wgpu, `shuyi-gpu` (3325), which shapes no text at
+  run time (ADR-0136 §11; scope 3).
 
 **Why it matters.**
 
@@ -163,11 +163,14 @@ measurements where they matter, and a recommendation. The ADR decides.
      2334's runs;
    - shaping at run time through a library, only where the font is an
      outline: a run-time TTF format after 2222, or the wgpu renderer
-     that 3034 plans, which may draw text through a library such as
-     `parley` or `cosmic-text`. **Either order with 3034:** if it is
-     done, its ADR says whether that renderer shapes text at run time,
-     and this answer starts from it; if not, the report says which
-     scripts need run-time shaping, for 3034 to use.
+     that 3325 builds. **From 3034 (done):** that renderer shapes
+     no text: it draws glyphs only from atlases the engine lays out,
+     and a script that needs shaping at run time is shaped on the CPU in
+     the engine's text layout, its glyphs baked into an atlas page at
+     run time (2222), so the renderer doesn't change (ADR-0136 §11).
+     3034's report (*Text*) lists the libraries, `parley`,
+     `cosmic-text`, `swash` and `harfrust` among them, with their
+     licenses: start from it.
 
    Among shapers, weigh `harfrust`, which reads fonts through
    `read-fonts` (2224's `skrifa` brings it already), and `rustybuzz`.
@@ -256,12 +259,12 @@ measurements where they matter, and a recommendation. The ADR decides.
 - Changing the tickets it reads: wide glyphs and breaking for Japanese
   and Chinese (2301 to 2303), proportional fonts and text runs (2224,
   2334), language tags (2226), layout (2329), the name box (2346) and
-  the wgpu renderer's text (3034). The report proposes their hooks, and
+  the wgpu renderer's text (3325). The report proposes their hooks, and
   the parked tickets it writes make them.
 - Vertical text, furigana and ruby (2302's `Out`).
 - Emoji and colour fonts.
 - Typing these scripts. IME composition and the caret on macOS, Linux
-  and the web wait for winit (3034). The report notes only what the name
+  and the web wait for winit (3329). The report notes only what the name
   box (2346) would need.
 - Which languages a game ships: that is the game's call.
 - Copying a library's code. Whatever the engine writes itself (a joining
@@ -279,8 +282,8 @@ measurements where they matter, and a recommendation. The ADR decides.
    `crates/assets/src/font.rs`, `crates/cli/src/font_atlas.rs`,
    `crates/ui/src/frame/onebit.rs`, `crates/app/src/render.rs` and
    `crates/cli/src/frame_png.rs`. Read whichever of 2224, 2226, 2302,
-   2303, 2329, 2332, 2334, 2346, 2347, 2348, 2350, 2355 and 3034 are
-   done.
+   2303, 2329, 2332, 2334, 2346, 2347, 2348, 2350, 2355, 3325 and
+   3329 are done, and ADR-0136.
 2. Read the specifications (scope 8) and list them in the report.
 3. Survey the crates (scope 6), and fill the table.
 4. Measure the shortlist on a throwaway branch: for each crate, the

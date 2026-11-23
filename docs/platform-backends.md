@@ -601,7 +601,7 @@ computer's `profiles`), one RON value,
 - The web keeps no record (the page sizes the canvas), and neither does a
   capture run (ADR-0052).
 
-A new desktop backend (the winit one, 3034) keeps the same record under
+A new desktop backend (the winit one, 3326) keeps the same record under
 the same key, so a player's window survives the move.
 
 The system's cursor hides over the picture when the mouse isn't in use,
@@ -625,7 +625,7 @@ whether a mouse button was pressed, the window's mode and its focus:
 
 The web does the same, through the canvas's CSS `cursor`. A capture run
 never reaches it. Both times are *tunable* (`CURSOR_IDLE`, `MODE_SETTLE`).
-A new desktop backend (3034) keeps the same rule.
+A new desktop backend (the winit one, 3327) keeps the same rule.
 
 ## Files handed in at run time (optional)
 
@@ -830,7 +830,7 @@ build without debug tools passes warnings and errors alone (ADR-0094).
 
 Two kinds of line never reach these sinks: miniquad's own messages, plain
 `eprintln!` and `println!` calls that stay on stderr (until macroquad
-goes, ticket 3034); and a game's lines if the game installed a `log`
+goes, ticket 3333); and a game's lines if the game installed a `log`
 logger of its own before `run_app`, which keeps it (a line on stderr says
 so).
 

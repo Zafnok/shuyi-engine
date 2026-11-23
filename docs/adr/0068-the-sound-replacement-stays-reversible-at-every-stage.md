@@ -1,6 +1,6 @@
 # ADR-0068: The sound replacement stays reversible at every stage
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0136 (3034's research ran before 3079; the tickets it wrote wait for 3079)
 - **Date:** 2026-10-31
 - **Related tickets:** 2573, 2210, 3030, 3031, 3032, 2397, 3084, 3079, 3034, 2084
 
