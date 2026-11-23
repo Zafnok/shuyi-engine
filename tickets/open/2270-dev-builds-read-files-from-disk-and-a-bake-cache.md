@@ -80,7 +80,7 @@ None.
   `game.features`, so the tool program (`run`, `scene`, MCP `start`) reads
   from disk too.
 - A measurement: `cargo xtask asset-times`, which makes a game with a
-  synthetic folder of about 300 MB (noise PNGs and WAVs), and times the
+  synthetic folder of about 300 MB (noise PNG and WAV files), and times the
   clean build, the rebuild after one PNG changed, and the start-up, each
   embedded and with `disk-files`, plus the program's peak memory. Its
   numbers go in `docs/formats.md`, *Measurements*. It is run by hand, not

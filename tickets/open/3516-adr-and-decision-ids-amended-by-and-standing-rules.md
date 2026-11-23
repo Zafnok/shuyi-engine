@@ -56,8 +56,8 @@ bytes in 50 dated parts. Each part has his words verbatim and the rules
 that follow from them: 4 parts have one `**Rule:**` line, and 46 have a
 `**Rules:**` list, about 188 bullets in all, each opening with a bold
 phrase ("- **The MVP is parity.** …"). No rule has an id,
-and nothing marks one as revised (one line in the file says
-"supersed"). The `work-ticket` skill tells a session to stop when
+and nothing marks one as revised (only one line in the file says
+a rule is superseded). The `work-ticket` skill tells a session to stop when
 `decisions.md` doesn't hold an answer, and the only way to know is to
 read the whole file.
 

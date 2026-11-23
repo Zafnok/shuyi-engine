@@ -61,7 +61,7 @@ Existing pieces this uses:
 
 - The capture mode (`crates/app/src/capture.rs`, feature
   `shuyi-app/capture`): `SHUYI_CAPTURE=<plan>` runs the plan, compares
-  each capture with the raster, writes `capture.txt` and the PNGs under
+  each capture with the raster, writes `capture.txt` and the PNG files under
   `SHUYI_CAPTURE_OUT`, and exits 0, 1 or 2.
 - Hello, Grid's feature `capture` (`examples/hello-grid/Cargo.toml`)
   and its plan, `examples/hello-grid/capture/frames.ron`. The packages
