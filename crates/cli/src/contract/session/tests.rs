@@ -143,6 +143,51 @@ mod toy {
         assert_eq!(s.quit_frame(), None);
     }
 
+    /// The toy, its `click` given a gap of 40 milliseconds.
+    fn clicking() -> Headless<toy::Toy> {
+        let mut ctx = toy::ctx();
+        if let Some(click) = ctx.game.audio.sounds.get_mut("click") {
+            click.rules = shuyi_assets::audio::CueRules::DEFAULT.with_min_gap_ms(40);
+        }
+        Headless::new(Harness::new(toy::game_on(ctx)))
+    }
+
+    #[test]
+    fn run_lists_the_plays_the_cue_rules_dropped() {
+        use crate::contract::run::{RunOutput, run_output};
+
+        let mut s = clicking();
+        // Confirm opens the menu; Confirm there clicks, twice 2 frames apart.
+        s.play(&Script::new(vec![Step::Keys("f f f".into())]));
+        let (out, _) = run_output(&s);
+        let click = |frame| Sound {
+            frame,
+            cue: "click".into(),
+        };
+        assert_eq!(out.sounds, [click(3), click(5)]);
+        let gap = Dropped {
+            frame: 5,
+            cue: "click".into(),
+            why: "gap".into(),
+        };
+        assert_eq!(out.dropped, [gap]);
+        // The JSON's entry has the keys the schema's `Dropped` lists.
+        let json = serde_json::to_value(&out).unwrap();
+        let entry = json["dropped"][0].as_object().unwrap();
+        let schema = serde_json::to_value(schemars::schema_for!(Dropped)).unwrap();
+        let mut listed: Vec<&String> = schema["properties"].as_object().unwrap().keys().collect();
+        let mut keys: Vec<&String> = entry.keys().collect();
+        listed.sort();
+        keys.sort();
+        assert_eq!(keys, listed);
+        assert_eq!(entry["why"], "gap");
+        // With nothing dropped, the field is left out, and reads back.
+        let (quiet, _) = run_output(&session());
+        let json = serde_json::to_string(&quiet).unwrap();
+        assert!(!json.contains("\"dropped\""), "{json}");
+        assert_eq!(serde_json::from_str::<RunOutput>(&json).unwrap(), quiet);
+    }
+
     #[test]
     fn its_events_are_the_screens_the_quit_and_the_games_own() {
         let mut s = session().with_events(|h| vec![format!("{} frames", h.frame_count())]);
@@ -526,7 +571,10 @@ mod added {
         let (result, limits) = run_output(&s);
         let answer = Answer::new(Op::Run, true, result, limits);
         let json: serde_json::Value = serde_json::from_str(&answer.to_json()).unwrap();
-        assert_eq!(keys(&json["result"]), keys(&output["properties"]));
+        // Every field the schema lists but `dropped`: nothing was dropped.
+        let mut listed = keys(&output["properties"]);
+        listed.retain(|key| *key != "dropped");
+        assert_eq!(keys(&json["result"]), listed);
         assert_eq!(
             json["result"]["sounds_added"],
             serde_json::json!([
