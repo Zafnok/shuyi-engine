@@ -53,8 +53,13 @@ None.
   don't read naming the file and the tag, and writes the region where the
   device finds it beside the track (a `smpl` chunk's loop in the baked
   WAV, or a field of the baked manifest: decide, and say why). A region
-  in frames of the source is the same frames in the baked file, which
-  keeps the rate.
+  in frames of the source is the same frames in the baked file at the
+  source's rate.
+  - **Either order with 2272:** if 2272 is done, the bake resamples a
+    file that isn't at 44.1 kHz to `SAMPLE_RATE`, so scale the region's
+    start and length by `SAMPLE_RATE / rate`, rounded down, and test a
+    48 kHz track; if not, nothing to do (2272 scales a baked region when
+    it lands).
 - No desktop decoder on the handheld: the device reads only what was baked.
 - If the CLI comes to depend on `shuyi-sound` for the tags, that line goes in
   `tools/sound-parity/footprint.ron` with what a give-up leaves in its place

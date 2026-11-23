@@ -55,6 +55,11 @@ None.
   `dsi` profiles' too if 3017 is done (if not, 3017 writes them, its
   clause says so). A bare `Planned` still reads, so a game's own
   profile keeps loading.
+- **Either order with 3338:** if 3338 is done, `Status::Preview` gets
+  the same `tickets` field as `Planned` (`Preview(tickets: ["3011"])`
+  for `playdate`, `["3013"]` for `steam-deck`), and a bare `Preview`
+  still reads; if not, nothing to do (3338 gives `Preview` the field
+  when it adds the variant).
 - **The check**, in the composer, if 3017 is done: for each picked
   target, `capabilities_fit(profile, needs)` over the picked modules'
   `needs` (and the template parts' stage needs, if a part declares any).

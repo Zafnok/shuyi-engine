@@ -275,6 +275,11 @@ None.
     The example does that, `shuyi export playdate` builds it, and the PR
     says whether it runs in the Playdate Simulator (`--run`, if the SDK
     is installed where the PR is made).
+- **Either order with 3509:** if 3509 is done, add a long scenario for
+  `examples/snake` (`examples/snake/long/*.long.ron`: a seeded play that
+  loses, restarts and loses again) and run it in
+  `.github/workflows/long-run.yml` beside Hello, Grid; if not, nothing
+  to do (3509 adds it when it lands).
 - **The template part `stage-arcade-grid`** in `templates/shuyi-default/`
   (2501):
   - the built-in template gets its own question `time` ("On a grid:
@@ -364,7 +369,7 @@ None.
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
    tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3010 and 3093.
+   2524, 2801, 3004, 3010, 3093 and 3509.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.

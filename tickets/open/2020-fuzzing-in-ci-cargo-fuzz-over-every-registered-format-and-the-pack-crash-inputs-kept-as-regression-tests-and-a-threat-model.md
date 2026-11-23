@@ -1,6 +1,6 @@
 ---
 id: "2020"
-title: "Fuzzing in CI: cargo-fuzz over every registered format and the pack, crash inputs kept as regression tests, and a threat model for untrusted files"
+title: "Fuzzing in CI: cargo-fuzz over every registered format, the pack and the script sandbox, crash inputs kept as regression tests, and a threat model for untrusted files"
 type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2020 — Fuzzing every registered format and the pack in CI
+# 2020 — Fuzzing every registered format, the pack and the script sandbox in CI
 
 ## Context
 
@@ -60,7 +60,18 @@ disclosure policy.
 **What brings more untrusted bytes:** 2207 (layers of a player's files,
 for game#1012 and game#1014, the game's mods), 2203 (more decoders
 behind features), the parked sound-source and library decoder adapters
-(2210, selected by 2902), the parked network messages (1140), and scripts (2101).
+(2210, selected by 2902), the parked network messages (1140), and scripts.
+2101 (done) made `shuyi-script`: a mod's Rhai text goes through
+`Runtime::compile`, then `run` or `call`, inside `Limits`
+(`crates/script/src/limits.rs`: operations, text, list and map sizes,
+variables, call and expression depth). Its tests
+(`crates/script/src/tests.rs`) check each limit on scripts written by
+hand, and its one property test varies the view, not the source.
+Nothing feeds it random text.
+
+**When:** the milestone stays After MVP. Whether this ticket, or a
+first slice of it, moves before 2005 publishes the loaders is Nick's
+call in 3528 (question 6).
 
 **Why it matters:**
 
@@ -70,7 +81,8 @@ behind features), the parked sound-source and library decoder adapters
   header that asks for a huge allocation, nesting deep enough to
   overflow the stack, a slow path.
 - The game first: once mods ship through 2207, a mod's file that crashes
-  a decoder crashes the game.
+  a decoder crashes the game, and so does a mod's script that makes
+  the sandbox panic, overflow the stack or hang.
 - Other 2D games: any game with mods, shared levels or downloaded
   content reads files it didn't ship.
 - The end goal (2026-10-19): an agent that adds a format registers it,
@@ -187,14 +199,35 @@ it is technical.
        at the file's own path.
     Never call `Pack::into_layer`, which leaks on purpose: memory would
     grow per input, and LeakSanitizer reports it.
+- **The script driver, in `shuyi-script` behind its own `fuzz` feature**
+  (`crates/script/src/fuzz.rs`, `#[cfg(feature = "fuzz")] pub mod
+  fuzz;` in `crates/script/src/lib.rs`, `fuzz = []` in
+  `crates/script/Cargo.toml` with a comment). It sits in its own crate
+  because `shuyi-assets` doesn't depend on `shuyi-script`; the feature
+  adds no dependency, so `tools/layers.ron` doesn't change. A new
+  dev-dependency of the crate on itself (`shuyi-script = { path = ".",
+  features = ["fuzz"] }`) turns it on for its tests. Its public function
+  has a `# Panics` section, as above.
+  - **`fuzz::script(input: &[u8])`**: `input` read as UTF-8 (an input
+    that isn't is skipped), compiled with `Runtime::new(Limits::new())`
+    under the name `fuzz.rhai`; when it compiles, run with `run` on a
+    small fixed view of its own (a private `Serialize` struct with an
+    integer, a list of integers, a map and some text), read back as
+    `Value`, and, when `has_function("main")`, called the same way with
+    `call(.., "main", ..)`.
+  - It does all of this twice, on two `Runtime`s, and asserts the two
+    results are equal (`Result<Value, ScriptError>`; both are
+    `PartialEq`). Every outcome is a value or a `ScriptError`; a panic,
+    a stack overflow, a memory blow-up or a hang is a finding.
 - **The fuzz crate, `fuzz/`**, outside the workspace: its own
   `[workspace]` table, `publish = false`, `license = "MIT OR
   Apache-2.0"`, `[package.metadata] cargo-fuzz = true`, and its
   `Cargo.lock` committed.
-  - `fuzz_targets/formats.rs` and `fuzz_targets/pack.rs`, each one
-    `fuzz_target!` calling its driver.
-  - Dependencies: `libfuzzer-sys` 0.4 and `shuyi-assets` (by path, with
-    the `fuzz` feature).
+  - `fuzz_targets/formats.rs`, `fuzz_targets/pack.rs` and
+    `fuzz_targets/script.rs`, each one `fuzz_target!` calling its
+    driver.
+  - Dependencies: `libfuzzer-sys` 0.4, and `shuyi-assets` and
+    `shuyi-script` (by path, each with its `fuzz` feature).
   - A `.gitignore` for `target/`, `corpus/`, `artifacts/` and
     `coverage/`.
   - It builds on Linux, on a dated nightly, in CI only. Never on
@@ -210,15 +243,21 @@ it is technical.
     --workspace` on Windows, macOS and Linux, and on Nick's machine.
   - Two inputs to start, so the test isn't empty: an empty file in
     `formats/`, and a pack header with nothing after it in `pack/`.
+  - The script's own: `crates/script/tests/fuzz-regressions/` with its
+    `README.md`, replayed by `crates/script/tests/fuzz.rs` through
+    `fuzz::script` on stable, the same way. One input to start: a script
+    that nests deeper than `expression_depth`.
 - **CI: `.github/workflows/fuzz.yml`**, on the pattern of `mutants.yml`.
   - Triggers: `pull_request`, a weekly `schedule` (`0 6 * * 0`, Sunday,
     away from Monday's mutants), and `workflow_dispatch`.
   - `.github/workflows/changes.yml` gets a second output, `assets`: true
     on any other event, and on a pull request that touches
-    `crates/assets/`, `crates/core/`, `fuzz/`, `Cargo.lock` or
+    `crates/assets/`, `crates/core/`, `crates/script/`, `fuzz/`,
+    `Cargo.lock` or
     `.github/workflows/fuzz.yml`. The fuzz jobs run when it is true and
     are skipped otherwise, which still reports a status.
-  - One job per target, `fuzz (formats)` and `fuzz (pack)`, on
+  - One job per target, `fuzz (formats)`, `fuzz (pack)` and
+    `fuzz (script)`, on
     `ubuntu-latest`, with `permissions: contents: read` and every action
     pinned by SHA as the other workflows pin them:
     - a dated nightly set once in the workflow's `env`
@@ -242,15 +281,17 @@ it is technical.
       `crates/assets/tests/fuzz-regressions/<target>/` (not the
       README); for `formats`, also the repository's own asset files:
       `examples/*/files/**`, `templates/*/crates/game/files/**`,
-      `targets/*.ron` and `crates/assets/src/keymap/sample.ron`. `pack`
-      needs no more;
+      `targets/*.ron` and `crates/assets/src/keymap/sample.ron`; for
+      `script`, the kept inputs of `crates/script/tests/fuzz-regressions/`
+      and every tracked `*.rhai` file (today
+      `crates/script/tests/scripts/`). `pack` needs no more;
     - the corpus restored from the newest weekly cache
       (`actions/cache/restore`, a key per target with the run id,
       restored by its prefix);
     - `cargo +$FUZZ_TOOLCHAIN fuzz run <target> fuzz/corpus/<target> --
       -max_total_time=<seconds> -timeout=10 -rss_limit_mb=2048
       -malloc_limit_mb=512`: 60 seconds on a pull request, 900 per
-      target on the weekly run (30 minutes in all).
+      target on the weekly run (45 minutes in all).
       - 512 MiB is eight times the biggest allocation a small file may
         cause today: a PNG's pixels at `image::MAX_SIDE`, 4096 × 4096 ×
         4 bytes. An input that needs more is a finding.
@@ -265,7 +306,7 @@ it is technical.
       (`actions/upload-artifact`, pinned as in `mutants.yml`).
   - A crash fails the job. It becomes a bug ticket (the `write-ticket`
     skill), and its fix's PR puts the input, minimized with `cargo fuzz
-    tmin` when that works, in `fuzz-regressions/`.
+    tmin` when that works, in its crate's `fuzz-regressions/`.
 - **`deny.toml`:** `libfuzzer-sys` is `(MIT OR Apache-2.0) AND NCSA`
   (crates.io, 0.4.13). NCSA, the University of Illinois/NCSA license, is
   permissive and OSI-approved but isn't on ADR-0002 §8's list, which is
@@ -278,18 +319,22 @@ it is technical.
 - **The threat model:** a new section `## Untrusted files` in
   `docs/formats.md`, after *The rules*. Four short lists:
   - **untrusted:** every file a run-time layer brings (2207: mods, a
-    player's levels), downloaded content, packs, saves and records a
-    player shares, and later network messages (1140);
+    player's levels), a mod's scripts, downloaded content, packs, saves
+    and records a player shares, and later network messages (1140);
   - **promised** for registered formats and the pack: no undefined
     behaviour in the engine's decoders (`unsafe` is forbidden in
     `shuyi-assets`); no panic; memory within the documented limits
     (ADR-0019 §4, `MAX_SIDE`, the pack's limits); a decode that ends
     (the fuzz job's 10 seconds per input); the same result from the
-    same bytes within a run (across machines: 2116);
+    same bytes within a run (across machines: 2116); and for the script
+    sandbox, that any text compiles and runs within its `Limits` to a
+    value or a `ScriptError`, the same one each time, never a panic, a
+    stack overflow or a hang;
   - **not promised:** a pack's authenticity (its checksum catches
     damage, not attackers: ADR-0023); which files a mod may replace (the
-    game's mod rules); running untrusted code (a format is a crate
-    compiled in, ADR-0007 §2; scripts are 2101's sandbox);
+    game's mod rules); running untrusted native code (a format is a
+    crate compiled in, ADR-0007 §2); what a script decides inside the
+    sandbox (what it may change is the game's rules);
   - **read but not fuzzed here**, each with what tests it today:
     - the backend's decoders: `shuyi-app` hands PNG bytes to macroquad's
       `Image::from_file_with_format` (`crates/app/src/render.rs`,
@@ -310,7 +355,8 @@ it is technical.
     format plugin*, say a registered format is also fuzzed in CI.
   - A short *Fuzzing* part: what runs where, and how to replay a crash
     on stable: put the input in its folder and run `cargo test -p
-    shuyi-assets --test it fuzz`.
+    shuyi-assets --test it fuzz` (a script's: `cargo test -p
+    shuyi-script --test fuzz`).
 - **How a format gets into the fuzz registry**, said in
   `docs/formats.md` and in one line each of
   `.claude/skills/work-ticket/SKILL.md` and
@@ -327,7 +373,8 @@ it is technical.
     `pack/tests.rs`) adds its `Packed<K>` to `fuzz::registry()`.
 - **An ADR** (the `write-adr` skill, the next free number) that extends
   ADR-0007 §5:
-  - registered formats and the pack are fuzzed in CI, and the property
+  - registered formats, the pack and the script sandbox are fuzzed in
+    CI, and the property
     tests stay required (they run on stable, everywhere);
   - the fuzz crate lives outside the workspace, on a nightly, in CI
     only;
@@ -337,9 +384,11 @@ it is technical.
   ADR-0007's row in `docs/adr/README.md` says it is extended by the new
   ADR.
 - **Either order:**
-  - with 2005, and 1132 (parked) if it lands first: if `SECURITY.md`
-    exists, link *Untrusted files* from it; if not, the ticket that
-    writes it adds the link;
+  - with 2005 and 2849, and 1132 (parked) if it lands first: if
+    `SECURITY.md` exists, link *Untrusted files* from it; if not, the
+    ticket that writes it adds the link (**Either order with 2849:** if
+    2849 is done, add the link to its *What counts* section; if not,
+    2849 adds it);
   - with 2011 (done): add `/fuzz` to `.github/dependabot.yml`'s cargo
     update (as `directories: ["/", "/fuzz"]`);
   - with 2012 (done): `check-toolchain` checks only the stable pins,
@@ -400,7 +449,8 @@ it is technical.
   covers, write a ticket for it.
 - Signing packs (ADR-0023), and decoders giving the same result on
   every machine (2116).
-- Scripts (2101's sandbox).
+- Changing `shuyi-script`'s `Limits` or its language. A crash the
+  script target finds is fixed as step 6 says.
 - The run-time layers that bring a player's files (2207). It should
   land before game#1014 ships mods to players, but neither ticket waits
   for the other.
@@ -409,42 +459,45 @@ it is technical.
 
 1. Read ADR-0007 §5, ADR-0019 §4, ADR-0023,
    `crates/assets/src/format.rs`, `format/builtin_tests.rs`, `pack.rs`,
-   `pack/tests.rs`, and `.github/workflows/mutants.yml` and
-   `changes.yml`.
+   `pack/tests.rs`, ADR-0093, `crates/script/src/lib.rs` and
+   `limits.rs`, and `.github/workflows/mutants.yml` and `changes.yml`.
 2. Add the `fuzz` feature (turned on in the crate's dev-dependency on
    itself), the walk on `Kind` and `Formats`, `pack::checksum` as
    `pub(crate)`, and `crates/assets/src/fuzz.rs` with its sample types,
    `fixtures()`, `registry()`, the two drivers and its unit tests.
    Remove `builtin_tests.rs`'s `fixtures()` and point its `decodes` at
    `crate::fuzz::fixtures()`.
-3. Add the replay test and the two starting inputs.
-4. Add `fuzz/` in the layout `cargo fuzz init` makes, with the two
+3. Add `shuyi-script`'s `fuzz` feature, its dev-dependency on itself
+   and `crates/script/src/fuzz.rs` with `fuzz::script` and its unit
+   tests.
+4. Add the two replay tests and the three starting inputs.
+5. Add `fuzz/` in the layout `cargo fuzz init` makes, with the three
    targets.
-5. Add the `assets` output to `changes.yml`, write `fuzz.yml`, and add
+6. Add the `assets` output to `changes.yml`, write `fuzz.yml`, and add
    the `deny.toml` exception. Let the PR's jobs run.
-6. Fix what they find in this PR, each fix with its input kept in
+7. Fix what they find in this PR, each fix with its input kept in
    `fuzz-regressions/`. A fix of more than about 30 lines goes in a bug
    ticket of its own (the `write-ticket` skill) and its own PR first,
    with the input in that PR's test; this PR waits for it, then keeps
    the input in `fuzz-regressions/` too. Say so in the PR.
-7. Show the harness catches a crash: a throwaway commit makes one
+8. Show the harness catches a crash: a throwaway commit makes one
    format panic on input that starts with `FUZZME` and adds a file
    `crates/assets/tests/fuzz-regressions/formats/planted` holding
    `FUZZME`, which the job takes as a seed. The PR's fuzz job fails and
    uploads the input (the stable replay test fails too). Revert the
    commit, and link the failed run in the PR description.
-8. Write the docs, the ADR, its README row and the skills' lines. Run
+9. Write the docs, the ADR, its README row and the skills' lines. Run
    the gates.
 
 Size: if the diff runs well past 600 changed lines, move the pack
-target, the weekly run and the threat model's docs to a follow-up
-ticket, and keep the harness, the formats target, the PR job and the
+target, the script target, the weekly run and the threat model's docs
+to a follow-up ticket, and keep the harness, the formats target, the PR job and the
 regression folder here.
 
 ## Acceptance criteria
 
-- [ ] `fuzz (formats)` and `fuzz (pack)` ran on the PR for 60 seconds
-      each and passed (links in the PR description).
+- [ ] `fuzz (formats)`, `fuzz (pack)` and `fuzz (script)` ran on the
+      PR for 60 seconds each and passed (links in the PR description).
 - [ ] The planted panic failed the PR's job and uploaded its input
       (link in the PR description), and the commit that planted it is
       reverted.
@@ -457,8 +510,12 @@ regression folder here.
       (unit tests with `catch_unwind`, on a registry they build).
 - [ ] `builtin_tests.rs` has no `fixtures()` of its own; its property
       tests use `fuzz::fixtures()`.
-- [ ] Every file in `crates/assets/tests/fuzz-regressions/` runs
-      through its driver in `cargo test --workspace`, on stable.
+- [ ] Every file in `crates/assets/tests/fuzz-regressions/` and
+      `crates/script/tests/fuzz-regressions/` runs through its driver in
+      `cargo test --workspace`, on stable.
+- [ ] `fuzz::script` gives a value or a `ScriptError`, the same twice,
+      for a script that hits each of `Limits`' seven limits (unit
+      tests).
 - [ ] `fuzz/` is outside the workspace (its own `[workspace]` table),
       with its `Cargo.lock` committed, and nothing in the gates builds
       it.
@@ -483,9 +540,15 @@ regression folder here.
   fixture constant of `builtin_tests.rs` (`PALETTE`, `ATLAS`,
   `MANIFEST`, `SCRIPT`, `MAP`, `FILM`, `PACK_INFO` and the rest) goes
   through the formats driver without a panic.
-- Integration: the replay of `fuzz-regressions/`
-  (`crates/assets/tests/it/fuzz.rs`).
-- CI: the two fuzz jobs on the PR, and the planted panic's failed run.
+- Unit (`crates/script/src/fuzz.rs`): one script per limit of
+  `Limits` (operations, text bytes, list items, map entries, variables,
+  call depth, expression depth), a script that doesn't compile, text
+  that isn't UTF-8, and the fixture scripts of
+  `crates/script/tests/scripts/`, each through `fuzz::script` without a
+  panic.
+- Integration: the replays of `fuzz-regressions/`
+  (`crates/assets/tests/it/fuzz.rs`, `crates/script/tests/fuzz.rs`).
+- CI: the three fuzz jobs on the PR, and the planted panic's failed run.
 
 ## Completion notes
 

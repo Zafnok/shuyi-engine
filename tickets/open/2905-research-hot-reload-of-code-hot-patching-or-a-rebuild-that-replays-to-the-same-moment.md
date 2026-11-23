@@ -58,7 +58,12 @@ None. This is technical.
      (done):** measure with the setup the template has from it (no
      debug info in `dev`, Rust's own linker; no `dynamic` feature, which
      made no rebuild faster, ADR-0049), and `cargo xtask compile-times`
-     for the rebuild it waits on.
+     for the rebuild it waits on. **From 3414:** the MCP session
+     records a fingerprint of the game's code at `start` and marks a
+     later answer `stale: true` with a limit when it changes. Say
+     whether option 1 also serves the MCP session (rebuild the host and
+     replay the session's steps headless when an answer would be
+     stale), and if kept, write that ticket.
   2. **Hot patching with `subsecond`:** license (check on the day),
      what it needs (its CLI, a nightly or stable toolchain), whether it
      works on Windows with the GNU toolchain (`AGENTS.md`,
@@ -67,13 +72,15 @@ None. This is technical.
      `hot-lib-reloader` does): what state survives, and whether the
      GNU toolchain links it.
   4. **Scripts** (2101): rules in the script runtime could reload as
-     assets with 2220 and need no rebuild at all. No ticket makes that
-     work yet: 2101's `compile(name, source)` reads a script once, at
-     load, and defines no asset kind, and 2220's `Hot<T: AssetKind>`
-     reloads only values decoded through the registry. Say what it
-     needs (a script `AssetKind` and `Format` in `shuyi-script`, say)
-     and where it would cover the need; if the ADR keeps this way,
-     write that ticket.
+     assets with 2220 and need no rebuild at all. 2145 builds that: a
+     script `AssetKind` and `Format` in `shuyi-script`, and a
+     `HotScript` that recompiles after each reload. Say where it
+     covers the need. **Either order with 2145:** if 2145 is done,
+     option 4 measures its `HotScript` reload (time from save to the
+     new rule, on Hello, Grid or 2102's example) and writes no new
+     ticket for scripts; if not, option 4 answers from 2145's text,
+     and the ADR names 2145 as the ticket for script reload instead of
+     writing one.
 - For each: what the developer does, the time to see a change, what
   breaks it, the platforms, and the cost in our code.
 - **Either order with 2528:** `shuyi web --serve` rebuilds the web

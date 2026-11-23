@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: []
+blocked_by: ["3230"]
 nick_input: none
 completed:
 ---
@@ -54,12 +54,13 @@ None.
     so the result is exact and the same everywhere;
   - a node too big for its place is cut at its parent's edge, and
     `Layout::overflows()` lists it (for a check like 2209's).
-- **Widgets measure themselves:** a `Measure` trait (the minimum size a
-  widget needs: a menu's longest label and its rows, a text box's
-  lines) used by `Fit`.
+- **Widgets measure themselves:** through `Widget::measure` of 3230's
+  widget contract (the minimum size a widget needs: a menu's longest
+  label and its rows, a text box's lines), used by `Fit`; `layout`
+  takes 3230's `Size`.
 - **Either order with 2334:** if 2334 is done, its `TextLabel`
-  implements `Measure` in pixels, with `shuyi_ui::frame::text::measure`;
-  if not, 2334 does it.
+  implements 3230's `Widget`, its `measure` in pixels, with
+  `shuyi_ui::frame::text::measure`; if not, 2334 does it.
 - **Screens use it:** the options screen (`crates/ui/src/screens/`) and
   one other engine screen move to a layout, with their `frame-png`
   snapshots unchanged (or changed on purpose, said in the PR).
@@ -68,9 +69,9 @@ None.
   leaves room for translated text. If not, 2353's walk covers them when
   it lands.
 - **Either order with 2762** (the action HUD, parked): if 2762 is
-  done, give its `PoolGauge` and `SkillBar` a `Measure`, so a game
-  lays the HUD out in rows and columns. If not, nothing to do (2762
-  does it, its clause says so).
+  done, give its `PoolGauge` and `SkillBar` 3230's `Widget` (their
+  `measure`), so a game lays the HUD out in rows and columns. If not,
+  nothing to do (2762 does it, its clause says so).
 - **From 2802 (done):** the book's chapter 2, *The frame and skins*
   (`site/content/learn/book/frame-and-skins.md`), gets a section on
   laying widgets out with `shuyi_ui::layout`, its code in
@@ -95,8 +96,8 @@ None.
 
 1. Write the layout types and the solver, rows first, then columns,
    then wrap.
-2. Add `Measure` for the widgets, and for 2334's `TextLabel` if it is
-   done.
+2. Lay out with `Widget::measure` (3230) for the widgets, and for
+   2334's `TextLabel` if it is done.
 3. Move the two screens over, keeping their snapshots (and 2353's walk,
    if it is done).
 4. Run the gates.

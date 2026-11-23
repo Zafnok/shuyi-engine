@@ -86,6 +86,16 @@ None.
   `count` helper (`1 page, 12 entries`), with `--print` writing the
   RON sidecar above through its `Encode`. Fix that file's module doc,
   which says `import` needs no change for the Aseprite importer.
+- **Either order with 2274:** if 2274 is done, `atlas::AsepriteJson`
+  (feature `aseprite`) already reads Aseprite's `json-hash` and
+  `json-array` frames into `Atlas` as named rectangles, refusing
+  trimmed frames, and `Importers::standard()` has `.kind::<Atlas>`.
+  Build on it: add the trimmed frame's fields and accept trimmed
+  frames, read `frameTags` into 2231's clips and `meta.slices` as this
+  Scope says, add TexturePacker by sniffing `meta.app` beside it, and
+  turn the `Atlas` row into `kind_with_text` for the RON sidecar. If
+  not, nothing to do: 2274 drops its Aseprite part when this lands
+  first.
 - Measure `asefile` behind an `aseprite` feature. Keep it only if it adds
   under 300 KB to the WASM build (ADR-0004 §2). Write down the number
   either way.

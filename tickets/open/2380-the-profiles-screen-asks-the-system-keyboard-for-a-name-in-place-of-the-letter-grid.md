@@ -74,6 +74,12 @@ None.
      "Ann  Lee", a blank text, 13 letters for 12, and a letter the
      font doesn't draw give `None`. There is one rule for a
      character, not a copy.
+     **Either order with 3232:** if 3232 is done, `accepts` is
+     `finished(text)` plus 3232's `NameRules::allows_text(ctx, text)`
+     (every character allowed in turn, no trim), not a fold of its own;
+     if not, factor that every-character-in-turn rule out of `accepts`
+     as `NameRules::allows_text(ctx, text) -> bool`, which 3232's name
+     box uses.
    - `NameRules::text_ask(self, prompt: &str, name: &str) -> TextAsk`:
      the ask for a name, with `prompt`, the name so far, and
      `max_chars` as a `u16` (`u16::MAX` when it doesn't fit). A
