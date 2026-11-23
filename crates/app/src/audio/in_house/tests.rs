@@ -301,7 +301,7 @@ fn an_added_sound_mixes_as_the_same_samples_as_a_cue_of_the_manifest() {
     ] {
         let (mut backend, mut side) = backend();
         let (music, voice) = ("music".to_owned(), "voice".to_owned());
-        let load = Player::load(&mut backend, manifest.clone(), &files, music, voice, 1);
+        let load = Player::load(&mut backend, manifest.clone(), &files, music, voice);
         let mut player = block_on(load);
         player.play(&mut backend, &requests, &[], 0.0);
         let found = player.take_warnings();

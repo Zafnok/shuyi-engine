@@ -50,8 +50,8 @@ a `u32`, draw, and turn the draw back into a `usize`.
 SplitMix64 is written three times: `shuyi_ui::audio::splitmix64`
 (`crates/ui/src/audio.rs:259`, public, the music pool's pick), `mix`
 (`crates/platform/src/app.rs:647`, the launch seed) and `VariantRng`
-(`crates/app/src/audio.rs:360`, sound variants; 2345 moves it into
-`shuyi-platform`). The parked 2103 needs a stateless one for particles
+(`crates/platform/src/audio/cues.rs`, sound variants and volumes, where
+2345 moved it). The parked 2103 needs a stateless one for particles
 and takes this ticket's `mix_at`. FNV-1a is in `crates/core/src/hash.rs`
 (`Hasher::bytes`).
 
@@ -224,7 +224,7 @@ None.
 - streams for the systems of a parallel schedule (2108 forks them),
   unless 2108 is done (the clause with 2108 above);
 - the `rand` crate, or any new dependency;
-- `VariantRng` (`crates/app/src/audio.rs`, which 2345 moves) and
+- `VariantRng` (`crates/platform/src/audio/cues.rs`, since 2345) and
   `shuyi-platform`'s `mix`: they never touch a simulation, so leave
   them;
 - moving `roll_percent` callers (hello-grid's trip roll) onto `chance`:

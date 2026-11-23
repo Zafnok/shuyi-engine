@@ -3,14 +3,18 @@
 //!
 //! The screens' requests name the game's voice clips by its own variant
 //! type; what reaches the device names their files ([`SoundRequest`]), so
-//! a backend is the same for every game. The rules of playing (a cue's
-//! volume, picking a variant, fades, the music clock) are [`player`]'s, so a
-//! backend writes only its small [`Backend`](player::Backend) trait.
+//! a backend is the same for every game. A sound's file and volume are
+//! picked before the device, by the cue rules ([`cues`], ADR-0139), so every
+//! backend plays the same; the rules of playing (fades, the music clock) are
+//! [`player`]'s, so a backend writes only its small
+//! [`Backend`](player::Backend) trait.
 
+pub mod cues;
 pub mod player;
 
 use crate::alloc_prelude::*;
 
+use shuyi_assets::audio::MAX_VOLUME;
 use shuyi_assets::voice::{ClipVariant, clip_file};
 use shuyi_ui::audio::{AudioRequest, Gains, MusicCommand, SharedSamples, SoundId};
 
@@ -23,26 +27,41 @@ use crate::platform::Millis;
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[non_exhaustive]
 pub enum SoundRequest {
-    /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.
-    /// Build it with [`SoundRequest::sound`] (ADR-0039).
+    /// Play file `variant` of a sound cue once, at `volume` (0–1) times
+    /// `cue_volume`: the cue rules picked both ([`cues`], ADR-0139), and a
+    /// backend plays what it is told. Build it with [`SoundRequest::sound`]
+    /// and [`with_pick`](Self::with_pick) (ADR-0039).
     #[non_exhaustive]
     Sound {
         /// The sound cue.
         cue: String,
-        /// A multiplier on the cue's volume, 0–1.
+        /// A multiplier on `cue_volume`, 0–1.
         volume: f32,
+        /// The file it plays: an index into the cue's `files` (0 by
+        /// default).
+        variant: usize,
+        /// The cue's volume this play picked, in percent (100 by default).
+        /// A sound the game added plays at its own volume, full, whatever
+        /// this says.
+        cue_volume: u8,
     },
-    /// Play a sound cue until [`Stop`](Self::Stop) of its `id`: looped if
-    /// the cue says so, else once. Build it with [`SoundRequest::start`]
-    /// (ADR-0039).
+    /// Play file `variant` of a sound cue until [`Stop`](Self::Stop) of its
+    /// `id`, at `volume` times `cue_volume`: looped if the cue says so, else
+    /// once. Build it with [`SoundRequest::start`] and
+    /// [`with_pick`](Self::with_pick) (ADR-0039).
     #[non_exhaustive]
     Start {
         /// Its handle.
         id: SoundId,
         /// The sound cue.
         cue: String,
-        /// A multiplier on the cue's volume, 0–1.
+        /// A multiplier on `cue_volume`, 0–1.
         volume: f32,
+        /// The file it plays: an index into the cue's `files` (0 by
+        /// default).
+        variant: usize,
+        /// The cue's volume this play picked, in percent (100 by default).
+        cue_volume: u8,
     },
     /// Stop the sound started as `id`, at once: that one playback, not the
     /// cue's others.
@@ -121,12 +140,37 @@ fn samples_summary<S: serde::Serializer>(
 }
 
 impl SoundRequest {
-    /// A [`Sound`](Self::Sound) of `cue` at `volume`.
+    /// A [`Sound`](Self::Sound) of `cue` at `volume`: its first file, at
+    /// full volume, until [`with_pick`](Self::with_pick) says otherwise.
     pub fn sound(cue: impl Into<String>, volume: f32) -> Self {
         Self::Sound {
             cue: cue.into(),
             volume,
+            variant: 0,
+            cue_volume: MAX_VOLUME,
         }
+    }
+
+    /// The same request, playing file `variant` at `cue_volume` percent, if
+    /// it is a [`Sound`](Self::Sound) or a [`Start`](Self::Start); any
+    /// other is left as it is.
+    #[must_use]
+    pub fn with_pick(mut self, variant: usize, cue_volume: u8) -> Self {
+        if let Self::Sound {
+            variant: v,
+            cue_volume: c,
+            ..
+        }
+        | Self::Start {
+            variant: v,
+            cue_volume: c,
+            ..
+        } = &mut self
+        {
+            *v = variant;
+            *c = cue_volume;
+        }
+        self
     }
 
     /// A [`Voice`](Self::Voice) of the clip in file `clip`.
@@ -134,12 +178,16 @@ impl SoundRequest {
         Self::Voice { clip: clip.into() }
     }
 
-    /// A [`Start`](Self::Start) of `cue` as `id` at `volume`.
+    /// A [`Start`](Self::Start) of `cue` as `id` at `volume`: its first
+    /// file, at full volume, until [`with_pick`](Self::with_pick) says
+    /// otherwise.
     pub fn start(id: SoundId, cue: impl Into<String>, volume: f32) -> Self {
         Self::Start {
             id,
             cue: cue.into(),
             volume,
+            variant: 0,
+            cue_volume: MAX_VOLUME,
         }
     }
 
@@ -152,7 +200,9 @@ impl SoundRequest {
     }
 
     /// `request` as the device gets it; `None` for a music request, which
-    /// the frame's music commands already say.
+    /// the frame's music commands already say. A sound plays its first file
+    /// at full volume: [`Cues::apply`](cues::Cues::apply) picks them by the
+    /// cue's rules, as [`App`](crate::App) does.
     pub fn from_request<V: ClipVariant>(request: &AudioRequest<V>) -> Option<Self> {
         Some(match request {
             AudioRequest::PlaySound { cue, volume, .. } => Self::sound(cue.clone(), *volume),
@@ -303,8 +353,35 @@ mod tests {
             SoundRequest::sound("click", 0.5),
             SoundRequest::Sound {
                 cue: "click".into(),
-                volume: 0.5
+                volume: 0.5,
+                variant: 0,
+                cue_volume: 100,
             }
+        );
+        assert_eq!(
+            SoundRequest::sound("click", 0.5).with_pick(2, 40),
+            SoundRequest::Sound {
+                cue: "click".into(),
+                volume: 0.5,
+                variant: 2,
+                cue_volume: 40,
+            }
+        );
+        let id = shuyi_ui::audio::AudioQueue::<Voice>::default().start_sound("hum");
+        assert_eq!(
+            SoundRequest::start(id, "hum", 0.5).with_pick(1, 30),
+            SoundRequest::Start {
+                id,
+                cue: "hum".into(),
+                volume: 0.5,
+                variant: 1,
+                cue_volume: 30,
+            }
+        );
+        assert_eq!(
+            SoundRequest::StopVoice.with_pick(1, 30),
+            SoundRequest::StopVoice,
+            "only a sound has a file to pick"
         );
         assert_eq!(
             SoundRequest::voice("intro.hello.ogg"),

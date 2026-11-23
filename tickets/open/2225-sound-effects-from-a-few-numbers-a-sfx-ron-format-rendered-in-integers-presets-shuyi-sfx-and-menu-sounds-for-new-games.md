@@ -314,15 +314,13 @@ parked.
     `sfx::render` (`audio::playable`) first, and baked like any WAV.
   - **2003.** `docs/modules.md` lists the `sfx` feature with the
     format plugins, as planned: set its row to ready.
-  - **2234** (JPEG, WebP, QOI and JPEG XL drawn, FLAC and MP3
-    played). If it is done, `Check::sound` already takes `.flac` and
-    `.mp3`: add `.sfx.ron` beside them, with one message that lists
-    all five names ("must be .ogg, .wav, .flac, .mp3 or .sfx.ron");
-    put the `.sfx.ron` branch of `format_problem` beside its `.flac`
-    and `.mp3` ones; and make `sfx::to_wav` call its
-    `audio::pcm16_wav` with one channel, so the crate has one WAV
-    writer. If not, nothing to do (2234 adds `.flac` and `.mp3`
-    beside `.sfx.ron`, and makes `sfx::to_wav` call its writer).
+  - **From 2234 (done):** `Check::sound` takes `.flac` and `.mp3`
+    (`SOUND_EXTENSIONS`): add `.sfx.ron` beside them, with one message
+    that lists all five names ("must be .ogg, .wav, .flac, .mp3 or
+    .sfx.ron"); put the `.sfx.ron` branch of `format_problem` beside
+    its `.flac` and `.mp3` one (`decode::coded_problem`); and make
+    `sfx::to_wav` call `audio::pcm16_wav` (public) with one channel, so
+    the crate has one WAV writer.
   - **MCP.** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
   - **From 2116 (done):** the presets' WAV hashes are rows of
     `crates/assets/tests/golden/sfx.ron` (through

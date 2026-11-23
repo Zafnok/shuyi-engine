@@ -63,6 +63,9 @@ schemars = { version = "1", optional = true, default-features = false, features 
 # The Harness and the toy game for the tests.
 shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap", "capture", "schema"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
+# The FLAC and MP3 formats, so the tests play a FLAC sound as a WAV
+# (ticket 2234). A game turns them on in its own `Cargo.toml`.
+shuyi-assets = { path = "../assets", default-features = false, features = ["flac", "mp3"] }
 # The link's server and the Harness playing random scripts alike, and
 # random plans.
 proptest.workspace = true

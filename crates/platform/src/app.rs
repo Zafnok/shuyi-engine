@@ -71,6 +71,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInputEvent};
 
+use crate::audio::cues::{Cues, DroppedSound};
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::crash::{self, LastCrash};
 use crate::dropped;
@@ -677,6 +678,8 @@ struct Lists<V> {
     input: Vec<RawInputEvent>,
     system: Vec<SystemEvent>,
     sounds: Vec<SoundRequest>,
+    /// The plays the cue rules dropped.
+    dropped: Vec<DroppedSound>,
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
     changed: Vec<String>,
@@ -711,6 +714,9 @@ pub struct App<G: GameData> {
     background: Background,
     quit: bool,
     lists: Lists<G::Voice>,
+    /// The cue rules (ADR-0139): each sound's file and volume, and the
+    /// plays dropped, decided here for every backend.
+    cues: Cues,
     /// Frames run: 0 before the first.
     frames: u32,
     /// The last lines logged, stamped with their frame.
@@ -784,7 +790,9 @@ impl<G: GameData> App<G> {
     /// paint with ([`Show::Game`]'s `look` is `None`).
     /// What its context logged before is taken, at frame 0.
     pub fn running(game: Game<G>) -> Self {
+        let cues = Cues::new(game.ctx().music_seed);
         let mut app = Self::in_phase(Phase::Running(Box::new(game)), None, None);
+        app.cues = cues;
         app.take_game_log();
         app
     }
@@ -807,12 +815,14 @@ impl<G: GameData> App<G> {
                 input: Vec::new(),
                 system: Vec::new(),
                 sounds: Vec::new(),
+                dropped: Vec::new(),
                 audio: Vec::new(),
                 music: Vec::new(),
                 changed: Vec::new(),
                 answers: Vec::new(),
                 voice: None,
             },
+            cues: Cues::new(0),
             frames: 0,
             log: LogRing::new(LOG_LINES),
             log_filter: LogFilter::default(),
@@ -1202,6 +1212,7 @@ impl<G: GameData> App<G> {
         self.lists.audio.clear();
         self.lists.music.clear();
         self.lists.sounds.clear();
+        self.lists.dropped.clear();
         self.ticks = 0;
         self.load_ran.left = false;
         if self.suspended && !self.quit {
@@ -1252,7 +1263,12 @@ impl<G: GameData> App<G> {
                 if let Some(recorder) = recorder.as_deref_mut().filter(|_| told) {
                     recorder.reloaded();
                 }
-                step(platform, game, &mut self.lists, elapsed, muted, recorder);
+                let frame = FrameAudio {
+                    lists: &mut self.lists,
+                    cues: &mut self.cues,
+                    muted,
+                };
+                step(platform, game, frame, elapsed, recorder);
                 self.ticks = elapsed.ticks;
                 if game.quit_requested() {
                     platform.audio().stop_all();
@@ -1360,6 +1376,7 @@ impl<G: GameData> App<G> {
             Ok(mut game) => {
                 use_look_widths(&mut game, self.look);
                 present_game(platform, &game, self.look);
+                self.cues = Cues::new(game.ctx().music_seed);
                 self.phase = Phase::Running(game);
                 self.give_clock();
             }
@@ -1605,6 +1622,13 @@ impl<G: GameData> App<G> {
     pub fn music(&self) -> &[MusicCommand] {
         &self.lists.music
     }
+
+    /// The plays of the last frame the cue rules dropped (ADR-0139), in
+    /// order: asked for ([`audio`](Self::audio)), but never sent to the
+    /// device.
+    pub fn dropped_sounds(&self) -> &[DroppedSound] {
+        &self.lists.dropped
+    }
 }
 
 /// The frame of the loading `card`, with the load's last `count`.
@@ -1665,18 +1689,26 @@ fn silent<'a>(
     }
 }
 
+/// What one frame's audio is made with: the lists it fills, the cue rules,
+/// and whether it is muted.
+struct FrameAudio<'a, V> {
+    lists: &'a mut Lists<V>,
+    cues: &'a mut Cues,
+    muted: bool,
+}
+
 /// One frame of the running game: the input, the system keyboard's
 /// answer, the music sounding and the steps due go in; the update runs;
-/// its audio goes to the device, at volume 0 if `muted`, and a keyboard
-/// it asked for opens.
+/// its audio goes through the cue rules to the device, at volume 0 if
+/// muted, and a keyboard it asked for opens.
 fn step<G: GameData>(
     platform: &mut impl Platform,
     game: &mut Game<G>,
-    lists: &mut Lists<G::Voice>,
+    frame: FrameAudio<'_, G::Voice>,
     elapsed: Elapsed,
-    muted: bool,
     mut recorder: Option<&mut Recorder>,
 ) {
+    let FrameAudio { lists, cues, muted } = frame;
     lists.input.clear();
     platform.poll_input(&mut lists.input);
     let keyboard = &mut game.ctx_mut().system_keyboard;
@@ -1715,10 +1747,13 @@ fn step<G: GameData>(
         }
     }
     lists.music.extend_from_slice(out.music);
-    let gains = out.gains;
+    // The frame's gains, as its output gave them.
+    let gains = game.gains();
     lists.sounds.clear();
-    let sounds = lists.audio.iter().filter_map(SoundRequest::from_request);
-    lists.sounds.extend(sounds);
+    lists.dropped.clear();
+    let manifest = game.ctx().game.audio_manifest();
+    let (sounds, dropped) = (&mut lists.sounds, &mut lists.dropped);
+    cues.apply(manifest, elapsed.now, &lists.audio, sounds, dropped);
     let audio = if muted {
         silent(&lists.sounds, &lists.music, gains)
     } else {
