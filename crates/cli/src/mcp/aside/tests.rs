@@ -136,7 +136,7 @@ fn a_twin_in_the_build_dir_layout_is_moved_too() {
     let other = dir.join("build/other/0123abcd/out/other.exe");
     fs::create_dir_all(other.parent().unwrap()).unwrap();
     fs::hard_link(&twin, &other).unwrap();
-    assert_eq!(twins(&exe, "trpg-tools"), [twin.clone()]);
+    assert_eq!(twins(&exe, "trpg-tools"), std::slice::from_ref(&twin));
     let running = dir.join(RUNNING);
     assert_eq!(
         move_aside(&exe, 7).unwrap(),
