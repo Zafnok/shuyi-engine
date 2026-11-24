@@ -590,3 +590,19 @@ fn the_probe_hears_of_each_track_played_since_it_asked() {
         "the one done with was listed once: {again:?}"
     );
 }
+
+/// On Windows the feeder's thread runs above the game's (ticket 3320); elsewhere it
+/// isn't raised yet, and says so.
+#[cfg(feature = "sound-probe")]
+#[test]
+fn the_feeder_says_whether_its_thread_was_raised() {
+    let (backend, mut side) = backend();
+    if cfg!(windows) {
+        until(&mut side, "the feeder's thread was never raised", |_| {
+            backend.feeder_raised()
+        });
+    } else {
+        std::thread::sleep(Duration::from_millis(50));
+        assert!(!backend.feeder_raised());
+    }
+}

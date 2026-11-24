@@ -481,6 +481,11 @@ impl Worker {
         let thread = std::thread::Builder::new()
             .name("sound-feed".to_owned())
             .spawn(move || {
+                // Above the game's thread and below the output's (ticket 3320): a
+                // turn that waits for a core past what the ring holds stalls the
+                // track, and its decoding never keeps the mix waiting.
+                let raised = shuyi_sound_out::raise_worker();
+                feedings.raised.store(raised, Ordering::Release);
                 while !stopping.load(Ordering::Acquire) {
                     feedings.step();
                     std::thread::sleep(period);
