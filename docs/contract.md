@@ -584,7 +584,11 @@ own program into `.shuyi-running/` beside it as they start, and leave a
 copy in its place, so a build while they run writes a fresh program
 instead of waiting for them to stop. The copy is one file under the
 program's name and its twin's, as cargo leaves them, so a `cargo run`
-that finds the program fresh touches neither.
+that finds the program fresh touches neither. The twin is found in
+either of cargo's layouts: `deps/`, or the build-dir layout of Rust 1.100
+(`build/<package>/<hash>/out/`). A cargo build whose twin isn't found
+(a `build-dir` outside the target folder) says so on stderr: its program
+stays held while the server runs.
 
 The entry builds the server from the project's own engine (a game's
 moves with its pin). `<command> mcp --ready` builds the server and the
@@ -746,7 +750,13 @@ own gates as it is. Two short names stand for sets of answers:
   (`BasicData<UiAction, stages::Own>`), its title and its screens in a
   `BasicGame`; its `main` is one call (the
   prelude's `run_game`); its tool program gives `game::stages::tools()`,
-  the engine's `BasicTools`;
+  the engine's `BasicTools`. Its menus sound from the start: its
+  `files/audio.ron` names the four cues the engine's menus and cursors
+  play (`ui_move`, `ui_select`, `ui_cancel`, `ui_cursor`), each a sound
+  effect in `files/sfx/` written as a few numbers (`.sfx.ron`, the `sfx`
+  feature of `shuyi-assets`, which its game crate turns on;
+  [`formats.md`](formats.md#sound-effects-sfxron)), and a test checks
+  each plays;
 - `--template grid` (`--set perspective=top-down-grid`): `base` and the
   part `stage-top-down-grid`. The title's Confirm starts a top-down grid
   stage: a rules crate over `TurnRules` (walk to the goal while a
@@ -801,3 +811,16 @@ on `shuyi-core` and `shuyi-assets` alone, which keeps it pure. The game
 depends on the engine's repository at `main`, at `--engine-rev
 <commit>`, or on the checkout at `--engine-path <dir>`. CI makes a game
 with each short name on every pull request and runs its gates.
+
+The lines a game's author owns are counted by `cargo xtask
+template-lines` (ticket 2512), in the game each short name makes (none
+written) and in each folder under `examples/`: the code (Rust outside
+`tests/` and outside `#[cfg(test)]` items), the tests, the data (text
+under `files/`) and the setup (`Cargo.toml`, `shuyi.ron`, the toolchain,
+`rustfmt`, `clippy` and Cargo settings, and the workflows). A line counts
+when it isn't blank or only a comment. Markdown, pictures, licenses,
+generated files, the builds and the engine's skill pack are left out.
+`--json` lists every file. A new `blank` game's code is capped in
+`tools/line-budget.ron`, which only goes down: CI's `tickets` job runs
+`--check`, which fails over the cap or 10 or more under it. A part every
+new game needs goes in the engine ([ADR-0036](adr/0036-the-short-path-ready-made-parts-beside-the-long-form.md)).

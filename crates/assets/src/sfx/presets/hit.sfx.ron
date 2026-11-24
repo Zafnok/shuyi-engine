@@ -1,0 +1,9 @@
+// hit: a burst of noise that drops, for a blow landed.
+(
+    wave: Noise,
+    hz: 3200,
+    to_hz: 600,
+    hold_ms: 40,
+    fade_ms: 120,
+    volume: 50,
+)

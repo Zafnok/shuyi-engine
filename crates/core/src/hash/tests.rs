@@ -233,3 +233,10 @@ fn the_same_state_has_the_same_hash_and_a_step_changes_it() {
     rng.roll_percent();
     assert_ne!(hash(&state(&rng)), before);
 }
+
+#[test]
+fn fnv1a_gives_the_published_values() {
+    assert_eq!(fnv1a(b""), 0xcbf2_9ce4_8422_2325);
+    assert_eq!(fnv1a(b"a"), 0xaf63_dc4c_8601_ec8c);
+    assert_eq!(fnv1a(b"foobar"), 0x8594_4171_f739_67e8);
+}

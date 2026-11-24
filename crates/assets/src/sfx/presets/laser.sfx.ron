@@ -1,0 +1,9 @@
+// laser: a bright note that falls fast.
+(
+    wave: Saw,
+    hz: 1800,
+    to_hz: 300,
+    hold_ms: 60,
+    fade_ms: 120,
+    volume: 30,
+)

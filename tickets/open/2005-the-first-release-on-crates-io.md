@@ -129,8 +129,7 @@ The sign-off also:
   exist already (the 0.0.0 placeholders, below), so no token is made
   for this release: Nick adds this repository's `release.yml` and the
   `release` environment as the trusted publisher on the settings page
-  of each of the fourteen crates on crates.io (the nine he holds and
-  the five 3510 holds), and turns on the setting that refuses API
+  of each of the fourteen crates he holds on crates.io, and turns on the setting that refuses API
   tokens for the crate if crates.io offers it. The session writes the
   clicks here, checked against crates.io on the day, before it asks.
   The setup also has two clicks on GitHub, which Nick may do at any
@@ -314,7 +313,7 @@ The sign-off also:
   gets a short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
   crate trust a workflow only once the crate exists. The fourteen crates
-  exist since the 0.0.0 placeholders (the last five held by 3510;
+  exist since the 0.0.0 placeholders (the last five held on 2026-11-24;
   below), so the first real version goes out through the workflow too,
   with no publish by hand. Check this against crates.io's docs on the
   day. No job of the tag's run reads the Actions cache.
@@ -388,7 +387,7 @@ The sign-off also:
   `shuyi-alloc-count` and `shuyi-playdate` on 2026-11-01, all owned by
   `Zafnok` (`docs/decisions.md`). The other five engine crates
   (`shuyi-embed`, `shuyi-embed-macros`, `shuyi-script`, `shuyi-sound`,
-  `shuyi-sound-out`) have no placeholder yet: 3510 holds them. The first release is the
+  `shuyi-sound-out`) were held the same way on 2026-11-24. The first release is the
   next version of each and replaces the placeholder's README and
   description. Nick wants no real version until the engine is stable,
   so the placeholders don't hurry this ticket; only a threat to the

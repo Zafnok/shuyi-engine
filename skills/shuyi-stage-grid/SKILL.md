@@ -125,6 +125,23 @@ All in `shuyi_core` (`shuyi::core` from the game crate):
 A cost function answers what entering a tile costs, or `None` when it
 can't be entered. Both searches break ties the same way every time.
 
+## Luck
+
+The rules' luck is a `SimRng` kept in the state; a rule takes
+`&mut impl RandomSource`, so a test hands it a `ScriptedRng`. Never write
+`next_u32() % n` (biased) or take values from the `rand` crate. The
+helpers, each a fixed number of draws that never changes (ADR-0143):
+
+- `range(1..7)` for a die, `chance(1, 4)` for one in four;
+- `pick(&free_tiles)` for a pickup's tile, `index(len)` for an index;
+- `shuffle(&mut deck)`, and `pick_weighted(&[(3, a), (1, b)])`;
+- `Bag::new(items)`, kept in the state, deals each item once before
+  any repeats (a "7-bag" of pieces).
+
+Keep one stream per purpose, `SimRng::stream(seed, "loot")`, so a new
+draw for one never moves the others' replays, and `rng.fork("level")`
+for a sub-task.
+
 ## The map
 
 The `.map` format (`shuyi_assets::grid_map`): a RON header, a `---`

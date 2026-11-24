@@ -76,7 +76,7 @@ None.
   `playable_problem` answers "{rate} Hz; must be 22050, 32000, 44100 or
   48000 Hz" for any other rate. `SAMPLE_RATE` stays, with the same value.
   It now means the rate the quad-snd path and the Playdate play at, and
-  the rate synthesized sounds use (2225). The game re-exports it, so it
+  the rate `.sfx.ron` sound effects render at (2225, `sfx::render`). The game re-exports it, so it
   must not move.
 - **The resampler.** Add `pub fn resample(samples: &[i16], channels: u16,
   from: u32, to: u32) -> Vec<i16>` in a new

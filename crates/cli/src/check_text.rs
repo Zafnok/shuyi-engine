@@ -40,10 +40,9 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
-use crate::check_keys::{
-    Line, exempt_lines, files_under, has_ext, is_ident, is_test_file, lex, mark_item, relative,
-};
+use crate::check_keys::{files_under, has_ext, is_test_file, relative};
 use crate::project::CheckText;
+use crate::rust_lines::{Line, exempt_lines, is_ident, lex, mark_item};
 
 /// The comment that lets the next item (or its own line) through.
 pub const MARKER: &str = "check-text: not player text";

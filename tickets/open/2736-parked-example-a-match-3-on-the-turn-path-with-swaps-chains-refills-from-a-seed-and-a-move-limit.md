@@ -62,8 +62,10 @@ What Shuyi has today:
   `.screens` (`crates/platform/src/basic.rs`); `BasicData` and
   `BASIC_GLYPHS` (`crates/ui/src/basic.rs`); `BasicTools`
   (`crates/cli/src/basic.rs`); and `shuyi::prelude` with `run_game`.
-  `UiAction` is an `ActionSet` of hello-grid's six actions. `run_game`
-  plays no sounds; 2225 gives the short path its sounds.
+  `UiAction` is an `ActionSet` of hello-grid's six actions. **From 2225
+  (done):** `BasicData::load` reads `files/audio.ron`, and `run_game`
+  plays its sounds, `.sfx.ron` sound effects among them (the `sfx`
+  feature of `shuyi-assets`, which the game crate turns on).
 
 What is planned:
 
@@ -213,10 +215,9 @@ each part is one PR.
   `BASIC_GLYPHS` and the six in `shuyi.ron`'s
   `font_atlas.required_glyphs`, `Terminus-LICENSE.txt` beside it, and a
   row in `THIRD_PARTY_ASSETS.md`.
-- **Sounds:** if 2225 is done, `files/audio.ron` with its menu presets.
-  If not, the example is silent, as 2511's `run_game` is, its README
-  says so, and 2225's PR adds the sounds (its item on the gallery
-  examples says so).
+- **Sounds:** `files/audio.ron` and `files/sfx/*.sfx.ron`, the four
+  menu cues as the templates have them (from 2225, done), with the `sfx`
+  feature of `shuyi-assets` on in its `Cargo.toml`.
 - **The targets:** `ConsoleSpec::text(50, 15)` is the Playdate's
   400 × 240, and a 10-wide level (20 columns) fits beside the panel.
   `shuyi.ron` lists `desktop`, `web`, `steam-deck` and `playdate`, each
@@ -268,8 +269,8 @@ each part is one PR.
   `site/content/examples/<name>.md` (2801, done); 2019's `web-render` job (done) boots it too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form: how to run it, its files, its
   targets, what each part of the engine does in it, and its own lines
-  without tests and data (`cargo xtask template-lines` if 2512 is done;
-  counted, and said how, if not). The engine's `README.md` names the
+  without tests and data (`cargo xtask template-lines`'s code count,
+  2512). The engine's `README.md` names the
   example beside hello-grid.
 
 **Part 3 (a follow-up ticket): the match-3 finished.**
@@ -285,12 +286,11 @@ each part is one PR.
   (`frame-png --every --count --apng`, 2514, done);
 - a hint: after 5 seconds with no input (`Harness::wait` in its test),
   the first legal swap's two gems in a range named `hint`;
-- the eval: if 2524 is done, `evals/tasks/match-three.ron` with
+- the eval (from 2524, done): `evals/tasks/match-three.ron` with
   `reference: Project("examples/match-three")`, targets `desktop` and
   `web`, and checks `Gates`, `Check`, `Targets`, `Web`, `Replay` and a
-  `Scene` check of `/score` and `/moves_left`; `cargo xtask
-  eval-reference match-three` passes. If not, add that task to 2524's
-  first tasks.
+  `Scene` check of `/score` and `/moves_left`; `cargo xtask eval-grade`
+  passes on it. `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - in this PR, anything of parts 2 and 3 beyond writing their tickets: no

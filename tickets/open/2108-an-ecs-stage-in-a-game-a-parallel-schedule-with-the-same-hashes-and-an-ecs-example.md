@@ -45,14 +45,11 @@ None.
   systems' schedule order, never in finishing order, so the result is
   the same. A property test runs random schedules both ways and
   compares hashes.
-  Systems that draw luck: **either order with 2114**. If 2114 is done,
-  each such system gets its own stream, made with `SimRng::fork(<system
-  name>)` on the world's `SimRng` in schedule order before the systems
-  run, in both the serial and the parallel schedule. They then share no
-  `SimRng` and may run together, and the property test includes two
-  such systems. If 2114 is not done, they share the `SimRng` resource,
-  and its conflicting access runs them one by one; 2114 adds the forks
-  (its scope says so).
+  Systems that draw luck: **from 2114 (done):** each such system gets
+  its own stream, made with `SimRng::fork(<system name>)` on the world's
+  `SimRng` in schedule order before the systems run, in both the serial
+  and the parallel schedule. They then share no `SimRng` and may run
+  together, and the property test includes two such systems.
 - **An example, `examples/ecs-garden/`:** a turn game on a grid where
   each turn plants grow, spread and are eaten, with a few hundred
   entities and five systems. It has a harness test, a replay test,
@@ -87,7 +84,7 @@ None.
 1. Write `EcsRules`, with history.
 2. Write the tick adapter.
 3. Write the parallel schedule and its property test, with a forked
-   stream for each system that draws if 2114 is done.
+   stream for each system that draws.
 4. Write the example, with its tests and web build.
 5. Run the gates.
 
@@ -104,8 +101,7 @@ None.
 ## Tests required
 
 - Unit: a command through `EcsRules`; undo.
-- Property: parallel equals serial, with two systems that draw luck
-  when 2114 is done.
+- Property: parallel equals serial, with two systems that draw luck.
 - Integration: the example's harness and replay tests.
 
 ## Completion notes

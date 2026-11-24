@@ -29,8 +29,9 @@ evidence below was checked in this repository on 2026-11-23.
    found drift an agent would hit: the blank template's game code is
    about 200 lines (`lib.rs` 119, `title.rs` 73, `main.rs` 5,
    `app_info.rs` 3, counted without blank and comment lines), while
-   2511 (done) set a cap of 120. The CI cap that would hold it (2512)
-   is After MVP. Snake, the end goal's own example, waits for real time
+   2511 (done) set a cap of 120. 2512 (done, 2026-11-23) now caps it
+   in CI, at 220 lines by its count (211 that day), lowered as it
+   shrinks. Snake, the end goal's own example, waits for real time
    (2026-10-20), so a test before the release uses a turn-based game,
    such as the tutorial's box pusher (2803).
 2. **A release doesn't wait for Visions of Shuyi to pass.** Since
@@ -50,7 +51,9 @@ evidence below was checked in this repository on 2026-11-23.
    all five (checked 2026-11-23; `shuyi-core` answers 200). The rule of
    2026-10-21 (*Only these six*) says a name is published "when its
    crate is real", and all five are real now. 3510 makes the publish
-   list match the workspace and has this as its setup.
+   list match the workspace and has this as its setup. **Answered:**
+   Nick held all five on 2026-11-24 (`docs/decisions.md`, *the last
+   five engine crate names are held*); skip question 3.
 4. **Our own security advisories may not reach RustSec.** RustSec is
    the database `cargo audit` and `cargo deny` read, our own weekly
    advisory check included (ADR-0037). Its guide takes a new advisory
@@ -162,8 +165,7 @@ time, in these words. Before asking, re-check each number in
      spelling; 3518, an outside module tries the extension API and how
      it is versioned is settled; 3520, the grid, dialogue, cutscene and
      bot kits can be left out of a game that doesn't use them.
-   - **Guards against drift and bad files:** 2512, a cap on the lines
-     of the starter game; 2020, fuzzing the file readers (its first part
+   - **Guards against drift and bad files:** 2020, fuzzing the file readers (its first part
      only, if the session splits it); 2035, a moved test value always
      says so.
    - **What a newcomer sees first:** 2842, an example on every main

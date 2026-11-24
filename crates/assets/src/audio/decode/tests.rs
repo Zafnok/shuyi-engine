@@ -224,3 +224,21 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn a_sound_effect_without_its_reader_is_told_to_turn_on_the_feature() {
+    let text = b"(wave: Sine, hz: 440, hold_ms: 10, fade_ms: 0, volume: 50)";
+    assert_eq!(
+        sfx_problem(text, None).as_deref(),
+        Some("a .sfx.ron sound needs the sfx feature of shuyi-assets")
+    );
+    // Its WAV, though, is checked as a WAV with or without it.
+    assert_eq!(sfx_problem(&wav(1, 44_100, 1), None), None);
+    // With the reader (the feature on), it reads.
+    assert_eq!(sfx_problem(text, SFX_PROBLEM), None);
+    let broken = b"(wave: Sine, hz: 1, hold_ms: 10, fade_ms: 0, volume: 50)";
+    assert_eq!(
+        sfx_problem(broken, SFX_PROBLEM).as_deref(),
+        Some("line 1: hz 1 is under 20")
+    );
+}

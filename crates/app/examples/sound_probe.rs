@@ -283,9 +283,36 @@ fn say_output(backend: &SoundProbeBackend) {
         say(&format!(
             r#"{{"event":"output","rebuilds":{rebuilds},"silent_callbacks":{silent},"dry_callbacks":{dry},"raised":{raised}}}"#
         ));
+        say(&streams_line(
+            backend.feeder_raised(),
+            &backend.stream_stats(),
+        ));
     }
     #[cfg(not(all(feature = "in-house-sound", not(target_arch = "wasm32"))))]
     let _ = backend;
+}
+
+/// What the in-house feeder went through (ticket 3320): whether its thread was
+/// raised, and for each track the frames a mix waited on its ring (`stalled`) and
+/// the fewest frames its ring held when the worker came round (`lowest`, its
+/// margin; `null` if it never came round after the first fill). A stall delays the
+/// track: a gap where the output never ran dry may be one.
+#[cfg(all(feature = "in-house-sound", not(target_arch = "wasm32")))]
+fn streams_line(raised: bool, tracks: &[(String, u64, Option<usize>)]) -> String {
+    let tracks: Vec<String> = tracks
+        .iter()
+        .map(|(track, stalled, lowest)| {
+            let lowest = lowest.map_or_else(|| "null".to_owned(), |frames| frames.to_string());
+            format!(
+                r#"{{"track":"{}","stalled":{stalled},"lowest":{lowest}}}"#,
+                clean(track)
+            )
+        })
+        .collect();
+    format!(
+        r#"{{"event":"streams","raised":{raised},"tracks":[{}]}}"#,
+        tracks.join(",")
+    )
 }
 
 /// The handles the plan's numbers stand for. Only a queue makes a [`SoundId`]

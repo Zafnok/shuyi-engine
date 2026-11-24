@@ -1780,6 +1780,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "jpeg-xl",
             "flac",
             "mp3",
+            "sfx",
         ],
     ),
     (

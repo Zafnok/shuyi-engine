@@ -215,7 +215,7 @@ None.
   `// check-text: not player text`, as the engine's other checks do.
 - **hello-grid** (`examples/hello-grid/`):
   - one gameplay cue, `foe_step`, added to `sound::manifest()`: if
-    Hello, Grid's sounds are already `.sfx.ron` files (2225), a new
+    Hello, Grid's sounds are already `.sfx.ron` files (2277), a new
     `files/sfx/foe_step.sfx.ron` made with `shuyi sfx` from a preset;
     if not, a new blip in `BLIPS` (`src/sound.rs`). It plays when the
     foe steps (`foe_moves`, `src/screens/stage.rs:214`; it and

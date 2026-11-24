@@ -625,6 +625,56 @@ fn an_empty_feed_is_an_underrun_that_delays_and_loses_nothing() {
     assert_eq!(mixer.underrun_frames(), 4);
 }
 
+/// Each stream counts its own stalls, for its worker to read, and the mixer's count
+/// stays the sum of them (ticket 3320).
+#[test]
+fn each_stream_counts_its_own_stalls_and_the_mixer_their_sum() {
+    let (mut fed, fed_end) = feed(format(RATE, Channels::Mono), 16);
+    let (starved, starved_end) = feed(format(RATE, Channels::Mono), 16);
+    fed.write(&[1; 8]);
+    let mut mixer = stereo_mixer(2);
+    for end in [fed_end, starved_end] {
+        mixer
+            .stream(end, Params::new())
+            .unwrap_or_else(|e| panic!("{e}"));
+    }
+    assert_eq!(left(&render(&mut mixer, 6)), [1; 6], "the fed one plays on");
+    assert_eq!(fed.underrun_frames(), 0);
+    assert_eq!(starved.underrun_frames(), 6);
+    assert_eq!(mixer.underrun_frames(), 6);
+    // Now both: the fed one runs out two frames in.
+    assert_eq!(left(&render(&mut mixer, 4)), [1, 1, 0, 0]);
+    assert_eq!(fed.underrun_frames(), 2);
+    assert_eq!(starved.underrun_frames(), 10);
+    assert_eq!(
+        mixer.underrun_frames(),
+        fed.underrun_frames() + starved.underrun_frames(),
+        "the mixer's is the sum"
+    );
+}
+
+/// A source that keeps no count is told and does nothing, through a box as well.
+#[test]
+fn a_source_without_a_count_is_told_of_a_stall_and_does_nothing() {
+    let pcm = pcm(RATE, Channels::Mono, alloc::vec![1, 2]);
+    let mut source: Box<dyn Source> = Box::new(SharedSource::new(pcm));
+    source.stalled(5);
+    let mut out = [0; 2];
+    assert_eq!(source.read(&mut out), Ok(2), "it plays as before");
+    assert_eq!(out, [1, 2]);
+    let (feeder, feed) = feed(format(RATE, Channels::Mono), 4);
+    let mut boxed: Box<dyn Source> = Box::new(feed);
+    boxed.stalled(3);
+    boxed.stalled(4);
+    assert_eq!(feeder.underrun_frames(), 7, "a box passes it on");
+    boxed.stalled(u64::MAX);
+    assert_eq!(
+        feeder.underrun_frames(),
+        u64::from(u32::MAX),
+        "it stops at the most"
+    );
+}
+
 #[test]
 fn an_underrun_in_the_middle_of_a_step_loses_nothing_either() {
     let (mut feeder, feed) = feed(format(RATE, Channels::Mono), 16);

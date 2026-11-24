@@ -1,0 +1,17 @@
+// The game's sounds: the cues the engine's menus and cursors play, each a
+// sound effect in `sfx/` written as a few numbers (`.sfx.ron`). Change a
+// file's numbers to change its sound, or name a `.wav` or `.ogg` file in
+// its place. `min_gap_ms` keeps a cursor that moves several cells in one
+// frame to one tick.
+(
+    music_fade_ms: 500,
+    sounds: [
+        (id: "ui_move", files: ["sfx/move.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
+        (id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
+        (id: "ui_cancel", files: ["sfx/cancel.sfx.ron"], volume: 80, credit: Own),
+        (id: "ui_cursor", files: ["sfx/cursor.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
+    ],
+    music: [],
+    pools: [],
+    credits: [],
+)

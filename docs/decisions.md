@@ -1284,7 +1284,8 @@ the cost of its agent runs, he chose **"After the maze chase"**.
 - **Not Pac-Man** (2026-10-26): the maze chase takes no name,
   character, maze, sound or art from it.
 - **The end goal's snake is measured again**: the agent eval's snake
-  task gets its reference (2739) and is graded in CI once 2524 lands.
+  task gets its reference (2739) and is graded in CI (2524's grader, CI's
+  job in 3421).
 
 ## 2026-10-29: a ticket is one PR of about 1,500 changed lines or fewer
 
@@ -2049,3 +2050,27 @@ approves its measured cost", he said:
   game*).
 - Unparking 2602 unparks nothing else: 2603, 3083 and 2093 stay parked,
   and the rest of networking stays parked.
+
+## 2026-11-24: the last five engine crate names are held
+
+Asked which crate names still needed holding, Claude checked crates.io:
+the nine placeholders were live, and five real engine crates that the
+release must publish were free (`shuyi-embed`, `shuyi-embed-macros`,
+`shuyi-script`, `shuyi-sound`, `shuyi-sound-out`; ticket 3510 lists who
+needs each). Nick:
+
+> "ok lets reserve these names now"
+
+**Rules:**
+
+- **All five are held** as empty 0.0.0 placeholders like the nine (a
+  library with no code, both license files, a README that points here),
+  owned by `Zafnok`, published by Nick on 2026-11-24. Each is a real
+  crate in this repository, which fits the 2026-10-21 rule.
+- **The token.** Nick made one for this run: the `publish-new` scope,
+  the crates `shuyi-*`, a 7-day expiry. Its value is recorded nowhere.
+- **This answers 3528's question 3 and is 3510's setup.** All fourteen
+  engine crates now have a name on crates.io, so 3510's
+  `cargo xtask check-publish --index` can join CI as soon as it exists.
+- **Still no defensive names.** `shuyi-contract` (planned, not yet a
+  crate) and `shuyi-engine` stay unheld.

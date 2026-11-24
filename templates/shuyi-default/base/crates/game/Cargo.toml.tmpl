@@ -44,10 +44,14 @@ shuyi.workspace = true
 shuyi-cli = { workspace = true, optional = true }
 # The macroquad backend, named for its `link` feature.
 shuyi-app = { workspace = true, optional = true }
+# The engine's assets, for their `sfx` feature: the sounds in
+# `files/sfx/` are sound effects written as a few numbers (`.sfx.ron`),
+# which the game renders as it loads them.
+shuyi-assets = { workspace = true, features = ["sfx"] }
 
 [package.metadata.cargo-machete]
-# Named for its feature (`link`), not its code.
-ignored = ["shuyi-app"]
+# Named for their features (`link`, `sfx`), not their code.
+ignored = ["shuyi-app", "shuyi-assets"]
 
 [dev-dependencies]
 # The Harness and the tools, for the tests in tests/.
