@@ -34,8 +34,10 @@ jis = ["dep:encoding_rs"]
 # The state hash `replay` compares, and the turn rules it re-runs.
 shuyi-core = { path = "../core", features = ["schema"] }
 # Fonts, images, palettes, languages and credits; with `png`, the
-# pictures a one-bit bake dithers, and the sources its contact sheet draws.
-shuyi-assets = { path = "../assets", features = ["png"] }
+# pictures a one-bit bake dithers, and the sources its contact sheet draws;
+# with `sfx`, sound effects, so a game's tools read and bake them whether
+# or not the game turns it on (ticket 2225).
+shuyi-assets = { path = "../assets", features = ["png", "sfx"] }
 # The frame `frame-png` paints (with the raster that paints it), and the
 # perf records `run --perf` reads (with their schemas).
 shuyi-ui = { path = "../ui", features = ["schema", "raster"] }
@@ -92,7 +94,7 @@ shuyi-cli = { path = ".", features = ["toy", "jis"] }
 # Ticket 2203's formats, so the tests paint them (ticket 2234). A game
 # turns on those it uses in its own `Cargo.toml`; this crate has no
 # feature of its own for them.
-shuyi-assets = { path = "../assets", features = ["png", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3"] }
+shuyi-assets = { path = "../assets", features = ["png", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx"] }
 # The template loader and the composer, fed any input.
 proptest.workspace = true
 # The toy's perf summary and trace, as committed snapshots.

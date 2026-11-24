@@ -16,7 +16,10 @@
 //! `FlacTrack`, `Mp3` and `Mp3Track`. A sound may be a `.ogg`, `.wav`,
 //! `.flac` or `.mp3` file, a track a `.ogg`, `.flac` or `.mp3` one. The
 //! platform plays a FLAC or MP3 sound as the WAV [`decode_to_wav`] makes
-//! of it (ticket 2234).
+//! of it (ticket 2234). With the `sfx` feature a sound may also be a
+//! `.sfx.ron` file, a sound effect written as a few numbers (`sfx`,
+//! ticket 2225), which the sound hook renders to a WAV once as the game
+//! loads it ([`playable`]).
 //!
 //! Every cue plays in a sound group (ADR-0091): the one its `group` names,
 //! else a sound in `ui` if it is a menu's and in `sfx` if not, and a track
@@ -641,15 +644,31 @@ pub fn without_extension(file: &str) -> &str {
 /// 44.1 kHz and resamples anything else crudely (game ADR-0026).
 pub const SAMPLE_RATE: u32 = 44_100;
 
+/// The end of a sound effect's file name (`sfx/coin.sfx.ron`).
+pub const SFX_SUFFIX: &str = ".sfx.ron";
+
+/// Whether `name` is a sound effect's: it ends in [`SFX_SUFFIX`], after a
+/// name.
+pub(crate) fn is_sfx(name: &str) -> bool {
+    let file = name.rsplit_once('/').map_or(name, |(_, file)| file);
+    file.len() > SFX_SUFFIX.len() && file.ends_with(SFX_SUFFIX)
+}
+
 /// Why `bytes` (a file named `name`) isn't something the game can play:
 /// its content must match its extension (OGG Vorbis for `.ogg`, PCM or
-/// float WAV for `.wav`, FLAC for `.flac`, MP3 for `.mp3`), with one or
-/// two channels at [`SAMPLE_RATE`]. A `.flac` or `.mp3` file whose bytes
-/// are a WAV (a game's hook decoded them) is checked as a WAV, and one
-/// whose format's feature is off (`flac`, `mp3`) is told to turn it on.
-/// quad-snd panics on native, and never finishes loading on the web, on a
-/// file it can't read, so this runs before any file ships.
+/// float WAV for `.wav`, FLAC for `.flac`, MP3 for `.mp3`, a sound
+/// effect's numbers for `.sfx.ron`), with one or two channels at
+/// [`SAMPLE_RATE`]. A `.flac`, `.mp3` or `.sfx.ron` file whose bytes are a
+/// WAV (a game's hook decoded or rendered them) is checked as a WAV, and
+/// one whose format's feature is off (`flac`, `mp3`, `sfx`) is told to
+/// turn it on. A `.sfx.ron` file's first problem is given with its line
+/// (`line 3: hz 30000 is over 12000`). quad-snd panics on native, and
+/// never finishes loading on the web, on a file it can't read, so this
+/// runs before any file ships.
 pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
+    if is_sfx(name) {
+        return decode::sfx_problem(bytes, decode::SFX_PROBLEM);
+    }
     if decode::is_coded(name) {
         return decode::coded_problem(name, bytes);
     }
@@ -659,6 +678,24 @@ pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
     match vorbis_format(bytes) {
         None => Some("not an OGG Vorbis file".to_owned()),
         Some((channels, rate)) => playable_problem(channels, rate),
+    }
+}
+
+/// The bytes the platform plays for the sound file `name`, whose bytes are
+/// `bytes`: with the `sfx` feature, a `.sfx.ron` file whose numbers read
+/// is rendered to its WAV ([`sfx::render`](crate::sfx), `sfx::to_wav`).
+/// Any other name, a file that doesn't read, and every file without the
+/// feature give `bytes` unchanged, and the manifest's check
+/// ([`format_problem`]) says why. Every sound hook goes through it, so a
+/// game that turns `sfx` on gets its sound effects rendered as it loads
+/// them.
+pub fn playable(name: &str, bytes: Bytes) -> Bytes {
+    if !is_sfx(name) {
+        return bytes;
+    }
+    match bytes.as_deref().and_then(|b| decode_to_wav(name, b)) {
+        Some(Ok(wav)) => Some(alloc::borrow::Cow::Owned(wav)),
+        _ => bytes,
     }
 }
 
@@ -887,8 +924,8 @@ impl Check<'_> {
         }
         for f in &s.files {
             let path = (self.files.sound_shown)(f);
-            if !has_extension(f, &SOUND_EXTENSIONS) {
-                let why = "must be .ogg, .wav, .flac or .mp3";
+            if !has_extension(f, &SOUND_EXTENSIONS) && !is_sfx(f) {
+                let why = "must be .ogg, .wav, .flac, .mp3 or .sfx.ron";
                 self.err(&id, format!("sound \"{id}\": \"{f}\" {why}"));
             } else if !(self.files.sound_left_out)(f) {
                 match (self.files.sound)(f) {
@@ -988,7 +1025,8 @@ impl Check<'_> {
     }
 }
 
-/// The extensions a sound file may have.
+/// The extensions a sound file may have, beside a sound effect's
+/// [`SFX_SUFFIX`].
 const SOUND_EXTENSIONS: [&str; 4] = ["ogg", "wav", "flac", "mp3"];
 
 /// The extensions a music track may have.
@@ -1505,7 +1543,9 @@ pub(crate) mod tests {
         };
         assert_eq!(
             errors_with(&wrong, &files),
-            ["a.ron:5: sound \"footfall\": \"sfx/step_2.aiff\" must be .ogg, .wav, .flac or .mp3"]
+            [
+                "a.ron:5: sound \"footfall\": \"sfx/step_2.aiff\" must be .ogg, .wav, .flac, .mp3 or .sfx.ron"
+            ]
         );
     }
 
@@ -1788,7 +1828,9 @@ pub(crate) mod tests {
         let aiff = FULL.replace("ui_tick.wav", "ui_tick.aiff");
         assert_eq!(
             errors(&aiff),
-            ["a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.aiff\" must be .ogg, .wav, .flac or .mp3"]
+            [
+                "a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.aiff\" must be .ogg, .wav, .flac, .mp3 or .sfx.ron"
+            ]
         );
         for sound in ["ui_tick.flac", "ui_tick.mp3"] {
             let coded = FULL.replace("ui_tick.wav", sound);

@@ -205,6 +205,19 @@ fn a_flac_or_mp3_sound_is_baked_from_its_samples() {
 }
 
 #[test]
+fn a_sound_effect_is_baked_from_its_render() {
+    let coin = shuyi_assets::sfx::preset_source("coin").unwrap().as_bytes();
+    let def = shuyi_assets::sfx::preset("coin", 0).unwrap();
+    let samples = shuyi_assets::sfx::render(&def);
+    assert_eq!(decode("sfx/coin.sfx.ron", coin), Ok(samples.clone()));
+    // Rendered already by a hook (`audio::playable`), the same.
+    let wav = shuyi_assets::sfx::to_wav(&samples);
+    assert_eq!(decode("sfx/coin.sfx.ron", &wav), Ok(samples));
+    let broken = decode("sfx/bad.sfx.ron", b"(wave: Sine)").unwrap_err();
+    assert!(broken.starts_with("sfx/bad.sfx.ron: line 1: "), "{broken}");
+}
+
+#[test]
 fn a_file_it_cannot_play_is_an_error_naming_it() {
     let spec = hound::WavSpec {
         channels: 1,

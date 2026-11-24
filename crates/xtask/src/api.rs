@@ -128,6 +128,7 @@ pub const API_CRATES: &[ApiCrate] = &[
             "jpeg-xl",
             "flac",
             "mp3",
+            "sfx",
         ]),
     },
     ApiCrate {

@@ -1,0 +1,8 @@
+// blip: a short soft beep, for a highlight that moves.
+(
+    wave: Square(duty: 50),
+    hz: 880,
+    hold_ms: 15,
+    fade_ms: 35,
+    volume: 30,
+)

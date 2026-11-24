@@ -28,6 +28,7 @@ use shuyi_assets::image::ImageInfo;
 use shuyi_assets::lighting::Lighting;
 use shuyi_assets::names::Names;
 use shuyi_assets::palette::PaletteDef;
+use shuyi_assets::sfx::{self, SfxDef};
 use shuyi_ui::storage::bundle::{SaveBundle, SaveBundleRon};
 
 use super::{Answer, Op, Problem, codes};
@@ -197,6 +198,13 @@ impl Importers {
                     m.channels, m.sample_rate, m.length_ms
                 )
             })
+            .kind_with_text::<SfxDef>(
+                |s| {
+                    let ms = s.length_ms();
+                    format!("{ms} ms, {} hz to {} hz", s.hz, s.to_hz)
+                },
+                sfx::to_text,
+            )
             .kind::<AudioManifest>(|a| {
                 format!(
                     "{}, {}",

@@ -135,11 +135,12 @@ None.
   "example/cookbook/examples/<task>.rs"`, with the task phrases from its
   `//!` line), and run its how-do-I table test; if not, nothing to do
   for the rows (3412 adds a row for each cookbook example).
-- **Either order with 2225:** if 2225 is done, `shuyi-audio` and a
-  `sound_from_files` recipe use a sound named in the game's
-  `audio.ron` on the short path; if not, both use a sound added at run
-  time, and `shuyi-audio` says that files on the short path wait for
-  2225 (2225 adds that section and the recipe).
+- **From 2225 (done):** `shuyi-audio` and a `sound_from_files` recipe
+  use a sound named in the game's `audio.ron` on the short path
+  (`BasicData::load` reads it, `run_game` plays it), such as a `.sfx.ron`
+  sound effect (`docs/formats.md`, *Sound effects*). Change
+  `skills/shuyi-audio/SKILL.md` and its worked example to play one, and
+  add the recipe to `examples/cookbook/` with its README row.
 - **Either order with 2384:** if 2384 is done, `shuyi-audio` and a
   `music` recipe play music from `audio.ron`'s cues on the short path;
   if not, `shuyi-audio` teaches music only for a game that writes its
