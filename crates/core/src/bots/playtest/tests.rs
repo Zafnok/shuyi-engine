@@ -757,6 +757,106 @@ fn targets_with_only_success_rules_give_no_checks() {
     assert!(got.is_empty(), "{got:?}");
 }
 
+/// [`TARGETS`] with a hold that leaves the medians out and a trial.
+fn kind_targets() -> Targets<Tier> {
+    let mut with_kinds = targets();
+    let text = r#"{
+        "hold": (bands: {Easy: {"a": (min: 40, max: 60)}, Hard: {"b": (min: 5, max: 15)}},
+                 medians: false),
+        "trial": (bands: {Easy: {"a": (min: 10, max: 20), "b": (min: 30, max: 40)}}),
+    }"#;
+    with_kinds.kinds = ron::from_str(text).unwrap();
+    with_kinds
+}
+
+/// The bands of `checks`' rates, by entrant.
+fn bands_of(checks: &[Check]) -> Vec<(&str, u32, u32)> {
+    checks
+        .iter()
+        .filter_map(|check| match check {
+            Check::Rate { entrant, band, .. } => Some((entrant.as_str(), band.min, band.max)),
+            Check::Median { .. } => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_kinds_bands_lie_over_the_tiers_entrant_by_entrant_and_a_later_kind_wins() {
+    let targets = kind_targets();
+    let all = ["a", "b", "base"];
+    let hold = targets.checks_of(&Tier::Easy, &["hold"], &all);
+    assert_eq!(bands_of(&hold), [("a", 40, 60), ("b", 50, 80)]);
+    // The floor is the entrant's, whatever the band.
+    assert!(matches!(
+        &hold[0],
+        Check::Rate {
+            floor: Some(20),
+            ..
+        }
+    ));
+    let both = targets.checks_of(&Tier::Easy, &["hold", "trial"], &all);
+    assert_eq!(bands_of(&both), [("a", 10, 20), ("b", 30, 40)]);
+    let both = targets.checks_of(&Tier::Easy, &["trial", "hold"], &all);
+    assert_eq!(bands_of(&both), [("a", 40, 60), ("b", 30, 40)]);
+    // A tier with no bands of its own takes a kind's.
+    let hard = targets.checks_of(&Tier::Hard, &["hold"], &all);
+    assert_eq!(bands_of(&hard), [("b", 5, 15)]);
+}
+
+#[test]
+fn a_kind_may_leave_the_medians_out_and_keeps_them_by_default() {
+    let targets = kind_targets();
+    let all = ["a", "b", "base"];
+    let median = median_check("b", Want::Lower, "base");
+    let trial = targets.checks_of(&Tier::Easy, &["trial"], &all);
+    assert_eq!(trial.last(), Some(&median));
+    for kinds in [&["hold"][..], &["trial", "hold"], &["hold", "trial"]] {
+        let checks = targets.checks_of(&Tier::Easy, kinds, &all);
+        assert!(!checks.contains(&median), "{kinds:?}");
+    }
+    assert!(targets.kinds["trial"].medians);
+}
+
+#[test]
+fn a_kind_the_targets_dont_name_changes_nothing() {
+    let targets = kind_targets();
+    let all = ["a", "b", "base"];
+    for tier in [Tier::Easy, Tier::Hard] {
+        let plain = targets.checks(&tier, &all);
+        assert_eq!(targets.checks_of(&tier, &["race"], &all), plain);
+        assert_eq!(targets.checks_of(&tier, &[], &all), plain);
+    }
+    // And today's checks are what they were.
+    assert_eq!(
+        kind_targets().checks(&Tier::Easy, &all),
+        self::targets().checks(&Tier::Easy, &all)
+    );
+}
+
+#[test]
+fn unknown_entrants_include_a_kinds_bands() {
+    let text = r#"(
+        success: {"a": []},
+        kinds: {"hold": (bands: {Easy: {"a": (min: 0, max: 100), "aa": (min: 0, max: 100)}})},
+    )"#;
+    let targets: Targets<Tier> = ron::from_str(text).unwrap();
+    assert_eq!(targets.unknown_entrants(&["a"]), vec!["aa"]);
+}
+
+#[test]
+fn a_kind_built_by_its_constructor_is_the_literal() {
+    let bands = BTreeMap::from([(Tier::Easy, BTreeMap::new())]);
+    assert_eq!(
+        KindTargets::new(bands.clone(), false),
+        KindTargets {
+            bands,
+            medians: false,
+        }
+    );
+    let text = "(bands: {Easy: {}}, medians: true, by: 1)";
+    assert!(ron::from_str::<KindTargets<Tier>>(text).is_err());
+}
+
 #[cfg(feature = "schema")]
 #[test]
 fn targets_over_string_tiers_have_a_schema() {
@@ -776,21 +876,27 @@ fn any_targets() -> impl Strategy<Value = Targets<u8>> {
         want: Want::Lower,
         than,
     });
+    let bands = prop::collection::btree_map(
+        0..3_u8,
+        prop::collection::btree_map(name.clone(), band, 0..5),
+        0..3,
+    );
+    let kind = (bands.clone(), any::<bool>())
+        .prop_map(|(bands, medians)| KindTargets::new(bands, medians));
+    let kind_name = prop::sample::select(vec!["hold", "trial"]).prop_map(str::to_string);
     (
         prop::collection::btree_map(name.clone(), Just(won()), 0..5),
-        prop::collection::btree_map(
-            0..3_u8,
-            prop::collection::btree_map(name.clone(), band, 0..5),
-            0..3,
-        ),
+        bands,
         prop::collection::btree_map(name.clone(), 0..=100_u32, 0..5),
         prop::collection::vec(median, 0..5),
+        prop::collection::btree_map(kind_name, kind, 0..3),
     )
-        .prop_map(|(success, bands, floors, medians)| Targets {
+        .prop_map(|(success, bands, floors, medians, kinds)| Targets {
             success,
             bands,
             floors,
             medians,
+            kinds,
         })
 }
 
@@ -800,8 +906,10 @@ proptest! {
         targets in any_targets(),
         tier in 0..3_u8,
         entrants in prop::sample::subsequence(vec!["a", "b", "c", "d", "e"], 0..=5),
+        kinds in prop::sample::subsequence(vec!["hold", "trial", "race"], 0..=3),
     ) {
-        let checks = targets.checks(&tier, &entrants);
+        prop_assert_eq!(targets.checks_of(&tier, &[], &entrants), targets.checks(&tier, &entrants));
+        let checks = targets.checks_of(&tier, &kinds, &entrants);
         for check in &checks {
             for name in check.entrants() {
                 prop_assert!(entrants.contains(&name));

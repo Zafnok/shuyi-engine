@@ -1,14 +1,14 @@
 ---
 id: "2148"
-title: "The bots catch up with the game: one strike per piece first, steps kept out of the rest, bands by stage kind, a 95% interval and a gap between two entrants"
+title: "The bots catch up with the game: one strike per piece first, steps kept out of the rest, and bands by stage kind"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 2148 — The bots catch up with the game
@@ -132,47 +132,23 @@ miss does stay the game's data (game `docs/design/playtest-bots.md`).
   - `checks(tier, entrants)` stays, as `checks_of(tier, &[], entrants)`.
   - `unknown_entrants` also reads the kinds' bands.
   - `Targets` isn't `#[non_exhaustive]` (`targets.rs:20`), so its new
-    fields (`kinds` here, `gaps` in E) are a break, with a `Breaking:`
-    line.
-- **D. A 95% interval** (game#0532's engine steps, as written there):
-  - `Band::interval(successes, count) -> Option<(u32, u32)>`: a Wilson
-    score interval in whole percents, in integers.
-  - `RateVerdict` gains `MaybeBelow` and `MaybeAbove`:
-    - `Below` only when the whole interval is under the band;
-    - `Above` only when it is all over the band;
-    - `Within` when the share is in the band;
-    - otherwise the `Maybe` ones.
-  - `Found::Rate` gains `#[serde(default)] interval`. The table shows
-    `band 50–75% · 95% 35–53%` and a `~ maybe too hard` / `~ maybe too
-    easy` mark.
-  - The floor (`blocked`) is still judged on the share itself.
-  - Both are breaks: `RateVerdict` and `Found` are exhaustive. Give each
-    its `Breaking:` line.
-- **E. A gap between two entrants** (game#1276's generic part):
-  - `Check::Gap { entrant, than, success: Vec<Condition>, most: u32 }`:
-    `entrant`'s share of tries meeting `success` is at most `most`
-    percentage points above `than`'s, compared in integers (`e_s × 100 ×
-    t_n − t_s × 100 × e_n ≤ most × e_n × t_n`). It never blocks a run:
-    a miss is ✗ in the report only.
-  - `Found::Gap` carries both counts and a `GapVerdict { Within, Over }`.
-    The table has one line per gap.
-  - `Targets` gains `#[serde(default)] gaps: Vec<GapTarget>` (like
-    `medians`), checked wherever both entrants play.
-  - `Check` is `#[non_exhaustive]`, so `Check::Gap` is additive. A new
-    `Found` variant is a break.
+    field `kinds` is a break, with a `Breaking:` line.
+- **D and E, moved to 2149** at the split (below): a 95% interval on a
+  success rate with "maybe" verdicts (game#0532's engine steps), and
+  `Check::Gap` with `Targets::gaps` (game#1276's generic part).
 - **Docs:**
   - the module docs of `threat/order.rs` (the steps with the new setting
     and kind) and of `bots/playtest` and `targets.rs`;
   - a new ADR beside ADR-0044 for A and B (this repository never edits
     an accepted ADR);
   - `skills/shuyi-balance-bots/SKILL.md` (the order's new setting and
-    kind, kinds of stage, the interval, the gap), with `check-skills`
-    passing;
+    kind, kinds of stage), with `check-skills` passing;
   - the book's chapter, if one covers bots.
 
 **Out (do not do):**
-- The game's use of it: game#1180 for A–C, game#0532's game steps for D,
-  game#1276 for E. Each is a game PR moving the pin after this one.
+- The game's use of it: game#1180 for A–C. It is a game PR moving the
+  pin after this one.
+- D and E: 2149, with game#0532 and game#1276.
 - game#0536's newcomer bot: its knobs wait on the game's decision
   game#0098. Today's `PlanSettings` (`temperature`) and weights may be
   enough; that ticket judges it.
@@ -183,8 +159,6 @@ miss does stay the game's data (game `docs/design/playtest-bots.md`).
   game#1098 (`Carve` ignored). All four are the game's hooks
   (`prepare`, `classify`) over today's `Threats`, `GoalDistance` and
   `Kind::Drop`, so there is no engine change.
-- Autobalance's distance to the bands (`bots/balance.rs`): it still aims
-  at the share itself (game#0532, Out).
 - The `shuyi playtest` command's own flags and history beyond printing
   the new verdicts and lines.
 
@@ -216,58 +190,116 @@ their handoffs with them.
    - The pick filter keeps it (it is neither `End` nor `Drop`).
 4. **C.** Add `KindTargets`, `Targets::kinds` and `checks_of`. Make
    `checks` call it. Extend `unknown_entrants`.
-5. **D.** Do game#0532's steps 1–3 (the interval by the score test
-   `(100·s − k·n)² · 10_000 ≤ 38_416 · n · k · (100 − k)` in `u128`;
-   44/100 → 35–53). Then add the verdicts, the field and the table text.
-6. **E.** Add `Check::Gap` (a constructor, `entrants()`), `Found::Gap`,
-   `GapVerdict`, its judging in `judge`, its table line, `GapTarget` and
-   `Targets::gaps` (in `checks_of`, after the medians).
-7. **Docs** and the new ADR. Run `cargo xtask api` and write each
+5. **Docs** and the new ADR. Run `cargo xtask api` and write each
    `Breaking:` line.
 
 ## Acceptance criteria
 
-- [ ] With `targets_after_steps` false, every existing `TacticsOrder`
+- [x] With `targets_after_steps` false, every existing `TacticsOrder`
       test passes unchanged.
-- [ ] A fixture with two pieces, one of them with two targets and two
+- [x] A fixture with two pieces, one of them with two targets and two
       ways, gives this order with the setting on: each piece's best
       strike, the pick, the extras, the advances, the holds, the second
       target's best strike, the other ways, the rest, the end.
-- [ ] A `Spare` with a step can be a piece's advance or hold and the
+- [x] A `Spare` with a step can be a piece's advance or hold and the
       pick. It is never listed in the rest. A `Spare` without a step is
       listed only as the pick.
-- [ ] `checks_of` overlays a kind's bands entrant by entrant (a later
+- [x] `checks_of` overlays a kind's bands entrant by entrant (a later
       kind wins) and leaves the medians out when a kind says so.
       `checks` still gives today's checks. `unknown_entrants` names a
       misspelt entrant in a kind's bands.
-- [ ] `Band::interval` gives 35–53 for 44/100, a sane interval at 0/100
-      and 100/100, and `None` for 0 tries. On band 30–55 at 100 tries:
-      20 → `Below`, 29 → `MaybeBelow`, 40 → `Within`, 60 → `MaybeAbove`.
-      The floor is still judged on the share. Old history JSON without
-      `interval` still reads.
-- [ ] A gap of 10 points passes at 60/100 against 50/100, fails at
-      61/100, and compares in integers across different try counts. It
-      never sets `blocked`.
-- [ ] Each API break has its `Breaking:` line. The new ADR is accepted.
-      `shuyi-balance-bots` documents the setting, the kind, stage kinds,
-      the interval and the gap, and `check-skills` passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Each API break has its `Breaking:` line. The new ADR is accepted.
+      `shuyi-balance-bots` documents the setting, the kind and stage
+      kinds, and `check-skills` passes.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: the order fixtures above (setting off and on; `Spare` as
-  advance, hold, pick and never rest); `checks_of` overlays and medians;
-  the interval and each verdict; the gap's integer comparison.
+  advance, hold, pick and never rest); `checks_of` overlays and medians.
 - Property: the order is a permutation of a subset of the commands
   given, never longer than `cap`, with the first `End` last when there
-  is one, for either setting. The interval contains the share's own
-  percent whenever there is a try.
-- Snapshot / integration: the report table with an interval, a maybe
-  mark and a gap line.
+  is one, for either setting.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick. Name the game PRs
-that move the pin for game#1180, game#0532 and game#1276.)*
+**What was done (A–C):**
+
+- **A.** `TacticsOrder` has `targets_after_steps` (false in `new`) and
+  `with_targets_after_steps`. With it on, `strikes` lists each piece's
+  first strike in step 1, then in step 6 the firsts per `(piece,
+  target)` not yet listed, then the other ways, each best first
+  (`crates/core/src/threat/order.rs`). The module docs' step list says
+  so.
+- **B.** `Kind::Spare { step }`: `advances_and_holds` takes a spare with
+  a step as a `Step`, the rest never takes one, and the pick filter keeps
+  it.
+- **C.** `KindTargets<T>` (`#[non_exhaustive]`, `KindTargets::new`,
+  `medians` true by default), `Targets::kinds`, `Targets::checks_of`
+  (`checks` calls it with no kinds), and `unknown_entrants` reads the
+  kinds' bands.
+- Tests: a toy `Table` game in `threat/order/tests.rs` tells the order
+  each command's kind. It covers the acceptance fixture (two pieces, one
+  with two targets and two ways, on and off, uncapped and at 4), `Spare`
+  as advance, hold and pick and never in the rest, and a property over
+  any kinds, either setting and any cap. The setting only reorders. The
+  skirmish property runs with either setting. Every old order test
+  passes unchanged. `playtest/tests.rs` covers the overlays (the last kind
+  wins), medians left out or kept, an unnamed kind, a misspelt entrant in
+  a kind, and `checks_of` in the targets property.
+- Docs: ADR-0145 (extends ADR-0044 §2, whose status line and index row
+  say so), the module docs of `threat/order.rs`, `bots/playtest` (its
+  example file has a `kinds`) and `targets.rs`, and
+  `skills/shuyi-balance-bots/SKILL.md` (the setting, `Spare`, kinds of
+  stage). `cargo shuyi check-skills skills` passes.
+
+**Deviations:**
+
+- **The split.** D and E (the 95% interval and the gap) are ticket
+  2149, as the ticket's `**Split:**` line says. A–C came to 602 counted
+  lines before docs, and D and E were estimated at about 900 more (the
+  ticket put the whole at 1,800), so the PR would have passed the
+  valve's 1,100. 2149 carries D and E's scope, steps, acceptance and
+  handoffs to game#0532 and game#1276. This ticket's D and E sections
+  now point at it, and its title no longer names them.
+- **Different from the game's own `checks_of`:** the game's skirmish
+  bands *replace* the tier's (`own.or_else(..)`), and its hold bands lie
+  over them only when there are no skirmish bands. `checks_of` lays
+  every kind over the tier's entrant by entrant, as the ticket says. The
+  game gets its own results by passing `["hold", "skirmish"]` if its
+  `skirmish_bands` lists every persona its `bands` list for that tier.
+  game#1180 should check that when it moves `targets.ron`.
+
+**For the game (handoffs this PR can't write):** game#0532 is
+`blocked_by: ["engine#2148"]`, and game#1276's step 6 says "if the pin is
+past engine#2148". Both mean the interval and the gap, which are now
+engine#2149. Both game tickets want `engine#2148` read as `engine#2149`
+(a ticket edit in the game repository).
+
+Game: game#1180 moves the pin to this change and adopts A–C. The
+interval and the gap are 2149's (game#0532, game#1276).
+
+Breaking: shuyi-core: `bots::playtest::Targets` has a new public field `kinds`: a game that builds `Targets { .. }` as a literal adds `kinds: BTreeMap::new()` (a game reading the file changes nothing: `#[serde(default)]`).
+
+```migration
+since: 0.1.0
+what: Targets has a new field, kinds (each stage kind's bands and whether its medians are checked).
+old: Targets { success, bands, floors, medians }
+new: Targets { success, bands, floors, medians, kinds }
+before: |
+  let targets = Targets { success, bands, floors, medians };
+after: |
+  let targets = Targets { success, bands, floors, medians, kinds: BTreeMap::new() };
+find: ["floors, medians }"]
+```
+
+Behaviour: shuyi-core: a targets file with a `kinds` field reads now (it was refused as an unknown field). Nothing else a game sees changes: `TacticsOrder::new` orders as before, and `Targets::checks` gives the same checks.
+
+Book: none, no chapter covers the tactics order or playtest targets (`site/content/learn/book/testing.md` names `cargo shuyi playtest` only). The `shuyi-balance-bots` skill and ADR-0145 carry them.
+
+Searched the game for what this touches:
+`gh search code --repo Zafnok/visions-of-shuyi 'TacticsOrder'`,
+`'playtest::Targets'` and `'Kind::Drop'`. The hits are its copy of the
+skill pack and game#1180. The game's code builds neither, so nothing in
+it breaks at the pin move.

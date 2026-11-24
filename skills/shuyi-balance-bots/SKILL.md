@@ -178,6 +178,13 @@ same report on every machine and every thread count.
   per tier and entrant, `floors`, and `medians`.
   `Targets::checks(&tier, &entrants)` gives a stage's checks, and
   `unknown_entrants` names a file's typos.
+- **Kinds of stage.** A stage of a kind the game names (a time trial, a
+  hold) takes `kinds: {"trial": (bands: {..}, medians: false)}`:
+  `Targets::checks_of(&tier, &["trial"], &entrants)` lays each kind's
+  bands for the tier over the tier's, entrant by entrant (a later kind
+  wins), and leaves the medians out if a kind says `medians: false`, for
+  a stage that lasts the same however it is played. `medians` is true
+  when left out.
 - **Personas.** A kind of player is data (`shuyi_core::bots::weigh`): a
   `Persona` holds its `PlanSettings`, its weights by the game's feature
   names, and the game's own extras. `Weighted { weights, counts }` turns
@@ -228,13 +235,22 @@ order instead (ADR-0044):
 - **Grid games:** `TacticsOrder::new(hooks, cap)` with the game's
   `OrderHooks`: `prepare` builds the state's `Threats` and
   `GoalDistance`, `classify` tags each command (`Kind::Strike`,
-  `Extra`, `Step`, `End`, `Drop`, `Other`), `pick` is the game's AI's
+  `Extra`, `Step`, `Spare`, `End`, `Drop`, `Other`), `pick` is the game's AI's
   own command, and `at`, `distance`, `safe` answer from them. Its eight
   steps: each piece's best strike on each target, the pick, the extras,
   each piece's advance (its step nearest the goals by walking, if
   nearer than where it stands), each piece's hold (its safe step
   nearest the goals, if not its advance), the other ways of striking,
   the rest, and the end.
+- **Pieces with several targets:**
+  `.with_targets_after_steps(true)` lists each piece's best strike only
+  in step 1; its best on each other target comes after the holds, then
+  the other ways. Without it, three pieces with three targets each fill
+  a cap of ten with blows and no piece's advance is tried (ADR-0145).
+- **Nothing left to fear:** tag a command `Kind::Spare { step }` to try
+  it only as the pick or, with `Some((piece, dest))`, as that piece's
+  advance or hold, never in the rest: once a floor is cleared, only the
+  step towards the stairs is worth a place.
 
 Give the order the planner's own `candidates` as its `cap`, or the end
 can fall past the planner's cut. What a strike or a heal is and what it
