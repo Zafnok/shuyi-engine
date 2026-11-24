@@ -280,7 +280,7 @@ tickets above and 2267 and 3220 under *Asset memory*:
 | 2268 (done) | A message's walk borrows its values: a select and a fill copy no value into a String |
 | 3221 | A steady frame of Hello, Grid with key caps on allocates no more than a count its test pins |
 | 3222 | On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame |
-| 3320 | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |
+| 3320 (done) | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |
 | 2097 | The engine's own matches on its non-exhaustive enums name every variant, checked on nightly |
 | 2099 | The ticket lint fails an open MVP ticket the first release doesn't wait for, and the roadmap lists what is left before the release |
 
