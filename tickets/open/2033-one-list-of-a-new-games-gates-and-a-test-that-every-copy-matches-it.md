@@ -135,11 +135,12 @@ None.
   that rule 3 doesn't read that block (it has no `cargo shuyi check`)
   and rule 4 reads only the game's block; if not, nothing to do (2552
   keeps its lines apart).
-- **Either order with 2524:** if 2524 is done, its grader's `Gates`
-  check (`crates/xtask/src/eval/`) is one more copy. Make it read its
-  commands from `templates/shuyi-default/base/AGENTS.md`'s *The gates*
-  block, minus the ones it leaves out today, never from the graded
-  game's copy; if not, nothing to do (2524 reads the block).
+- **From 2524 (done):** its grader's `Gates` check is one more copy:
+  `GATES` in `crates/xtask/src/eval/task.rs`, the template's list less
+  `cargo shuyi check` and `cargo shuyi check --target all` (its `Check`
+  and `Targets`). Make it read its commands from
+  `templates/shuyi-default/base/AGENTS.md`'s *The gates* block, minus
+  those two, never from the graded game's copy.
 - **For the game:** no API change (ADR-0038 §6: no `Breaking:` line).
   A test, a skill's description and two comments; no template file
   changes, so no made game changes.

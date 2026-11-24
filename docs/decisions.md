@@ -1284,7 +1284,8 @@ the cost of its agent runs, he chose **"After the maze chase"**.
 - **Not Pac-Man** (2026-10-26): the maze chase takes no name,
   character, maze, sound or art from it.
 - **The end goal's snake is measured again**: the agent eval's snake
-  task gets its reference (2739) and is graded in CI once 2524 lands.
+  task gets its reference (2739) and is graded in CI (2524's grader, CI's
+  job in 3421).
 
 ## 2026-10-29: a ticket is one PR of about 1,500 changed lines or fewer
 

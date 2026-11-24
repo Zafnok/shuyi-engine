@@ -43,8 +43,9 @@ What Shuyi has today:
 - `shuyi_core::Grid<T>` and `Pos` (`crates/core/src/grid.rs`); `Grid`
   has no `map` method yet;
 - `SimRng`, a PCG32 written in the crate, and the `RandomSource` trait
-  (`crates/core/src/rng.rs`). 2114 adds `mix64` and `mix_at` there, the
-  engine's one SplitMix64, and an ADR that freezes their outputs;
+  (`crates/core/src/rng.rs`). 2114 (done) added `mix64` and `mix_at`
+  there, the engine's one SplitMix64, and ADR-0143, which freezes their
+  outputs;
 - `Fx` is planned in 2139 (parked) as an `i32` with 8 fraction bits.
   This ticket needs none of it.
 

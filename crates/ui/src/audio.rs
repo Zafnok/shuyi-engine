@@ -469,12 +469,10 @@ pub fn pick_from_pool<'a>(manifest: &'a AudioManifest, pool: &str, seed: u64) ->
 }
 
 /// One step of splitmix64: spreads nearby seeds (e.g. a counter) over the
-/// whole range.
+/// whole range. It is [`shuyi_core::rng::mix64`], under the name games
+/// already import.
 pub fn splitmix64(seed: u64) -> u64 {
-    let mut z = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
+    shuyi_core::rng::mix64(seed)
 }
 
 /// Where the music is in its track, for a screen that keeps time with it,

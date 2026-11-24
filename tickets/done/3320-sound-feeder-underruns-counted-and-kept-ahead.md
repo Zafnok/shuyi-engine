@@ -5,10 +5,10 @@ type: bug
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3320 — The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine
@@ -196,25 +196,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi-sound` counts each stream's stalled frames apart, and a unit test
+- [x] `shuyi-sound` counts each stream's stalled frames apart, and a unit test
       starves one of two streams and sees only its count rise, with
       `Mixer::underrun_frames` still the sum.
-- [ ] `sound_probe` says each track's stalled frames and lowest margin after a
+- [x] `sound_probe` says each track's stalled frames and lowest margin after a
       scenario and after a timing, and `capture.py` records them.
-- [ ] `perf:underruns` fails on a timing with a stalled frame and no gap, and its
+- [x] `perf:underruns` fails on a timing with a stalled frame and no gap, and its
       detail names the track (a test in `sound_parity/tests.rs`).
-- [ ] A gap with no dry callback and a stalled stream is said to be the feeder's,
+- [x] A gap with no dry callback and a stalled stream is said to be the feeder's,
       and one with neither is said to be neither's (tests).
-- [ ] The completion notes give today's lowest margin per platform, measured over
+- [x] The completion notes give today's lowest margin per platform, measured over
       twenty runs before the fix, and say which fix was made, and why.
-- [ ] Twenty `sound-parity` runs on one revision after the fix: no stalled stream
+- [x] Twenty `sound-parity` runs on one revision after the fix: no stalled stream
       frame and no `windows-in-house` gap. The table and run ids are in the notes.
-- [ ] On Windows, the `sound-feed` thread runs above normal and below the output's
+- [x] On Windows, the `sound-feed` thread runs above normal and below the output's
       thread, and a test says so; or the notes say why only the ring was resized.
-- [ ] 3320 is in step 3 of the `give-up-sound-replacement` skill, all this PR adds
+- [x] 3320 is in step 3 of the `give-up-sound-replacement` skill, all this PR adds
       is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -226,5 +226,129 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- **Counted per track.** A mix tells a stream's source the frames it waited on it,
+  through a new provided method, `Source::stalled` (nothing by default, forwarded
+  by `Box`), called where `Voice::mix` stops on an underrun. A `Feed` adds them to
+  an `AtomicU32` it shares with its `Feeder`, which `Feeder::underrun_frames()`
+  reads without a lock. Only the `Feed` stores it, so a load and a store make the
+  sum: the audio thread waits for nothing and allocates nothing, and the count
+  needs no compare-and-swap (the no-std targets). It stops at `u32::MAX`, a day of
+  stalls at 48 kHz. `Mixer::underrun_frames` is still the sum.
+- **Measured.** `Feeding::step` reads `Feeder::room()` before each fill after the
+  first, and keeps the fewest frames the ring held: the track's margin. A
+  `Feeding` keeps its track's file name (`Track` now holds it).
+- **Recorded.** Behind `sound-probe`, `InHouse::stream_stats()` lists each track
+  since the probe last asked, the ended ones first (kept as their feeding retires,
+  on the worker's thread, natively only), and `InHouse::feeder_raised()` says
+  whether the worker was raised. `say_output` adds
+  `{"event":"streams","raised":…,"tracks":[{"track","stalled","lowest"}]}` after a
+  scenario and after a timing. `capture.py`'s `read_probe` makes a timing's
+  `stalled_frames` and `lowest_margin`, and its row keeps the tracks as `streams`;
+  a stall is printed beside a gap, and after a scenario.
+- **Judged.** `perf:underruns` and `old-new:underruns` fail on a stalled frame as on
+  a gap. `gaps_detail` names whose each is: the output's (dry callbacks), the
+  feeder's (each track and its frames), or neither's ("the loopback, or the mix").
+  The gate's `parse_log` reads the `streams` line, and a failed scenario's
+  message says which tracks stalled in that run.
+- **Kept ahead.** The `sound-feed` thread raises itself at its start through
+  `shuyi_sound_out::raise_worker()`, on Windows `SetThreadPriority` with
+  `THREAD_PRIORITY_HIGHEST` (in `sys.rs`'s `raised`, beside the output's). Not the
+  multimedia scheduler's "Audio" task: its realtime range is above the output's
+  fallback, `THREAD_PRIORITY_TIME_CRITICAL`, so on a machine that refuses the "Pro
+  Audio" task to the output and grants "Audio" to the feeder, decoding would
+  preempt the mix. The highest priority of the normal class is above the game's
+  thread (normal) and below both of the output's ways, needs no rights, and lasts
+  as long as the thread. `FEED_FRAMES` is unchanged: over the forty runs below,
+  the worker never left its ring with fewer than 2,560 of its 4,096 frames (58 ms
+  of the 93 ms at the runner's 44.1 kHz), raised or not, so the ring has room to
+  spare and `budget.ron`'s `max_held_frames` stays where it is.
+
+**Why the raise, when nothing stalled.** Today's feeder never stalled in twenty
+runs: the hosted runner isn't busy enough to keep a thread of normal priority
+waiting 58 ms. The raise is for the machine the ticket is about, a player's with
+other work on its cores, where #380 found the output's thread waiting more than
+its 20 ms. It costs nothing measured: the median `cpu_ms` of `windows-in-house`
+was 98.78 ms before and 99.06 ms after, its `latency_ms` 18.88 and 18.25 ms (360
+timings each). Resizing the ring instead would have bought margin the runs say
+isn't needed, in memory every track holds.
+
+**The numbers.** Two calibrations of `sound-parity`, 20 runs each:
+before, run [45338103265](https://github.com/Zafnok/shuyi-engine/actions/runs/45338103265)
+on `d35fcea9` (the counts, the feeder at normal priority); after, run
+[45338123935](https://github.com/Zafnok/shuyi-engine/actions/runs/45338123935) on
+`79db7314` (the counts and the raise: this PR's code, without its ticket edits).
+Each run counts 80 tracks on `windows-in-house`, in its scenarios and timings. The
+platforms in-house: `windows-in-house` counts; `browser-in-house` feeds in the
+callback and has no `streams` line; Linux and macOS have no in-house output
+(3032). The first two dispatches (45334520942 and 45334926863) built nothing
+measured: the probe-only items were dead code in a build without the probe, which
+the Windows job denies, and a commit here fixed that.
+
+| Run | Before: lowest margin | Before: stalled | Before: failed cells | After: lowest margin | After: stalled | After: raised | After: failed cells |
+|---|---|---|---|---|---|---|---|
+| 1 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 2 | 2,816 | 0 | none | 3,072 | 0 | yes | none |
+| 3 | 2,560 | 0 | none | 3,072 | 0 | yes | `browser-chromium slowdown:file_io_ms` |
+| 4 | 2,816 | 0 | none | 3,072 | 0 | yes | `browser-in-house perf:file_io_ms` |
+| 5 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 6 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 7 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 8 | 3,072 | 0 | none | 2,816 | 0 | yes | none |
+| 9 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 10 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 11 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 12 | 3,072 | 0 | none | 2,816 | 0 | yes | none |
+| 13 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 14 | 3,072 | 0 | none | 2,560 | 0 | yes | none |
+| 15 | 2,560 | 0 | `windows-in-house perf:latency_ms` | 3,072 | 0 | yes | none |
+| 16 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 17 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 18 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 19 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+| 20 | 3,072 | 0 | none | 3,072 | 0 | yes | none |
+
+Today's lowest margin, over the twenty runs before the fix: `windows-in-house`
+2,560 frames. No stalled stream frame and no `windows-in-house` gap in any run of
+either calibration: both `underruns` cells passed in all forty, each saying "0 gaps
+while everything played; the output's buffer ran dry 0 times; no stream stalled".
+The margins move in steps of 256 frames, the mix's block. The cells that failed
+are timing cells, 2068's.
+
+**Deviations.**
+
+- A track is named by its file (`music_a.ogg`), not its cue: the backend's
+  `load_music` gets a path, never a cue, and in the probe's plan each cue has a
+  file of its own.
+- The count is an `AtomicU32` read as a `u64`, not a `u64`: the mixer's rings are
+  all 32-bit atomics, and an `AtomicU64` isn't there on every target the crate
+  builds for.
+- The `streams` line also says whether the feeder's thread was raised, as the
+  `output` line does for the output's.
+- The `in_house` tests' three `assert!(… == expected)` that clippy names when it
+  is run with `--features in-house-sound` were there before, and CI lints neither;
+  left as they were.
+
+**Handed on.**
+
+- No ticket: the web keeps the feeding in the callback, as the ticket's **Out**
+  says, and no `browser-in-house` stall can happen there.
+- The timing cells that failed in the forty runs went to 2068, as a **From 3320**
+  note in its Context, as the ticket's clause with 2068 says.
+
+Behaviour: shuyi-app: with `in-house-sound` on Windows, the `sound-feed` thread that decodes music and voice tracks runs at the highest priority of its class (`THREAD_PRIORITY_HIGHEST`), above the game's thread and below the output's. The ring stays 4,096 frames.
+Behaviour: shuyi-sound: a mix tells a stream's source how many frames it waited on it (`Source::stalled`); a source that doesn't override it sees nothing change.
+
+No break: `Source::stalled` is a provided method, and `Feeder::underrun_frames` and
+`shuyi_sound_out::raise_worker` are new. No public type is added.
+
+Book: none, `Source::stalled`, `Feeder::underrun_frames` and `raise_worker` are the in-house backend's own plumbing, which no game calls and no chapter covers: the book's sound chapter is the player's.
+
+Game: nothing to adopt, no game builds the in-house backend: `gh search code --repo
+Zafnok/visions-of-shuyi 'in-house-sound'` finds `docs/engine/pins.md` and three
+tickets (game#1241, game#1348, game#0912), `'underrun_frames'` and `'shuyi_sound'`
+nothing; its `impl Source for` hits are `shuyi-assets`' pack source, a trait of its
+own.
+
+Nick input: none.

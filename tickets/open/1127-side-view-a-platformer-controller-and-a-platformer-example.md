@@ -102,13 +102,12 @@ None.
 - **The debug view (2317).** If 2317 is done, the platformer example
   calls its collision helpers, and draws the controller's ground and
   wall probes as `Note` lines. If it isn't, 2317 does this.
-- **The agent eval.** If 2524 is done, `examples/platformer` becomes
+- **The agent eval (from 2524, done).** `examples/platformer` becomes
   the reference of `evals/tasks/platformer.ron`: set
   `reference: Project("examples/platformer")`, empty its `waits_for`,
-  make the example's scene data answer its `Scene` checks (the level
-  and the coins its prompt names), and `cargo xtask eval-reference
-  platformer` passes in CI. If 2524 isn't done, nothing here: 2524
-  gives the task this reference (its scope says so).
+  make the example's scene data answer its `Scene` checks (`/level`,
+  `/coins` and `/won`, which its prompt names), and `cargo xtask
+  eval-grade evals/tasks/platformer.ron examples/platformer` passes. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference platformer` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - slopes, unless the example needs them;

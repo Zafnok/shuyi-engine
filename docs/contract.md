@@ -584,7 +584,11 @@ own program into `.shuyi-running/` beside it as they start, and leave a
 copy in its place, so a build while they run writes a fresh program
 instead of waiting for them to stop. The copy is one file under the
 program's name and its twin's, as cargo leaves them, so a `cargo run`
-that finds the program fresh touches neither.
+that finds the program fresh touches neither. The twin is found in
+either of cargo's layouts: `deps/`, or the build-dir layout of Rust 1.100
+(`build/<package>/<hash>/out/`). A cargo build whose twin isn't found
+(a `build-dir` outside the target folder) says so on stderr: its program
+stays held while the server runs.
 
 The entry builds the server from the project's own engine (a game's
 moves with its pin). `<command> mcp --ready` builds the server and the

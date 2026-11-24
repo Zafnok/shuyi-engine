@@ -134,9 +134,8 @@ None.
       divided by 1000 and rounded toward zero, where `n` is
       `splitmix64(SHAKE_SEED ^ (a << 32) ^ (now_ms / 33)) % 2001`, less
       1000. So the direction changes about 30 times a second.
-      `splitmix64` is `audio::splitmix64` (`crates/ui/src/audio.rs`;
-      once 2114 is done it is a re-export of `shuyi_core::rng::mix64`,
-      the same function).
+      `splitmix64` is `audio::splitmix64` (`crates/ui/src/audio.rs`),
+      a re-export of `shuyi_core::rng::mix64` since 2114.
   - The same asks at the same times give the same offsets, in a replay,
     a test or `frame-png`.
 - **`shuyi_ui::frame::flash`** (`crates/ui/src/frame/flash.rs`,

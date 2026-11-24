@@ -57,6 +57,25 @@ each of two runs of one build:
 `windows-in-house perf:cpu_ms` medians were 0.951 to 1.128 before that and 0.947
 to 1.195 after, centred on 1. They are this ticket's cells too.
 
+**From 3320 (done):** it raised the in-house `sound-feed` thread on Windows
+(`THREAD_PRIORITY_HIGHEST`) and calibrated twenty runs before and twenty after.
+No stream stalled and no `underruns` cell failed in any. Three timing cells did,
+one run each:
+
+- `windows-in-house perf:latency_ms`: run 15 of CI run 45338103265 (before the
+  raise, revision `d35fcea9`), median ratio 1.328, spread 0.118, over its
+  `max_ratio` of 1.25.
+- `browser-chromium slowdown:file_io_ms`: run 3 of CI run 45338123935 (after,
+  `79db7314`): the injected slowdown's median ratio 1.250 wasn't above the
+  limit of 1.25 it has to clear.
+- `browser-in-house perf:file_io_ms`: run 4 of CI run 45338123935, median ratio
+  1.500, spread 0.297, over its `max_ratio` of 1.25.
+
+The raise didn't move `windows-in-house` `cpu_ms`: its median over the 360
+timings of each calibration was 98.78 ms before and 99.06 ms after, and
+`latency_ms` 18.88 and 18.25 ms. Their artifacts are `sound-parity-run-15`, `-3`
+and `-4` of those runs, while they last.
+
 ## Nick input
 
 None.
@@ -74,10 +93,11 @@ None.
   `version`.
 - Twenty `sound-parity` runs on one revision (`calibrate.yml`), with the result
   in the notes.
-- **Either order with 3320:** if 3320 is done, judge the timing cells on a
-  revision with its feeder change (it may move `windows-in-house` `cpu_ms`), and
-  take the timing cells its runs failed from its **From 3320** note; if not,
-  nothing to do (3320's runs must then pass the cells fixed here).
+- **From 3320 (done):** judge the timing cells on a revision with its feeder
+  change: it raises the `windows-in-house` `sound-feed` thread to the highest
+  priority of its class, which may move that platform's `cpu_ms`. Its forty runs
+  measured no move (Context, **From 3320**), and the timing cells they failed
+  are this ticket's.
 
 **Out (do not do):**
 - A limit raised without runs named beside it.
