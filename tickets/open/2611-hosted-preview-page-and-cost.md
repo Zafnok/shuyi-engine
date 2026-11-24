@@ -5,7 +5,7 @@ type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: todo
 blocked_by: ["2610"]
 nick_input: none
 completed:
@@ -28,6 +28,20 @@ and the estimate Nick decides from.
 
 What 2602 measured on Hello, Grid's stage in a debug build, as a start:
 35 to 75 ms an action, about 6 KB a picture at scale 1 (384 × 384).
+
+**From 2610 (done):** the server keeps its quotas, each a flag of
+`preview` with its default (`--per-address 2`, `--starts 10` a minute,
+`--actions 1000`, `--rate 8` a second, `--idle 120`, `--lifetime 1800`,
+`--cpu 120`, `--memory 512`, `--egress 64`), and at most 64 connections
+at once. Past one it answers `429`, or `503` for every session taken, a
+worker's memory or the connections, with `Retry-After` where waiting
+helps: the page's message reads the `error` of each. An IPv6 address
+counts as its /64. A load test from one machine is one address: it raises
+`--per-address`, `--starts` and `--sessions` to run its sessions at once.
+Each session that ends writes one line to the server's log: why, its
+actions, its game's time in ms, the bytes it sent and the most memory
+its worker held (Linux alone says it), which the load test can read
+for a session's cost.
 
 ## Nick input
 
