@@ -130,6 +130,8 @@ formats too ([below](#formats-behind-a-feature)):
 | music track | `audio::MusicTrack` | `audio::FlacTrack` | `flac` | `flac` | `fLaC` | 64 MiB | `flac` |
 | sound | `audio::Sound` | `audio::Mp3` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
 | music track | `audio::MusicTrack` | `audio::Mp3Track` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
+| sound | `audio::Sound`: what a `.sfx.ron` renders to, mono at 44.1 kHz | `sfx::SfxRon` | `sfx` | `ron`, a name that ends in `.sfx.ron` | none | 4 MiB | `sfx` |
+| sound effect | `sfx::SfxDef`: a `.sfx.ron`'s numbers | `sfx::SfxDefRon` (and `Encode`) | `sfx` | `ron` | none | 4 MiB | `sfx` |
 
 The ones a game registers with its own types or rules:
 
@@ -193,9 +195,10 @@ What each one reads:
   44.1 kHz. A music track must be a whole file, whose last Ogg page gives
   its length. `audio::format_problem`, which the manifest check uses,
   still requires a sound's content to match its extension: WAV for
-  `.wav`, OGG Vorbis for `.ogg`, FLAC for `.flac` and MP3 for `.mp3`
-  (with their features, below). A `.flac` or `.mp3` file whose bytes are
-  a WAV (a game's hook decoded them) is checked as a WAV.
+  `.wav`, OGG Vorbis for `.ogg`, FLAC for `.flac`, MP3 for `.mp3` and a
+  sound effect's numbers for `.sfx.ron` (with their features, below). A
+  `.flac`, `.mp3` or `.sfx.ron` file whose bytes are a WAV (a game's hook
+  decoded or rendered them) is checked as a WAV.
 - **The audio manifest** reads its sound files beside it (`audio/audio.ron`
   names `sfx/a.wav`, the bundle's `audio/sfx/a.wav`). The music folder
   isn't in the bundle, so its tracks are checked by a tool that can see
@@ -527,6 +530,77 @@ saves more by converting them to WebP or PNG than they save it. FLAC
 and MP3 read only headers here: decoding their samples
 (`audio::decode_to_wav`, ticket 2234) adds to these numbers, unmeasured.
 
+### Sound effects (`.sfx.ron`)
+
+A sound effect is a few numbers in a text file (ticket 2225, ADR-0144),
+behind the `sfx` feature of `shuyi-assets`: no dependency, and it builds
+without `std`. The game renders it once, as it loads it, to a 16-bit
+mono WAV at 44.1 kHz, so a new game has sounds with no audio file. A
+manifest names it like any sound file:
+
+```ron
+(id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
+```
+
+```ron
+// select: a note that jumps up a fifth, for a choice made.
+(
+    wave: Square(duty: 50),
+    hz: 660,
+    hold_ms: 70,
+    fade_ms: 60,
+    volume: 35,
+    step: (at_ms: 40, percent: 150),
+)
+```
+
+| Field | What it is | Range | Left out |
+| ----- | ---------- | ----- | -------- |
+| `wave` | `Square(duty: N)` (high `N` percent of each cycle), `Triangle`, `Saw`, `Sine` or `Noise` (a new random level every half cycle) | duty 1 to 99 | needed |
+| `hz` | the pitch at the start, in hertz | 20 to 12 000 | needed |
+| `to_hz` | the pitch at the end: it slides in a straight line | 20 to 12 000 | `hz` |
+| `attack_ms` | the loudness rises from nothing for this long | | 0 |
+| `hold_ms` | then holds | | needed |
+| `fade_ms` | then falls to nothing | | needed |
+| | the three together, the sound's length | 1 to 5 000 ms | |
+| `volume` | how loud, in percent, as a cue's volume | 0 to 100 | needed |
+| `vibrato` | `(hz: N, percent: P)`: the pitch wobbles `N` times a second by `P` percent of itself | 1 to 50 each | none |
+| `step` | `(at_ms: T, percent: P)`: from `T` on, the pitch is times `P` / 100 (a coin's jump up is 133) | `T` inside the length, `P` 10 to 400, the pitch it reaches 12 000 at most | none |
+| `seed` | the noise's luck | any | 0 |
+
+- **Checked.** A field the format doesn't know, or a number out of its
+  range, is an error on its field's line: `cargo shuyi check` reports
+  it in the manifest's problem for the sound, as `sound "ui_select":
+  files/sfx/select.sfx.ron: line 3: hz 30000 is over 12000`.
+- **Two kinds**, as a picture is two: `sfx::SfxDefRon` reads the numbers
+  (`SfxDef`) and writes them back (`sfx::to_text`); `sfx::SfxRon` reads
+  the `Sound` it renders to. Only a name that ends in `.sfx.ron` is a
+  sound, so another RON file among the sounds is an error that says so.
+  `shuyi import x.sfx.ron --kind "sound effect" --print` prints its text;
+  without `--kind` it reads as both kinds, and says so.
+- **Rendered through the sound hook.** `audio::playable(name, bytes)`
+  gives a `.sfx.ron`'s WAV, and every other file as it is: `run_game`'s
+  sound files go through it, and a game's own hook should too.
+  `audio::decode_to_wav` renders one as well, beside FLAC and MP3, so the
+  shared player plays one a hook passed raw, and the Playdate's export
+  bakes it to ADPCM like any WAV.
+- **The same bytes everywhere.** The render is integers only
+  (`sfx::render`), so a file gives the same samples on every platform;
+  the presets' WAV hashes are golden rows (`tests/golden/sfx.ron`). A
+  number out of range is clamped before rendering, so nothing overflows.
+- **Presets**: `sfx::PRESETS` are `blip`, `tick`, `select`, `cancel`,
+  `coin`, `jump`, `hit`, `explosion`, `power_up` and `laser`, as files
+  (`sfx::preset_source`). `sfx::preset(name, seed)` reads one; a seed
+  other than 0 moves its pitches by up to 10 % and its `hold_ms` by up to
+  20 %, so a cue's variants can be a few seeds of one preset.
+- **The feature is the game's.** A game turns `sfx` on in its own
+  `Cargo.toml`, as the templates do (`shuyi-assets = { workspace = true,
+  features = ["sfx"] }`). `shuyi-cli` turns it on for itself, so `cargo
+  shuyi check` passes without it; only the game's own load then fails,
+  with `a .sfx.ron sound needs the sfx feature of shuyi-assets`.
+- **The pack** keeps a `.sfx.ron` as its own bytes, as any sound
+  ([The pack](#the-pack)): it is rendered after it is read.
+
 ### The kinds of ADR-0007 §1
 
 | Kind | Type |
@@ -536,7 +610,7 @@ and MP3 read only headers here: decoding their samples
 | `TileMap` | `grid_map::GridMap<T, F>` for the grid kit's `.map`; Tiled's and LDtk's layered map is ticket 1124's, with both as formats |
 | `Tileset` | `tileset::TerrainTiles`; how a game writes its tiles is its own format |
 | `Font` | `font::FontAtlasDef` |
-| `Sound`, `MusicTrack` | `audio::Sound`, `audio::MusicTrack` |
+| `Sound`, `MusicTrack` | `audio::Sound`, `audio::MusicTrack`; a sound effect's numbers are `sfx::SfxDef` |
 | `DialogueScene` | `dialogue::DialogueFile<D>`: the scenes of one file |
 | `LanguagePack` | `lang::LangPack` |
 | `Cinematic` | `cinematic::CinematicFile<S, P>`: a file as written |

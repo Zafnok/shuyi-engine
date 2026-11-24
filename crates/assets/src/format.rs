@@ -688,6 +688,13 @@ impl Formats {
             self.register(crate::audio::Mp3)?;
             self.register(crate::audio::Mp3Track)?;
         }
+        // Sound effects, as numbers and as the sound they render to (ticket
+        // 2225).
+        #[cfg(feature = "sfx")]
+        {
+            self.register(crate::sfx::SfxRon)?;
+            self.register(crate::sfx::SfxDefRon)?;
+        }
         self.register(audio::AudioManifestRon)?;
         self.register(credits::CreditsRon::default())?;
         self.register(font::FontAtlasRon::default())?;

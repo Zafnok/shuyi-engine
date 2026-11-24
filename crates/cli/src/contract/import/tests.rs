@@ -111,6 +111,48 @@ fn a_file_is_read_as_every_kind_that_knows_it() {
 }
 
 #[test]
+fn a_sound_effect_prints_its_text_and_reads_as_a_sound_too() {
+    let dir = scratch("sfx");
+    let coin = shuyi_assets::sfx::preset_source("coin").unwrap();
+    fs::write(dir.join("x.sfx.ron"), coin).unwrap();
+    let answer = import(
+        &Importers::standard(),
+        &dir,
+        &input("x.sfx.ron", Some("sound effect"), true),
+    );
+    assert!(answer.ok, "{answer:?}");
+    let read = &answer.result.as_ref().unwrap().read_as;
+    assert_eq!(read.len(), 1);
+    assert_eq!(read[0].summary, "sound effect: 320 ms, 988 hz to 988 hz");
+    let def = shuyi_assets::sfx::preset("coin", 0).unwrap();
+    assert_eq!(
+        read[0].text.as_deref(),
+        Some(shuyi_assets::sfx::to_text(&def).as_str())
+    );
+    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
+    // Without --kind it is a sound and a sound effect, and says so.
+    let both = import(
+        &Importers::standard(),
+        &dir,
+        &input("x.sfx.ron", None, false),
+    );
+    let kinds: Vec<&str> = both
+        .result
+        .as_ref()
+        .unwrap()
+        .read_as
+        .iter()
+        .map(|r| r.kind.as_str())
+        .collect();
+    assert_eq!(kinds, ["sound", "sound effect"]);
+    assert_eq!(
+        both.limits,
+        ["it reads as 2 kinds: name the one meant with --kind"]
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn print_gives_our_text_format_or_the_asset_as_read() {
     let dir = scratch("print");
     fs::write(dir.join("colors.ron"), "{ \"text\": \"#ffffff\" }").unwrap();

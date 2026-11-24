@@ -1,0 +1,9 @@
+// jump: a thin note that slides up.
+(
+    wave: Square(duty: 25),
+    hz: 260,
+    to_hz: 620,
+    hold_ms: 120,
+    fade_ms: 80,
+    volume: 35,
+)

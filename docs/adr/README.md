@@ -155,5 +155,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0140](0140-a-frame-fills-the-window-drawn-sharp-at-a-fraction.md) | A frame may fill the window at a fraction of a pixel, drawn sharp, from one placement the window and the check share | Accepted; amends ADR-0008 §1 |
 | [0141](0141-the-hosted-preview-a-worker-per-visitor-actions-in-pictures-out.md) | The hosted preview: a worker process per visitor, actions in, a picture and its text out | Accepted |
 | [0143](0143-the-rngs-helpers-streams-and-forks-are-frozen-too.md) | The seeded RNG's outputs are frozen: its helpers, named streams and forks too | Accepted; extends ADR-0002 §2 |
+| [0144](0144-sound-effects-from-a-few-numbers-sfx-ron.md) | Sound effects from a few numbers: `.sfx.ron`, rendered once in integers through the sound hook | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

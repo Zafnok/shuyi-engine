@@ -785,8 +785,9 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 
 /// Runs a game on the short path until it quits, in a window of its
 /// console at twice its size: its files become the process's bundle, and
-/// [`run_app`] starts it as [`BasicGame::start`] says, with no sounds, no
-/// voices and no system keyboard. Called from a plain `fn main`. Under
+/// [`run_app`] starts it as [`BasicGame::start`] says, with the sounds its
+/// `audio.ron` names read from the same files, no music folder, no voices
+/// and no system keyboard. Called from a plain `fn main`. Under
 /// `cargo shuyi run --watch` the game's files on disk are laid over the
 /// embedded ones ([`watched_layer`]). On the web, the files the page holds
 /// under `files/` (the site's playground, [`page`]) are laid over them when
@@ -955,9 +956,11 @@ fn installed_file(path: &str) -> Option<Cow<'static, [u8]>> {
     shuyi_assets::bundle::installed()?.bytes(path)
 }
 
-/// No sound file: a game on the short path has none.
-fn no_sound(_: &str) -> Bytes {
-    None
+/// A sound file of the bundle [`run_game`] installed, as the platform
+/// plays it: a `.sfx.ron` sound effect rendered to its WAV when the game
+/// turns on `shuyi-assets`' `sfx` feature (`audio::playable`).
+fn installed_sound(name: &str) -> Bytes {
+    shuyi_assets::audio::playable(name, installed_file(name))
 }
 
 /// How errors name a sound file.
@@ -972,10 +975,11 @@ fn sound_left_out(_: &str) -> bool {
 
 /// What the backend needs to know about a game on the short path: its
 /// storage's name (`AppInfo::storage`), its files from the installed bundle and its font's
-/// picture, and its version in its crash reports (`AppInfo::version`); no
-/// sounds, no voices and no system keyboard.
+/// picture, its sounds from the same bundle (those its `audio.ron` names,
+/// `BasicData::load`), and its version in its crash reports
+/// (`AppInfo::version`); no music folder, no voices and no system keyboard.
 fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
-    let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
+    let sounds = Files::new(&installed_sound, &sound_shown, &sound_left_out, "music");
     let mut config = AppConfig::new(
         basic_window(game),
         game.storage_name(),
@@ -1379,7 +1383,7 @@ mod tests {
 
     #[test]
     fn a_new_config_writes_reports_with_no_version_and_off_keeps_none() {
-        let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
+        let sounds = Files::new(&installed_sound, &sound_shown, &sound_left_out, "music");
         let config = const_config(sounds);
         assert_eq!(config.crash, CrashReports::default());
         assert_eq!((config.crash.game_version, config.crash.keep), ("", 5));
@@ -1409,11 +1413,12 @@ mod tests {
     }
 
     #[test]
-    fn a_short_path_games_config_is_silent_and_reads_its_font() {
+    fn a_short_path_games_config_reads_its_font_and_sounds_from_its_files() {
         let config = basic_config(&basic());
         assert_eq!(config.storage_name, "a-game");
         assert_eq!(config.font_png, "font/atlas.png");
         assert_eq!(config.window.title, "A game");
+        // Nothing is installed in the tests: no sound is found.
         assert_eq!((config.sounds.sound)("sfx/move.wav"), None);
         assert_eq!((config.sounds.sound_shown)("sfx/move.wav"), "sfx/move.wav");
         assert!(!(config.sounds.sound_left_out)("sfx/move.wav"));
@@ -1421,6 +1426,41 @@ mod tests {
         assert!(config.voices.is_none() && config.text_input.is_none());
         // Nothing is installed in the tests: no file is found.
         assert_eq!((config.files)("font/atlas.png"), None);
+    }
+
+    #[test]
+    fn a_short_path_games_sounds_are_its_files_a_sound_effect_rendered() {
+        static FILES: &[(&str, &[u8])] = &[
+            (
+                "sfx/move.sfx.ron",
+                include_bytes!(
+                    "../../../templates/shuyi-default/base/crates/game/files/sfx/move.sfx.ron"
+                ),
+            ),
+            ("sfx/odd.wav", b"not a wav"),
+        ];
+        static BUNDLE: std::sync::OnceLock<shuyi_assets::bundle::Bundle> =
+            std::sync::OnceLock::new();
+        let bundle = BUNDLE.get_or_init(|| {
+            shuyi_assets::bundle::Bundle::new(vec![shuyi_assets::bundle::Layer::table(
+                "files", FILES,
+            )])
+        });
+        let config = basic_config(&basic());
+        shuyi_assets::bundle::reading(bundle, || {
+            let wav = (config.sounds.sound)("sfx/move.sfx.ron").unwrap();
+            assert_eq!(&wav[..4], b"RIFF");
+            assert_eq!(
+                shuyi_assets::audio::format_problem("sfx/move.sfx.ron", &wav),
+                None
+            );
+            // Any other file is as the bundle has it.
+            assert_eq!(
+                (config.sounds.sound)("sfx/odd.wav").as_deref(),
+                Some(&b"not a wav"[..])
+            );
+            assert_eq!((config.sounds.sound)("sfx/none.sfx.ron"), None);
+        });
     }
 
     /// Without the `link` feature the backend never reads `SHUYI_LINK`:

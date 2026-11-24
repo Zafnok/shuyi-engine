@@ -395,7 +395,8 @@ is done.
 | 2345 | Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority |
 | 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
-| 2225 | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
+| 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
+| 2277 | `shuyi sfx`, Hello, Grid's sounds as `.sfx.ron` files, and the tutorial's push and win sounds (after 2225) |
 
 **Text and languages:**
 

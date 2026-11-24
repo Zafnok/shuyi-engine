@@ -230,12 +230,10 @@ None.
   of `templates/blank/crates/game/files/font`: Hello, Grid's atlas and
   the Terminus license (OFL-1.1). The templates' Terminus row in
   `THIRD_PARTY_ASSETS.md` gains its path.
-- **Sounds:** if 2225 is done, the engine's four menu cues come from
+- **Sounds:** the engine's four menu cues come from
   `files/sfx/*.sfx.ron` and `files/audio.ron`, which the short path
-  reads with no code, as 2225 gives the blank template. If not, the
-  example is silent, as the short path is (2511's Out), its README
-  says so, and 2225's PR adds the sounds (its item on the gallery
-  examples says so).
+  reads with no code, as the templates have them (from 2225, done),
+  with the `sfx` feature of `shuyi-assets` on in its `Cargo.toml`.
 - **`shuyi.ron`** in hello-grid's form: `game`, `targets`, `web`, and a
   `check_keys` section as the blank template's (`src`, `files`, with
   `files/keymap.ron` as `not_text`), so `cargo shuyi check-keys` runs in
