@@ -19,7 +19,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::task::{After, Planned, Task};
-use crate::script::{self, Runner};
+use crate::script::{self, Runner, Verdict};
 
 /// The result file, by default, in the current folder.
 pub const OUT: &str = "eval-result.json";
@@ -66,20 +66,6 @@ impl Options {
     }
 }
 
-/// How one check went.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Graded {
-    /// Its kind and place in the task (`Scene 2`).
-    pub name: String,
-    /// Whether it passed.
-    pub passed: bool,
-    /// How long it took.
-    pub took: Duration,
-    /// Why it failed: the answer's error, a failed command's last lines,
-    /// or what was equal that should have differed.
-    pub detail: Option<String>,
-}
-
 /// A game's lines over its base.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Lines {
@@ -103,46 +89,23 @@ pub struct Outcome {
     pub report: String,
 }
 
-/// What a grade exits with: every check passed.
-pub const PASSED: u8 = 0;
-/// What a grade exits with: a check failed.
-pub const FAILED: u8 = 1;
-/// What a grade exits with: it couldn't grade (no such game, a bad task
-/// file, a task that waits).
-pub const UNGRADED: u8 = 2;
-
-/// `eval-grade <args>` in the engine checkout at `root`: its exit code.
+/// `eval-grade <args>` in the engine checkout at `root`: its exit code, 0
+/// when every check passed, 1 when one failed, and 2 when it couldn't
+/// grade (no such game, a bad task file, a task that waits).
 pub fn command(root: &Path, args: &[String], runner: &dyn Runner) -> u8 {
-    let options = match Options::parse(args) {
-        Ok(options) => options,
-        Err(e) => {
-            eprintln!("eval-grade: {e}");
-            return UNGRADED;
-        }
-    };
-    let task = match Task::read(&options.task) {
-        Ok(task) => task,
-        Err(e) => {
-            eprintln!("eval-grade: {e}");
-            return UNGRADED;
-        }
-    };
-    let graded = to_file(
-        &task,
-        &options.project,
-        options.base.as_deref(),
-        root,
-        &options.out,
-        runner,
-    );
+    let graded = Options::parse(args).and_then(|options| {
+        let task = Task::read(&options.task)?;
+        let base = options.base.as_deref();
+        to_file(&task, &options.project, base, root, &options.out, runner)
+    });
     match graded {
         Ok(outcome) => {
             eprint!("{}", outcome.report);
-            if outcome.passed { PASSED } else { FAILED }
+            u8::from(!outcome.passed)
         }
         Err(e) => {
             eprintln!("eval-grade: {e}");
-            UNGRADED
+            2
         }
     }
 }
@@ -199,31 +162,25 @@ pub fn grade(
     scratch: &Path,
     runner: &dyn Runner,
 ) -> Outcome {
-    let graded: Vec<Graded> = task
-        .plan(scratch)
-        .iter()
-        .map(|planned| run_check(planned, game, runner))
+    let graded: Vec<Verdict> = (1..)
+        .zip(task.plan(scratch))
+        .map(|(i, planned)| run_check(i, &planned, game, runner))
         .collect();
     let mut limits = Vec::new();
-    let lines = match base {
-        Some(base) => match count_lines(base, game, runner) {
-            Ok(lines) => Some(lines),
-            Err(e) => {
-                limits.push(format!("the lines weren't counted: {e}"));
-                None
-            }
-        },
-        None => {
-            limits.push("no --base: the lines over the template weren't counted".to_owned());
-            None
-        }
+    let lines = if let Some(base) = base {
+        count_lines(base, game, runner)
+            .map_err(|e| limits.push(format!("the lines weren't counted: {e}")))
+            .ok()
+    } else {
+        limits.push("no --base: the lines over the template weren't counted".to_owned());
+        None
     };
     let passed = graded.iter().filter(|g| g.passed).count();
     let seconds: f64 = graded.iter().map(|g| g.took.as_secs_f64()).sum();
     let checks: Vec<Value> = graded
         .iter()
         .map(|g| {
-            json!({ "check": g.name, "passed": g.passed,
+            json!({ "check": g.what, "passed": g.passed,
                 "seconds": round(g.took.as_secs_f64()), "detail": g.detail })
         })
         .collect();
@@ -257,29 +214,27 @@ fn round(seconds: f64) -> f64 {
     (seconds * 10.0).round() / 10.0
 }
 
-/// Runs one check's steps in order, stopping at the first that fails, then
-/// what it looks at after them.
-fn run_check(planned: &Planned, game: &Path, runner: &dyn Runner) -> Graded {
+/// Runs the `i`th check's steps in order, stopping at the first that
+/// fails, then what it looks at after them: its verdict, named as the
+/// check.
+fn run_check(i: usize, planned: &Planned, game: &Path, runner: &dyn Runner) -> Verdict {
     let mut took = Duration::ZERO;
+    let mut outcome = Ok(());
     for step in &planned.steps {
         let verdict = script::run(std::slice::from_ref(step), game, game, runner).remove(0);
         took += verdict.took;
-        if !verdict.passed {
-            let detail = verdict.detail.unwrap_or_default();
-            return Graded {
-                name: planned.name.clone(),
-                passed: false,
-                took,
-                detail: Some(format!("{}: {detail}", verdict.what)),
-            };
+        if let Some(detail) = verdict.detail.filter(|_| !verdict.passed) {
+            outcome = Err(format!("{}: {detail}", verdict.what));
+            break;
         }
     }
-    let after = look_after(&planned.after, game);
-    Graded {
-        name: planned.name.clone(),
-        passed: after.is_ok(),
+    let outcome = outcome.and_then(|()| look_after(&planned.after, game));
+    Verdict {
+        step: i,
+        what: planned.name.clone(),
+        passed: outcome.is_ok(),
+        detail: outcome.err(),
         took,
-        detail: after.err(),
     }
 }
 
@@ -322,7 +277,13 @@ fn look_after(after: &After, game: &Path) -> Result<(), String> {
 /// Nothing if a web build's folder of these file names holds `index.html`
 /// and one `.wasm`, or what it lacks.
 pub fn web_folder_holds(names: &[String]) -> Result<(), String> {
-    let wasm = names.iter().filter(|n| n.ends_with(".wasm")).count();
+    let wasm = (names.iter())
+        .filter(|n| {
+            Path::new(n)
+                .extension()
+                .is_some_and(|x| x.eq_ignore_ascii_case("wasm"))
+        })
+        .count();
     if !names.iter().any(|n| n == "index.html") {
         Err("no index.html".to_owned())
     } else if wasm != 1 {
@@ -333,23 +294,16 @@ pub fn web_folder_holds(names: &[String]) -> Result<(), String> {
 }
 
 /// The checks as lines for people, and the lines counted.
-fn report(task: &str, graded: &[Graded], lines: Option<Lines>) -> String {
+fn report(task: &str, graded: &[Verdict], lines: Option<Lines>) -> String {
     let passed = graded.iter().filter(|g| g.passed).count();
-    let mut out = format!("{task}: {passed} of {} check(s) passed\n", graded.len());
-    for g in graded {
-        let mark = if g.passed { "ok" } else { "FAILED" };
-        // Writing to a `String` can't fail.
-        let _ = writeln!(
-            out,
-            "  {mark:<6} {} ({:.1} s)",
-            g.name,
-            g.took.as_secs_f64()
-        );
-        for line in g.detail.iter().flat_map(|d| d.lines()) {
-            let _ = writeln!(out, "         {line}");
-        }
-    }
+    let mut out = format!(
+        "{task}: {passed} of {} check(s) passed
+",
+        graded.len()
+    );
+    out.push_str(&script::report(graded));
     if let Some(l) = lines {
+        // Writing to a `String` can't fail.
         let _ = writeln!(
             out,
             "  lines over the template: +{} -{}, {} file(s)",
@@ -386,25 +340,19 @@ fn count_lines(base: &Path, game: &Path, runner: &dyn Runner) -> Result<Lines, S
     let dist = fs::read_to_string(game.join("shuyi.ron"))
         .ok()
         .and_then(|text| web_dist(&text));
-    let shown = |p: &Path| p.to_string_lossy().replace('\\', "/");
-    let (base, game_shown) = (shown(base), shown(game));
-    let args: Vec<String> = [
-        "-c",
-        "core.autocrlf=false",
-        "diff",
-        "--no-index",
-        "--no-renames",
-        "--numstat",
-        "-z",
-        &base,
-        &game_shown,
-    ]
-    .iter()
-    .map(|s| (*s).to_owned())
-    .collect();
+    // Absolute: git runs in the game's folder.
+    let shown = |p: &Path| {
+        let full = std::path::absolute(p).map_err(|e| format!("{}: {e}", p.display()))?;
+        Ok::<_, String>(full.to_string_lossy().replace('\\', "/"))
+    };
+    let (base, game_shown) = (shown(base)?, shown(game)?);
+    let diff = "-c core.autocrlf=false diff --no-index --no-renames --numstat -z";
+    let mut args: Vec<String> = diff.split(' ').map(str::to_owned).collect();
+    args.extend([base.clone(), game_shown.clone()]);
     let ran = runner.run(game, "git", &args)?;
-    // 1: they differ; 0: they don't.
-    if !matches!(ran.code, Some(0 | 1)) {
+    // 1: they differ, or an error that says so; 0: they don't.
+    let error = (ran.stderr.lines()).any(|l| l.starts_with("error:") || l.starts_with("fatal:"));
+    if error || !matches!(ran.code, Some(0 | 1)) {
         return Err(format!("git diff failed: {}", ran.stderr.trim()));
     }
     Ok(numstat(&ran.stdout, &base, &game_shown, dist.as_deref()))

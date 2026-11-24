@@ -476,6 +476,8 @@ is done.
 | 2543 | The rules crate's fence proved once in CI, and `lint` takes `check-keys`' and `check-text`'s findings as data |
 | 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |
 | 2524 | An agent eval of the end goal: tasks as data, a grader through the contract, reference solutions in CI |
+| 3421 | The eval's references graded on fresh games: `cargo xtask eval-reference` and an `eval` job in CI |
+| 3422 | The eval's tic-tac-toe reference, graded in CI |
 | 2525 | Scheduled agent runs of the eval, within a budget Nick sets |
 | 2527 | `shuyi soak`: random legal commands, save and reload at every step, and a failure shrunk to a short record |
 | 2528 | `shuyi web --serve`: served on localhost or the LAN, rebuilt and reloaded on change |
@@ -547,7 +549,7 @@ does. The order, after the game's own requests:
    replay, and `TickDriver` with its input latch;
 3. 2739: the arcade template part and snake, on Pages;
 4. 2776: the maze chase, on Pages;
-5. 2572, the maze chase's eval task, once the eval (2524) is done;
+5. 2572, the maze chase's eval task, once the eval (2524, 3421) is done;
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
    what it may spend.
 

@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 
 use super::grade::{self, Lines, left_out, numstat, web_dist, web_folder_holds};
-use super::reference::{self, done_waits, places_engine_crate, refuse_overlay};
-use super::task::{After, Check, GATES, Input, Reference, Task, input_args};
+use super::task::{After, GATES, Input, Kind, Reference, Task, input_args};
 use crate::script::{self, Expect, Ran, Runner, Step};
 
 /// The repository's root.
@@ -56,14 +55,14 @@ fn a_task_reads_with_its_defaults_and_refuses_an_unknown_field() {
         task.reference,
         Reference::Overlay("evals/references/t".to_owned())
     );
-    assert!(task.waits_for.is_empty());
+    assert_eq!(task.waits_for, Vec::<String>::new());
     assert_eq!(
         task.unmeasured,
         [("a Playdate build".to_owned(), vec!["9999".to_owned()])]
     );
     assert_eq!(
         task.checks[5],
-        Check::Responds {
+        Kind::Responds {
             steps: vec![Input::Act("Right".to_owned()), Input::Wait(0.5)]
         }
     );
@@ -112,31 +111,24 @@ fn every_check_plans_its_steps_through_the_contract_with_actions_never_keys() {
         ["cargo shuyi run --act Right --wait 0.5 --json responds"]
     );
     let saved = |file: &str| scratch.join(file).to_string_lossy().into_owned();
-    assert_eq!(planned[7].after, After::WebFolder(saved("web.json")));
+    assert_eq!(planned[7].after, After::WebFolder(saved("export-web.json")));
     assert_eq!(planned[8].after, After::Package(saved("export-linux.json")));
     // Replay keeps the try's record outside the game, by its absolute path.
     let record = saved("record.ron");
-    let Step::Shuyi { save, .. } = &planned[10].steps[0] else {
-        panic!("{:?}", planned[10]);
+    let contract = |i: usize, step: usize| match &planned[i].steps[step] {
+        Step::Shuyi {
+            args, expect, save, ..
+        } => (args.clone(), expect.clone(), save.clone()),
+        other => panic!("{other:?}"),
     };
-    assert_eq!(
-        save,
-        &Some((
-            "/result/0/entrants/0/tries/0/record".to_owned(),
-            record.clone()
-        ))
-    );
-    let Step::Shuyi { args, .. } = &planned[10].steps[1] else {
-        panic!("{:?}", planned[10]);
-    };
-    assert_eq!(args, &["replay".to_owned(), record]);
-    let Step::Shuyi { args, expect, .. } = &planned[11].steps[0] else {
-        panic!("{:?}", planned[11]);
-    };
-    assert_eq!(args, &["scene", "--act", "Confirm"]);
+    let pointer = "/result/0/entrants/0/tries/0/record".to_owned();
+    assert_eq!(contract(10, 0).2, Some((pointer, record.clone())));
+    assert_eq!(contract(10, 1).0, ["replay".to_owned(), record]);
+    let (args, expect, _) = contract(11, 0);
+    assert_eq!(args, ["scene", "--act", "Confirm"]);
     assert_eq!(
         expect,
-        &[
+        [
             Expect::Has("/result/scene".to_owned()),
             Expect::Is("/result/scene/data/turn".to_owned(), "o".to_owned()),
             Expect::Exists("/result/scene/data/winner".to_owned()),
@@ -161,7 +153,7 @@ fn has_matches_present_equal_a_string_without_quotes_and_missing() {
         "turn": "o", "winner": "", "moves": 0, "won": false, "outcome": null } } } });
     let check = |pointer: &str, equals: Option<&str>| {
         let task = Task {
-            checks: vec![Check::Scene {
+            checks: vec![Kind::Scene {
                 steps: Vec::new(),
                 has: vec![(pointer.to_owned(), equals.map(str::to_owned))],
             }],
@@ -189,40 +181,24 @@ fn has_matches_present_equal_a_string_without_quotes_and_missing() {
 
 #[test]
 fn numstat_counts_lines_files_and_binaries_and_leaves_out_builds_and_locks() {
-    let out = [
-        "3\t1\t",
-        "base/README.md",
-        "game/README.md",
-        "10\t0\t",
-        "/dev/null",
-        "game/crates/game/build.rs",
-        "0\t4\t",
-        "base/CLAUDE.md",
-        "/dev/null",
-        "-\t-\t",
-        "/dev/null",
-        "game/files/board.png",
-        "900\t0\t",
-        "/dev/null",
-        "game/Cargo.lock",
-        "5\t5\t",
-        "base/crates/rules/Cargo.lock",
-        "game/crates/rules/Cargo.lock",
-        "7\t0\t",
-        "/dev/null",
-        "game/target/debug/x",
-        "7\t0\t",
-        "/dev/null",
-        "game/dist/web/index.html",
-        "7\t0\t",
-        "/dev/null",
-        "game/web-out/game.wasm",
-        "7\t0\t",
-        "/dev/null",
-        "game/.git/HEAD",
-        "",
-    ]
-    .join("\0");
+    let files = [
+        ("3\t1\t", "base/README.md", "game/README.md"),
+        ("10\t0\t", "/dev/null", "game/crates/game/build.rs"),
+        ("0\t4\t", "base/CLAUDE.md", "/dev/null"),
+        ("-\t-\t", "/dev/null", "game/files/board.png"),
+        ("900\t0\t", "/dev/null", "game/Cargo.lock"),
+        (
+            "5\t5\t",
+            "base/crates/rules/Cargo.lock",
+            "game/crates/rules/Cargo.lock",
+        ),
+        ("7\t0\t", "/dev/null", "game/target/debug/x"),
+        ("7\t0\t", "/dev/null", "game/dist/web/index.html"),
+        ("7\t0\t", "/dev/null", "game/web-out/game.wasm"),
+        ("7\t0\t", "/dev/null", "game/.git/HEAD"),
+    ];
+    let fields: Vec<&str> = files.iter().flat_map(|&(c, b, a)| [c, b, a]).collect();
+    let out = fields.join("\0") + "\0";
     assert_eq!(
         numstat(&out, "base", "game", Some("web-out")),
         Lines {
@@ -269,75 +245,6 @@ fn the_web_folder_comes_from_shuyi_ron_and_its_listing_is_checked() {
     );
 }
 
-#[test]
-fn the_waiting_warning_names_a_waits_for_ticket_that_is_done() {
-    let root = temp("waits");
-    fs::create_dir_all(root.join("tickets/done")).unwrap();
-    fs::write(root.join("tickets/done/1127-a-platformer.md"), "").unwrap();
-    let task = Task {
-        id: "platformer".to_owned(),
-        waits_for: vec!["1127".to_owned(), "2739".to_owned()],
-        ..task()
-    };
-    assert_eq!(
-        done_waits(&root, &task),
-        ["1127 is done: give `platformer` a reference and empty its `waits_for`"]
-    );
-    assert_eq!(task.listed(), "platformer (waits for 1127, 2739)");
-    let _ = fs::remove_dir_all(&root);
-}
-
-#[test]
-fn an_overlay_that_places_the_engines_crates_is_refused() {
-    assert!(places_engine_crate(
-        "shuyi = { path = \"../engine/crates/shuyi\" }"
-    ));
-    assert!(places_engine_crate(
-        "  \"shuyi-cli\" = { git = \"https://x\" }"
-    ));
-    assert!(places_engine_crate(
-        "[dependencies.shuyi-core]
-path = \"..\""
-    ));
-    assert!(!places_engine_crate(
-        "[dependencies]
-shuyi.workspace = true
-"
-    ));
-    assert!(!places_engine_crate(
-        "shuyi-core = { workspace = true, features = [\"schema\"] }"
-    ));
-    assert!(!places_engine_crate(
-        "name = \"tic-tac-toe\"
-serde.workspace = true"
-    ));
-    assert!(!places_engine_crate("shuyiness = { path = \"x\" }"));
-    let dir = temp("overlay");
-    fs::create_dir_all(dir.join("crates/game")).unwrap();
-    fs::write(dir.join("crates/game/build.rs"), "fn main() {}").unwrap();
-    fs::write(
-        dir.join("crates/game/Cargo.toml"),
-        "[dependencies]
-shuyi.workspace = true
-",
-    )
-    .unwrap();
-    assert_eq!(refuse_overlay(&dir), None);
-    fs::write(
-        dir.join("Cargo.toml"),
-        "[workspace.dependencies]
-shuyi = { path = \"../shuyi\" }
-",
-    )
-    .unwrap();
-    let why = refuse_overlay(&dir).unwrap();
-    assert!(
-        why.contains("may not say where the engine's crates are"),
-        "{why}"
-    );
-    let _ = fs::remove_dir_all(&dir);
-}
-
 /// A fake runner: each command's answer from `answer` by its program and
 /// arguments joined with spaces.
 struct Fake<F: Fn(&str) -> Ran>(F);
@@ -377,26 +284,15 @@ fn a_task_that_waits_or_a_missing_game_is_not_graded_and_the_result_has_every_fi
     assert!(error.ends_with("no game (no shuyi.ron)"), "{error}");
     fs::write(game.join("shuyi.ron"), "()").unwrap();
     let only_check = Task {
-        checks: vec![Check::Check],
+        checks: vec![Kind::Check],
         ..task()
     };
     let outcome = grade::to_file(&only_check, &game, None, &root(), &out, &fake).unwrap();
     assert!(outcome.passed);
     let written: Value = serde_json::from_str(&fs::read_to_string(&out).unwrap()).unwrap();
     assert_eq!(written, outcome.result);
-    for field in [
-        "task",
-        "engine",
-        "checks",
-        "passed",
-        "total",
-        "lines_added",
-        "lines_removed",
-        "files_changed",
-        "seconds",
-        "unmeasured",
-        "limits",
-    ] {
+    let fields = "task engine checks passed total lines_added lines_removed files_changed";
+    for field in fields.split(' ').chain(["seconds", "unmeasured", "limits"]) {
         assert!(written.get(field).is_some(), "no {field} in {written}");
     }
     assert_eq!(written["engine"], "abc123");
@@ -407,11 +303,8 @@ fn a_task_that_waits_or_a_missing_game_is_not_graded_and_the_result_has_every_fi
         "no --base: the lines over the template weren't counted"
     );
     assert_eq!(written["unmeasured"][0]["waits_for"][0], "9999");
-    assert_eq!(
-        fs::read_dir(&game).unwrap().count(),
-        2,
-        "only shuyi.ron and out/"
-    );
+    // Nothing in the game but its shuyi.ron and the result.
+    assert_eq!(fs::read_dir(&game).unwrap().count(), 2);
     let _ = fs::remove_dir_all(&game);
 }
 
@@ -430,12 +323,12 @@ fn a_failed_check_says_why_and_the_grader_goes_on() {
     });
     let task = Task {
         checks: vec![
-            Check::Check,
-            Check::Scene {
+            Kind::Check,
+            Kind::Scene {
                 steps: vec![Input::Act("Confirm".to_owned())],
                 has: vec![("/turn".to_owned(), Some("o".to_owned()))],
             },
-            Check::Targets,
+            Kind::Targets,
         ],
         ..task()
     };
@@ -452,15 +345,10 @@ fn a_failed_check_says_why_and_the_grader_goes_on() {
         "cargo shuyi scene --act Confirm --json: /result/scene/data/turn is \"x\", not o"
     );
     assert_eq!(checks[2]["passed"], true);
-    assert_eq!(
-        (
-            outcome.result["passed"].clone(),
-            outcome.result["total"].clone()
-        ),
-        (json!(1), json!(3))
-    );
+    assert_eq!(outcome.result["passed"], 1);
+    assert_eq!(outcome.result["total"], 3);
     assert!(
-        outcome.report.contains("FAILED Scene 1"),
+        outcome.report.contains("FAILED Scene 1 ("),
         "{}",
         outcome.report
     );
@@ -476,46 +364,30 @@ fn the_options_parse_and_refuse() {
     assert_eq!(grade.out, PathBuf::from(grade::OUT));
     assert!(grade::Options::parse(&args(&["t.ron"])).is_err());
     assert!(grade::Options::parse(&args(&["t.ron", "g", "--bogus"])).is_err());
-    let all = reference::Options::parse(&args(&["--all", "--out", "r"])).unwrap();
-    assert_eq!((all.id, all.out), (None, PathBuf::from("r")));
-    let one = reference::Options::parse(&args(&["tic-tac-toe", "--template-only"])).unwrap();
-    assert!(one.template_only);
-    assert!(reference::Options::parse(&args(&[])).is_err());
-    assert!(reference::Options::parse(&args(&["a", "--all"])).is_err());
 }
 
 #[test]
-fn the_repositorys_tasks_read_and_their_overlays_are_allowed() {
-    let tasks = reference::tasks(&root()).unwrap_or_else(|e| panic!("{e:?}"));
-    let ids: Vec<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
-    for id in ["box-pushing", "platformer", "snake", "tic-tac-toe"] {
-        assert!(ids.contains(&id), "{ids:?}");
-    }
-    for task in &tasks {
+fn the_tasks_in_the_repository_read() {
+    let mut ids = Vec::new();
+    for entry in fs::read_dir(root().join("evals/tasks")).unwrap() {
+        let path = entry.unwrap().path();
+        let task = Task::read(&path).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(path.file_stem().unwrap().to_str(), Some(task.id.as_str()));
         assert_eq!(task.time_box_minutes, 60, "{}", task.id);
+        // A task with no reference waits for the ticket that gives it one.
         assert_eq!(
             task.waits_for.is_empty(),
             task.reference != Reference::None,
             "{}",
             task.id
         );
-        match &task.reference {
-            Reference::Overlay(dir) => assert_eq!(refuse_overlay(&root().join(dir)), None),
-            Reference::Project(dir) => assert!(root().join(dir).join("shuyi.ron").is_file()),
-            Reference::None => {}
+        if let Reference::Project(dir) = &task.reference {
+            assert!(root().join(dir).join("shuyi.ron").is_file(), "{dir}");
         }
-        for check in &task.checks {
-            let steps = match check {
-                Check::Responds { steps } | Check::Scene { steps, .. } => steps.clone(),
-                _ => Vec::new(),
-            };
-            assert!(
-                steps
-                    .iter()
-                    .all(|s| !matches!(s, Input::Act(a) if a.is_empty()))
-            );
-        }
+        ids.push(task.id);
     }
+    ids.sort();
+    assert_eq!(ids, ["box-pushing", "platformer", "snake", "tic-tac-toe"]);
 }
 
 /// The schema in `crates/cli/schemas/` of `op`'s answer.

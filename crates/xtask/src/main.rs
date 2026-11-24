@@ -18,7 +18,6 @@
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
-//! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
@@ -168,13 +167,6 @@ usage:
       its lines over it, by `git diff --no-index`. Writes <file> (by default
       eval-result.json). Exits 0 when every check passed, 1 when one failed,
       2 when it couldn't grade.
-  cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]
-      Grade a task's reference solution, or every task's that has one (and
-      list the ones that wait), on two games `shuyi new` makes in
-      target/eval/: one with the reference laid over it, the other the base.
-      Writes <dir>/<id>.json (by default eval-results/). With
-      --template-only, grade the plain template instead. The games build in
-      target/eval-build unless CARGO_TARGET_DIR is set.
   cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, a fixed reference build, and
@@ -328,15 +320,11 @@ fn main() -> ExitCode {
         Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
-        Some("eval-grade") => {
-            let (_, runner) = eval::reference::runners(&root, true);
-            ExitCode::from(eval::grade::command(&root, &args[1..], &runner))
-        }
-        Some("eval-reference") => {
-            let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
-            let (maker, runner) = eval::reference::runners(&root, env_target);
-            ExitCode::from(eval::reference::command(&root, &args[1..], &maker, &runner))
-        }
+        Some("eval-grade") => ExitCode::from(eval::grade::command(
+            &root,
+            &args[1..],
+            &script::System::default(),
+        )),
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),

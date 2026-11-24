@@ -45,37 +45,28 @@ every fact a check reads (the actions, the screen it opens on, the
 scene's data and its values).
 
 To add a task, write its file here with its prompt and checks, and a
-reference, or a `waits_for` naming the ticket that gives it one. An
-`Overlay` may not say where the engine's crates are: `shuyi new
---engine-path` does.
+reference, or a `waits_for` naming the ticket that gives it one.
 
 ## Grading
 
-```powershell
-cargo xtask eval-reference box-pushing
-```
+`eval-grade` grades any game, an agent's among them; `--base` names a
+fresh `shuyi new --template <template> --name <name>` to count its lines
+over. The box-pushing reference, the tutorial's last step:
 
 ```powershell
-cargo xtask eval-reference --all
+cargo run -q -p shuyi-cli -- new target/eval/base/box-pushing --template blank --name "Box Pusher" --engine-path .
 ```
-
-`eval-reference` makes two games with `shuyi new` on this checkout, one
-to grade (the overlay laid over it) and one as the base, in
-`target/eval/`, grades the first and writes `eval-results/<id>.json`.
-`--template-only` grades the plain template instead, to show that the
-task's checks can fail on it.
-
-Any game, an agent's among them, is graded with `eval-grade`; `--base`
-names a fresh `shuyi new` of the task's template and name to count its
-lines over:
 
 ```powershell
 cargo xtask eval-grade evals/tasks/box-pushing.ron site/tutorial/10-ship --base target/eval/base/box-pushing
 ```
 
 It exits 0 when every check passed, 1 when one failed and 2 when it
-couldn't grade. The result file holds each check's verdict, its seconds
-and why it failed, the lines added and removed and the files changed
-over the base (builds, `dist/` and `Cargo.lock` left out), and what is
-unmeasured. `Export("linux")` builds only on Linux: on Windows or macOS
-it fails with the contract's `SH1003`.
+couldn't grade, and writes `eval-result.json` (`--out`): each check's
+verdict, seconds and why it failed, the lines added and removed and the
+files changed over the base (builds, `dist/` and `Cargo.lock` left out),
+and what is unmeasured. `Export("linux")` builds only on Linux: elsewhere
+it fails with the contract's `SH1003`. A game made with `--engine-path`
+depends on this checkout's crates by path, so its `cargo fmt --all
+--check` checks theirs too. Grading every reference on fresh games, and
+in CI, is ticket 3421.

@@ -1,8 +1,5 @@
-// The agent eval's first task (ticket 2524): tic-tac-toe from the grid
-// template. The checks read only the contract's answers and what the
-// prompt asks the game to expose (its action names and its scene data),
-// so any agent's game can pass them. evals/README.md says how a task is
-// written and graded.
+// The agent eval's first task: tic-tac-toe from the grid template. Its
+// checks read only what the prompt names (evals/README.md).
 (
     id: "tic-tac-toe",
     prompt: "Make me a tic-tac-toe game with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template grid`: turn its stage into tic-tac-toe for two players on one keyboard or pad. The game still opens on its title, where Confirm starts a game. X goes first. Keep the actions named `Up`, `Down`, `Left`, `Right` (move the cursor) and `Confirm` (put a mark where the cursor is). The cursor starts on the middle cell, stops at the edges, and stays where it is after a mark. `cargo shuyi scene --json` shows the board, which stays on screen when the game ends, and the scene's data has `turn` (`\"x\"` or `\"o\"`) and `winner` (`\"\"` until the game ends, then `\"x\"`, `\"o\"` or `\"draw\"`). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one), and `cargo shuyi playtest --tries 5` plays it, with records that `cargo shuyi replay` replays.",
@@ -35,7 +32,9 @@
             has: [("/winner", Some("x"))],
         ),
     ],
-    reference: Overlay("evals/references/tic-tac-toe"),
+    // 3422 gives it its reference, `Overlay("evals/references/tic-tac-toe")`.
+    reference: None,
+    waits_for: ["3422"],
     unmeasured: [
         // The grid template lists no Playdate target (its frame is taller
         // than the Playdate's screen); 2504 gives new games one.

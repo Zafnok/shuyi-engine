@@ -1,8 +1,5 @@
-// The end goal's other named game (docs/decisions.md, *the end goal*), on
-// record and not graded: a platformer is real time, which waits for
-// Visions of Shuyi's launch. 1127 gives it its reference
-// (examples/platformer), makes the example's scene data answer these
-// checks, and empties its `waits_for`.
+// The end goal's other game, on record: real time waits for Visions of
+// Shuyi's launch. 1127 gives it its reference (examples/platformer).
 (
     id: "platformer",
     prompt: "Make me a platformer with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template blank`. The player runs with the actions `Left` and `Right` and jumps with `Confirm`, on one level read from a file, with coins to pick up and a goal at its end. The game opens on its title, where Confirm starts the level. `cargo shuyi scene --json` shows the level, and the scene's data has `level` (its number, from 1), `coins` (the coins picked up) and `won` (`true` once the player reaches the goal). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, and `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one).",

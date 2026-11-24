@@ -105,7 +105,7 @@ numbers:
 His answers go in `docs/decisions.md` and in `evals/budget.ron`. If he
 says no money, record it in `docs/decisions.md`, move this ticket to
 `tickets/done/` with that in its completion notes, and the eval stays
-the graded references of 2524.
+the graded references of 2524 and 3421.
 
 **Setup**, after the decision. These are Nick's alone:
 

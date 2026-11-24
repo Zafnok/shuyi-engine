@@ -2,31 +2,20 @@
 //! template its game starts from, and the checks its game must pass, each
 //! made of the worked-example runner's steps ([`crate::script`]).
 
-use std::fmt::Write as _;
 use std::path::Path;
 
 use serde::Deserialize;
 
 use crate::script::{Expect, Step};
 
-/// Where the tasks are, from the repository's root.
-pub const TASKS: &str = "evals/tasks";
-
-/// The commands of `Gates`: the gates the template's `AGENTS.md` lists
-/// (*The gates*), less the two `Check` and `Targets` are.
-pub const GATES: [&[&str]; 5] = [
-    &["fmt", "--all", "--check"],
-    &[
-        "clippy",
-        "--workspace",
-        "--all-targets",
-        "--",
-        "-D",
-        "warnings",
-    ],
-    &["test", "--workspace"],
-    &["shuyi", "check-keys"],
-    &["shuyi", "lint"],
+/// The `cargo` commands of `Gates`: the gates the template's `AGENTS.md`
+/// lists (*The gates*), less the two `Check` and `Targets` are.
+pub const GATES: [&str; 5] = [
+    "fmt --all --check",
+    "clippy --workspace --all-targets -- -D warnings",
+    "test --workspace",
+    "shuyi check-keys",
+    "shuyi lint",
 ];
 
 /// A task.
@@ -48,7 +37,7 @@ pub struct Task {
     /// The target ids `Targets` checks (`desktop`, `web`).
     pub targets: Vec<String>,
     /// What the game must pass.
-    pub checks: Vec<Check>,
+    pub checks: Vec<Kind>,
     /// The solution CI grades.
     pub reference: Reference,
     /// Tickets it waits for: a task with any is listed, never graded.
@@ -73,7 +62,7 @@ pub enum Input {
 /// What a game must pass. Each reads only the contract's answers, or a
 /// command's exit, and what the prompt asks the game to expose.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-pub enum Check {
+pub enum Kind {
     /// Each of [`GATES`] exits 0: one verdict a command.
     Gates,
     /// `cargo shuyi check --json` passes.
@@ -158,68 +147,55 @@ impl Task {
         let saved = |file: &str| scratch.join(file).to_string_lossy().into_owned();
         for check in &self.checks {
             match check {
-                Check::Gates => {
+                Kind::Gates => {
                     for (i, args) in GATES.iter().enumerate() {
-                        let args = owned(args);
-                        planned.push(Planned {
-                            name: format!("Gates {}: cargo {}", i + 1, args.join(" ")),
-                            steps: vec![Step::Cargo { args, ok: true }],
-                            after: After::Nothing,
-                        });
+                        let name = format!("Gates {}: cargo {args}", i + 1);
+                        let step = Step::Cargo {
+                            args: owned(&args.split(' ').collect::<Vec<_>>()),
+                            ok: true,
+                        };
+                        planned.push(plan(name, vec![step], After::Nothing));
                     }
                 }
-                Check::Check => planned.push(simple("Check", shuyi(owned(&["check"]), vec![]))),
-                Check::Targets => {
-                    let steps = self
-                        .targets
-                        .iter()
+                Kind::Check => {
+                    let step = shuyi(owned(&["check"]), vec![]);
+                    planned.push(plan("Check", vec![step], After::Nothing));
+                }
+                Kind::Targets => {
+                    let steps = (self.targets.iter())
                         .map(|id| shuyi(owned(&["check", "--target", id]), vec![]))
                         .collect();
-                    planned.push(Planned {
-                        name: "Targets".to_owned(),
-                        steps,
-                        after: After::Nothing,
-                    });
+                    planned.push(plan("Targets", steps, After::Nothing));
                 }
-                Check::Web => {
-                    let file = saved("web.json");
-                    planned.push(Planned {
-                        name: "Web".to_owned(),
-                        steps: vec![saving(owned(&["export", "web"]), "/result", &file)],
-                        after: After::WebFolder(file),
-                    });
-                }
-                Check::Export(target) => {
+                Kind::Web | Kind::Export(_) => {
+                    let target = if let Kind::Export(t) = check {
+                        t
+                    } else {
+                        "web"
+                    };
                     let file = saved(&format!("export-{target}.json"));
-                    planned.push(Planned {
-                        name: format!("Export {target}"),
-                        steps: vec![saving(owned(&["export", target]), "/result", &file)],
-                        after: After::Package(file),
-                    });
+                    let step = saving(owned(&["export", target]), "/result", &file);
+                    let (name, after) = match check {
+                        Kind::Web => ("Web".to_owned(), After::WebFolder(file)),
+                        _ => (format!("Export {target}"), After::Package(file)),
+                    };
+                    planned.push(plan(name, vec![step], after));
                 }
-                Check::Responds { steps } => planned.push(simple(
-                    "Responds",
-                    Step::Responds {
+                Kind::Responds { steps } => {
+                    let step = Step::Responds {
                         args: input_args(steps),
-                    },
-                )),
-                Check::Replay => {
-                    let record = saved("record.ron");
-                    let playtest = saving(
-                        owned(&["playtest", "--tries", "1"]),
-                        "/result/0/entrants/0/tries/0/record",
-                        &record,
-                    );
-                    let first =
-                        Expect::Is("/result/first_difference".to_owned(), "null".to_owned());
-                    let replay = shuyi(vec!["replay".to_owned(), record], vec![first]);
-                    planned.push(Planned {
-                        name: "Replay".to_owned(),
-                        steps: vec![playtest, replay],
-                        after: After::Nothing,
-                    });
+                    };
+                    planned.push(plan("Responds", vec![step], After::Nothing));
                 }
-                Check::Scene { steps, has } => {
+                Kind::Replay => {
+                    let record = saved("record.ron");
+                    let tries = owned(&["playtest", "--tries", "1"]);
+                    let playtest = saving(tries, "/result/0/entrants/0/tries/0/record", &record);
+                    let same = Expect::Is("/result/first_difference".to_owned(), "null".to_owned());
+                    let replay = shuyi(vec!["replay".to_owned(), record], vec![same]);
+                    planned.push(plan("Replay", vec![playtest, replay], After::Nothing));
+                }
+                Kind::Scene { steps, has } => {
                     scenes += 1;
                     let mut args = vec!["scene".to_owned()];
                     args.extend(input_args(steps));
@@ -231,21 +207,12 @@ impl Task {
                             None => Expect::Exists(at),
                         }
                     }));
-                    planned.push(simple(&format!("Scene {scenes}"), shuyi(args, expect)));
+                    let name = format!("Scene {scenes}");
+                    planned.push(plan(name, vec![shuyi(args, expect)], After::Nothing));
                 }
             }
         }
         planned
-    }
-
-    /// The task as people read it in a list: its id, and why it waits.
-    pub fn listed(&self) -> String {
-        let mut out = self.id.clone();
-        if !self.waits_for.is_empty() {
-            // Writing to a `String` can't fail.
-            let _ = write!(out, " (waits for {})", self.waits_for.join(", "));
-        }
-        out
     }
 }
 
@@ -275,12 +242,12 @@ fn saving(args: Vec<String>, pointer: &str, file: &str) -> Step {
     }
 }
 
-/// A check of one step and nothing after it.
-fn simple(name: &str, step: Step) -> Planned {
+/// A check named `name`, its steps and what to look at after them.
+fn plan(name: impl Into<String>, steps: Vec<Step>, after: After) -> Planned {
     Planned {
-        name: name.to_owned(),
-        steps: vec![step],
-        after: After::Nothing,
+        name: name.into(),
+        steps,
+        after,
     }
 }
 
