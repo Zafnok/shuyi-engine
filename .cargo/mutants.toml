@@ -15,9 +15,9 @@
 # is tested on a fake of them. An example's `src/playdate.rs` hands it to that
 # backend, as `src/main.rs` hands it to the shell.
 #
-# `shuyi-sound-out`'s `windows.rs` and `web.rs` are built only for those targets and
-# need a device; what is tested of them is `convert_impl.rs`, the null output, and CI's
-# sound parity gates.
+# `shuyi-sound-out`'s `system.rs` (Windows, Linux and macOS) and `web.rs` need a
+# device; what is tested of them is `system/rules.rs`, `convert_impl.rs`, the null
+# output, and CI's sound parity gates (ticket 3032).
 #
 # `shuyi-sound`'s `wav.rs` and `vorbis.rs` are built only with its features, which a
 # run with each package's default ones doesn't turn on: the workflow leaves them out
@@ -25,7 +25,7 @@
 # (ticket 2043).
 exclude_globs = [
     "crates/app/**",
-    "crates/sound-out/src/windows.rs",
+    "crates/sound-out/src/system.rs",
     "crates/sound-out/src/web.rs",
     "crates/playdate/src/device/**",
     "examples/*/src/main.rs",
@@ -61,14 +61,14 @@ exclude_re = [
     'replace Backend::frame with \(\)',
     # The default `hold_output` does nothing: its only viable mutant is itself.
     'replace Backend::hold_output with \(\)',
-    # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.
-    "replace Output::preferred_rate -> Option<u32> with None",
-    # Off Windows `Output::stats` is `(0, 0)`, its only viable mutant there.
-    'replace Output::stats -> \(u32, u32\) with \(0, 0\)',
-    # Off Windows `dry_callbacks` is 0 and `raised_priority` false, their only
-    # viable mutants there.
-    "replace Output::dry_callbacks -> u32 with 0",
-    "replace Output::raised_priority -> bool with false",
+    # What only a system's stream answers: the device's rate, and what the stream has
+    # been through, for a probe to read (ticket 3032). The tests run where no stream
+    # opens, as on CI's runners, so the null output's answers are all they see; the
+    # sound parity gates read these from real streams.
+    "replace Output::(preferred_rate|stats|dry_callbacks|raised_priority|calls|glitches|ahead|device|rebuilt_because) ->",
+    # Off Windows nothing raises the audio thread: `is_raised` is `false`, its only
+    # viable mutant of that kind.
+    "sound-out/src/system/rules.rs.*replace Raised::is_raised -> bool with false",
     # The audio thread's priority in `sys.rs`, built only for Windows.
     "sound-out/src/sys.rs.*raised",
     # The web's functions in `sys.rs`, built only for `wasm32`.

@@ -91,6 +91,13 @@ impl Raised {
 mod tests {
     use super::*;
 
+    /// Off Windows nothing raises the audio thread, and the output says so.
+    #[cfg(not(windows))]
+    #[test]
+    fn the_audio_thread_is_not_raised_off_windows() {
+        assert!(!Raised::current().is_raised());
+    }
+
     /// Every error ends a stream on Windows and macOS; on Linux an unnamed one passes.
     #[test]
     fn an_unnamed_error_passes_only_where_it_should() {
