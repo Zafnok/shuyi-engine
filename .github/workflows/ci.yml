@@ -921,15 +921,15 @@ jobs:
 
   # The agent eval's references (tickets 2524 and 3421, evals/README.md):
   # every task with a reference graded on fresh games, so a change that
-  # breaks one shows, and box-pushing's plain template graded to show its
-  # checks can fail (its `Check` passes, every `Scene` fails). It runs in
-  # the image the `export` job's `linux` leg builds in
-  # (`shuyi_cli::export::SNIPER`), so the `Export("linux")` checks build,
-  # with that image's glibc floor. git and jq are installed before the
-  # checkout: with git there, it clones (the line count diffs with git,
-  # and the grader reads the commit with `git rev-parse`). In a container
-  # job the `github.workspace` context is the host's path, so the steps use
-  # `$GITHUB_WORKSPACE`.
+  # breaks one shows, and box-pushing's and tic-tac-toe's plain templates
+  # graded to show their checks can fail (`Check` passes, every `Scene`
+  # fails; ticket 3422). It runs in the image the `export` job's `linux`
+  # leg builds in (`shuyi_cli::export::SNIPER`), so the `Export("linux")`
+  # checks build, with that image's glibc floor. git and jq are installed
+  # before the checkout: with git there, it clones (the line count diffs
+  # with git, and the grader reads the commit with `git rev-parse`). In a
+  # container job the `github.workspace` context is the host's path, so
+  # the steps use `$GITHUB_WORKSPACE`.
   eval:
     name: eval
     needs: changes
@@ -967,6 +967,18 @@ jobs:
           fi
           jq -e '[.checks[] | select(.check == "Check") | .passed] == [true]' eval-template/box-pushing.json
           jq -e '[.checks[] | select(.check | startswith("Scene")) | .passed] | length > 0 and all(. == false)' eval-template/box-pushing.json
+      - name: Tic-tac-toe's plain template fails its scenes
+        run: |
+          set +e
+          cargo xtask eval-reference tic-tac-toe --template-only --out eval-template
+          code=$?
+          set -e
+          if [ "$code" != 1 ]; then
+            echo "::error::The plain template's grade exited $code, not 1 (a check failed)"
+            exit 1
+          fi
+          jq -e '[.checks[] | select(.check == "Check") | .passed] == [true]' eval-template/tic-tac-toe.json
+          jq -e '[.checks[] | select(.check | startswith("Scene")) | .passed] | length > 0 and all(. == false)' eval-template/tic-tac-toe.json
       - name: The results in the summary
         if: always()
         run: |
