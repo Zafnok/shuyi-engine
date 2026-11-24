@@ -582,8 +582,9 @@ whenever someone listens.
 - *No `#[allow]`* anywhere: the one serde helper that skips a default
   field is generic (`is_default`).
 
-**Either order, settled.** 2512 (open): nothing to do, its own text
-names the menu sounds as data. 1134 and 2803: in 2277. 3029: here.
+**Either order, settled.** 2512 (done while this was open): the minimal
+template's code count doesn't move, its sounds are data and their test
+is in `tests/` (`cargo xtask template-lines --check`: 211 of 220). 1134 and 2803: in 2277. 3029: here.
 2003: `docs/modules.md`'s row is ready. 2234: here (`SOUND_EXTENSIONS`
 beside `SFX_SUFFIX`, `pcm16_wav`). MCP: 2277. 2116: here. 2378 (open):
 its clause is now *From 2225 (done)* and it does the lengths. 2020
