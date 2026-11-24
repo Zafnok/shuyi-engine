@@ -139,14 +139,12 @@ fn build_dir_candidates(exe: &Path, dir: &Path, stem: &str) -> Vec<PathBuf> {
     };
     let subfolders = |dir: &Path| -> Vec<PathBuf> {
         fs::read_dir(dir)
-            .map(|entries| {
-                entries
-                    .filter_map(Result::ok)
-                    .filter(|entry| entry.file_type().is_ok_and(|t| t.is_dir()))
-                    .map(|entry| entry.path())
-                    .collect()
-            })
-            .unwrap_or_default()
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|entry| entry.path())
+            .collect()
     };
     subfolders(&profile.join("build"))
         .iter()
