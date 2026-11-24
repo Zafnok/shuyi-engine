@@ -1,0 +1,28 @@
+// The tutorial's game as an eval task (ticket 2524): a box-pushing puzzle
+// from the blank template, its reference the tutorial's last step
+// (site/tutorial/10-ship, ticket 2803), graded where it is.
+(
+    id: "box-pushing",
+    prompt: "Make me a box-pushing puzzle with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template blank`: turn it into a puzzle on a grid where you walk, push one box at a time, and solve a level by putting every box on a target, with levels read from files and a move undone at a time. The game opens on its title, where Confirm opens a menu of the levels, and Confirm there opens level 1. Name the actions `Up`, `Down`, `Left`, `Right` (walk, or move a menu's focus), `Confirm` (choose), `Cancel` (go back) and `Undo` (take back the last move). `cargo shuyi scene --json` shows the level's board, and the scene's data has `moves` (how many moves the level has taken) and `won` (`true` once every box is on a target). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one), and `cargo shuyi playtest --tries 5` plays it, with records that `cargo shuyi replay` replays.",
+    template: "blank",
+    name: "Box Pusher",
+    time_box_minutes: 60,
+    targets: ["desktop", "web"],
+    checks: [
+        Gates,
+        Check,
+        Targets,
+        Web,
+        Export("linux"),
+        // The title, the level menu, then a step on level 1.
+        Responds(steps: [Act("Confirm"), Act("Confirm"), Act("Right")]),
+        Replay,
+        // Level 1, untouched.
+        Scene(steps: [Act("Confirm"), Act("Confirm")], has: [("/moves", Some("0")), ("/won", Some("false"))]),
+    ],
+    reference: Project("site/tutorial/10-ship"),
+    unmeasured: [
+        ("a Playdate build", ["2504"]),
+        ("an agent's own time against the hour", ["2525"]),
+    ],
+)

@@ -15,6 +15,8 @@
 //! - [`Step::Write`] and [`Step::Edit`]: a file of the game written from the
 //!   script's own files, or one piece of its text replaced;
 //! - [`Step::Holds`]: a file of the game holds a piece of text;
+//! - [`Step::Responds`]: `cargo shuyi run` with input shows something other
+//!   than as many frames with none (the agent eval's check, ticket 2524);
 //! - [`Step::Mcp`]: `cargo shuyi mcp` started once, and its session tools
 //!   (`start`, `step`, `perf`, …) called in order, each [`McpCall`]'s
 //!   `isError` against its `ok` and its `structuredContent` read with the
@@ -45,8 +47,8 @@ pub enum Step {
     /// `cargo shuyi <args> --json` in the game's folder: the answer's `ok`
     /// must be `ok` (and the exit code 0 exactly when it is), and each of
     /// `expect` must hold of it. With `save`, the value at a JSON pointer
-    /// of the answer is written to a file of the game: a string as it is,
-    /// anything else as JSON.
+    /// of the answer is written to a file of the game, or to an absolute
+    /// path outside it: a string as it is, anything else as JSON.
     Shuyi {
         /// The arguments after `cargo shuyi`, without `--json`.
         args: Vec<String>,
@@ -107,6 +109,14 @@ pub enum Step {
         #[serde(default)]
         text: String,
     },
+    /// `cargo shuyi run <args> --json` answers `ok`, and its `frame` or its
+    /// `scene` differs from `cargo shuyi run --frames <n> --json`'s, `n`
+    /// being the first answer's `frames`: the input did something.
+    Responds {
+        /// The arguments after `cargo shuyi run`, without `--json`: the
+        /// input (`--act Confirm`).
+        args: Vec<String>,
+    },
     /// `cargo shuyi mcp` started once in the game's folder: `initialize`,
     /// then a `tools/call` per call, in order, and its input closed. Each
     /// call's `isError` must agree with its `ok`, and each of its `expect`
@@ -153,6 +163,8 @@ pub enum Expect {
     Is(String, String),
     /// There is a value there, and it isn't `null`.
     Has(String),
+    /// There is a value there, `null` too.
+    Exists(String),
     /// The array there holds an item that [`Expect::Is`] this, or the
     /// string there contains it.
     Holds(String, String),
@@ -327,6 +339,7 @@ pub fn what(step: &Step) -> String {
         Step::Edit { file, .. } => format!("edit {file}"),
         Step::Holds { file, text } if text.is_empty() => format!("{file} exists"),
         Step::Holds { file, .. } => format!("{file} holds its text"),
+        Step::Responds { args } => format!("cargo shuyi run {} --json responds", shown(args)),
         Step::Mcp { calls } => {
             let tools: Vec<String> = calls
                 .iter()
@@ -384,10 +397,16 @@ fn run_step(step: &Step, files: &Path, game: &Path, runner: &dyn Runner) -> Resu
                     Value::String(s) => s.clone(),
                     other => other.to_string(),
                 };
-                write_file(&inside(game, file)?, text.as_bytes())?;
+                let to = if Path::new(file).is_absolute() {
+                    PathBuf::from(file)
+                } else {
+                    inside(game, file)?
+                };
+                write_file(&to, text.as_bytes())?;
             }
             Ok(())
         }
+        Step::Responds { args } => responds(args, game, runner),
         Step::Cargo { args, ok } | Step::Git { args, ok } => {
             let program = if matches!(step, Step::Git { .. }) {
                 "git"
@@ -448,6 +467,31 @@ fn run_step(step: &Step, files: &Path, game: &Path, runner: &dyn Runner) -> Resu
             let ran = runner.run_with_input(game, "cargo", &args, &mcp_input(calls))?;
             mcp_verdict(calls, &ran)
         }
+    }
+}
+
+/// Runs a [`Step::Responds`]: `run` with `args`, then as many frames with
+/// no input; nothing if the frame or the scene differ, or why not.
+fn responds(args: &[String], game: &Path, runner: &dyn Runner) -> Result<(), String> {
+    let run = |args: &[String]| {
+        let mut full = vec!["shuyi".to_owned(), "run".to_owned()];
+        full.extend(args.iter().cloned());
+        full.push("--json".to_owned());
+        answer_of(&runner.run(game, "cargo", &full)?, true)
+    };
+    let played = run(args)?;
+    let frames = played
+        .pointer("/result/frames")
+        .and_then(Value::as_u64)
+        .ok_or("the answer has no /result/frames")?;
+    let still = run(&["--frames".to_owned(), frames.to_string()])?;
+    let differs = |pointer: &str| played.pointer(pointer) != still.pointer(pointer);
+    if differs("/result/frame") || differs("/result/scene") {
+        Ok(())
+    } else {
+        Err(format!(
+            "the frame and the scene are the same as {frames} frame(s) with no input"
+        ))
     }
 }
 
@@ -544,8 +588,17 @@ fn call_holds(call: &McpCall, response: &Value) -> Result<(), String> {
 /// `ok`; or why it is none, or the wrong one.
 fn answer_of(ran: &Ran, ok: bool) -> Result<Value, String> {
     let answer: Value = serde_json::from_str(ran.stdout.trim()).map_err(|e| {
+        // A panic of the game's tool program, by its message, first.
+        let panic = ran
+            .stderr
+            .lines()
+            .position(|line| line.contains("panicked at"))
+            .map_or_default(|at| {
+                let lines: Vec<&str> = ran.stderr.lines().skip(at).take(2).collect();
+                format!("the tool program panicked: {}\n", lines.join(" "))
+            });
         format!(
-            "no JSON answer ({e}); it exited with {}\n{}",
+            "{panic}no JSON answer ({e}); it exited with {}\n{}",
             exit_shown(ran.code),
             tail(ran)
         )
@@ -598,6 +651,7 @@ pub fn holds(answer: &Value, expect: &Expect) -> Result<(), String> {
             Value::Null => Err(format!("{pointer} is null")),
             _ => Ok(()),
         },
+        Expect::Exists(pointer) => at(pointer).map(|_| ()),
         Expect::Holds(pointer, want) => match at(pointer)? {
             Value::Array(items) if items.iter().any(|item| same(item, want)) => Ok(()),
             Value::String(text) if text.contains(want.as_str()) => Ok(()),

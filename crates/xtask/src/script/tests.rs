@@ -195,6 +195,12 @@ fn what_is_and_has_and_holds_compare() {
         has("/result/scene"),
         Err("/result/scene is null".to_owned())
     );
+    let exists = |p: &str| holds(&answer, &Expect::Exists(p.to_owned()));
+    assert_eq!(exists("/result/scene"), Ok(()));
+    assert_eq!(
+        exists("/result/nope"),
+        Err("no value at /result/nope".to_owned())
+    );
     let held = |p: &str, v: &str| holds(&answer, &Expect::Holds(p.to_owned(), v.to_owned()));
     assert_eq!(held("/result/files", "shuyi.ron"), Ok(()));
     assert_eq!(held("/result/text", "long"), Ok(()));
@@ -246,6 +252,71 @@ fn a_saved_value_is_written_to_the_game() {
     assert_eq!(
         verdicts[2].detail.as_deref(),
         Some("save: no value at /result/nope")
+    );
+    // An absolute path is written where it is, outside the game.
+    let outside = temp("save-outside").join("record.ron");
+    let absolute = step(
+        "/result/0/entrants/0/tries/0/record",
+        &outside.to_string_lossy(),
+    );
+    assert!(run(&[absolute], &game, &game, &fake)[0].passed);
+    assert_eq!(
+        fs::read_to_string(&outside).unwrap(),
+        "(seed: 3, commands: [])"
+    );
+    let _ = fs::remove_dir_all(&game);
+    let _ = fs::remove_dir_all(outside.parent().unwrap());
+}
+
+/// A `run` answer of `frames` frames, its frame `frame` and its scene's
+/// data `data`.
+fn run_answer(frames: u64, frame: &str, data: &Value) -> Ran {
+    let answer = json!({ "ok": true, "result": { "frames": frames, "frame": frame,
+        "scene": { "data": data } } });
+    ran(0, &answer.to_string())
+}
+
+#[test]
+fn responds_compares_the_input_with_as_many_frames_of_none() {
+    let game = temp("responds");
+    let step = Step::Responds {
+        args: vec!["--act".to_owned(), "Confirm".to_owned()],
+    };
+    assert_eq!(what(&step), "cargo shuyi run --act Confirm --json responds");
+    // The frame differs.
+    let fake = Fake::new(|args| match args {
+        "shuyi run --act Confirm --json" => run_answer(3, "board", &json!({})),
+        _ => run_answer(3, "title", &json!({})),
+    });
+    let verdicts = run(std::slice::from_ref(&step), &game, &game, &fake);
+    assert!(verdicts[0].passed, "{verdicts:?}");
+    assert_eq!(fake.calls.borrow()[1].2, "shuyi run --frames 3 --json");
+    // Only the scene differs.
+    let fake = Fake::new(|args| match args {
+        "shuyi run --act Confirm --json" => run_answer(3, "board", &json!({ "turn": "o" })),
+        _ => run_answer(3, "board", &json!({ "turn": "x" })),
+    });
+    assert!(run(std::slice::from_ref(&step), &game, &game, &fake)[0].passed);
+    // Nothing differs.
+    let fake = Fake::new(|_| run_answer(2, "title", &json!({})));
+    let verdicts = run(std::slice::from_ref(&step), &game, &game, &fake);
+    assert_eq!(
+        verdicts[0].detail.as_deref(),
+        Some("the frame and the scene are the same as 2 frame(s) with no input")
+    );
+    // A panic fails it, with its message first.
+    let fake = Fake::new(|_| Ran {
+        code: Some(101),
+        stdout: String::new(),
+        stderr: "thread 'main' panicked at crates/game/src/lib.rs:3:5:\nno board\nnote: …\n"
+            .to_owned(),
+    });
+    let detail = run(&[step], &game, &game, &fake)[0].detail.clone().unwrap();
+    assert!(
+        detail.starts_with(
+            "the tool program panicked: thread 'main' panicked at crates/game/src/lib.rs:3:5: no board\n"
+        ),
+        "{detail}"
     );
     let _ = fs::remove_dir_all(&game);
 }
