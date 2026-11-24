@@ -72,7 +72,7 @@ fee104e7f4d5f4e2 crates/game/tests/stage.rs
 39ce7b8f894fff11 crates/rules/AGENTS.md
 b7aa8f2f58462c41 crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml
-df741fbc5c3d017e crates/rules/src/lib.rs
+66150a88bc6226ae crates/rules/src/lib.rs
 61400620a286df3d crates/rules/tests/layers.rs
 2c9f60d4bc882b74 files-src/ter-u16n.bdf
 a75efbaa67fe12de rust-toolchain.toml

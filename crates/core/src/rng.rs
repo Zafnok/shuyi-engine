@@ -7,12 +7,101 @@
 //!
 //! Game rules take a [`RandomSource`], so tests can inject a [`ScriptedRng`]
 //! that returns a given list of rolls.
+//!
+//! Which generator to make:
+//!
+//! - [`SimRng::new`] for a game with one stream of luck;
+//! - [`SimRng::stream`] for one stream per purpose (`"combat"`, `"loot"`,
+//!   `"weather"`): a draw added on one never moves another, so a new
+//!   cosmetic pick leaves the battle's replays as they were;
+//! - [`SimRng::fork`] for a sub-task (a level built from a run's luck, a
+//!   bot's search): the child draws as much as it likes, the parent moves
+//!   by two draws.
+//!
+//! [`RandomSource`]'s helpers give a range, a chance, an index, a pick, a
+//! shuffle and a weighted pick, each from a fixed number of
+//! [`roll_below`](RandomSource::roll_below) draws, never the biased
+//! `next_u32() % n`. A [`Bag`] deals each of its items once before any
+//! repeats. [`mix64`] and [`mix_at`] are `SplitMix64`, for a value that is a
+//! function of a seed and an index with no state.
+//!
+//! Every output here is frozen: saves, replays and golden hashes depend on
+//! them (ADR-0143, `docs/adr/0143-the-rngs-helpers-streams-and-forks-are-frozen-too.md`).
+//!
+//! Dealing a shuffled deck:
+//!
+//! ```
+//! use shuyi_core::{RandomSource, SimRng};
+//!
+//! let mut rng = SimRng::stream(2026, "deal");
+//! let mut deck: Vec<u8> = (1..=52).collect();
+//! rng.shuffle(&mut deck);
+//! let hand: Vec<u8> = deck.drain(..5).collect();
+//! assert_eq!(hand.len(), 5);
+//! assert_eq!(deck.len(), 47);
+//! ```
+//!
+//! Putting a pickup on a free cell:
+//!
+//! ```
+//! use shuyi_core::{Pos, RandomSource, SimRng};
+//!
+//! let mut rng = SimRng::stream(2026, "pickups");
+//! let free = [Pos::new(1, 1), Pos::new(4, 2), Pos::new(3, 5)];
+//! let at = rng.pick(&free).copied();
+//! assert!(at.is_some_and(|pos| free.contains(&pos)));
+//! ```
+//!
+//! Drawing pieces from a bag of seven:
+//!
+//! ```
+//! use shuyi_core::{Bag, SimRng};
+//!
+//! let mut rng = SimRng::stream(2026, "pieces");
+//! let mut bag = Bag::new(vec!['I', 'O', 'T', 'S', 'Z', 'J', 'L']);
+//! let mut first: Vec<char> = (0..7).filter_map(|_| bag.draw(&mut rng).copied()).collect();
+//! first.sort_unstable();
+//! assert_eq!(first, ['I', 'J', 'L', 'O', 'S', 'T', 'Z']);
+//! assert_eq!(bag.left(), 0);
+//! ```
 
 use alloc::vec::Vec;
+use core::ops::Range;
 
 use serde::{Deserialize, Serialize};
 
+mod bag;
+
+pub use bag::Bag;
+
+/// The golden ratio's 64-bit increment, `SplitMix64`'s step.
+const GOLDEN_GAMMA: u64 = 0x9E37_79B9_7F4A_7C15;
+
+/// `SplitMix64`'s output for the state `x` (Steele, Lea and Flood, "Fast
+/// Splittable Pseudorandom Number Generators", 2014): add the golden
+/// gamma, then the finalizer. It spreads nearby values (a counter, a seed
+/// plus one) over the whole range.
+#[must_use]
+pub const fn mix64(x: u64) -> u64 {
+    let mut z = x.wrapping_add(GOLDEN_GAMMA);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+/// The `index`-th output of `SplitMix64` started at `seed`, with no state:
+/// a value that is a function of the seed and the index alone (a
+/// particle's, a noise lattice point's).
+#[must_use]
+pub const fn mix_at(seed: u64, index: u64) -> u64 {
+    mix64(seed.wrapping_add(index.wrapping_mul(GOLDEN_GAMMA)))
+}
+
 /// Where game rules get their random numbers from.
+///
+/// Its helpers are built on [`roll_below`](Self::roll_below) alone, so
+/// every source has them, and each makes a fixed number of draws (frozen
+/// by ADR-0143). None calls `roll_below(0)`.
 pub trait RandomSource {
     /// A uniform, unbiased integer in `0..=99`.
     fn roll_percent(&mut self) -> u8;
@@ -20,6 +109,91 @@ pub trait RandomSource {
     /// A uniform, unbiased integer in `0..n`. `n` must be at least 1; `0`
     /// gives `0`.
     fn roll_below(&mut self, n: u32) -> u32;
+
+    /// A value in `r`, each as likely; `r.start` when `r` is empty. One
+    /// draw, none when empty. Any `i32` range works, nothing wraps.
+    fn range(&mut self, r: Range<i32>) -> i32 {
+        if r.is_empty() {
+            return r.start;
+        }
+        let span = u32::try_from(i64::from(r.end) - i64::from(r.start)).unwrap_or(u32::MAX);
+        let value = i64::from(r.start) + i64::from(self.roll_below(span));
+        i32::try_from(value).unwrap_or(r.start)
+    }
+
+    /// `true` with odds `num / den`; `false` when `den` is 0. One draw when
+    /// `den` is above 0, even when `num >= den`, so changing the odds never
+    /// changes the draw count.
+    fn chance(&mut self, num: u32, den: u32) -> bool {
+        den > 0 && self.roll_below(den) < num
+    }
+
+    /// A value in `0..len`, each as likely; `None` when `len` is 0. One
+    /// draw, none when 0. A `len` above `u32::MAX` picks among the first
+    /// `u32::MAX`.
+    fn index(&mut self, len: usize) -> Option<usize> {
+        if len == 0 {
+            return None;
+        }
+        let n = u32::try_from(len).unwrap_or(u32::MAX);
+        usize::try_from(self.roll_below(n)).ok()
+    }
+
+    /// One of `items`, each as likely; `None` when there are none. Draws as
+    /// [`index`](Self::index).
+    fn pick<'a, T>(&mut self, items: &'a [T]) -> Option<&'a T>
+    where
+        Self: Sized,
+    {
+        items.get(self.index(items.len())?)
+    }
+
+    /// `items` in a random order, each order as likely (Fisher-Yates): for
+    /// `i` from `len - 1` down to 1, one `roll_below(i + 1)`, then `i` is
+    /// swapped with the draw. `len - 1` draws, none for 0 or 1 items.
+    fn shuffle<T>(&mut self, items: &mut [T])
+    where
+        Self: Sized,
+    {
+        for i in (1..items.len()).rev() {
+            let n = u32::try_from(i + 1).unwrap_or(u32::MAX);
+            let j = usize::try_from(self.roll_below(n)).unwrap_or(0);
+            items.swap(i, j);
+        }
+    }
+
+    /// `i` with odds `weights[i] / total`; `None` when the total is 0 or
+    /// above `u32::MAX`. One `roll_below(total)`, none on `None`.
+    fn weighted_index(&mut self, weights: &[u32]) -> Option<usize> {
+        weighted(self, || weights.iter().copied())
+    }
+
+    /// One of `items`, by the weight beside it. Draws as
+    /// [`weighted_index`](Self::weighted_index).
+    fn pick_weighted<'a, T>(&mut self, items: &'a [(u32, T)]) -> Option<&'a T>
+    where
+        Self: Sized,
+    {
+        let i = weighted(self, || items.iter().map(|(weight, _)| *weight))?;
+        items.get(i).map(|(_, item)| item)
+    }
+}
+
+/// The weighted pick of [`RandomSource::weighted_index`], over the weights
+/// `weights` gives (twice: once for the total, once to walk).
+fn weighted<R, I>(rng: &mut R, weights: impl Fn() -> I) -> Option<usize>
+where
+    R: RandomSource + ?Sized,
+    I: Iterator<Item = u32>,
+{
+    let total = weights().fold(0u64, |sum, w| sum.saturating_add(u64::from(w)));
+    let total = u32::try_from(total).ok().filter(|&t| t > 0)?;
+    let draw = rng.roll_below(total);
+    let mut below = 0u32;
+    weights().position(|w| {
+        below += w;
+        draw < below
+    })
 }
 
 /// The PCG32 multiplier (O'Neill, "PCG: A Family of Simple Fast
@@ -50,6 +224,28 @@ impl SimRng {
     /// A generator seeded with `seed`.
     pub fn new(seed: u64) -> Self {
         Self::with_stream(seed, DEFAULT_STREAM)
+    }
+
+    /// The stream named `name` of `seed`: one stream per purpose
+    /// (`"combat"`, `"loot"`), so draws on one never move another. With
+    /// `id` the 64-bit FNV-1a hash of the name, it is PCG32 stream `id`
+    /// seeded with [`mix_at`]`(seed, id)`. Names are told apart by that
+    /// hash alone.
+    pub fn stream(seed: u64, name: &str) -> Self {
+        let id = crate::hash::fnv1a(name.as_bytes());
+        Self::with_stream(mix_at(seed, id), id)
+    }
+
+    /// A child generator for a sub-task, named `name`: exactly two
+    /// [`next_u32`](Self::next_u32) draws from `self` make a 64-bit seed
+    /// (the first its high half), and the child is
+    /// [`stream`](Self::stream)`(seed, name)`. However much the child
+    /// draws, `self` moved by two.
+    #[must_use]
+    pub fn fork(&mut self, name: &str) -> Self {
+        let high = u64::from(self.next_u32());
+        let low = u64::from(self.next_u32());
+        Self::stream((high << 32) | low, name)
     }
 
     /// PCG32's reference seeding (`pcg32_srandom_r`) with stream `stream`.
@@ -204,7 +400,10 @@ impl RandomSource for ScriptedRng {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests;
+
+#[cfg(test)]
+mod pcg_tests {
     use super::*;
 
     #[test]

@@ -158,10 +158,10 @@ None.
       `TickInput`. Up to two turns wait for the next moves, so two quick
       presses both count. A turn back into the neck is ignored;
     - food goes on a free tile drawn from the `SimRng` kept in the
-      state: `roll_below` over the free tiles, or `pick` if 2114 is
-      done. Eating grows the snake by one at its next move and scores a
-      point. Every 5 points the period drops by one step, down to 4 (a
-      new `Every` with the shorter period);
+      state: `pick` over the free tiles (2114, done). Eating grows the
+      snake by one at its next move and scores a point. Every 5 points
+      the period drops by one step, down to 4 (a new `Every` with the
+      shorter period);
     - hitting a wall or its own body ends the run
       (`Outcome::Died { step, length }`); filling the board ends it as
       `Outcome::Filled`;

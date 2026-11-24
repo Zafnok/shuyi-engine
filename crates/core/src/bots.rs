@@ -18,7 +18,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::rng::SimRng;
+use crate::rng::{RandomSource, SimRng};
 use crate::turn::TurnRules;
 
 pub mod balance;
@@ -266,8 +266,7 @@ impl<R: TurnRules> Bot<R> for RandomBot {
     fn choose(&mut self, rules: &R) -> R::Command {
         let mut legal = rules.legal_commands();
         assert!(!legal.is_empty(), "no legal command to choose from");
-        let count = u32::try_from(legal.len()).unwrap_or(u32::MAX);
-        let pick = usize::try_from(self.rng.roll_below(count)).unwrap_or(0);
+        let pick = self.rng.index(legal.len()).unwrap_or(0);
         legal.swap_remove(pick)
     }
 }

@@ -164,6 +164,25 @@ A state hashes the same each run only if it serializes the same: its maps must b
 `BTreeMap` and its sets `BTreeSet`, which keep their items in order, never a hash map,
 whose order changes from run to run.
 
+## Luck
+
+One `SimRng` serves a small game. Its catch: every draw moves every later one, so a
+new draw for a sound or a tie break changes what a recorded game replays. Keep a
+**stream** per purpose instead, `SimRng::stream(seed, "weather")`: a draw on one never
+moves another. `fork("level")` makes a child for a sub-task, and moves its parent by two
+draws however much the child draws.
+
+`RandomSource` gives every generator the helpers a game reaches for: `range(1..7)` for
+a die, `chance(1, 4)` for one in four, `pick` of a list, `shuffle` of a deck and
+`pick_weighted` of `(weight, item)` pairs. A `Bag` deals each of its items once before
+any repeats, as a puzzle deals its pieces:
+
+{{ snippet(file="src/rules.rs", anchor="luck") }}
+
+Each helper takes a fixed number of draws, and their values never change in a later
+engine, so a saved game and its replays stay as they were. Never take a simulation's
+luck from the `rand` crate, whose values may change in a minor release.
+
 ## Time in rules
 
 Rules have no clock, so they count what they have: turns, or in a real-time game, steps.
