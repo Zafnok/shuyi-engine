@@ -104,4 +104,6 @@ None.
   wait.
 - Docs: `evals/README.md`'s *Grading* names the new CI check; no public
   API, contract or format changed, so nothing else.
+- Size: about 1,220 counted lines, nearly all the reference's six
+  files, which are graded only together (no clean split).
 - No break.
