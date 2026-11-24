@@ -54,7 +54,7 @@ pub(crate) const ROWS: &[Row] = &[
         dnf: "pkgconf-pkg-config",
         pacman: "pkgconf",
     },
-    // To build: `quad-alsa-sys` (under quad-snd) links `libasound`.
+    // To build: the sound backends' ALSA bindings link `libasound`, found with it.
     Row {
         name: "lib-alsa",
         find: Find::Run("pkg-config", &["--modversion", "alsa"]),

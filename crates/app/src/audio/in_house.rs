@@ -557,6 +557,20 @@ fn level(volume: f32) -> u16 {
     level
 }
 
+/// The rate the sound gates record at, which their probe mixes at so that nothing
+/// resamples what they compare (ticket 3032): `SHUYI_SOUND_PROBE_RATE`, set by
+/// `capture.py` where the system's own default isn't the sink's.
+#[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+fn probe_rate() -> Option<u32> {
+    std::env::var("SHUYI_SOUND_PROBE_RATE").ok()?.parse().ok()
+}
+
+/// No rate but the system's, outside the probe.
+#[cfg(not(all(feature = "sound-probe", not(target_arch = "wasm32"))))]
+const fn probe_rate() -> Option<u32> {
+    None
+}
+
 /// Plays through the mixer, which it opens with the first sound.
 #[derive(Default)]
 pub struct InHouse {
@@ -564,6 +578,9 @@ pub struct InHouse {
     /// Whether a frame of the player's is open: its commands are held back until
     /// it closes, so that what it starts starts at one block (ticket 3089).
     framing: bool,
+    /// Why the output discards, for the probe's log, which has no logger (ticket 3032).
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    silent_because: Option<String>,
     #[cfg(test)]
     said: Vec<String>,
 }
@@ -581,12 +598,18 @@ impl InHouse {
     /// sound, and one line to say so, rather than a crash.
     fn engine(&mut self) -> &mut Engine {
         if self.engine.is_none() {
-            let rate = Output::preferred_rate().unwrap_or(DEFAULT_RATE);
+            let rate = probe_rate()
+                .or_else(Output::preferred_rate)
+                .unwrap_or(DEFAULT_RATE);
             let (mut engine, mut side) = sides(rate);
             let config = OutputConfig::new(rate, Channels::Stereo, BLOCK_FRAMES);
             let (output, problem) = Output::open_or_null(config, move |out| side.fill(out));
             if let Some(problem) = problem {
                 self.say(&format!("the game runs silent: {problem}"));
+                #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+                {
+                    self.silent_because = Some(problem.to_string());
+                }
             }
             engine.output = Some(output);
             if self.framing {
@@ -688,6 +711,61 @@ impl InHouse {
             .as_ref()
             .and_then(|engine| engine.output.as_ref())
             .map_or((0, 0), Output::stats)
+    }
+
+    /// Why the output discards, if it does: the system's wouldn't open. For the probe's
+    /// log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_problem(&self) -> Option<&str> {
+        self.silent_because.as_deref()
+    }
+
+    /// How many callbacks the output's system made, and the frames they asked for. For
+    /// the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_calls(&self) -> (u32, u32) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, 0), Output::calls)
+    }
+
+    /// Why the output's stream was last built again. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_rebuilt_because(&self) -> String {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or_else(String::new, Output::rebuilt_because)
+    }
+
+    /// How many times the output's system said its buffer ran dry, and how many streams
+    /// were built again for stalling. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_glitches(&self) -> (u32, u32, u32) {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or((0, 0, 0), Output::glitches)
+    }
+
+    /// How far ahead of their playing the output's samples were at the most, in
+    /// milliseconds. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_ahead_ms(&self) -> f64 {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or(0.0, |output| output.ahead().as_secs_f64() * 1000.0)
+    }
+
+    /// The device and format the output plays on, empty with none. For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn output_device(&self) -> String {
+        self.engine
+            .as_ref()
+            .and_then(|engine| engine.output.as_ref())
+            .map_or_else(String::new, Output::device)
     }
 
     /// How often the output's buffer ran dry, a gap heard, and whether its thread

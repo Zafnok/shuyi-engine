@@ -16,6 +16,10 @@ on:
         description: "Appended to the artifacts' names, so that the runs of one calibration keep theirs apart"
         type: string
         default: ""
+      ports:
+        description: "Also the jobs that measure no timing: the Linux build's floor and macOS (ticket 3032)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -65,13 +69,21 @@ jobs:
           cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
           cargo test -p shuyi-sound-out --locked
           cargo build -p shuyi-sound-out --target wasm32-unknown-unknown --locked
+      # On ALSA, beside quad-snd in one build (ticket 3032): the runner has no card, so
+      # the backend's own tests run on the null output.
+      - name: The in-house backend on Linux, with the null output
+        run: cargo test -p shuyi-app --features in-house-sound --locked in_house
       - name: The corpus and what a separate decoder makes of it
         run: cargo xtask sound-parity corpus --out target/sound-parity --oracle
       - name: Build the probe, natively and for the web
         run: |
+          mkdir -p target/sound-parity-bin
           start=$SECONDS
           cargo build -p shuyi-app --example sound_probe --features sound-probe --release --locked
           echo "NATIVE_BUILD=$((SECONDS - start))" >> "$GITHUB_ENV"
+          cp target/release/examples/sound_probe target/sound-parity-bin/probe-old
+          cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked
+          cp target/release/examples/sound_probe target/sound-parity-bin/probe-new
           start=$SECONDS
           cargo build -p shuyi-app --example sound_probe --features sound-probe \
             --target wasm32-unknown-unknown --release --locked
@@ -88,13 +100,23 @@ jobs:
           mkdir -p "$page"
           cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
           sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' -e 's/%PACK%//' crates/cli/web/index.html > "$page/index.html"
+      # Both link ALSA's library, not open it at run time (ticket 3032): a system
+      # without it can't start either. `doctor` and the packages' docs say so.
+      - name: What each native probe loads
+        run: |
+          for probe in probe-old probe-new; do
+            needed=$(readelf -d "target/sound-parity-bin/$probe" | awk '/NEEDED/ { print $5 }' | tr -d '[]' | sort)
+            echo "$probe needs:" $needed
+            echo "$needed" | grep -qx 'libasound.so.2' || { echo "::error::$probe doesn't link libasound.so.2"; exit 1; }
+          done
       # A scenario quad-snd underran in is refused and made again (ticket 2048).
       - name: Which recordings are made again
         run: python3 tools/sound-parity/capture_test.py
-      - name: Record the native backend
+      - name: Record both native backends
         run: |
           "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir target/sound-parity \
-            --probe target/release/examples/sound_probe --revision "$REVISION" --build-seconds "$NATIVE_BUILD"
+            --probe target/sound-parity-bin/probe-old --new-probe target/sound-parity-bin/probe-new \
+            --revision "$REVISION" --build-seconds "$NATIVE_BUILD" --take-device
       - name: Record the web backend on its real loader
         run: |
           "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
@@ -127,8 +149,9 @@ jobs:
               echo "::notice::$platform's timings were inconclusive: measuring again"
               mv "$dir/$platform/perf.jsonl" "$dir/$platform/perf-attempt-$attempt.jsonl"
               case "$platform" in
-                linux-native) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir "$dir" \
-                  --probe target/release/examples/sound_probe --revision "$REVISION" --perf-only ;;
+                linux-native|linux-in-house) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir "$dir" \
+                  --probe target/sound-parity-bin/probe-old --new-probe target/sound-parity-bin/probe-new \
+                  --revision "$REVISION" --perf-only --only "$platform" ;;
                 browser-chromium|browser-in-house) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir "$dir" \
                   --page target/sound-parity-page --new-page target/sound-parity-page-new --revision "$REVISION" --perf-only --only "$platform" ;;
               esac
@@ -140,7 +163,7 @@ jobs:
             echo "::error::macos was called ready without capture evidence"
             exit 1
           fi
-          for platform in linux-native browser-chromium windows windows-in-house browser-in-house; do
+          for platform in linux-native linux-in-house browser-chromium windows windows-in-house browser-in-house; do
             cargo xtask sound-parity port-ready "$platform" --matrix target/sound-parity/matrix.json
           done
       # Windows' cells judge what `sound-parity-windows` recorded, and "Re-run failed
@@ -172,6 +195,7 @@ jobs:
           path: |
             target/sound-parity/matrix.json
             target/sound-parity/linux-native/
+            target/sound-parity/linux-in-house/
             target/sound-parity/browser-chromium/
             target/sound-parity/browser-in-house/
             target/sound-parity/windows/
@@ -243,3 +267,88 @@ jobs:
             target/sound-parity/windows/
             target/sound-parity/windows-in-house/
           if-no-files-found: error
+
+  # The in-house backend built where Linux packages are, the Steam Linux Runtime 3.0
+  # ("sniper") SDK, and held to their glibc floor (ticket 3032), as the `export` job
+  # holds a package: CPAL's ALSA path asks for no newer glibc than quad-snd's.
+  sound-linux-floor:
+    name: sound-linux-floor
+    if: inputs.ports
+    runs-on: ubuntu-latest
+    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Build the probe of each backend
+        run: |
+          cargo build -p shuyi-app --example sound_probe --features sound-probe --release --locked
+          cp target/release/examples/sound_probe "$RUNNER_TEMP/probe-old"
+          cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked
+          cp target/release/examples/sound_probe "$RUNNER_TEMP/probe-new"
+      - name: What each needs, and the newest glibc it asks for
+        run: |
+          floor=2.31
+          for probe in probe-old probe-new; do
+            program="$RUNNER_TEMP/$probe"
+            echo "$probe needs:" $(readelf -d "$program" | awk '/NEEDED/ { print $5 }' | tr -d '[]' | sort)
+            newest=$(objdump -T "$program" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -Vu | tail -n 1)
+            echo "$probe asks for glibc $newest at the newest (the floor: $floor)"
+            if [ "$(printf '%s\n%s\n' "$newest" "$floor" | sort -V | tail -n 1)" != "$floor" ]; then
+              echo "::error::$probe asks for GLIBC_$newest, above the floor"; exit 1
+            fi
+          done
+
+  # macOS (ticket 3032): the output and the backend on both architectures, the
+  # oldest macOS a program built with them starts on, and what a hosted runner offers
+  # as a device. No capture here: `budget.ron` says why macOS is `Blocked`.
+  sound-macos:
+    name: sound-macos (${{ matrix.runner }})
+    if: inputs.ports
+    strategy:
+      fail-fast: false
+      matrix:
+        # Apple silicon and Intel.
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: The output and the backend, on this architecture
+        run: |
+          cargo test -p shuyi-sound-out --locked
+          cargo test -p shuyi-app --features in-house-sound --locked in_house
+      - name: Build the probe for both architectures, joined
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          mkdir -p target/sound-parity-bin
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            cargo build -p shuyi-app --example sound_probe --features sound-probe,in-house-sound --release --locked --target "$target"
+          done
+          lipo -create -output target/sound-parity-bin/probe-new \
+            target/aarch64-apple-darwin/release/examples/sound_probe target/x86_64-apple-darwin/release/examples/sound_probe
+          lipo -archs target/sound-parity-bin/probe-new
+      - name: The oldest macOS it starts on
+        # CPAL 0.18.2 imports `AudioHardwareDestroyProcessTap` (ADR-0142): 3349's.
+        run: bash tools/sound-parity/mac-floor.sh --expect 14.2 target/sound-parity-bin/probe-new
+      # What a capture would need here, written down for the next try: the runner's
+      # devices and what the backend made of them, playing the first scenario.
+      - name: What this runner offers as sound
+        if: success() || failure()
+        run: |
+          sw_vers
+          csrutil status || true
+          system_profiler SPAudioDataType || true
+          mkdir -p target/sound-parity
+          cargo xtask sound-parity corpus --out target/sound-parity
+          cp tools/sound-parity/scenarios.ron target/sound-parity/
+          printf 'scenario onset\n' > target/sound-parity/probe.txt
+          (cd target/sound-parity && ../sound-parity-bin/probe-new 2>&1 | tail -n 20) || true

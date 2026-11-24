@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2573", "3032", "2397", "2234", "2275", "2378", "3087", "3088", "3089", "2044", "2046", "2047", "2049", "2050", "3320"]
+blocked_by: ["2573", "3032", "2397", "2234", "2275", "2378", "3087", "3088", "3089", "2044", "2046", "2047", "2049", "2050", "3320", "3351", "3348", "3349", "3350"]
 nick_input: none
 completed:
 ---
@@ -42,9 +42,10 @@ None.
 - CI keeps recording quad-snd with every cell mandatory, beside the new default.
 - Take the default-features half of 2573's fence out of
   `crates/xtask/src/sound_parity/tests.rs`, and keep the half that holds quad-snd.
-- **From 3031 (done):** a build with `in-house-sound` on needs the root
-  `Cargo.toml`'s `[patch.crates-io]` of `alsa-sys` ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)),
-  which Cargo reads only from the root of a build, so a default on would ask it of
+- **From 3031 and 3032 (done):** a build with `in-house-sound` on needs the root
+  `Cargo.toml`'s `[patch.crates-io]` of `quad-alsa-sys`, quad-snd's bindings given
+  `alsa-sys`'s under their name and without `links` ([ADR-0142](../../docs/adr/0142-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)), which
+  Cargo reads only from the root of a build, so a default on would ask it of
   every game while quad-snd is in the graph. Settle that first: make quad-snd
   optional, the feature's other side, so a default build has one `links = "alsa"`, or
   put the patch in `shuyi new`'s template and the game's `Cargo.toml` in this PR.

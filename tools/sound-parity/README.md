@@ -41,6 +41,17 @@ cargo build -p shuyi-app --example sound_probe --features sound-probe --release 
 python3 tools/sound-parity/capture.py native --dir target/sound-parity --probe target/release/examples/sound_probe --revision "$(git rev-parse HEAD)"
 ```
 
+With `--new-probe`, a probe built with `--features sound-probe,in-house-sound` too, it
+records the in-house backend beside quad-snd as `linux-in-house` (ticket 3032), and
+with `--take-device` unloads the null sink while that one plays and loads it again,
+for the `device-loss` cell, timed on the sink's own clock: a null sink made anew
+renders its first block at its largest, about 2 seconds, before its monitor gives
+anything. The in-house probe plays without `PULSE_LATENCY_MSEC`, which quad-snd needs
+here and which stalls CPAL's stream on ALSA's PulseAudio plugin (3350), and mixes at the
+sink's 44,100 Hz (`SHUYI_SOUND_PROBE_RATE`), as the plugin says 48,000 Hz whatever the
+sink runs at. CI copies each build aside first, as both are
+`target/release/examples/sound_probe`.
+
 A scenario quad-snd's own output underran in is never judged either: ALSA ran dry,
 so the sink got a hole, not the sound. quad-snd prints `Underrun occured` (its
 spelling) on its stdout when it does, and `capture.py` plays that scenario again, up
@@ -231,7 +242,7 @@ that justify it, written in `budget.ron`, never to pass.
 
 ## A new backend
 
-`windows-in-house` and `browser-in-house` are `NewBackend`s in `budget.ron`. Their
+`windows-in-house`, `linux-in-house` and `browser-in-house` are `NewBackend`s in `budget.ron`. Their
 recordings are held to the same expected signals, and their own timings to the same
 kind of limits, every cell mandatory. `old-new.jsonl` holds the same workload on the
 old backend and the new in turn, and each `old-new:<metric>` is judged by the median of
@@ -251,8 +262,8 @@ another corpus fails: it is never a skip.
 | Linux, native | Actual output on a null sink, ALSA routed to it | This gate |
 | Chromium, the real loader | Actual output on the same sink, with a real click | This gate |
 | Windows | Actual output on a virtual render endpoint through WASAPI loopback, on the pinned image | This gate (3031) |
-| Each of those, on the new backend | The same scenarios, as `windows-in-house` and `browser-in-house`, with `old-new` cells against quad-snd on that platform. Linux's is 3032's | This gate (3031) |
-| macOS | None: **blocks that port**. Hosted capture is unproved | 3032, before its output code; if no route works it stays blocked on the old backend |
+| Each of those, on the new backend | The same scenarios, as `windows-in-house`, `linux-in-house` and `browser-in-house`, with `old-new` cells against quad-snd on that platform | This gate (3031, 3032) |
+| macOS | None: **blocks that port**. CI builds and tests the in-house backend on both architectures and checks its floor (`sound-macos`), but no hosted capture route works yet | 3348 |
 | Playdate | Its SDK regressions, unchanged | Not part of this harness |
 | GBA | Not required | Its future ticket |
 
@@ -274,7 +285,7 @@ of it mandatory.
 | 2210 decoders | This gate passing | Decoder PCM against the oracles, errors and limits, equal-work decode |
 | 3030 mixer | 2210 | Exact mixer samples from independent signals; an offline render budget; bounded decoded PCM over short and long streams |
 | 3031 Windows, web | 3030, and Windows `port-ready` | A selectable backend beside quad-snd; old against new; `future_pause`, `future_rate`, `stream_gapless` and `voices_full` |
-| 3032 Linux, macOS | 3031, and macOS `port-ready` | The same, on both Mac architectures |
+| 3032 Linux, macOS | 3031 | `linux-in-house`, its `device-loss` and the sniper floor; macOS built, tested and its floor checked, not recorded |
 | 2397 regions | 3031 | `future_region` on the in-house backends, from the file's tags; `mixer:region-from-the-file` |
 | 3084 new default | 3032, 2397, 2234, 2378 | The complete matrix on both backends, then one line flipped |
 | 3079 removal | 3084, and the game having run on it | A fresh, complete matrix, the removal, and its revert rehearsed |

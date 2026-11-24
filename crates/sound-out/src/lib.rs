@@ -2,9 +2,9 @@
 //! callback for samples, from the system's audio thread where there is one, and the
 //! callback knows nothing of where they go.
 //!
-//! - On Windows it is CPAL (`windows`): it takes the device's format, converts at
-//!   the boundary ([`convert`]) and comes back on the new default device when one
-//!   goes away.
+//! - On Windows, Linux and macOS it is CPAL (`system`): WASAPI, ALSA and Core Audio.
+//!   It takes the device's format, converts at the boundary ([`convert`]) and comes
+//!   back on the new default device when one goes away.
 //! - In the browser it is a worklet of our own (`web`, and `sound.js` beside the
 //!   page), which the page's one thread feeds with blocks.
 //! - [`Output::null`] calls the callback on a timer and discards what it gives: for
@@ -17,10 +17,10 @@ mod convert_impl;
 #[cfg(not(target_arch = "wasm32"))]
 mod null;
 mod sys;
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+mod system;
 #[cfg(target_arch = "wasm32")]
 pub mod web;
-#[cfg(windows)]
-mod windows;
 
 use std::sync::{Arc, Mutex};
 
@@ -85,8 +85,8 @@ pub struct Output {
 enum Inner {
     #[cfg(not(target_arch = "wasm32"))]
     Null(null::NullOutput),
-    #[cfg(windows)]
-    Windows(windows::WindowsOutput),
+    #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+    System(system::SystemOutput),
     #[cfg(target_arch = "wasm32")]
     Web(web::WebOutput),
 }
@@ -103,9 +103,9 @@ impl Output {
     /// The rate the device runs at, if there is one to ask: a mix at that rate needs
     /// no conversion on its way out.
     pub fn preferred_rate() -> Option<u32> {
-        #[cfg(windows)]
-        return windows::preferred_rate();
-        #[cfg(not(windows))]
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        return system::preferred_rate();
+        #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
         None
     }
 
@@ -118,9 +118,9 @@ impl Output {
     }
 
     fn open_shared(config: OutputConfig, callback: Callback) -> Result<Self, OutputError> {
-        #[cfg(windows)]
-        return windows::WindowsOutput::open(config, callback).map(|output| Self {
-            inner: Inner::Windows(output),
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        return system::SystemOutput::open(config, callback).map(|output| Self {
+            inner: Inner::System(output),
             rate: config.rate,
         });
         #[cfg(target_arch = "wasm32")]
@@ -128,7 +128,12 @@ impl Output {
             rate: output.rate(),
             inner: Inner::Web(output),
         });
-        #[cfg(not(any(windows, target_arch = "wasm32")))]
+        #[cfg(not(any(
+            windows,
+            target_os = "linux",
+            target_os = "macos",
+            target_arch = "wasm32"
+        )))]
         {
             let _ = (config, callback);
             Err(OutputError::Unavailable(
@@ -187,10 +192,13 @@ impl Output {
     /// away, and how many of its callbacks were silence instead of the mix. Nothing
     /// asks this but a probe, to say what a recording went through: 0 and 0 where
     /// there is no stream to build.
-    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
     pub fn stats(&self) -> (u32, u32) {
-        #[cfg(windows)]
-        if let Inner::Windows(output) = &self.inner {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
             return output.stats();
         }
         (0, 0)
@@ -199,11 +207,15 @@ impl Output {
     /// How many times the system's stream found the device's buffer empty: its
     /// callback came late, and the device played silence until it did, a gap a
     /// player hears. Nothing asks this but a probe, to tell a gap in a recording
-    /// that is the output's from one that isn't: 0 where there is no stream.
-    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    /// that is the output's from one that isn't: 0 where there is no stream, and on
+    /// Linux and macOS, where a callback's size doesn't say how full the buffer is.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
     pub fn dry_callbacks(&self) -> u32 {
-        #[cfg(windows)]
-        if let Inner::Windows(output) = &self.inner {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
             return output.dry_callbacks();
         }
         0
@@ -212,13 +224,89 @@ impl Output {
     /// Whether the system's audio thread runs above the game's, as a buffer of a
     /// few tens of milliseconds needs on a busy machine: false where there is no
     /// such thread, or the system refused.
-    #[cfg_attr(not(windows), allow(clippy::unused_self))]
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
     pub fn raised_priority(&self) -> bool {
-        #[cfg(windows)]
-        if let Inner::Windows(output) = &self.inner {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
             return output.raised_priority();
         }
         false
+    }
+
+    /// How many times the system called for samples, and how many frames it asked for
+    /// in all: whether a stream that opened runs. Nothing asks this but a probe; 0 and 0
+    /// where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn calls(&self) -> (u32, u32) {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.calls();
+        }
+        (0, 0)
+    }
+
+    /// Why the system's stream was last built again, empty if it never was. Nothing
+    /// asks this but a probe.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn rebuilt_because(&self) -> String {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.rebuilt();
+        }
+        String::new()
+    }
+
+    /// How many times the system said the device's buffer ran dry, how many streams
+    /// were built again for having stopped calling back, and how many other errors the
+    /// system gave. Nothing asks this but a probe; zeros where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn glitches(&self) -> (u32, u32, u32) {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.glitches();
+        }
+        (0, 0, 0)
+    }
+
+    /// How far ahead of their playing a callback's samples were at the most, as the
+    /// system predicts it: the device's buffer, which a sound waits behind. Nothing
+    /// asks this but a probe; zero where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn ahead(&self) -> std::time::Duration {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.ahead();
+        }
+        std::time::Duration::ZERO
+    }
+
+    /// The system's device and format its stream plays on, as the system names them:
+    /// for a probe's log, to say where the sound went. Empty where there is no stream.
+    #[cfg_attr(
+        not(any(windows, target_os = "linux", target_os = "macos")),
+        allow(clippy::unused_self)
+    )]
+    pub fn device(&self) -> String {
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+        if let Inner::System(output) = &self.inner {
+            return output.device();
+        }
+        String::new()
     }
 
     /// Stops calling the callback, for as long as the system suspends the game.
@@ -235,8 +323,8 @@ impl Output {
         match &self.inner {
             #[cfg(not(target_arch = "wasm32"))]
             Inner::Null(output) => output.hold(on),
-            #[cfg(windows)]
-            Inner::Windows(output) => output.hold(on),
+            #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+            Inner::System(output) => output.hold(on),
             #[cfg(target_arch = "wasm32")]
             Inner::Web(output) => output.hold(on),
         }
@@ -292,21 +380,17 @@ mod tests {
         wait_for(&count, held);
     }
 
-    /// Linux and macOS come with their own ticket: until then they say so, and the
-    /// caller gets an output that discards rather than a crash.
-    #[cfg(not(windows))]
+    /// Whatever the machine has, a device or none (as CI's have none), the caller gets
+    /// an output whose callback runs: the system's, or one that discards and the reason
+    /// the system's wouldn't open, never a crash.
     #[test]
-    fn a_system_without_its_output_is_quiet_and_says_why() {
-        assert_eq!(Output::preferred_rate(), None);
-        let (_, callback) = counting();
-        assert!(matches!(
-            Output::open(CONFIG, callback),
-            Err(OutputError::Unavailable(_))
-        ));
+    fn the_system_or_a_quiet_output_and_why() {
         let (count, callback) = counting();
         let (output, problem) = Output::open_or_null(CONFIG, callback);
-        assert!(matches!(problem, Some(OutputError::Unavailable(_))));
-        assert_eq!(output.rate(), 48_000);
+        if let Some(problem) = &problem {
+            assert_eq!(output.stats(), (0, 0), "{problem}: it discards");
+        }
+        assert_eq!(output.rate(), 48_000, "{problem:?}");
         wait_for(&count, 0);
     }
 

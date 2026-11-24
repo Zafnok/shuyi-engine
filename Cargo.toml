@@ -30,10 +30,11 @@ insta = "1"
 schemars = { version = "1", default-features = false, features = ["derive"] }
 
 # Cargo allows one crate of a build to say `links = "alsa"`, on any target, and
-# quad-snd and CPAL each bring one. While both are here this holds CPAL's place, and
-# CPAL is built only for Windows (ADR-0075). Ticket 3079 takes it out.
+# quad-snd and CPAL each bring one. While both are here quad-snd's bindings are
+# `alsa-sys`'s, under its crate's name and without its `links` (ADR-0142). Ticket
+# 3079 takes it out.
 [patch.crates-io]
-alsa-sys = { path = "tools/sound-parity/alsa-sys-held" }
+quad-alsa-sys = { path = "tools/sound-parity/quad-alsa-sys-held" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

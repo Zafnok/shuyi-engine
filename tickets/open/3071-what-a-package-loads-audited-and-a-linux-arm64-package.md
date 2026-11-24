@@ -74,12 +74,16 @@ None.
     **Either order with 2520:** if 2520 is done, use the `object` version
     it brought, so `Cargo.lock` holds one; if not, nothing to do (2520
     uses this one).
-  - **Either order with 3032:** if 3032 is done, audit the actual CPAL
-    graph and its packaged imports on x86-64 and Arm Linux; keep
-    `libasound.so.2` in the allowed lists when linked. Do not assume
-    CPAL opens ALSA through `dlopen`. If not, nothing to do (3032
-    updates the audit when its linkage is known). Final old-backend
-    removal is 3079, not a reason to remove a still-used system library.
+  - **From 3032 (done):** CPAL links ALSA; it doesn't open it with
+    `dlopen`. Built in the sniper SDK, the sound probe of each backend
+    needs `libasound.so.2`, `libc.so.6`, `libdl.so.2`, `libgcc_s.so.1`,
+    `libm.so.6` and `libpthread.so.0`, and asks for glibc 2.30 at the
+    newest (CI's `sound-linux-floor` job). So keep `libasound.so.2` in the
+    `linux` and `linux-arm64` lists, and audit a build with
+    `in-house-sound` on x86-64 and Arm Linux as well as the default one.
+    Whether a Linux game must start without it is 3351's. Final
+    old-backend removal is 3079, not a reason to remove a still-used
+    system library.
   - **From 3010 (done):** the Playdate's exporter
     (`crates/cli/src/export/playdate.rs`) runs 3004's path search on its
     ELF and DLL, but no audit, since this ticket's list file isn't

@@ -57,6 +57,12 @@ dependencies = [
 [[package]]
 name = "alsa-sys"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad7569085a265dd3f607ebecce7458eaab2132a84393534c95b18dcbc3f31e04"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "audir-sles"
@@ -1549,10 +1555,8 @@ dependencies = [
 [[package]]
 name = "quad-alsa-sys"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66c2f04a6946293477973d85adc251d502da51c57b08cd9c997f0cfd8dcd4b5"
 dependencies = [
- "libc",
+ "alsa-sys",
 ]
 
 [[package]]

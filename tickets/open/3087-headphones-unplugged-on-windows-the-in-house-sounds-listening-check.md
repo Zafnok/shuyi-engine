@@ -39,7 +39,8 @@ again.
 
 **In:**
 - A build of the game with `in-house-sound` on, at the engine's revision of the time,
-  as 3031's completion notes say (the root `[patch.crates-io]` of `alsa-sys`, the
+  as 3031's completion notes say (since 3032, the root `[patch.crates-io]` of
+  `quad-alsa-sys` from `tools/sound-parity/quad-alsa-sys-held`, the
   feature on `shuyi-app`, the game started from its own folder so it finds `music\`).
 - Nick's check, and his words in the completion notes.
 - If it fails: what the output's own counts say (`Output::stats`: rebuilds and silent

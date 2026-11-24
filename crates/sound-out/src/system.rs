@@ -1,21 +1,31 @@
-//! Windows' output: CPAL on the default device, written from its documentation
-//! (ADR-0066). A stream lives on a thread of this module's, which also watches for
-//! its device going away: CPAL's documentation leaves open whether a stream follows
-//! the default device here, so it covers both ways, a stream rerouted and one lost,
-//! and a default that changed under a stream still running.
+//! The system's output through CPAL, on its default device, written from CPAL's
+//! documentation (ADR-0066): WASAPI on Windows, ALSA on Linux, Core Audio on macOS. A
+//! stream lives on a thread of this module's, which also watches for its device going
+//! away: CPAL's documentation leaves open whether a stream follows the default device,
+//! so it covers both ways, a stream rerouted and one lost, and a default that changed
+//! under a stream still running. On Linux the default is ALSA's `default` device,
+//! which the system's sound server or its card stands behind: what goes away there is
+//! the stream, which errs, and the watch then builds another (ADR-0142).
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BufferSize, ErrorKind, SampleFormat, SizedSample, Stream, StreamConfig};
+use cpal::{ErrorKind, OutputCallbackInfo, SampleFormat, SizedSample, Stream, StreamConfig};
 
 use crate::convert_impl::{Boundary, DeviceSample};
+#[cfg(windows)]
 use crate::sys::raised::Raised;
 use crate::{Callback, OutputConfig, OutputError};
+
+mod rules;
+
+#[cfg(not(windows))]
+use rules::Raised;
+use rules::{FIXED_BUFFER, PASSING_BACKEND_ERRORS, Stall, buffer_size, ends_the_stream};
 
 /// How often the thread looks at the default device: well under the second a player
 /// has to be heard on the speakers again.
@@ -27,6 +37,10 @@ const OPEN: Duration = Duration::from_secs(5);
 /// stream that plays.
 const MOVED_LOOKS: u32 = 2;
 
+/// Whether [`Dry`] reads this system's callbacks: only where the room a callback is
+/// given says how full the device's buffer is.
+const COUNTS_DRY: bool = cfg!(windows);
+
 /// What the output's owner asks of its thread.
 enum Order {
     Hold(bool),
@@ -34,7 +48,7 @@ enum Order {
 }
 
 /// See the [module docs](self).
-pub(crate) struct WindowsOutput {
+pub(crate) struct SystemOutput {
     orders: Sender<Order>,
     thread: Option<JoinHandle<()>>,
     stats: Arc<Stats>,
@@ -51,13 +65,33 @@ pub(crate) struct Stats {
     pub(crate) dry: AtomicU32,
     /// Whether the latest stream's thread runs above normal (`sys::raised`).
     pub(crate) raised: AtomicBool,
+    /// The latest stream's device and format, as CPAL names them (ticket 3032).
+    pub(crate) device: Mutex<String>,
+    /// The most a callback's samples were ahead of their playing, as the system
+    /// predicts it, in microseconds: the device's buffer.
+    pub(crate) ahead_us: AtomicU32,
+    /// How many callbacks the system made, and the frames they asked for.
+    pub(crate) callbacks: AtomicU32,
+    pub(crate) frames: AtomicU32,
+    /// How many times the system said the device's buffer ran dry (`ErrorKind::Xrun`).
+    pub(crate) xruns: AtomicU32,
+    /// How many streams were built again for making no callback ([`Stall`]).
+    pub(crate) stalls: AtomicU32,
+    /// The latest error the system gave a stream, as it says it, and how many it gave
+    /// that weren't glitches it plays on through.
+    pub(crate) error: Mutex<String>,
+    pub(crate) errors: AtomicU32,
+    /// Why a stream was last built again.
+    pub(crate) rebuilt: Mutex<String>,
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
 /// of it, and nothing more, since the callback before, so a gap is heard (ticket
 /// 3089). CPAL asks each time for the buffer's room, which is all of it only at the
 /// first callback and after it ran dry: at its pace a callback finds about one
-/// period's room.
+/// period's room. That is WASAPI's way: Core Audio hands a block of its own size to
+/// every callback, and on a hosted Mac each was read as dry (ticket 3032), so it is
+/// counted on Windows alone ([`COUNTS_DRY`]).
 #[derive(Debug, Default)]
 struct Dry {
     /// The most room a callback was given, in samples: the whole buffer.
@@ -106,10 +140,27 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
         stream.sample_rate,
     );
     let silence = T::from_mix(0);
-    let on_error = move |error: cpal::Error| match error.kind() {
-        // Rerouted, or a glitch or a refused priority that it plays on through.
-        ErrorKind::DeviceChanged | ErrorKind::Xrun | ErrorKind::RealtimeDenied => {}
-        _ => lost.store(true, Ordering::Release),
+    let channels = usize::from(stream.channels).max(1);
+    let counted = Arc::clone(&stats);
+    let on_error = move |error: cpal::Error| {
+        let kind = error.kind();
+        if kind == ErrorKind::Xrun {
+            counted.xruns.fetch_add(1, Ordering::Relaxed);
+        }
+        if matches!(
+            kind,
+            ErrorKind::Xrun | ErrorKind::DeviceChanged | ErrorKind::RealtimeDenied
+        ) {
+            return;
+        }
+        // Never waited for: this may be the audio thread.
+        if let Ok(mut said) = counted.error.try_lock() {
+            *said = error.to_string();
+        }
+        counted.errors.fetch_add(1, Ordering::Relaxed);
+        if ends_the_stream(kind, PASSING_BACKEND_ERRORS) {
+            lost.store(true, Ordering::Release);
+        }
     };
     // Raised at the first callback, the only way onto CPAL's thread, and let go with
     // the callback, which CPAL drops on that thread.
@@ -118,13 +169,23 @@ fn build<T: SizedSample + DeviceSample + Send + 'static>(
     device
         .build_output_stream::<T, _, _>(
             stream,
-            move |out: &mut [T], _| {
+            move |out: &mut [T], info: &OutputCallbackInfo| {
+                stats.callbacks.fetch_add(1, Ordering::Relaxed);
+                stats.frames.fetch_add(
+                    u32::try_from(out.len() / channels).unwrap_or(u32::MAX),
+                    Ordering::Relaxed,
+                );
+                let when = info.timestamp();
+                let ahead = when.playback.duration_since(when.callback).as_micros();
+                stats
+                    .ahead_us
+                    .fetch_max(u32::try_from(ahead).unwrap_or(u32::MAX), Ordering::Relaxed);
                 if raised.is_none() {
                     let now = Raised::current();
                     stats.raised.store(now.is_raised(), Ordering::Relaxed);
                     raised = Some(now);
                 }
-                if dry.ran_dry(out.len()) {
+                if COUNTS_DRY && dry.ran_dry(out.len()) {
                     stats.dry.fetch_add(1, Ordering::Relaxed);
                 }
                 if let Ok(mut callback) = callback.try_lock() {
@@ -150,12 +211,30 @@ fn open_stream(
     held: bool,
 ) -> Result<(Stream, cpal::Device), OutputError> {
     let device = host.default_output_device().ok_or(OutputError::NoDevice)?;
-    let supported = device
+    let default = device
         .default_output_config()
         .map_err(|e| device_error(&e))?;
+    // The mix's own rate where the device takes it in its own format, so that nothing
+    // between converts it: ALSA's sound-server plugins take any rate and say 48,000 Hz
+    // whatever the server runs at (ticket 3032).
+    let supported = device
+        .supported_output_configs()
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter(|range| {
+            range.sample_format() == default.sample_format()
+                && range.channels() == default.channels()
+        })
+        .find_map(|range| range.try_with_sample_rate(config.rate))
+        .unwrap_or(default);
     let format = supported.sample_format();
     let mut stream_config: StreamConfig = supported.config();
-    stream_config.buffer_size = BufferSize::Default;
+    stream_config.buffer_size = buffer_size(
+        supported.buffer_size(),
+        stream_config.sample_rate,
+        FIXED_BUFFER,
+    );
     let (shared, flag, counted) = (Arc::clone(callback), Arc::clone(lost), Arc::clone(stats));
     let stream = match format {
         SampleFormat::F32 => build::<f32>(&device, stream_config, config, shared, flag, counted),
@@ -169,10 +248,23 @@ fn open_stream(
     if !held {
         stream.play().map_err(|e| device_error(&e))?;
     }
+    let named = format!(
+        "{} ({}): {format:?}, {} channels at {} Hz, {:?}",
+        device
+            .id()
+            .map_or_else(|e| e.to_string(), |id| id.to_string()),
+        device
+            .description()
+            .map_or_else(|e| e.to_string(), |about| about.to_string()),
+        stream_config.channels,
+        stream_config.sample_rate,
+        stream_config.buffer_size,
+    );
+    *stats.device.lock().unwrap_or_else(PoisonError::into_inner) = named;
     Ok((stream, device))
 }
 
-impl WindowsOutput {
+impl SystemOutput {
     pub(crate) fn open(config: OutputConfig, callback: Callback) -> Result<Self, OutputError> {
         let (orders, inbox) = mpsc::channel();
         let (opened, answer) = mpsc::channel();
@@ -209,6 +301,41 @@ impl WindowsOutput {
         )
     }
 
+    pub(crate) fn device(&self) -> String {
+        self.stats
+            .device
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    pub(crate) fn calls(&self) -> (u32, u32) {
+        (
+            self.stats.callbacks.load(Ordering::Relaxed),
+            self.stats.frames.load(Ordering::Relaxed),
+        )
+    }
+
+    pub(crate) fn rebuilt(&self) -> String {
+        self.stats
+            .rebuilt
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    pub(crate) fn glitches(&self) -> (u32, u32, u32) {
+        (
+            self.stats.xruns.load(Ordering::Relaxed),
+            self.stats.stalls.load(Ordering::Relaxed),
+            self.stats.errors.load(Ordering::Relaxed),
+        )
+    }
+
+    pub(crate) fn ahead(&self) -> Duration {
+        Duration::from_micros(u64::from(self.stats.ahead_us.load(Ordering::Relaxed)))
+    }
+
     pub(crate) fn dry_callbacks(&self) -> u32 {
         self.stats.dry.load(Ordering::Relaxed)
     }
@@ -218,7 +345,7 @@ impl WindowsOutput {
     }
 }
 
-impl Drop for WindowsOutput {
+impl Drop for SystemOutput {
     fn drop(&mut self) {
         let _ = self.orders.send(Order::Close);
         if let Some(thread) = self.thread.take() {
@@ -251,6 +378,7 @@ fn run(
     };
     let mut quiet = Quiet::new(config);
     let mut moved_looks = 0;
+    let mut stall = Stall::new(stats.callbacks.load(Ordering::Relaxed), Instant::now());
     loop {
         match inbox.recv_timeout(if current.is_some() {
             WATCH
@@ -271,12 +399,32 @@ fn run(
             .as_ref()
             .is_some_and(|(_, device)| host.default_output_device().as_ref() != Some(device));
         moved_looks = if moved { moved_looks + 1 } else { 0 };
-        if moved_looks >= MOVED_LOOKS || lost.swap(false, Ordering::AcqRel) || current.is_none() {
+        let calls = stats.callbacks.load(Ordering::Relaxed);
+        let stalled = current.is_some() && stall.stalled(calls, held, Instant::now());
+        if stalled {
+            stats.stalls.fetch_add(1, Ordering::Relaxed);
+        }
+        let erred = lost.swap(false, Ordering::AcqRel);
+        let why = if moved_looks >= MOVED_LOOKS {
+            Some("the default device moved".to_owned())
+        } else if stalled {
+            Some("no callback for half a second".to_owned())
+        } else if erred {
+            let said = stats.error.lock().unwrap_or_else(PoisonError::into_inner);
+            Some(format!("the system said: {said}"))
+        } else if current.is_none() {
+            Some("no stream".to_owned())
+        } else {
+            None
+        };
+        if let Some(why) = why {
+            *stats.rebuilt.lock().unwrap_or_else(PoisonError::into_inner) = why;
             // The old stream goes first: only one may hold the callback.
             moved_looks = 0;
             drop(current.take());
             current = open_stream(&host, config, callback, &lost, stats, held).ok();
             stats.rebuilds.fetch_add(1, Ordering::Relaxed);
+            stall = Stall::new(stats.callbacks.load(Ordering::Relaxed), Instant::now());
         }
         if current.is_none() && !held {
             quiet.run(callback);

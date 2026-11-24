@@ -39,8 +39,7 @@ fn backend() -> (InHouse, AudioSide) {
     (
         InHouse {
             engine: Some(engine),
-            framing: false,
-            said: Vec::new(),
+            ..InHouse::default()
         },
         side,
     )

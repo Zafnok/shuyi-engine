@@ -1,0 +1,17 @@
+[package]
+# See `src/lib.rs`: takes the name of quad-snd's ALSA bindings, at the version it asks
+# for, without their `links`, and hands it the bindings CPAL's `alsa` uses.
+name = "quad-alsa-sys"
+version = "0.3.2"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "Gives quad-snd alsa-sys's bindings while quad-snd and CPAL share a build (ticket 3032, ADR-0142)"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+alsa-sys = "0.4.0"
+
+[workspace]

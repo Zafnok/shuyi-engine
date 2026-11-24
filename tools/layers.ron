@@ -26,6 +26,11 @@
         "alsa-sys",
         "coreaudio-rs",
         "coreaudio-sys",
+        // CPAL's Core Audio crates on macOS (ticket 3032).
+        "objc2-audio-toolbox",
+        "objc2-avf-audio",
+        "objc2-core-audio",
+        "objc2-core-audio-types",
         "oboe",
         "symphonia",
         "lewton",
@@ -195,7 +200,8 @@
         ),
         "shuyi-sound-out": (
             // Hands a mix to the system (ADR-0066, ADR-0021 §4), apart from the rest of
-            // the engine: CPAL on Windows, a plugin of its own in the browser.
+            // the engine: CPAL on Windows, Linux and macOS, a plugin of its own in the
+            // browser.
             engine: ["shuyi-sound"],
             outside: Any,
             devices: true,

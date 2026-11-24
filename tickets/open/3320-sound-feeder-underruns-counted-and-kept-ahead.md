@@ -105,10 +105,13 @@ None.
   Which one, and why, goes in the completion notes, with the numbers.
 - Twenty `sound-parity` runs on one revision (`calibrate.yml`) with no stalled
   stream frame and no `windows-in-house` gap.
-- **Either order with 3032:** if 3032 is done, the counts, the gate and the
-  twenty runs cover its Linux and macOS in-house platforms too, and the feeder
-  is raised there where the system allows it without rights a player lacks; if
-  not, Windows only, and 3032 holds its platforms to no stalled frame.
+- **From 3032 (done):** `linux-in-house` is a `NewBackend` recorded in the
+  `sound-parity` job beside quad-snd, so the counts, the gate and the twenty runs
+  cover it too, and the feeder is raised on Linux and macOS where the system allows
+  it without rights a player lacks. CPAL's own audio thread is raised on Windows
+  alone (`sys::raised`); `system.rs` leaves it as CPAL makes it elsewhere. macOS is
+  built and tested but not recorded (`Blocked`, 3348), so its stalled frames are
+  counted once 3348 records it.
 - **Either order with 2068:** if 2068 is done, the twenty runs must also pass its
   timing cells. A `cpu_ms` limit that the raise moves follows `budget.ron`'s rule:
   a lean found, or the runs named beside the new limit. If not, a timing cell that

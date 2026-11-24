@@ -6,7 +6,7 @@ PulseAudio null sink of its own, in a temporary home, so nothing else is heard
 and nothing is heard elsewhere, it records the sink's monitor while the probe
 (`crates/app/examples/sound_probe.rs`) plays:
 
-    capture.py native --dir D --probe BIN --revision SHA
+    capture.py native --dir D --probe BIN --revision SHA [--new-probe BIN [--take-device]]
     capture.py windows --dir D --probe BIN --revision SHA [--set-endpoint]
     capture.py browser --dir D --page DIR --revision SHA
     (either with --perf-only: the timings again, the recordings kept)
@@ -66,6 +66,17 @@ OGGENC = ["--quiet", "--quality=6", "--serial=2573"]
 # Chromium's real output path: the full browser in new-headless mode (the
 # headless shell has no sound), SwiftShader as in tools/web-check/check.py.
 CHROMIUM_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+# What the in-house probe plays without (ticket 3032). `PULSE_LATENCY_MSEC` is there for
+# quad-snd, which would otherwise get the null sink's largest blocks; through ALSA's
+# PulseAudio plugin it stalls CPAL's stream after its first callback (one callback,
+# nothing heard, in CI run 45163539957), and the in-house output asks for about 20 ms
+# itself. A player's system sets neither.
+IN_HOUSE_WITHOUT = ("PULSE_LATENCY_MSEC",)
+# What it plays with: the sink's rate, which the plugin's default of 48,000 Hz isn't,
+# so that PulseAudio's resampler isn't what the scenarios measure (ticket 3032).
+IN_HOUSE_WITH = {"SHUYI_SOUND_PROBE_RATE": str(RATE)}
+# How the sink is made, and made again after `write_native_device_loss` took it away.
+NULL_SINK = ["module-null-sink", f"sink_name={SINK}", f"rate={RATE}", "channels=2", "format=s16le"]
 # The silence a recording starts with before anything plays, in frames.
 LEAD_FRAMES = RATE // 5
 # Sound after this far under full scale counts as sound, for finding gaps.
@@ -111,7 +122,7 @@ def sink() -> Iterator[Sink]:
                 "pulseaudio", "--daemonize=no", "--exit-idle-time=-1", "--disallow-exit",
                 "--use-pid-file=no", "--disable-shm=yes", "-n",
                 "--load=module-native-protocol-unix",
-                f"--load=module-null-sink sink_name={SINK} rate={RATE} channels=2 format=s16le",
+                f"--load={' '.join(NULL_SINK)}",
             ],
             env=env,
         )
@@ -298,6 +309,14 @@ class Native:
     probe: Path
     stage: Path
     target: Sink
+    # The sink's settings this probe runs without, and what it adds (ticket 3032).
+    without: tuple[str, ...] = ()
+    added: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def env(self) -> dict[str, str]:
+        kept = {k: v for k, v in self.target.env.items() if k not in self.without}
+        return {**kept, **self.added}
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
         # A scenario's recording is judged as the sound itself, so one the backend
@@ -316,7 +335,7 @@ class Native:
         process = subprocess.run(
             [str(self.probe)],
             cwd=self.stage,
-            env=self.target.env,
+            env=self.env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -330,6 +349,10 @@ class Native:
         if refuse and underruns:
             raise LostFrames(f"quad-snd underran {len(underruns)} times ({'; '.join(underruns)})")
         sys.stdout.write(process.stdout)
+        # What the system's libraries said, ALSA's among them: the log's, not evidence.
+        for line in process.stderr.splitlines():
+            if line.strip() and not line.startswith(PREFIX):
+                print(f"{self.probe.name}: {line}", file=sys.stderr)
         lines = [line[len(PREFIX):] for line in process.stderr.splitlines() if line.startswith(PREFIX)]
         if process.returncode != 0:
             lines.append(json.dumps({"event": "failed", "text": f"exit {process.returncode}: {process.stderr[-300:]}"}))
@@ -662,21 +685,105 @@ def write_mixer(player: Native | Windows | Browser, base: Path) -> None:
 
 
 def native(args: argparse.Namespace) -> int:
-    base = args.dir / "linux-native"
-    if not args.perf_only:
-        shutil.rmtree(base, ignore_errors=True)
-    base.mkdir(parents=True, exist_ok=True)
+    """quad-snd on the null sink, and with `--new-probe` the in-house backend beside it
+    (ticket 3032): the same scenarios, its own timings, and the two in turn."""
     shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
     with sink() as target:
-        player = Native(args.probe.resolve(), args.dir.resolve(), target)
-        for number in range(0 if args.perf_only else RUNS):
-            run = base / f"run-{number}"
-            write_run(player, run, "quad-snd")
-            write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
-        write_perf(player, base)
-        write_decoders(player, base)
-        write_mixer(player, base)
+        old = Native(args.probe.resolve(), args.dir.resolve(), target)
+        new = Native(args.new_probe.resolve(), args.dir.resolve(), target, IN_HOUSE_WITHOUT, IN_HOUSE_WITH) if args.new_probe else None
+        if args.only in (None, "linux-native"):
+            base = args.dir / "linux-native"
+            if not args.perf_only:
+                shutil.rmtree(base, ignore_errors=True)
+            base.mkdir(parents=True, exist_ok=True)
+            for number in range(0 if args.perf_only else RUNS):
+                run = base / f"run-{number}"
+                write_run(old, run, "quad-snd")
+                write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
+            write_perf(old, base)
+            write_decoders(old, base)
+            write_mixer(old, base)
+        if new is not None and args.only in (None, "linux-in-house"):
+            base = args.dir / "linux-in-house"
+            if not args.perf_only:
+                shutil.rmtree(base, ignore_errors=True)
+            base.mkdir(parents=True, exist_ok=True)
+            for number in range(0 if args.perf_only else RUNS):
+                run = base / f"run-{number}"
+                write_run(new, run, "in-house")
+                write_meta(run, args.revision, "in-house", {"probe_bytes": args.new_probe.stat().st_size, "build_seconds": args.build_seconds})
+            write_perf(new, base)
+            write_old_new(old, new, base)
+        if new is not None and args.only is None and args.take_device:
+            write_native_device_loss(new, target, args.dir / "linux-in-house")
     return 0
+
+
+def write_native_device_loss(player: Native, target: Sink, base: Path) -> None:
+    """`write_device_loss` on Linux: the sink is taken away while the probe plays, so
+    that its stream ends with an error, as a card's does when it goes, then made again;
+    and the time is how long the sound takes to be heard from when it is back. What
+    goes wrong is in the report, which the gate fails: evidence missing is never a pass."""
+
+    def pactl(*words: str) -> str:
+        ran = subprocess.run(["pactl", *words], env=target.env, capture_output=True, text=True, check=False)
+        if ran.returncode != 0:
+            raise RuntimeError(f"pactl {' '.join(words)}: {ran.stderr.strip()[-300:]}")
+        return ran.stdout
+
+    (player.stage / "probe.txt").write_text("scenario device_loss\n", encoding="utf-8", newline="\n")
+    report: dict[str, object] = {}
+    process = subprocess.Popen([str(player.probe)], cwd=player.stage, env=player.env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    try:
+        time.sleep(2.5)
+        modules = [line.split("\t") for line in pactl("list", "short", "modules").splitlines()]
+        module = next((row[0] for row in modules if len(row) > 2 and row[1] == "module-null-sink" and f"sink_name={SINK}" in row[2]), None)
+        if module is None:
+            raise RuntimeError("no null sink to take away")
+        pactl("unload-module", module)
+        time.sleep(1.5)
+        report["still_running"] = process.poll() is None
+        pactl("load-module", *NULL_SINK)
+        pactl("set-default-sink", SINK)
+        pactl("set-sink-volume", SINK, "100%")
+        back = time.monotonic()
+        recording = subprocess.Popen(RECORD, env=target.env, stdout=subprocess.PIPE)
+        # A null sink made anew renders its first block at its largest, about 2
+        # seconds, before its monitor gives anything: the wall clock measures that, not
+        # the backend. So the time is the sink's own, the frames recorded before the
+        # first sound, and the wall clock's is in the report beside it.
+        heard = None
+        frames = 0
+        try:
+            while heard is None and time.monotonic() < back + 8:
+                chunk = recording.stdout.read1(4096)
+                if not chunk:
+                    break
+                samples = array.array("h")
+                samples.frombytes(chunk[: len(chunk) // 4 * 4])
+                loud = next((i for i, s in enumerate(samples) if s), None)
+                if loud is None:
+                    frames += len(samples) // 2
+                else:
+                    heard = (frames + loud // 2) / RATE
+                    report["wall_ms"] = (time.monotonic() - back) * 1000
+        finally:
+            recording.terminate()
+            recording.wait(10)
+        report["heard_ms"] = None if heard is None else heard * 1000
+    except (OSError, RuntimeError) as error:
+        report["error"] = str(error)
+    finally:
+        # The scenario plays on to its end, and the output says what it went through.
+        try:
+            _, said = process.communicate(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _, said = process.communicate()
+        for line in said.splitlines():
+            if line.startswith(PREFIX) and '"output"' in line:
+                report["output"] = json.loads(line[len(PREFIX):])
+    (base / "device-loss.json").write_text(json.dumps(report) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_device_loss(player: Windows, base: Path) -> None:
@@ -858,9 +965,9 @@ def main() -> int:
     parser.add_argument("--build-seconds", type=float, default=0.0)
     parser.add_argument("--perf-only", action="store_true", help="only the timings, again")
     parser.add_argument("--set-endpoint", action="store_true", help="on a runner: set the virtual endpoint's format first")
-    parser.add_argument("--new-probe", type=Path, help="windows: the probe of the in-house backend, recorded too")
+    parser.add_argument("--new-probe", type=Path, help="native, windows: the probe of the in-house backend, recorded too")
     parser.add_argument("--new-page", type=Path, help="browser: the page of the in-house backend, recorded too")
-    parser.add_argument("--take-device", action="store_true", help="windows, on a runner: take the render endpoint away and give it back while the new backend plays")
+    parser.add_argument("--take-device", action="store_true", help="native, windows, on a runner: take the sink or the render endpoint away and give it back while the new backend plays")
     parser.add_argument("--only", help="the one platform of this mode to record, when it is measured again")
     args = parser.parse_args()
     return {"native": native, "windows": windows, "browser": browser, "encode": encode}[args.mode](args)
