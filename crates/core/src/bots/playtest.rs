@@ -18,8 +18,11 @@
 //! The checks are a flat list, or come from [`Targets`]: what each
 //! entrant should achieve on a stage of each of the game's tiers, said
 //! once. Given a stage's tier and the entrants that play,
-//! [`Targets::checks`] gives that stage's checks. A game reads the file
-//! itself (the core does no I/O), over its own tier type:
+//! [`Targets::checks`] gives that stage's checks, and
+//! [`Targets::checks_of`] those of a stage of kinds the game names too:
+//! each kind's bands lie over the tier's, and a kind can leave the medians
+//! out (a hold lasts its turns however it is played). A game reads the
+//! file itself (the core does no I/O), over its own tier type:
 //!
 //! ```ron
 //! (
@@ -33,6 +36,9 @@
 //!     },
 //!     floors: {"casual": 20},
 //!     medians: [(entrant: "expert", measure: "turns", want: Lower, than: "casual")],
+//!     kinds: {
+//!         "hold": (bands: {Hard: {"casual": (min: 40, max: 60)}}, medians: false),
+//!     },
 //! )
 //! ```
 
@@ -51,7 +57,7 @@ use crate::rng::SimRng;
 
 mod targets;
 
-pub use targets::{MedianTarget, Targets};
+pub use targets::{KindTargets, MedianTarget, Targets};
 
 /// The game's measures of one try, by name. A success or a loss is a
 /// measure too (`"won"` 1 or 0), so every check reads measures only.

@@ -14,26 +14,35 @@
 //!    first. Of a piece's strikes with the same way on the same target,
 //!    only the best (from its best tile) is listed at all; the first per
 //!    `(piece, target)` comes here, so every piece that can strike does
-//!    before any piece's second way;
+//!    before any piece's second way. With
+//!    [`targets_after_steps`](TacticsOrder::targets_after_steps), only each
+//!    piece's best strike comes here, over every target and way: a piece
+//!    with three targets would otherwise fill the cap before any piece's
+//!    advance (game 0523);
 //! 2. **the game's pick** ([`OrderHooks::pick`], an AI's own command), if
 //!    it is one of the commands given, isn't [`Kind::End`] or
 //!    [`Kind::Drop`] and isn't listed yet; it is then left out of the
 //!    steps below;
 //! 3. **extras**: the game's own lists ([`Kind::Extra`], heals say), by
 //!    group, then the best value first, one per `once`;
-//! 4. **advances**: per piece, its [`Kind::Step`] whose destination is
-//!    nearest the goals by walking ([`OrderHooks::distance`]), if nearer
-//!    than where the piece stands;
+//! 4. **advances**: per piece, its [`Kind::Step`] (or [`Kind::Spare`]
+//!    with a step) whose destination is nearest the goals by walking
+//!    ([`OrderHooks::distance`]), if nearer than where the piece stands;
 //! 5. **holds**: per piece, its step whose destination no threat reaches
 //!    ([`OrderHooks::safe`]), nearest the goals, if it isn't its advance;
 //! 6. **the other ways of striking**: the strikes held back in step 1,
-//!    best first;
-//! 7. **the rest**: [`Kind::Other`] and the steps not listed yet, in the
-//!    legal order;
+//!    best first. With `targets_after_steps`, first each `(piece,
+//!    target)`'s best strike not listed yet, best first, then the other
+//!    ways, best first;
+//! 7. **the rest**: [`Kind::Other`] and the [`Kind::Step`]s not listed
+//!    yet, in the legal order; never a [`Kind::Spare`];
 //! 8. **the end of the turn** ([`Kind::End`]) last, in place of the last
 //!    of the first `cap` commands, so the cap never cuts it.
 //!
-//! Commands tagged [`Kind::Drop`] are left out. Among equals the legal
+//! Commands tagged [`Kind::Drop`] are left out. A [`Kind::Spare`] is tried
+//! only as the game's pick or as its piece's advance or hold: once a floor
+//! is cleared, say, a step that wanders is worth no place in the cap, but
+//! a step towards the stairs is (game 0517). Among equals the legal
 //! order decides: the first strike of equal value, the first step of
 //! equal distance, the pieces in the order their first listed command
 //! comes. The order is at most `cap` commands; give the planner the same
@@ -84,6 +93,14 @@ pub enum Kind<P> {
         piece: P,
         /// Where it ends.
         dest: Pos,
+    },
+    /// A command tried only as the game's pick or, with `step`, as that
+    /// piece's advance or hold (steps 4 and 5, exactly as a [`Kind::Step`]
+    /// to `dest`): never in the rest. A game tags so the moves worth
+    /// trying only towards the goal, once no foe is left, say.
+    Spare {
+        /// The piece and where it ends, if it is a step.
+        step: Option<(P, Pos)>,
     },
     /// The end of the turn, kept within the cap (the first one given; a
     /// second is left out).
@@ -137,12 +154,32 @@ pub struct TacticsOrder<H> {
     /// The most commands it lists; 0 counts as 1. The planner's
     /// `candidates`.
     pub cap: usize,
+    /// Whether step 1 lists each piece's best strike only, and a piece's
+    /// best strike on each of its other targets waits for step 6, before
+    /// its other ways. False in [`new`](Self::new): each piece's best
+    /// strike on each target comes first.
+    pub targets_after_steps: bool,
 }
 
 impl<H> TacticsOrder<H> {
-    /// An order asking `hooks`, listing at most `cap` commands.
+    /// An order asking `hooks`, listing at most `cap` commands, each
+    /// piece's best strike on each target first.
     pub const fn new(hooks: H, cap: usize) -> Self {
-        Self { hooks, cap }
+        Self {
+            hooks,
+            cap,
+            targets_after_steps: false,
+        }
+    }
+
+    /// The order with [`targets_after_steps`](Self::targets_after_steps)
+    /// set to `on`.
+    #[must_use]
+    pub fn with_targets_after_steps(self, on: bool) -> Self {
+        Self {
+            targets_after_steps: on,
+            ..self
+        }
     }
 }
 
@@ -153,7 +190,7 @@ where
     H: OrderHooks<R>,
 {
     fn order(&mut self, rules: &R, commands: Vec<R::Command>) -> Vec<R::Command> {
-        let listed = listed(&mut self.hooks, rules, &commands);
+        let listed = listed(&mut self.hooks, rules, &commands, self.targets_after_steps);
         let mut commands: Vec<Option<R::Command>> = commands.into_iter().map(Some).collect();
         let mut take = |index: usize| commands[index].take();
         let order: Vec<R::Command> = listed.order.into_iter().filter_map(&mut take).collect();
@@ -184,13 +221,13 @@ struct Steps {
 }
 
 /// The order of `commands` in `rules`, as [`steps`] lists it.
-fn listed<R, H>(hooks: &mut H, rules: &R, commands: &[R::Command]) -> Listed
+fn listed<R, H>(hooks: &mut H, rules: &R, commands: &[R::Command], by_piece: bool) -> Listed
 where
     R: Sides,
     R::Command: PartialEq,
     H: OrderHooks<R>,
 {
-    let steps = steps(hooks, rules, commands);
+    let steps = steps(hooks, rules, commands, by_piece);
     let not_pick = |index: &usize| steps.pick != Some(*index);
     let mut order = steps.strikes;
     order.extend(steps.pick);
@@ -209,9 +246,10 @@ where
     }
 }
 
-/// Every step of the order of `commands` in `rules`, each in its order;
-/// the pick may be in another step too.
-fn steps<R, H>(hooks: &mut H, rules: &R, commands: &[R::Command]) -> Steps
+/// Every step of the order of `commands` in `rules`, each in its order,
+/// with step 1 one strike per piece if `by_piece`; the pick may be in
+/// another step too.
+fn steps<R, H>(hooks: &mut H, rules: &R, commands: &[R::Command], by_piece: bool) -> Steps
 where
     R: Sides,
     R::Command: PartialEq,
@@ -222,7 +260,7 @@ where
         .iter()
         .map(|command| hooks.classify(rules, command))
         .collect();
-    let (strikes, held) = strikes(&kinds);
+    let (strikes, held) = strikes(&kinds, by_piece);
     let (advances, holds) = advances_and_holds(hooks, rules, &kinds);
     let pick = hooks
         .pick(rules)
@@ -284,8 +322,10 @@ fn ranked<P, O>(
 }
 
 /// The strikes of `kinds`, best first, one per piece, target and way: the
-/// first of each piece and target (step 1), and the others (step 6).
-fn strikes<P: Eq + Copy>(kinds: &[Kind<P>]) -> (Vec<usize>, Vec<usize>) {
+/// first of each piece and target (step 1), and the others (step 6). If
+/// `by_piece`, step 1 is the first of each piece, and step 6 the first of
+/// each piece and target not listed yet, then the others.
+fn strikes<P: Eq + Copy>(kinds: &[Kind<P>], by_piece: bool) -> (Vec<usize>, Vec<usize>) {
     let strikes = ranked(kinds, |kind| match *kind {
         Kind::Strike {
             piece,
@@ -297,19 +337,24 @@ fn strikes<P: Eq + Copy>(kinds: &[Kind<P>]) -> (Vec<usize>, Vec<usize>) {
     });
     let mut ways: Vec<(Aim<P>, u32)> = Vec::new();
     let mut firsts = Vec::new();
+    let mut targets = Vec::new();
     let mut held = Vec::new();
     for Entry { index, of, .. } in strikes {
         if ways.contains(&of) {
             continue;
         }
+        let ((piece, _), _) = of;
         if ways.iter().any(|&(aim, _)| aim == of.0) {
             held.push(index);
+        } else if by_piece && ways.iter().any(|&((seen, _), _)| seen == piece) {
+            targets.push(index);
         } else {
             firsts.push(index);
         }
         ways.push(of);
     }
-    (firsts, held)
+    targets.append(&mut held);
+    (firsts, targets)
 }
 
 /// The extras of `kinds`, by group, then the best value first, the first
@@ -349,7 +394,11 @@ where
     let mut advances: Vec<(H::Piece, u32, usize)> = Vec::new();
     let mut holds: Vec<(H::Piece, u32, usize)> = Vec::new();
     for (index, kind) in kinds.iter().enumerate() {
-        let Kind::Step { piece, dest } = *kind else {
+        let (Kind::Step { piece, dest }
+        | Kind::Spare {
+            step: Some((piece, dest)),
+        }) = *kind
+        else {
             continue;
         };
         let Some(there) = hooks.distance(rules, piece, dest) else {
