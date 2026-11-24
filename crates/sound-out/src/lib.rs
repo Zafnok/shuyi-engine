@@ -323,6 +323,14 @@ mod tests {
         wait_for(&count, 0);
     }
 
+    /// Off Windows a worker isn't raised yet (ticket 3032), and says so; on Windows
+    /// `sys.rs`'s tests say what it is raised to.
+    #[cfg(not(windows))]
+    #[test]
+    fn a_worker_off_windows_says_it_wasnt_raised() {
+        assert!(!raise_worker());
+    }
+
     #[test]
     fn errors_say_what_went_wrong() {
         assert_eq!(OutputError::NoDevice.to_string(), "no sound device");
