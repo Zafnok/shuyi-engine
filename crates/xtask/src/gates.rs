@@ -303,7 +303,8 @@ pub const GATES: &[Gate] = &[
     ]),
     gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem
-    // codes, Hello, Grid's files and the tickets (the feature cards).
+    // codes, Hello, Grid's files, the tickets (the feature cards) and the
+    // guides (the book's, copied by `site-data`).
     // As CI: the codes' pages and the playground's files are written
     // before `zola check` reads them.
     gate("site", "site", Filter::Always)
@@ -312,6 +313,7 @@ pub const GATES: &[Gate] = &[
             "crates/cli/errors/",
             "examples/hello-grid/",
             "tickets/",
+            "docs/guides/",
         ]))
         .steps(&[
             "bash site/errors.sh",

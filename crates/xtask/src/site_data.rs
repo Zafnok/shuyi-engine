@@ -7,6 +7,10 @@
 //! The command writes each such card's status and link text, by its title,
 //! to `<dir>/data/tickets.toml`, which is never committed: the home page's
 //! template reads it with `load_data` and takes it over the card's own.
+//!
+//! It also copies the guides, `docs/guides/`, into the book's section
+//! `<dir>/content/learn/book/guides/`, never committed either
+//! ([`crate::guides::write_site`], ticket 2004).
 
 use std::collections::HashSet;
 use std::fmt::Write as _;
@@ -15,6 +19,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::guides;
 use crate::tickets::read_ticket_files;
 
 /// The file the cards are read from, under the site's folder.
@@ -214,7 +219,8 @@ pub fn run(root: &Path, options: &Options) -> Result<(), Vec<String>> {
     let done = ticket_ids(&root.join("tickets/done")).map_err(|e| vec![e])?;
     let made = make(&features, &open, &done)?;
     let out = site.join(MADE);
-    fs::write(&out, render(&made)).map_err(|e| vec![format!("{}: {e}", out.display())])
+    fs::write(&out, render(&made)).map_err(|e| vec![format!("{}: {e}", out.display())])?;
+    guides::write_site(root, site).map_err(|e| vec![e])
 }
 
 #[cfg(test)]

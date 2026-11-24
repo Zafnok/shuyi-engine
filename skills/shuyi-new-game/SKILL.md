@@ -40,7 +40,13 @@ game one part at a time.
    cargo shuyi doctor
    ```
 
-2. **Make the game.** Pick a template by its short name. `blank` is one
+2. **Make the game.** First read the engine's direction guide for the
+   kind of game it is, in the engine's docs (`docs/guides/`, which the
+   game's `AGENTS.md` names with the engine's other docs): it says which
+   template starts it, which kits and modules it uses, which look related
+   but aren't for it, and which example to read. Only the top-down grid
+   with turns is built; a guide marked planned says what not to use
+   meanwhile. Then pick a template by its short name. `blank` is one
    screen, the title. `grid` adds a turn-based grid stage, with its
    rules in a crate of their own, a bot and records. Pin the engine to
    the commit you cloned:
