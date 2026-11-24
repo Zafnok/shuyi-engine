@@ -32,9 +32,8 @@
             has: [("/winner", Some("x"))],
         ),
     ],
-    // 3422 gives it its reference, `Overlay("evals/references/tic-tac-toe")`.
-    reference: None,
-    waits_for: ["3422"],
+    reference: Overlay("evals/references/tic-tac-toe"),
+    waits_for: [],
     unmeasured: [
         // The grid template lists no Playdate target (its frame is taller
         // than the Playdate's screen); 2504 gives new games one.

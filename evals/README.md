@@ -68,8 +68,8 @@ says where. It writes `eval-results/<id>.json` (`--out`). `--all`
 grades every task with a reference that waits for nothing, lists the
 ones that wait, and warns of a ticket they wait for that is done.
 `--template-only` grades the plain template instead, to show that a
-task's checks can fail: CI checks that box-pushing's `Check` passes on
-it and every `Scene` fails. An overlay's `Cargo.toml` may name the
+task's checks can fail: CI checks that box-pushing's and tic-tac-toe's
+`Check` passes on it and every `Scene` fails. An overlay's `Cargo.toml` may name the
 engine's crates only as the workspace's (`shuyi.workspace = true`):
 `--engine-path` says where they are, and one that says so itself is
 refused.

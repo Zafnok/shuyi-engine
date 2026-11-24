@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["3421"]
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3422 — The eval's tic-tac-toe reference
@@ -73,11 +73,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask eval-reference --all` passes on tic-tac-toe in CI.
-- [ ] `--template-only` on tic-tac-toe fails every `Scene` check and
+- [x] `cargo xtask eval-reference --all` passes on tic-tac-toe in CI.
+- [x] `--template-only` on tic-tac-toe fails every `Scene` check and
       passes `Check`, checked in CI.
-- [ ] The PR description has the reference's lines added and seconds.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The PR description has the reference's lines added and seconds.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -87,4 +87,23 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- Brought the draft over from `draft-2524-eval-references` (`97e04ff4`)
+  unchanged: on `main` it needed no fix. Graded locally on Windows on
+  `3ef570a5` with `cargo xtask eval-reference tic-tac-toe`: 12 of 13
+  checks passed, all but `Export linux` (`SH1003`, built on Linux only,
+  which CI's `eval` job grades), at +471 −721 lines over the template,
+  6 files, in 115.2 seconds (the draft measured +451 −725 before 3421;
+  the reference's files are the same, so the template moved).
+- `--template-only`: `Check` passed, both `Scene` checks failed (the
+  template's `turn` is a number and it has no `winner`), exit 1.
+- `evals/tasks/tic-tac-toe.ron` now names its reference and waits for
+  nothing. The `eval` job grades the plain template too, with the same
+  `jq` checks as box-pushing's; `evals/README.md` says so. xtask's test
+  of the tasks here (`crates/xtask/src/eval/tests.rs`) now expects
+  `--all` to grade tic-tac-toe too, and only platformer and snake to
+  wait.
+- Docs: `evals/README.md`'s *Grading* names the new CI check; no public
+  API, contract or format changed, so nothing else.
+- Size: about 1,220 counted lines, nearly all the reference's six
+  files, which are graded only together (no clean split).
+- No break.
