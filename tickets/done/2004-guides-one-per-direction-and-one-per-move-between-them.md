@@ -244,4 +244,9 @@ No break: `TopDownGridGuide` is built only under `cfg(doctest)`.
 
 Game: nothing to adopt, the game names none of this.
 
+Size: 1,580 counted lines, not split: the check fails until every guide
+it wants exists, so the 18 guides (about 580 lines of docs) and the check
+land together, and the copy into the book (about 130 lines) reads them
+with the check's own parser and is this ticket's "on the docs site".
+
 Nick's sign-off: asked when the PR opened; not yet recorded.

@@ -181,28 +181,44 @@ pub fn facts(name: &str, text: &str) -> Result<Facts, String> {
     })
 }
 
-/// The targets of the Markdown links of `text`, `[…](target)`, outside its
-/// fenced blocks and its code spans.
-pub fn links(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
+/// `text` with each Markdown link's target, `[…](target)`, made `f`'s,
+/// outside its fenced blocks and its code spans.
+fn map_links(text: &str, mut f: impl FnMut(&str) -> String) -> String {
+    let mut out = String::new();
     let mut fenced = false;
     for line in text.lines() {
-        if line.trim_start().starts_with("```") {
-            fenced = !fenced;
-            continue;
+        let fence = line.trim_start().starts_with("```");
+        fenced ^= fence;
+        if fenced || fence {
+            out.push_str(line);
         }
-        if fenced {
-            continue;
+        for (i, piece) in line.split('`').enumerate().filter(|_| !fenced && !fence) {
+            if i > 0 {
+                out.push('`');
+            }
+            let mut rest = piece;
+            while let Some(at) = rest.find("](").filter(|_| i % 2 == 0) {
+                out.push_str(&rest[..at + 2]);
+                rest = &rest[at + 2..];
+                let Some(end) = rest.find(')') else { break };
+                out.push_str(&f(&rest[..end]));
+                rest = &rest[end..];
+            }
+            out.push_str(rest);
         }
-        let prose: String = line.split('`').step_by(2).collect();
-        let mut rest = prose.as_str();
-        while let Some(at) = rest.find("](") {
-            rest = &rest[at + 2..];
-            let Some(end) = rest.find(')') else { break };
-            out.push(rest[..end].to_owned());
-            rest = &rest[end..];
-        }
+        out.push('\n');
     }
+    out
+}
+
+/// The targets of the Markdown links of `text`, outside its fenced blocks
+/// and its code spans.
+pub fn links(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    map_links(text, |target| {
+        out.push(target.to_owned());
+        target.to_owned()
+    });
     out
 }
 
@@ -495,45 +511,16 @@ pub fn site_target(target: &str) -> String {
     }
 }
 
-/// `text` with every link's target made [`site_target`]'s, outside its
-/// fenced blocks and code spans, and its title line taken off.
+/// `text` with its title line taken off and every link's target made
+/// [`site_target`]'s, outside its fenced blocks and code spans.
 pub fn site_body(text: &str) -> String {
-    let mut out = String::new();
-    let mut fenced = false;
-    let mut titled = false;
-    for line in text.lines() {
-        if !titled && line.starts_with("# ") {
-            titled = true;
-            continue;
-        }
-        if line.trim_start().starts_with("```") {
-            fenced = !fenced;
-        }
-        if fenced || line.trim_start().starts_with("```") {
-            out.push_str(line);
-        } else {
-            for (i, piece) in line.split('`').enumerate() {
-                if i > 0 {
-                    out.push('`');
-                }
-                if i % 2 == 1 {
-                    out.push_str(piece);
-                    continue;
-                }
-                let mut rest = piece;
-                while let Some(at) = rest.find("](") {
-                    out.push_str(&rest[..at + 2]);
-                    rest = &rest[at + 2..];
-                    let Some(end) = rest.find(')') else { break };
-                    out.push_str(&site_target(&rest[..end]));
-                    rest = &rest[end..];
-                }
-                out.push_str(rest);
-            }
-        }
-        out.push('\n');
-    }
-    out.trim_start_matches('\n').to_owned()
+    let body = match text.trim_start_matches('\n') {
+        titled if titled.starts_with("# ") => titled.split_once('\n').map_or("", |(_, rest)| rest),
+        _ => text,
+    };
+    map_links(body, site_target)
+        .trim_start_matches('\n')
+        .to_owned()
 }
 
 /// The pages of the book's guides: each file's name under [`SECTION`] and

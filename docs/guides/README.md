@@ -3,7 +3,7 @@
 Shuyi Engine is built for many kinds of game, and a part built for one
 kind is easy to mistake for a part of another. These guides say which
 parts go with which kind of game, and how a game moves from one kind to
-another. Each is one page, and links to the crates' READMEs and the
+another. Each is one page, and links to the crates, their READMEs and the
 examples rather than repeating them.
 
 ## Choosing a direction
