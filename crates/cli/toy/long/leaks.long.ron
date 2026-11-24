@@ -1,0 +1,12 @@
+// A fixture of `bench --long`: the toy keeps 1 KiB more every frame
+// under its memory tag `toy-leak`, about 3 MB over the run. CI's `bench`
+// job checks that it fails, naming `leaks`, both heap numbers and the tag.
+(
+    format_version: 1,
+    about: "the toy keeps 1 KiB more every frame",
+    start: [(flag: "--leak-bytes", value: "1024")],
+    repeat: 40,
+    idle: 100,
+    warm_up: 500,
+    sample_every: 100,
+)
