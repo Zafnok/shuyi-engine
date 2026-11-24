@@ -1,6 +1,6 @@
 # ADR-0067: Sound parity is judged from a real sink against expected signals
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0142 (Linux's new backend on the same sink)
 - **Date:** 2026-10-31
 - **Related tickets:** 2573, 2210, 3030, 3031, 3032, 2397, 3079
 

@@ -30,7 +30,7 @@ under Wine and Proton. On a Linux system whose ALSA `default` is PulseAudio's pl
 (PulseAudio itself, not PipeWire's ALSA route), such a player would hear nothing from a
 game with the in-house sound.
 
-[ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)
+[ADR-0142](../../docs/adr/0142-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)
 records 3032's side.
 
 ## Nick input

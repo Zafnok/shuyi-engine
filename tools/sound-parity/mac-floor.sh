@@ -63,7 +63,7 @@ for program in "$@"; do
       echo "$newer" | sed 's/^\([^ ]*\) \(.*\)/  \2 needs macOS \1/'
     fi
     if [ -n "$expect" ] && [ "$floor" != "$expect" ]; then
-      echo "mac-floor: expected macOS $expect: what CPAL imports changed, so ADR-0139 and 3349 are to be read again"
+      echo "mac-floor: expected macOS $expect: what CPAL imports changed, so ADR-0142 and 3349 are to be read again"
       status=1
     fi
   done

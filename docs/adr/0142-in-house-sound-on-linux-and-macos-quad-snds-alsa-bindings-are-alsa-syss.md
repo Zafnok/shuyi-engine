@@ -1,8 +1,8 @@
-# ADR-0139: In-house sound on Linux and macOS: quad-snd's ALSA bindings are `alsa-sys`'s, one CPAL output for every system, and Linux's evidence on the same sink
+# ADR-0142: In-house sound on Linux and macOS: quad-snd's ALSA bindings are `alsa-sys`'s, one CPAL output for every system, and Linux's evidence on the same sink
 
 - **Status:** Accepted
 - **Date:** 2026-11-23
-- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3347, 3348, 3349, 3350
+- **Related tickets:** 3032 (this), 3031, 3084, 3079, 3071, 3320, 3348, 3349, 3350, 3351
 - **Amends:** ADR-0075 (its held `alsa-sys`)
 - **Extends:** ADR-0066, ADR-0067, ADR-0068
 
@@ -60,7 +60,7 @@ own, not the plugin's choice; Windows and macOS keep the system's.
 `libasound.so.2` in `DT_NEEDED` (a CI step fails otherwise): CPAL links ALSA, it doesn't
 open it with `dlopen`, so neither backend starts where that library is missing. That
 was so before, and the packages say they need ALSA. Whether a Linux game must start
-silent without it is 3347's, and 3084 waits on it. `sound-linux-floor` builds both
+silent without it is 3351's, and 3084 waits on it. `sound-linux-floor` builds both
 probes in the Steam Linux Runtime's sniper SDK, where packages are built, and holds
 them to glibc 2.31.
 

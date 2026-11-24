@@ -55,7 +55,7 @@ sound-probe = []
 # `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
 # `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
 # by default. A game that turns it on needs the root Cargo.toml's patch of `quad-alsa-sys`
-# (ADR-0139). The name stays for good, and does nothing once it is the only
+# (ADR-0142). The name stays for good, and does nothing once it is the only
 # backend (ADR-0068); no feature is ever named for quad-snd.
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 

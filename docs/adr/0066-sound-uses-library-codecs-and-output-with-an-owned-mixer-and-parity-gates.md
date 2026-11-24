@@ -1,6 +1,6 @@
 # ADR-0066: Sound uses library codecs and output, with an owned mixer and staged parity gates
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0142 (CPAL's output on Linux and macOS)
 - **Date:** 2026-10-31
 - **Related tickets:** 2902, 2573, 2210, 3030–3032, 2397, 3079
 - **Resolves:** ADR-0021 §1's delegated sound choice; its other decisions remain accepted

@@ -1,4 +1,4 @@
-//! quad-snd's ALSA bindings, as `alsa-sys`'s (ADR-0139). quad-snd's Linux path needs
+//! quad-snd's ALSA bindings, as `alsa-sys`'s (ADR-0142). quad-snd's Linux path needs
 //! `quad-alsa-sys` and CPAL's needs `alsa-sys`, and each declares `links = "alsa"`,
 //! which Cargo allows only once in a build, whatever the target. Both are bindings of
 //! the same C library, `libasound`, made by `bindgen` from its headers, `alsa-sys`'s

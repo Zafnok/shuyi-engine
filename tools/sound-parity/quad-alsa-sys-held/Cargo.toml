@@ -6,7 +6,7 @@ version = "0.3.2"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "Gives quad-snd alsa-sys's bindings while quad-snd and CPAL share a build (ticket 3032, ADR-0139)"
+description = "Gives quad-snd alsa-sys's bindings while quad-snd and CPAL share a build (ticket 3032, ADR-0142)"
 
 [lib]
 path = "src/lib.rs"

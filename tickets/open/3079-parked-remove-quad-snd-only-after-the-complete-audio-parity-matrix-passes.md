@@ -77,7 +77,7 @@ Missing mandatory automated evidence still blocks removal.
 
 - **From 3031 and 3032 (done):** the root `Cargo.toml`'s `[patch.crates-io]` of
   `quad-alsa-sys` and `tools/sound-parity/quad-alsa-sys-held` go with quad-snd, as
-  nothing needs them then ([ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)). CPAL's real `alsa-sys` stays: it
+  nothing needs them then ([ADR-0142](../../docs/adr/0142-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)). CPAL's real `alsa-sys` stays: it
   links `libasound.so.2`, which Linux packages still need.
 - **Either order with 3015:** if 3015 (mobile, parked) is done, its
   phone builds play through quad-snd's Android and iOS outputs: the

@@ -81,7 +81,7 @@ None.
     newest (CI's `sound-linux-floor` job). So keep `libasound.so.2` in the
     `linux` and `linux-arm64` lists, and audit a build with
     `in-house-sound` on x86-64 and Arm Linux as well as the default one.
-    Whether a Linux game must start without it is 3347's. Final
+    Whether a Linux game must start without it is 3351's. Final
     old-backend removal is 3079, not a reason to remove a still-used
     system library.
   - **From 3010 (done):** the Playdate's exporter

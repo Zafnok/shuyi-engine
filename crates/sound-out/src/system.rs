@@ -5,7 +5,7 @@
 //! so it covers both ways, a stream rerouted and one lost, and a default that changed
 //! under a stream still running. On Linux the default is ALSA's `default` device,
 //! which the system's sound server or its card stands behind: what goes away there is
-//! the stream, which errs, and the watch then builds another (ADR-0139).
+//! the stream, which errs, and the watch then builds another (ADR-0142).
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};

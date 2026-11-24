@@ -29,7 +29,7 @@ newer linker's choice) dyld binds every non-weak import at launch and refuses a
 missing one; with lazy binding it stops at the first call, which nothing here makes.
 Which of the two a package gets is not yet measured. Shuyi names no macOS floor
 (`docs/targets/desktop.md`), and the ticket forbade raising one silently
-([ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)).
+([ADR-0142](../../docs/adr/0142-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)).
 3084 can't make the in-house sound macOS's default until this is settled.
 
 ## Nick input
@@ -48,7 +48,7 @@ floor is his (what players get), asked with `ask-nick`.
      template's `.cargo/config.toml`), so a function the system lacks is null rather
      than a refusal to start.
 - `mac-floor.sh --expect` in CI moves to the program's own `minos`, and its message
-  and ADR-0139 follow.
+  and ADR-0142 follow.
 - Proof on the oldest macOS a hosted runner offers, and the reasoning for older ones
   written down: dyld's binding of a weak import is documented by Apple.
 
@@ -62,7 +62,7 @@ floor is his (what players get), asked with `ask-nick`.
 
 1. Look for a CPAL version or feature without the import; else link CoreAudio weakly.
 2. Change `mac-floor.sh`'s expectation in `.github/workflows/sound-parity.yml`.
-3. Update `docs/targets/desktop.md` and ADR-0139's status line.
+3. Update `docs/targets/desktop.md` and ADR-0142's status line.
 
 ## Acceptance criteria
 

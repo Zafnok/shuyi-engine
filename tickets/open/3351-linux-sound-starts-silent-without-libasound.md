@@ -1,5 +1,5 @@
 ---
-id: "3347"
+id: "3351"
 title: "A Linux build with the in-house sound starts silent where ALSA's library is missing, or the requirement is kept"
 type: feature
 milestone: "Engine: in-house platform"
@@ -11,7 +11,7 @@ nick_input: decision
 completed:
 ---
 
-# 3347 — Linux starts silent without `libasound`, or keeps needing it
+# 3351 — Linux starts silent without `libasound`, or keeps needing it
 
 ## Context
 
@@ -32,7 +32,7 @@ step *What each native probe loads*) and its `sound-linux-floor` job:
   open their libraries with `dlopen`, so after 3333 ALSA may be the one library a
   Linux package can't start without.
 
-[ADR-0139](../../docs/adr/0139-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)
+[ADR-0142](../../docs/adr/0142-in-house-sound-on-linux-and-macos-quad-snds-alsa-bindings-are-alsa-syss.md)
 records 3032's choice and this question.
 
 ## Nick input
@@ -46,7 +46,7 @@ writes that down. If yes, the sound backend loads ALSA at run time.
 
 **In:**
 - **If the requirement stays:** say so in `docs/targets/desktop.md` (what a package
-  needs to start) and in ADR-0139's status line, and take this ticket off 3084's
+  needs to start) and in ADR-0142's status line, and take this ticket off 3084's
   `blocked_by`.
 - **If it must start silent:** load `libasound.so.2` at run time and fall back to
   `Output::null` with the backend's one warning line, as a machine with no device
@@ -69,7 +69,7 @@ library is loaded at run time; about 30 if the requirement stays.
 
 1. Ask Nick the decision (`ask-nick`).
 2. Do the branch his answer picks.
-3. Update ADR-0139's status, `docs/targets/desktop.md`, and 3084.
+3. Update ADR-0142's status, `docs/targets/desktop.md`, and 3084.
 
 ## Acceptance criteria
 

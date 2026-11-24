@@ -1,6 +1,6 @@
 # ADR-0075: In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0142 (its held `alsa-sys`: quad-snd's bindings are `alsa-sys`'s instead)
 - **Date:** 2026-11-02
 - **Related tickets:** 3031 (this), 3032, 3084, 3079, 2573, 3030
 - **Extends:** ADR-0066, ADR-0067, ADR-0068, ADR-0073
