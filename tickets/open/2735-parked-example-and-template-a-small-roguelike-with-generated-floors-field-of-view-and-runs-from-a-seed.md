@@ -246,7 +246,7 @@ None.
 - **The eval (from 2524, done):** add `evals/tasks/roguelike.ron` in
   2524's format (`evals/README.md`), its reference
   `Project("examples/roguelike")`, graded through the contract with
-  `cargo xtask eval-grade`. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference roguelike` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  `cargo xtask eval-grade`. `cargo xtask eval-reference roguelike` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - saving a run halfway: 2768's run save (parked), removed when the run

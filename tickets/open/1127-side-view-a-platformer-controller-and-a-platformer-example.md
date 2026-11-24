@@ -107,7 +107,7 @@ None.
   `reference: Project("examples/platformer")`, empty its `waits_for`,
   make the example's scene data answer its `Scene` checks (`/level`,
   `/coins` and `/won`, which its prompt names), and `cargo xtask
-  eval-grade evals/tasks/platformer.ron examples/platformer` passes. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference platformer` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  eval-grade evals/tasks/platformer.ron examples/platformer` passes. `cargo xtask eval-reference platformer` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - slopes, unless the example needs them;

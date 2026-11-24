@@ -37,13 +37,14 @@ pub const EXAMPLE: &str = "example.ron";
 /// Where the games are made, from the repository's root.
 const GAMES: &str = "target/skill-examples";
 /// Where the games build, from the repository's root.
-const BUILD: &str = "target/skill-examples-build";
+pub const BUILD: &str = "target/skill-examples-build";
 
 /// The runner that makes the games (`shuyi new`, in this repository's
-/// target folder) and the one that runs their steps (in [`BUILD`], with no
-/// incremental cache), or two that leave the environment's target folder
-/// as it is when `env_target` (`CARGO_TARGET_DIR` is set).
-pub fn runners(root: &Path, env_target: bool) -> (script::System, script::System) {
+/// target folder) and the one that runs their steps (in `build`, from the
+/// repository's root, with no incremental cache: [`BUILD`] here), or two
+/// that leave the environment's target folder as it is when `env_target`
+/// (`CARGO_TARGET_DIR` is set).
+pub fn runners(root: &Path, build: &str, env_target: bool) -> (script::System, script::System) {
     if env_target {
         return (script::System::default(), script::System::default());
     }
@@ -53,7 +54,7 @@ pub fn runners(root: &Path, env_target: bool) -> (script::System, script::System
             no_incremental: false,
         },
         script::System {
-            target_dir: Some(root.join(BUILD)),
+            target_dir: Some(root.join(build)),
             no_incremental: true,
         },
     )

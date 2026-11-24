@@ -49,24 +49,56 @@ reference, or a `waits_for` naming the ticket that gives it one.
 
 ## Grading
 
+`eval-reference` grades a task's reference on fresh games, as CI does
+on every pull request (the `eval` job):
+
+```powershell
+cargo xtask eval-reference box-pushing
+```
+
+```powershell
+cargo xtask eval-reference --all
+```
+
+It makes two games with `shuyi new --template <template> --name <name>`
+on this checkout: `target/eval/grade/<id>`, which an `Overlay` is laid
+over (a `Project` is graded where it is), and `target/eval/base/<id>`,
+the base. They build in `target/eval-build`, unless `CARGO_TARGET_DIR`
+says where. It writes `eval-results/<id>.json` (`--out`). `--all`
+grades every task with a reference that waits for nothing, lists the
+ones that wait, and warns of a ticket they wait for that is done.
+`--template-only` grades the plain template instead, to show that a
+task's checks can fail: CI checks that box-pushing's `Check` passes on
+it and every `Scene` fails. An overlay's `Cargo.toml` may name the
+engine's crates only as the workspace's (`shuyi.workspace = true`):
+`--engine-path` says where they are, and one that says so itself is
+refused.
+
 `eval-grade` grades any game, an agent's among them; `--base` names a
 fresh `shuyi new --template <template> --name <name>` to count its lines
-over. The box-pushing reference, the tutorial's last step:
+over:
 
 ```powershell
-cargo run -q -p shuyi-cli -- new target/eval/base/box-pushing --template blank --name "Box Pusher" --engine-path .
+cargo xtask eval-grade evals/tasks/box-pushing.ron <game> --base target/eval/base/box-pushing
 ```
 
-```powershell
-cargo xtask eval-grade evals/tasks/box-pushing.ron site/tutorial/10-ship --base target/eval/base/box-pushing
-```
+Both exit 0 when every check passed, 1 when one failed and 2 when one
+couldn't be graded. A result holds each check's verdict, seconds and
+why it failed, the lines added and removed and the files changed over
+the base (builds, `dist/` and `Cargo.lock` left out), and what is
+unmeasured. CI puts each task's checks passed, lines added and seconds
+in its summary, and uploads the results as the artifact `eval-results`.
 
-It exits 0 when every check passed, 1 when one failed and 2 when it
-couldn't grade, and writes `eval-result.json` (`--out`): each check's
-verdict, seconds and why it failed, the lines added and removed and the
-files changed over the base (builds, `dist/` and `Cargo.lock` left out),
-and what is unmeasured. `Export("linux")` builds only on Linux: elsewhere
-it fails with the contract's `SH1003`. A game made with `--engine-path`
-depends on this checkout's crates by path, so its `cargo fmt --all
---check` checks theirs too. Grading every reference on fresh games, and
-in CI, is ticket 3421.
+**A `Project` reference counts only the files it has.** A whole project
+is made apart from the template, and never had what the template gained
+since (the skill pack's copy in `.claude/skills/`, its workflows, its
+`AGENTS.md`): over a fresh `blank`, box-pushing would count them as
+some 38,000 lines removed. So the base's files it lacks are left out,
+and its result's `limits` says so. An agent's game starts from the
+template, and `eval-grade` counts every file of the base.
+
+`Export("linux")` builds only on Linux: elsewhere it fails with the
+contract's `SH1003`. CI grades in the image the Linux export builds in,
+so it builds there. A game made with `--engine-path` depends on this
+checkout's crates by path, so its `cargo fmt --all --check` checks
+theirs too.

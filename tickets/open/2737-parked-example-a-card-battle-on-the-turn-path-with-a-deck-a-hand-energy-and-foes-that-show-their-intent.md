@@ -315,7 +315,7 @@ None.
   the title: `/fight` is `1` and `/energy` is `3`). Its prompt asks for
   this game in the words of 2524's tic-tac-toe prompt, without the
   example's cards or numbers beyond those the checks read.
-  `cargo xtask eval-grade` passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference card-battle` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  `cargo xtask eval-grade` passes on it. `cargo xtask eval-reference card-battle` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - a map between fights, a longer run, shops, rests, healing, relics,

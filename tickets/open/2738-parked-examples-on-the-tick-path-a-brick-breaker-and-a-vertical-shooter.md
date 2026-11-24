@@ -222,7 +222,7 @@ None. When it unparks is his call (above).
   `Web`, `Responds` and `Scene` (on the facts its prompt asks the game
   to expose: `/lives` and `/score`). No `Replay` check: it asks
   `playtest`, which this example doesn't offer. `cargo xtask
-  eval-grade` passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference bricks` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  eval-grade` passes on it. `cargo xtask eval-reference bricks` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 - **The shooter's ticket** (the `write-ticket` skill, the next free
   `27xx` id): `examples/shooter`, a vertical shoot-'em-up in the
   bricks' form, with the scope below and what the bricks taught. It has
