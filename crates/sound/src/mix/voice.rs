@@ -294,7 +294,16 @@ impl Voice {
                     self.finish(sources.streams);
                     return 0;
                 }
-                Err(Stop::Underrun) => return (frames - done) as u64,
+                Err(Stop::Underrun) => {
+                    let stalled = (frames - done) as u64;
+                    // Each stream's own count, for its worker to read.
+                    if let Origin::Stream(index) = self.origin
+                        && let Some(slot) = sources.streams.get_mut(index)
+                    {
+                        slot.stalled(stalled);
+                    }
+                    return stalled;
+                }
             };
             let (left, right) = (i64::from(left) * left_gain, i64::from(right) * right_gain);
             // Within `i32`: 16 bits of sample and 40 of gain, less the 32 shifted.

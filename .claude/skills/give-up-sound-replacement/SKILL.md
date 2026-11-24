@@ -39,7 +39,7 @@ going back is then a revert of that one commit, and harder.
    is the one line left that names the chain, and no `Breaking:` line is
    written for it.
 3. Settle the tickets, as 2211–2214 were dropped. Each of 2210, 3030, 3031, 3032,
-   2397, 3084 and 3079 still in `tickets/open/` gets `status: done`, today's
+   2397, 3084, 3079 and 3320 still in `tickets/open/` gets `status: done`, today's
    `completed`, a `> **Closed as dropped (Nick, <date>):**` note under its heading,
    its criteria struck through, a completion note saying nothing was left in the
    tree, and moves to `tickets/done/`. Take them out of the `blocked_by` of any
