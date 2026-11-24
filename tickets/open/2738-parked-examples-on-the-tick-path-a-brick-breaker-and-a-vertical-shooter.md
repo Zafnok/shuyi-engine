@@ -162,7 +162,7 @@ None. When it unparks is his call (above).
     in `THIRD_PARTY_ASSETS.md`.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted, and said how, if not).
+    template-lines`'s code count, 2512).
     **From 2514 (done):** an animated picture of its first seconds,
     made with `frame-png --every 0.05 --count 40 --apng`. **From 2811 (done):** that
     picture is the example's preview: `preview.png` in its folder, made

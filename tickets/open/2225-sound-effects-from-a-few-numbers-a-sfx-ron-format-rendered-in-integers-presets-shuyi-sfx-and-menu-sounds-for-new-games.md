@@ -294,9 +294,10 @@ parked.
     as above. **From 2501 (done):** the sound files and `audio.ron` go
     in the built-in template's `base` part, and its grid part, on the
     short path too, needs nothing more.
-  - **2512.** If it is done, the minimal template's code count doesn't
-    move: its sounds are data, and their code is in the engine. If not,
-    nothing to do.
+  - **From 2512 (done):** the minimal template's code count doesn't
+    move: its sounds are data, and their code is in the engine.
+    `cargo xtask template-lines --check` holds it to
+    `tools/line-budget.ron` in CI.
   - **From 1134 (done):** its `shuyi-new-game` skill
     (`skills/shuyi-new-game/SKILL.md`) gets a short section on sound
     effects: a cue names a `.sfx.ron` file, `shuyi sfx <preset> --out

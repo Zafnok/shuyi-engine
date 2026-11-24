@@ -20,6 +20,7 @@
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
 //! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
+//! - `cargo xtask template-lines [<folder>...] [--json] [--check] [--summary <file>]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
@@ -66,6 +67,7 @@ mod site_data;
 mod skills;
 mod sound_parity;
 mod targets;
+mod template_lines;
 mod tickets;
 mod toolchain;
 mod tries;
@@ -186,6 +188,14 @@ usage:
       --summary, append the table's Markdown to <file>; with --out, write the
       JSON to <file>. With --count-only, only count the crates
       (and hold the count to the budget): seconds, not minutes.
+  cargo xtask template-lines [<folder>...] [--json] [--check] [--summary <file>]
+      Count the lines a game's author owns (ticket 2512): code, tests, data and
+      setup, in the game the template makes for each short name (`blank`,
+      `grid`, composed, none written) and each folder under examples/, or the
+      short names or game folders given. With --json, every file's path, kind
+      and lines too; with --summary, append the table's Markdown to <file>.
+      With --check, fail when the capped template's code is over
+      tools/line-budget.ron's cap, or 10 or more under it.
   cargo xtask gates [--base <rev>] [--fast] [--list]
       Run the local gates the diff from <rev> (by default origin/main's merge
       base) needs, fast to slow, stopping at the first failure (ticket 2054).
@@ -341,6 +351,7 @@ fn main() -> ExitCode {
             ExitCode::from(eval::reference::command(&root, &args[1..], &maker, &runner))
         }
         Some("compile-times") => compile_times(&root, &args[1..]),
+        Some("template-lines") => template_lines(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),
         Some("trim-targets") => trim_targets(&root, &args[1..]),
@@ -589,6 +600,71 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         verdict.warnings.extend(found.warnings);
     }
     report("compile-times", &verdict.errors, &verdict.warnings)
+}
+
+fn template_lines(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = template_lines::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let mut all = match template_lines::run(root, &options) {
+        Ok(all) => all,
+        Err(e) => return report("template-lines", &[e], &[]),
+    };
+    let mut errors = Vec::new();
+    if options.check {
+        let file = root.join(template_lines::BUDGET);
+        let budget = match std::fs::read_to_string(&file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| template_lines::parse_budget(&text))
+        {
+            Ok(budget) => budget,
+            Err(e) => return report("template-lines", &[format!("{}: {e}", file.display())], &[]),
+        };
+        let capped = template_lines::Options {
+            folders: vec![budget.template.clone()],
+            ..template_lines::Options::default()
+        };
+        match template_lines::run(root, &capped) {
+            Ok(counts) => {
+                for counts in &counts {
+                    errors.extend(template_lines::check(counts, &budget));
+                }
+                // The capped template is in the table, whatever was given.
+                if !all.iter().any(|c| c.folder == budget.template) {
+                    all.splice(0..0, counts);
+                }
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    let shown = if options.json {
+        template_lines::json(&all)
+    } else {
+        template_lines::table(&all)
+    };
+    // The verdict stands even if the table can't be printed.
+    let _ = writeln!(std::io::stdout().lock(), "{}", shown.trim_end());
+    if let Some(file) = &options.summary {
+        let written = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file)
+            .and_then(|mut f| {
+                f.write_all(
+                    format!(
+                        "{}
+",
+                        template_lines::markdown(&all)
+                    )
+                    .as_bytes(),
+                )
+            });
+        if let Err(e) = written {
+            errors.push(format!("{}: {e}", file.display()));
+        }
+    }
+    report("template-lines", &errors, &[])
 }
 
 fn gates(root: &Path, args: &[String]) -> ExitCode {

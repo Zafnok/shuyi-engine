@@ -805,3 +805,16 @@ on `shuyi-core` and `shuyi-assets` alone, which keeps it pure. The game
 depends on the engine's repository at `main`, at `--engine-rev
 <commit>`, or on the checkout at `--engine-path <dir>`. CI makes a game
 with each short name on every pull request and runs its gates.
+
+The lines a game's author owns are counted by `cargo xtask
+template-lines` (ticket 2512), in the game each short name makes (none
+written) and in each folder under `examples/`: the code (Rust outside
+`tests/` and outside `#[cfg(test)]` items), the tests, the data (text
+under `files/`) and the setup (`Cargo.toml`, `shuyi.ron`, the toolchain,
+`rustfmt`, `clippy` and Cargo settings, and the workflows). A line counts
+when it isn't blank or only a comment. Markdown, pictures, licenses,
+generated files, the builds and the engine's skill pack are left out.
+`--json` lists every file. A new `blank` game's code is capped in
+`tools/line-budget.ron`, which only goes down: CI's `tickets` job runs
+`--check`, which fails over the cap or 10 or more under it. A part every
+new game needs goes in the engine ([ADR-0036](adr/0036-the-short-path-ready-made-parts-beside-the-long-form.md)).

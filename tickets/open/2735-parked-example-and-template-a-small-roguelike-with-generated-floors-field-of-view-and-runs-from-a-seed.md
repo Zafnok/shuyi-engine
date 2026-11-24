@@ -164,7 +164,7 @@ None.
   - **A README** in hello-grid's form: how to run it, its layout, its
     targets, what each engine part does in it, four-way or eight-way,
     and the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted, and said how, if not). The
+    template-lines`'s code count, 2512). The
     engine's `README.md` names the example beside hello-grid.
 - **Tests of the example** (`tests/it/`, as hello-grid's):
   - a Harness playthrough through actions only, from the title to

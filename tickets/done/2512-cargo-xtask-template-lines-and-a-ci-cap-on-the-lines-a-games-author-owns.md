@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2511"]
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 2512 — cargo xtask template-lines, and a CI cap on the lines a game's author owns
@@ -273,19 +273,19 @@ not here.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask template-lines` prints code, tests, data and setup
+- [x] `cargo xtask template-lines` prints code, tests, data and setup
       for each built-in template (`blank`, `grid`) and
       `examples/hello-grid`. The PR description has the table. The
       blank template's code is within a few lines of the 2026-11-23
       count in *Context* (or the change is explained), and any other count that
       differs from *Context* by more than a few lines is explained.
-- [ ] `--check` passes on the repository. With the cap one lower it
+- [x] `--check` passes on the repository. With the cap one lower it
       fails and names the files; with the cap 10 higher it fails and
       asks to lower it. Unit tests cover both, and the PR shows a run.
-- [ ] CI's `tickets` job runs the step and writes the table to the
+- [x] CI's `tickets` job runs the step and writes the table to the
       run's summary.
-- [ ] `--json` parses, with every file's path, kind and lines.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `--json` parses, with every file's path, kind and lines.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -307,4 +307,79 @@ not here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done 2026-11-23.
+
+- **The scanner moved.** `check_keys`'s `lex`, `Line`, `exempt_lines`,
+  `mark_item` and `is_ident` are now `shuyi_cli::rust_lines` (public),
+  and `check_keys.rs` and `check_text.rs` import them from there. Their
+  tests pass unchanged; the lexer's own tests stay in `check_keys.rs`.
+  One rule was added for the counter: `Line::in_string`, true on a line
+  that begins inside a string started above, so the lines of a string
+  over several lines count. `Line` is `#[non_exhaustive]` (a view the
+  lexer builds, ADR-0039).
+- **`cargo xtask template-lines`** (`crates/xtask/src/template_lines.rs`)
+  counts each short name of `templates/shuyi-default` (`blank`, `grid`,
+  composed with `shuyi_cli::contract::new::plan`, which fills the
+  placeholders as `shuyi new` does and writes nothing) and each folder
+  under `examples/`, or the short names or folders given. `--json`,
+  `--summary` and `--check` as the ticket says. CI's `tickets` job runs
+  `--check --summary "$GITHUB_STEP_SUMMARY"` after the link check.
+- **The counts on 2026-11-23:**
+
+  | Folder | Code | Tests | Data | Setup |
+  | ------ | ---- | ----- | ---- | ----- |
+  | `blank` | 211 | 219 | 55 | 592 |
+  | `grid` | 887 | 659 | 86 | 673 |
+  | `examples/hello-grid` | 3570 | 4036 | 285 | 136 |
+
+  - `blank`: 211, as *Context* counted (about 210): `title.rs` 73,
+    `lib.rs` 61, `build.rs` 45, `stages.rs` 22, `main.rs` 5,
+    `examples/tools.rs` 5. The cap is 220, 211 rounded up.
+  - `grid`: 887 against 916 for the old `templates/grid` (2026-10-20).
+    2501's 521 was by 2511's rule, over fewer files.
+  - `examples/hello-grid`: 3570 code and 4036 tests against 1871 and
+    1799 on 2026-10-20. It grew over 48 commits since. Its biggest code
+    files are `src/tools.rs` (579) and `examples/asset_memory.rs` (569).
+  - Setup is large in the templates because each game has
+    `release.yml` (252) and `export.yml` (179). It is reported only.
+- **`--check` shown:** with `code: 220` it passes. With `code: 210`
+  (under the count) it fails: "blank: 211 code lines, over the cap of
+  210 in tools/line-budget.ron; its biggest code files:
+  crates/game/src/title.rs (73), crates/game/src/lib.rs (61),
+  crates/game/build.rs (45), crates/game/src/stages.rs (22),
+  crates/game/examples/tools.rs (5). Don't raise the cap: a part every
+  new game needs goes in the engine, where every game gets it
+  (ADR-0036)". With `code: 230` it fails: "blank: 211 code lines, 19
+  under the cap of 230: lower `code` to 220 in tools/line-budget.ron".
+- **Deviations:**
+  - The engine's skill pack in a game (`.claude/` and `.agents/`) is
+    left out, with the builds. Its worked examples are `.rs` files
+    (`.claude/skills/*/example/*.rs`, 646 lines in a `blank` game), so
+    by the ticket's rule they counted as code, at 857 lines. They are
+    the engine's, and the pack's updater replaces them, so they aren't
+    the author's.
+  - Data counts a target's own data folder (`files@playdate/`) as well
+    as `files/`.
+  - A code file's `#[cfg(test)]` lines show in `--json` as the file's
+    `test_lines`, beside its `lines` of code.
+  - `tools/sound-parity/footprint.ron` names the xtask's `description`
+    by its text, for the sound give-up: its `Replace` now holds the new
+    words, so `sound-parity give-up` still finds them once.
+- **From 2511, the `ActionSet` derive (ADR-0036 §9):** neither built-in
+  template has its own enum; both use `UiAction`, so a new game pays
+  nothing. Only Hello, Grid writes one: `src/action.rs`, 61 code lines,
+  27 of tests, kept in the long form on purpose (ADR-0036 §10). No
+  derive ticket, since no new game pays for an enum.
+- **The parked examples (2735 to 2739):** none is done; each one's
+  README clause now names this command's code count.
+- **Decision 3528:** its list of guards no longer offers 2512, which is
+  done, and its *Context* says the cap is in CI.
+- **Docs:** `docs/contract.md`, *The templates*, says what counts, the
+  cap and the command; `run-gates` and `write-ticket` have their lines.
+  `rust_lines` is a public module documented in its own doc comments; no
+  book page covers the lint's scanner.
+
+Book: none, `shuyi_cli::rust_lines` is the scanner behind `check-keys`, `check-text` and the repository's line count, which no Learn chapter covers.
+
+No break: `rust_lines` is new, and the items it holds were `pub(crate)`
+in `check_keys`.
