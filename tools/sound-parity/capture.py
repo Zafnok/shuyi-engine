@@ -541,6 +541,11 @@ def write_run(player: Native | Windows | Browser, run: Path, backend: str) -> No
         # When the recording's first frame was heard: the wall clock of its steps'.
         lines.append(json.dumps({"event": "recording", "start": perf["_start"]}))
         (run / f"{name}.jsonl").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
+        # A scenario that failed is the gate's to say; one that stalled is said here too.
+        with contextlib.suppress(ValueError):
+            stalled = stalls_said(read_probe(lines)[2])
+            if stalled:
+                print(f"{run.name} {name}: {stalled}", file=sys.stderr, flush=True)
 
 
 def sound_facts(pcm: Path, start: float, step_wall: float | None) -> dict[str, float]:
@@ -575,27 +580,57 @@ def one_perf(player: Native | Windows | Browser, base: Path, side: str, pair: in
     # The last of each side stays, to look at.
     record = base / f"perf-{side}.pcm"
     lines = player.play(f"perf {burn}\n", record, perf)
+    try:
+        metrics, wall, tracks = read_probe(lines)
+    except ValueError as failed:
+        raise SystemExit(f"the perf run failed: {failed}") from None
+    metrics.update({k: v for k, v in perf.items() if not k.startswith("_")})
+    metrics.update(sound_facts(record, perf["_start"], wall))
+    stalled = stalls_said(tracks)
+    if metrics["underruns"] or stalled:
+        dry = metrics.get("dry_callbacks")
+        whose = "" if dry is None else f"; the output's buffer ran dry {dry:.0f} times"
+        whose += f"; {stalled}" if stalled else ""
+        print(f"{record.name} (pair {pair}): {metrics['underruns']:.0f} gaps{whose}", file=sys.stderr, flush=True)
+    row: dict[str, object] = {"side": side, "pair": pair, "metrics": metrics}
+    if tracks is not None:
+        row["streams"] = tracks
+    return row
+
+
+def read_probe(lines: list[str]) -> tuple[dict[str, float], float | None, list[dict[str, object]] | None]:
+    """A run's metrics from the probe's lines, the wall clock of its step, and the
+    tracks the in-house feeder fed (`None` where nothing counts them). Beside a gap,
+    the output's dry callbacks (ticket 3089) and the tracks' stalled frames (ticket
+    3320) say whose it is: `stalled_frames` is their sum, and `lowest_margin` the
+    fewest frames any ring held when the worker came round. A failed run is a
+    `ValueError`."""
     metrics: dict[str, float] = {}
     wall = None
+    tracks = None
     for line in lines:
         event = json.loads(line)
         if event["event"] == "perf":
             metrics[event["metric"]] = event["value"]
         if event["event"] == "step":
             wall = event["wall"]
-        # The in-house output's own count of the times its buffer ran dry (ticket
-        # 3089): beside a gap, it says whether the gap is the output's.
         if event["event"] == "output" and "dry_callbacks" in event:
             metrics["dry_callbacks"] = float(event["dry_callbacks"])
+        if event["event"] == "streams":
+            tracks = event["tracks"]
+            metrics["stalled_frames"] = float(sum(track["stalled"] for track in tracks))
+            margins = [track["lowest"] for track in tracks if track["lowest"] is not None]
+            if margins:
+                metrics["lowest_margin"] = float(min(margins))
         if event["event"] == "failed":
-            raise SystemExit(f"the perf run failed: {line}")
-    metrics.update({k: v for k, v in perf.items() if not k.startswith("_")})
-    metrics.update(sound_facts(record, perf["_start"], wall))
-    if metrics["underruns"]:
-        dry = metrics.get("dry_callbacks")
-        whose = "" if dry is None else f"; the output's buffer ran dry {dry:.0f} times"
-        print(f"{record.name} (pair {pair}): {metrics['underruns']:.0f} gaps{whose}", file=sys.stderr, flush=True)
-    return {"side": side, "pair": pair, "metrics": metrics}
+            raise ValueError(line)
+    return metrics, wall, tracks
+
+
+def stalls_said(tracks: list[dict[str, object]] | None) -> str:
+    """The tracks that stalled and by how many frames, or nothing."""
+    stalled = [f"{track['track']} stalled {track['stalled']} frames" for track in tracks or [] if track["stalled"]]
+    return "the feeder fell behind: " + ", ".join(stalled) if stalled else ""
 
 
 def write_perf(player: Native | Windows | Browser, base: Path) -> None:

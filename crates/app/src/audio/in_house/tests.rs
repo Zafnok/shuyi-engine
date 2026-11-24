@@ -59,7 +59,7 @@ fn effect(backend: &mut InHouse, bytes: &[u8]) -> Clip {
 
 /// A track of `bytes`, as `poll_music` makes one.
 fn stream(bytes: Vec<u8>) -> Clip {
-    clip_of(Track::new(bytes).unwrap_or_else(|e| panic!("{e}")))
+    clip_of(Track::new("track.ogg", bytes).unwrap_or_else(|e| panic!("{e}")))
 }
 
 /// Gives the worker time to do what `done` looks for, while the mix runs.
@@ -183,7 +183,7 @@ fn a_file_that_is_neither_format_is_an_error_not_a_crash() {
     );
     let refused = backend.load_effect(b"RIFF too short");
     assert!(refused.is_err());
-    assert!(Track::new(b"OggS is all it has".to_vec()).is_err());
+    assert!(Track::new("bad.ogg", b"OggS is all it has".to_vec()).is_err());
 }
 
 #[test]
@@ -458,7 +458,8 @@ fn a_track_with_no_region_or_tags_that_do_not_read_loops_whole() {
     let (mut backend, _side) = backend();
     let plain = stream(wav(3));
     assert_eq!(backend.set_loop_region(&plain, None), Ok(Looping::Whole));
-    let mut track = Track::new(INTRO_LOOP.to_vec()).unwrap_or_else(|e| panic!("{e}"));
+    let mut track =
+        Track::new("intro_loop.ogg", INTRO_LOOP.to_vec()).unwrap_or_else(|e| panic!("{e}"));
     track.file_region = Err("LOOPLENGTH is 0: a region has a frame at least".to_owned());
     let unread = clip_of(track);
     let looping = backend.set_loop_region(&unread, None);
@@ -521,4 +522,71 @@ fn a_region_far_into_a_long_file_is_gone_round_by_a_seek_exactly() {
     let whole = decoded(LONG);
     let expected = intro_then_round(&whole, 220_500, 264_600);
     assert!(looped_samples(&clip, expected.len()) == expected);
+}
+
+/// A track is named by its file, whichever way the path is written.
+#[test]
+fn a_track_is_named_by_its_file() {
+    for path in ["corpus/music_a.wav", r"corpus\music_a.wav", "music_a.wav"] {
+        let track = Track::new(path, wav(4)).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(&*track.name, "music_a.wav", "{path}");
+    }
+}
+
+/// The margin is what the ring still held each time the worker came round after its
+/// first fill, the fewest of them; a stall is what the mix waited (ticket 3320).
+#[test]
+fn a_feeding_keeps_its_lowest_margin_and_its_stalls() {
+    let (feeder, mut feed) = stream::feed(
+        PcmFormat::new(RATE, 2, &Limits::default()).unwrap_or_else(|e| panic!("{e}")),
+        16,
+    );
+    let source: Box<dyn Source + Send> =
+        Box::new(WavSource::new(wav(100), &Limits::default()).unwrap_or_else(|e| panic!("{e}")));
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut feeding = Feeding::new(feeder, source, stop, "music.wav".into());
+    let problems = Mutex::new(Vec::new());
+    assert!(feeding.step(&problems));
+    assert_eq!(
+        feeding.stats(),
+        ("music.wav".to_owned(), 0, None),
+        "the first fill isn't a margin"
+    );
+    let mut out = [0; 20];
+    let mut take = |feed: &mut stream::Feed, frames: usize| {
+        assert_eq!(feed.read(&mut out[..frames * 2]), Ok(frames));
+    };
+    take(&mut feed, 10);
+    assert!(feeding.step(&problems));
+    assert_eq!(feeding.stats().2, Some(6));
+    take(&mut feed, 3);
+    assert!(feeding.step(&problems));
+    assert_eq!(feeding.stats().2, Some(6), "the fewest is kept");
+    take(&mut feed, 10);
+    take(&mut feed, 6);
+    assert_eq!(feed.read(&mut out), Err(Error::Underrun));
+    feed.stalled(256);
+    assert!(feeding.step(&problems));
+    assert_eq!(feeding.stats(), ("music.wav".to_owned(), 256, Some(0)));
+}
+
+/// The probe's ask lists each track since the last one, those done with first, and
+/// clears what it listed of them.
+#[cfg(feature = "sound-probe")]
+#[test]
+fn the_probe_hears_of_each_track_played_since_it_asked() {
+    let (mut backend, _side) = backend();
+    let (short, long) = (stream(wav(8)), stream(wav(20_000)));
+    // All of it fits in the ring at once: its feeding is done with at its start.
+    backend.play(&short, 1.0, false);
+    backend.play(&long, 1.0, true);
+    let stats = backend.stream_stats();
+    assert_eq!(stats.len(), 2, "{stats:?}");
+    assert_eq!(stats[0], ("track.ogg".to_owned(), 0, None));
+    let again = backend.stream_stats();
+    assert_eq!(
+        again.len(),
+        1,
+        "the one done with was listed once: {again:?}"
+    );
 }

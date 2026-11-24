@@ -559,7 +559,8 @@ impl Mixer {
 
     /// How many frames, added over every stream so far, had nothing to play yet
     /// because a worker hadn't got there. A voice stops where it is for those: a
-    /// stream is delayed, never skipped.
+    /// stream is delayed, never skipped. Each stream's own part is told to its
+    /// source ([`Source::stalled`]): a [`stream::Feeder`] reads its own.
     pub const fn underrun_frames(&self) -> u64 {
         self.underrun_frames
     }
