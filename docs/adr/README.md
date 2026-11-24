@@ -14,7 +14,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | ADR | Title | Status |
 | --- | ----- | ------ |
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
-| [0002](0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md) | Inherited rules: layers, determinism, skins, actions, tests, licenses | Accepted; extended by ADR-0008 (platform backends) |
+| [0002](0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md) | Inherited rules: layers, determinism, skins, actions, tests, licenses | Accepted; extended by ADR-0008 (platform backends); §2 extended by ADR-0143 (the RNG's outputs are frozen) |
 | [0003](0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md) | Game styles: stages, two kinds of simulation, cameras and projections | Accepted (was game ADR-0064); its tickets are parked; its "without 3D" is lifted by ADR-0011; extended by ADR-0015 (command sims, and §4's spike for RTS units); §8 amended by ADR-0134 (pointing) |
 | [0004](0004-assets-standard-files-in-the-engines-own-data-out-and-a-deterministic-movement-kit.md) | Assets: standard files in, the engine's own data out; a deterministic movement kit, physics optional | Accepted (was game ADR-0065); extended by ADR-0007, by ADR-0091 and by ADR-0139 (§6); its §3 sentence on easing superseded by ADR-0080 |
 | [0005](0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md) | AI-native tooling: one contract, three surfaces (CLI, MCP, skills); visual scripting as a view over text | Accepted (was game ADR-0066); extended by ADR-0022 (the contract as built) and ADR-0084 (§1's `scene` dump) |
@@ -154,5 +154,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0139](0139-cue-rules-decided-once-in-app-before-every-backend.md) | Cue rules decided once, in `App`, before every backend: variants, volumes, gaps, copy caps and the voice rule | Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0063 |
 | [0140](0140-a-frame-fills-the-window-drawn-sharp-at-a-fraction.md) | A frame may fill the window at a fraction of a pixel, drawn sharp, from one placement the window and the check share | Accepted; amends ADR-0008 §1 |
 | [0141](0141-the-hosted-preview-a-worker-per-visitor-actions-in-pictures-out.md) | The hosted preview: a worker process per visitor, actions in, a picture and its text out | Accepted |
+| [0143](0143-the-rngs-helpers-streams-and-forks-are-frozen-too.md) | The seeded RNG's outputs are frozen: its helpers, named streams and forks too | Accepted; extends ADR-0002 §2 |
 
 Template: [`0000-template.md`](0000-template.md).

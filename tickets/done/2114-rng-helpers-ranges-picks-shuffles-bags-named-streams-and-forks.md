@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 2114 — RNG helpers: ranges, picks, shuffles, bags, named streams and forks
@@ -43,8 +43,8 @@ What Shuyi has today, in `crates/core/src/rng.rs`:
 - No range, pick, shuffle, weighted pick, bag, named stream or fork.
 
 So callers write the same conversions by hand. `RandomBot::choose`
-(`crates/core/src/bots.rs:220`) and the grid template's `wander`
-(`templates/grid/crates/rules/src/lib.rs:206`) both turn a length into
+(`crates/core/src/bots.rs:266`) and the grid template's `wander`
+(`templates/shuyi-default/stages/top-down-grid/crates/rules/src/lib.rs:206`) both turn a length into
 a `u32`, draw, and turn the draw back into a `usize`.
 
 SplitMix64 is written three times: `shuyi_ui::audio::splitmix64`
@@ -162,7 +162,8 @@ None.
     struct), so a hand-edited save can't make `draw` panic.
 - **The callers move onto the helpers**, with the same draws:
   - `RandomBot::choose` (`crates/core/src/bots.rs`) uses `index`;
-  - the grid template's `wander` (`templates/grid/crates/rules/src/lib.rs`)
+  - the grid template's `wander`
+    (`templates/shuyi-default/stages/top-down-grid/crates/rules/src/lib.rs`)
     uses `index`, and imports `RandomSource`;
   - `shuyi_ui::audio::splitmix64` becomes
     `pub use shuyi_core::rng::mix64 as splitmix64;` with its doc. The
@@ -187,10 +188,8 @@ None.
 - **Either order:**
   - with 2511 (done): add `Bag` and `RandomSource` to its prelude
     (`shuyi_platform::prelude`, `crates/platform/src/lib.rs`).
-    `shuyi-platform` then gains a direct `shuyi-core` dependency
-    (already in its tree through `shuyi-ui`), with
-    `default-features = false` as `shuyi-ui` has it, so it stays
-    `no_std`, and its line in `tools/layers.ron`;
+    `shuyi-platform` already depends on `shuyi-core` directly, with
+    `default-features = false`, and `tools/layers.ron` already lists it;
   - **from 1134 (done):** its `shuyi-stage-grid` skill
     (`skills/shuyi-stage-grid/SKILL.md`) gains a short section naming
     these helpers (`range`, `chance`, `pick`, `shuffle`,
@@ -266,34 +265,34 @@ and say so in the completion notes.
 
 ## Acceptance criteria
 
-- [ ] `mix64` and `mix_at` give SplitMix64's published outputs:
+- [x] `mix64` and `mix_at` give SplitMix64's published outputs:
       `mix_at(0, 0) == 0xE220_A839_7B1D_CDAF` and
       `mix_at(0, 1) == 0x6E78_9E6A_A1B9_65F4`.
-- [ ] `fnv1a` gives FNV-1a's published values: `""` gives
+- [x] `fnv1a` gives FNV-1a's published values: `""` gives
       `0xcbf2_9ce4_8422_2325`, `"a"` gives `0xaf63_dc4c_8601_ec8c`,
       `"foobar"` gives `0x8594_4171_f739_67e8`.
-- [ ] Every helper makes exactly the draws in the table (the tests
+- [x] Every helper makes exactly the draws in the table (the tests
       read `ScriptedRng::consumed_below`).
-- [ ] Each helper's odds are exact: scripting every possible draw gives
+- [x] Each helper's odds are exact: scripting every possible draw gives
       each outcome its share (tests below).
-- [ ] `fork` moves its parent by exactly two draws.
-- [ ] A draw added on one stream leaves another stream's outputs the
+- [x] `fork` moves its parent by exactly two draws.
+- [x] A draw added on one stream leaves another stream's outputs the
       same, and the same test with one shared `SimRng` shows them move.
-- [ ] Golden values are pinned, all from seed 2026: the first 8
+- [x] Golden values are pinned, all from seed 2026: the first 8
       `next_u32` of `SimRng::stream(2026, "loot")`, of
       `SimRng::new(2026).fork("level")` and of its parent after the
       fork; and, each from a fresh `SimRng::new(2026)`, a `shuffle` of
       `0..10`, 14 draws of a `Bag` of `0..7`, and 10
       `weighted_index(&[3, 0, 5])` draws.
-- [ ] Every existing test in `shuyi-core`, `shuyi-ui`,
+- [x] Every existing test in `shuyi-core`, `shuyi-ui`,
       `examples/hello-grid` and the grid template passes unchanged: no
       pinned value, snapshot or hash moves.
-- [ ] `&mut dyn RandomSource` still compiles (a test takes one and
+- [x] `&mut dyn RandomSource` still compiles (a test takes one and
       calls `range` on it).
-- [ ] `shuyi-core` builds for `thumbv7em-none-eabihf`, with no new
+- [x] `shuyi-core` builds for `thumbv7em-none-eabihf`, with no new
       `#[allow]`.
-- [ ] The ADR is written and linked from `rng.rs`'s module doc.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and linked from `rng.rs`'s module doc.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -324,4 +323,70 @@ and say so in the completion notes.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, on 2026-11-23:
+
+- `mix64` and `mix_at` (`const fn`) in `shuyi_core::rng`, and
+  `pub(crate) fnv1a` in `hash.rs` over its `Hasher`;
+  `shuyi_ui::audio::splitmix64` now calls `shuyi_core::rng::mix64`, and
+  its reference test passes unchanged.
+- `SimRng::stream` and `SimRng::fork`, exactly as the scope says.
+- `range`, `chance`, `index`, `pick`, `shuffle`, `weighted_index` and
+  `pick_weighted` as default methods of `RandomSource`; the generic ones
+  are `where Self: Sized`. Both weighted helpers share one private walk
+  (`weighted`), so `pick_weighted` copies no weights.
+- `Bag<T>` in `crates/core/src/rng/bag.rs` (ADR-0039 kind 8: private
+  fields), re-exported at the crate root and in `shuyi_platform::prelude`
+  with `RandomSource`. A saved bag is checked through
+  `#[serde(try_from)]`: an index past the items or left twice is
+  refused with a message.
+- New tests in `crates/core/src/rng/tests.rs` (exact draws, exact odds,
+  edges, `Bag`, RON round trips, proptests, and the golden values of seed
+  2026). `rng.rs`'s existing tests stay where they were, as
+  `mod pcg_tests`, so no pinned value moved and the diff stays small.
+- `RandomBot::choose` and the template's `wander` use `index`, with the
+  same draws: every hello-grid and template test passes unchanged.
+- ADR-0143 extends ADR-0002 §2 (its `Status:` line and both index rows).
+- The module doc says which generator to make, names ADR-0143, and has
+  the three doctests (a dealt deck, a pickup on a free cell, a bag of
+  seven).
+
+Either order:
+
+- 2511 (done): `Bag` and `RandomSource` are in the prelude.
+- 1134 (done): `skills/shuyi-stage-grid/SKILL.md` has a *Luck* section.
+- 2802 (done): chapter 5 has a *Luck* section, over a new `luck` anchor
+  in `site/snippets/src/rules.rs`.
+- 2116 (done): the golden values are asserts in `rng/tests.rs`, which
+  its `determinism` job runs on wasm32.
+- 2108 and 2739 are not done: their clauses are rewritten as what now
+  holds (2108 forks a stream per system that draws; 2739 places food
+  with `pick`). 2340's and 2118's lines now say `mix64` is done.
+
+Deviations (the ticket was a month old):
+
+- `RandomBot::choose` is at `crates/core/src/bots.rs:266`, not 220, and
+  the grid template moved to
+  `templates/shuyi-default/stages/top-down-grid/`; the ticket's paths
+  are fixed.
+- `shuyi-platform` already had a direct `shuyi-core` dependency with
+  `default-features = false`, and its `tools/layers.ron` line, so the
+  2511 clause adds no dependency; the clause is fixed to say so.
+- `Bag` was kept: the diff is far under 700 counted lines.
+- The template's import line changed, so two files that read it
+  changed too: `crates/cli/src/template/plans.golden` (the rules file's
+  hash, re-blessed) and `skills/shuyi-balance-bots/example.ron` (its
+  edit finds that line).
+- `splitmix64` stays a function whose body is a call to `mix64`, not
+  the scope's `pub use … as splitmix64`. CI's `api` job (cargo
+  semver-checks) reads the re-export as `function_missing`, a break,
+  though the path still resolves. A one-line wrapper keeps one body of
+  the algorithm and needs no `Breaking:` line.
+
+No break: only additions, and `splitmix64` keeps its path and
+signature. Searched the game with `gh search code --repo
+Zafnok/visions-of-shuyi 'splitmix64'` and `'RandomSource'`: it imports
+`splitmix64` from `shuyi_ui::audio`, which still resolves, and calls
+`roll_percent` and `roll_below`, which give what they gave.
+
+Game: nothing to adopt, the change only adds; the game may move its
+soak test's `pick(rng, n)` onto `index` at its next pin bump.
