@@ -38,6 +38,28 @@ turns one on as a feature of `shuyi-assets` in its own `Cargo.toml` (`features =
 they do a PNG, a WAV or an Ogg file. The audio manifest names a `.flac` or `.mp3`
 file as it does an `.ogg` one.
 
+A sound can be a few numbers, too. A **sound effect** is a `.sfx.ron` file: a wave, a
+pitch that may slide or jump, and how loud it is as it rises, holds and fades. The
+game turns it into a sound as it loads it, the same on every machine. A game made
+with `shuyi new` already has four, the sounds its menus make, in `files/sfx/`, and
+turns on their switch, `sfx`:
+
+```ron
+// select: a note that jumps up a fifth, for a choice made.
+(
+    wave: Square(duty: 50),
+    hz: 660,
+    hold_ms: 70,
+    fade_ms: 60,
+    volume: 35,
+    step: (at_ms: 40, percent: 150),
+)
+```
+
+Change `hz` and the note is higher or lower; change `hold_ms` and it lasts longer. A
+number out of its range is a problem `cargo shuyi check` gives with its line, like
+any other file's.
+
 ## A kind of the game's own
 
 The garden's plan is a kind of the game's own, plain data with a name for messages:

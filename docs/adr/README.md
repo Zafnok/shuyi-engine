@@ -154,5 +154,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0139](0139-cue-rules-decided-once-in-app-before-every-backend.md) | Cue rules decided once, in `App`, before every backend: variants, volumes, gaps, copy caps and the voice rule | Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0063 |
 | [0140](0140-a-frame-fills-the-window-drawn-sharp-at-a-fraction.md) | A frame may fill the window at a fraction of a pixel, drawn sharp, from one placement the window and the check share | Accepted; amends ADR-0008 §1 |
 | [0141](0141-the-hosted-preview-a-worker-per-visitor-actions-in-pictures-out.md) | The hosted preview: a worker process per visitor, actions in, a picture and its text out | Accepted |
+| [0143](0143-sound-effects-from-a-few-numbers-sfx-ron.md) | Sound effects from a few numbers: `.sfx.ron`, rendered once in integers through the sound hook | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

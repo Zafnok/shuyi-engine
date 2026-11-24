@@ -40,6 +40,11 @@ qoi = ["dep:qoi"]
 jpeg-xl = ["std", "dep:jxl-oxide"]
 flac = ["std", "dep:claxon"]
 mp3 = ["dep:nanomp3"]
+# `sfx`: sound effects written as a few numbers, `.sfx.ron` files rendered
+# to a WAV in integers as the game loads them (ticket 2225, ADR-0143):
+# `sfx::SfxDef`, the formats `SfxDefRon` and `SfxRon`, and ten presets.
+# No dependency and no `std`. A game turns it on in its own `Cargo.toml`.
+sfx = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -76,6 +81,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx"] }
 # The heap counter `tests/lang_load.rs` reads (ticket 2266).
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

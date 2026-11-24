@@ -46,10 +46,12 @@ None.
 **In:**
 - **Music cues play on the short path.** With 2225's `audio.ron` read,
   its `music` cues (OGG or WAV files under the manifest's music folder,
-  `files/music/`) play through `run_game` as a long-form game's do. If
-  2225 already makes them play, this ticket's part is the tests and the
-  docs. If it doesn't, change what is missing in `run_game`'s `Files` or
-  `BasicData`.
+  `files/music/`) play through `run_game` as a long-form game's do.
+  **From 2225 (done):** `BasicData::load` reads `audio.ron`
+  (`basic::AUDIO_RON`) with its sounds and music cues, and `run_game`'s
+  `Files` (`basic_config`, `crates/app/src/lib.rs`) read the sounds
+  from the installed bundle through `audio::playable`, but has no music
+  folder (`music: None`): give it one, and the tests and the docs.
 - **The music clock runs** in the Harness for a short-path game whose
   screen asks for a cue (`Harness::music_clock`, `Ctx::music_clock`). A
   test proves it with a cue of a short WAV in a test bundle.
@@ -96,7 +98,8 @@ None.
    Grid gives its manifest.
 2. Add `audio_of`, have `BasicData::load` use it, and write the tests
    below.
-3. Make music play on the short path if 2225 didn't.
+3. Make music play on the short path: `run_game`'s `Files` with a
+   music folder (2225 left it `None`).
 4. Update the skills and their worked examples, and run them.
 5. Run the gates.
 

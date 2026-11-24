@@ -746,7 +746,13 @@ own gates as it is. Two short names stand for sets of answers:
   (`BasicData<UiAction, stages::Own>`), its title and its screens in a
   `BasicGame`; its `main` is one call (the
   prelude's `run_game`); its tool program gives `game::stages::tools()`,
-  the engine's `BasicTools`;
+  the engine's `BasicTools`. Its menus sound from the start: its
+  `files/audio.ron` names the four cues the engine's menus and cursors
+  play (`ui_move`, `ui_select`, `ui_cancel`, `ui_cursor`), each a sound
+  effect in `files/sfx/` written as a few numbers (`.sfx.ron`, the `sfx`
+  feature of `shuyi-assets`, which its game crate turns on;
+  [`formats.md`](formats.md#sound-effects-sfxron)), and a test checks
+  each plays;
 - `--template grid` (`--set perspective=top-down-grid`): `base` and the
   part `stage-top-down-grid`. The title's Confirm starts a top-down grid
   stage: a rules crate over `TurnRules` (walk to the goal while a

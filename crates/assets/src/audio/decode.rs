@@ -4,11 +4,12 @@
 //! test pins its samples, so an MP3 decoder's floats are fine here.
 //!
 //! The functions are always compiled, also without `std`; only their FLAC
-//! and MP3 arms need the `flac` and `mp3` features. With a feature off,
-//! a file of its format is an error that names the feature.
+//! and MP3 arms need the `flac` and `mp3` features, and a sound effect's
+//! (`.sfx.ron`, rendered from its numbers) the `sfx` feature. With a
+//! feature off, a file of its format is an error that names the feature.
 use crate::prelude::*;
 
-use super::{MusicTrack, Sound, has_extension, ogg_length_ms, wav_problem};
+use super::{MusicTrack, Sound, has_extension, is_sfx, ogg_length_ms, wav_problem};
 use crate::format::{AssetPath, DecodeCx, Format};
 
 /// The most bytes a WAV of [`decode_to_wav`] may have: 256 MiB, about 25
@@ -102,10 +103,13 @@ fn is_wav(bytes: &[u8]) -> bool {
 
 /// A sound file named `name` decoded to a WAV that every backend plays:
 ///
-/// - `None`, nothing to decode: a name that doesn't end in `.flac` or
-///   `.mp3`, or bytes that already are a WAV (a game's hook decoded them);
+/// - `None`, nothing to decode: a name that doesn't end in `.flac`,
+///   `.mp3` or `.sfx.ron`, or bytes that already are a WAV (a game's hook
+///   decoded or rendered them);
 /// - `Some(Ok(wav))`: a 16-bit PCM WAV with the file's channels and rate.
-///   FLAC's samples are shifted to 16 bits, MP3's rounded and clamped;
+///   FLAC's samples are shifted to 16 bits, MP3's rounded and clamped; a
+///   sound effect is rendered from its numbers, mono (at most 5 seconds,
+///   so far under the limit);
 /// - `Some(Err(why))`: bytes that don't decode, a WAV that would pass
 ///   [`MAX_DECODED_BYTES`], or a format whose feature is off.
 pub fn decode_to_wav(name: &str, bytes: &[u8]) -> Option<Result<Vec<u8>, String>> {
@@ -114,6 +118,12 @@ pub fn decode_to_wav(name: &str, bytes: &[u8]) -> Option<Result<Vec<u8>, String>
 
 /// [`decode_to_wav`], with a WAV of at most `limit` bytes.
 fn decode_within(name: &str, bytes: &[u8], limit: usize) -> Option<Result<Vec<u8>, String>> {
+    if is_sfx(name) {
+        return (!is_wav(bytes)).then(|| match SFX_WAV {
+            Some(render) => render(bytes),
+            None => Err(SFX_NEEDS_FEATURE.to_owned()),
+        });
+    }
     let coded = Coded::of(name)?;
     if is_wav(bytes) {
         return None;
@@ -169,6 +179,43 @@ fn read_problem(
         .err()?;
     let messages: Vec<String> = errors.into_iter().map(|e| e.message).collect();
     Some(messages.join("; "))
+}
+
+/// What a `.sfx.ron` sound is told when the `sfx` feature is off.
+const SFX_NEEDS_FEATURE: &str = "a .sfx.ron sound needs the sfx feature of shuyi-assets";
+
+/// A reader of a `.sfx.ron` file's bytes that gives its first problem in
+/// one line, if it has one.
+pub(super) type SfxProblem = fn(&[u8]) -> Option<String>;
+
+/// The reader of `.sfx.ron` files' problems, `None` with the `sfx` feature
+/// off.
+#[cfg(feature = "sfx")]
+pub(super) const SFX_PROBLEM: Option<SfxProblem> = Some(crate::sfx::problem_of);
+#[cfg(not(feature = "sfx"))]
+pub(super) const SFX_PROBLEM: Option<SfxProblem> = None;
+
+/// The renderer of a `.sfx.ron` file's bytes to its WAV, `None` with the
+/// `sfx` feature off.
+#[cfg(feature = "sfx")]
+const SFX_WAV: Option<ToSfxWav> = Some(crate::sfx::wav_of);
+#[cfg(not(feature = "sfx"))]
+const SFX_WAV: Option<ToSfxWav> = None;
+
+/// A renderer of a `.sfx.ron` file's bytes to a WAV.
+type ToSfxWav = fn(&[u8]) -> Result<Vec<u8>, String>;
+
+/// Why a `.sfx.ron` sound's `bytes` aren't something the game can play: as
+/// a WAV if they are one (a game's hook rendered them), else as `problem`
+/// reads them (`None` with the `sfx` feature off, which it then names).
+pub(super) fn sfx_problem(bytes: &[u8], problem: Option<SfxProblem>) -> Option<String> {
+    if is_wav(bytes) {
+        return wav_problem(bytes);
+    }
+    match problem {
+        Some(problem) => problem(bytes),
+        None => Some(SFX_NEEDS_FEATURE.to_owned()),
+    }
 }
 
 /// What a WAV that would be too big is told.

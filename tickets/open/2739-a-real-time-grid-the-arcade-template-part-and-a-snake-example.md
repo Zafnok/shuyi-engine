@@ -198,8 +198,10 @@ None.
     `session` (a scene with the body, the food, the score, the step and
     the outcome), `replay` through `ticks` above, and `controls`.
     `playtest` stays unsupported (Out).
-  - **sound:** if 2225 is done, an eat and a death sound from its
-    presets. If not, none, the README says so, and 2225's PR adds them.
+  - **sound:** an eat and a death sound from 2225's presets
+    (`sfx::preset_source`, as `.sfx.ron` files of its own, with the
+    `sfx` feature of `shuyi-assets` on), played on its `Ate` and `Died`
+    events.
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and the copy added to
     `THIRD_PARTY_ASSETS.md` (to the row that lists the templates'

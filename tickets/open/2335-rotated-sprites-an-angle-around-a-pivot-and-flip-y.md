@@ -280,8 +280,9 @@ and follow the MVP.
    (fixtures and snapshots not counted). If it would pass it, write
    `shuyi_core::angle` as a ticket of its own first (the
    `write-ticket` skill, block 21xx), add it to this ticket's
-   `blocked_by`, work it as its own PR, and point 2109, 2122 and
-   2225's "2335's `Angle`" at it.
+   `blocked_by`, work it as its own PR, and point 2109's and 2122's
+   "2335's `Angle`" at it. (2225, done, renders its sine with no table,
+   and names no `Angle`.)
 3. Write the ADR.
 4. Write `shuyi_core::angle` and its tests.
 5. Add the fields, `bounds`, `dest_pixel`, `source_pixel` and the

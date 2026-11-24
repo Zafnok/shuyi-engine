@@ -2,10 +2,11 @@
 //! (ADR-0036). It reads the files every such game has from its bundle,
 //! through the format registry ([`BasicData::formats`]): the English
 //! screen text, the keymap, the palette with the engine's colours, the
-//! font atlas and every picture. A part of the game's own rides along in
-//! [`BasicData::own`]. It has no sounds, no voices (`()`), no settings of
-//! the game's own (`()`) and one palette. A game that needs more writes
-//! its own `GameData`, as before.
+//! font atlas, every picture, and the audio manifest when the bundle has
+//! one ([`AUDIO_RON`]: the sounds its menus play, ticket 2225). A part of
+//! the game's own rides along in [`BasicData::own`]. It has no voices
+//! (`()`), no settings of the game's own (`()`) and one palette. A game
+//! that needs more writes its own `GameData`, as before.
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -37,6 +38,9 @@ pub const PALETTE_RON: &str = "palette.ron";
 pub const FONT_RON: &str = "font/atlas.ron";
 /// The font atlas's picture, beside [`FONT_RON`].
 pub const FONT_PNG: &str = "font/atlas.png";
+/// The audio manifest, in the bundle, if the game has sounds: its sound
+/// files are named from the bundle's root (`sfx/move.sfx.ron`).
+pub const AUDIO_RON: &str = "audio.ron";
 
 /// The glyphs the font must have: printable ASCII, and the box and shape
 /// glyphs the engine's widgets draw.
@@ -107,7 +111,8 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
 
     /// The data in `bundle`, on `console`, with the game's own part read
     /// by `own`; or every problem of every file at once, each naming its
-    /// file.
+    /// file. The audio manifest is [`AUDIO_RON`]'s, checked with its sound
+    /// files, or empty if the bundle has none.
     pub fn load(
         bundle: Bundle,
         console: ConsoleSpec,
@@ -132,25 +137,39 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
             formats.load::<PaletteDef>(&bundle, PALETTE_RON),
         );
         let font = gather(&mut errors, formats.load::<FontAtlasDef>(&bundle, FONT_RON));
+        let audio = if bundle.has(AUDIO_RON) {
+            gather(
+                &mut errors,
+                formats.load::<AudioManifest>(&bundle, AUDIO_RON),
+            )
+        } else {
+            Some(AudioManifest::default())
+        };
         let images = gather(
             &mut errors,
             ImageTable::load_with(&bundle, &formats, &[FONT_PNG]),
         );
         let own = gather(&mut errors, own(&bundle));
-        match (english, keymap, palette, font, images, own) {
-            (Some(english), Some(keymap), Some(palette), Some(font), Some(images), Some(own)) => {
-                Ok(Self {
-                    lang: Lang::new(english.0, BTreeMap::new()),
-                    keymap,
-                    audio: AudioManifest::default(),
-                    palette,
-                    console,
-                    font,
-                    images,
-                    bundle,
-                    own,
-                })
-            }
+        match (english, keymap, palette, font, images, audio, own) {
+            (
+                Some(english),
+                Some(keymap),
+                Some(palette),
+                Some(font),
+                Some(images),
+                Some(audio),
+                Some(own),
+            ) => Ok(Self {
+                lang: Lang::new(english.0, BTreeMap::new()),
+                keymap,
+                audio,
+                palette,
+                console,
+                font,
+                images,
+                bundle,
+                own,
+            }),
             _ => Err(errors),
         }
     }

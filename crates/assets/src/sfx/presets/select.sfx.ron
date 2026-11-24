@@ -1,0 +1,9 @@
+// select: a note that jumps up a fifth, for a choice made.
+(
+    wave: Square(duty: 50),
+    hz: 660,
+    hold_ms: 70,
+    fade_ms: 60,
+    volume: 35,
+    step: (at_ms: 40, percent: 150),
+)

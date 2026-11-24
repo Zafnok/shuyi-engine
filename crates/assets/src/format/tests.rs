@@ -658,8 +658,8 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     use crate::palette::PaletteDef;
     use crate::target::TargetProfile;
 
-    // With the features of ticket 2203's formats, which the crate's own
-    // tests turn on.
+    // With the features of ticket 2203's formats and the sound effects'
+    // (2225), which the crate's own tests turn on.
     let formats = Formats::standard();
     let images = ["png", "one-bit", "jpeg", "webp", "qoi", "jpeg-xl"];
     assert_eq!(formats.ids::<ImageInfo>(), images);
@@ -673,8 +673,15 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
         formats.ids::<crate::bitmap::OneBitPicture>(),
         ["one-bit", "dithered"]
     );
-    assert_eq!(formats.ids::<Sound>(), ["wav", "ogg-vorbis", "flac", "mp3"]);
-    assert_eq!(formats.extensions::<Sound>(), ["wav", "ogg", "flac", "mp3"]);
+    assert_eq!(
+        formats.ids::<Sound>(),
+        ["wav", "ogg-vorbis", "flac", "mp3", "sfx"]
+    );
+    assert_eq!(
+        formats.extensions::<Sound>(),
+        ["wav", "ogg", "flac", "mp3", "ron"]
+    );
+    assert_eq!(formats.ids::<crate::sfx::SfxDef>(), ["sfx"]);
     assert_eq!(formats.ids::<MusicTrack>(), ["ogg-vorbis", "flac", "mp3"]);
     assert_eq!(formats.ids::<AudioManifest>(), ["audio-manifest"]);
     assert_eq!(formats.ids::<CreditsFile>(), ["credits"]);
@@ -688,7 +695,7 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.limits, Limits::NONE);
     // Every kind: nothing else.
     let kinds = format!("{formats:?}").matches("\", [\"").count();
-    assert_eq!(kinds, 14);
+    assert_eq!(kinds, 15);
     // And the engine's one section of import settings.
     assert_eq!(formats.import_settings_sections(), ["onebit"]);
     // Registered again, the first is refused.

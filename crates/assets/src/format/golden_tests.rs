@@ -39,6 +39,7 @@ use crate::names::{Names, NamesRon};
 use crate::onebit::{PatternMapDef, PatternMapRon};
 use crate::palette::{PaletteDef, PaletteRon};
 use crate::ron::Ron;
+use crate::sfx::{SfxDef, SfxDefRon, SfxRon};
 use crate::target::{TargetProfile, TargetRon};
 
 /// The table and the names of the rows checked so far, for the guard.
@@ -95,6 +96,7 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     kind::<OneBitPicture>(formats, rows, &mut missing);
     kind::<Sound>(formats, rows, &mut missing);
     kind::<MusicTrack>(formats, rows, &mut missing);
+    kind::<SfxDef>(formats, rows, &mut missing);
     kind::<AudioManifest>(formats, rows, &mut missing);
     kind::<CreditsFile>(formats, rows, &mut missing);
     kind::<FontAtlasDef>(formats, rows, &mut missing);
@@ -143,6 +145,11 @@ fn check_rows() -> Rows {
     rows.format(&FlacTrack, "a.flac", FLAC, None);
     rows.format(&Mp3, "a.mp3", MP3, None);
     rows.format(&Mp3Track, "a.mp3", MP3, None);
+    let coin = crate::sfx::preset_source("coin")
+        .unwrap_or_default()
+        .as_bytes();
+    rows.format(&SfxRon, "sfx/coin.sfx.ron", coin, None);
+    rows.format(&SfxDefRon, "sfx/coin.sfx.ron", coin, None);
     let sounds = bundle(vec![
         ("audio/audio.ron", MANIFEST.into()),
         ("audio/sfx/gone.wav", wav(1, rate, 1)),

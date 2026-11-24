@@ -154,9 +154,10 @@ None. When it unparks is his call (above).
     with a scene, `Headless::with_scene`, holding `score`, `lives`,
     `bricks_left`, `step` and `outcome`) and `replay` through
     `contract::replay::ticks`. `playtest` stays unsupported (Out).
-  - **sound:** if 2225 is done, a bounce, a break and a lost-life sound
-    from its presets. If not, none, the README says so, and 2225's PR
-    adds them (its item on the gallery examples says so).
+  - **sound:** a bounce, a break and a lost-life sound from 2225's
+    presets (`sfx::preset_source`, as `.sfx.ron` files of its own, with
+    the `sfx` feature of `shuyi-assets` on), played on its `Bounced`,
+    `Broke` and `LifeLost` events.
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and a row for the copy
     in `THIRD_PARTY_ASSETS.md`.

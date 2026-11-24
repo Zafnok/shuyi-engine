@@ -132,12 +132,13 @@ None.
   - the manifest's binary form changes, so `pack::VERSION`
     (`crates/assets/src/pack.rs`) becomes the next number, and the
     pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted;
-  - **Either order with 2225:** if 2225 is done, `sound_length_ms`
-    gives a `.sfx.ron` the length it renders to (`n × 1000 /
-    SAMPLE_RATE`, `n` from its `SfxDef`), whether the bytes are its RON
-    text (as `AudioManifestRon` reads the bundle) or the WAV a game's
-    hook rendered, and `SfxRon` fills the `Sound` kind's `length_ms`; if
-    not, nothing to do (2225 does it).
+  - **From 2225 (done):** `sound_length_ms` gives a `.sfx.ron` (a name
+    `audio::SFX_SUFFIX` ends) the length it renders to (`n × 1000 /
+    SAMPLE_RATE`, `n` from its `SfxDef`: `sfx::render`'s count), whether
+    the bytes are its RON text (as `AudioManifestRon` reads the bundle)
+    or the WAV a game's hook rendered (`audio::playable`), and
+    `sfx::SfxRon` fills the `Sound` kind's `length_ms`. Both behind the
+    `sfx` feature, as the format is.
   - **From 2234 (done):** `sound_length_ms` gives a `.flac` or `.mp3`
     file the length of `audio::track_length_ms`, so a FLAC sound of a
     cue with `max_copies` has a length.
@@ -251,8 +252,8 @@ None.
 snapshots not counted), the lengths go first as a ticket of their own
 (`write-ticket`, 23xx, After MVP, blocked by 2345): `sound_length_ms`,
 `lengths_ms`, `measure_sounds`, the `Sound` kind's `length_ms`, the pack
-version and the 2225 clause. That PR adds it to this ticket's
-`blocked_by` and points 2225's clause at it.
+version and the `.sfx.ron` lengths (*From 2225*). That PR adds it to this
+ticket's `blocked_by`.
 
 **Out (do not do):**
 - what 2345 does: the cue rules' place in `App`, variants, the random

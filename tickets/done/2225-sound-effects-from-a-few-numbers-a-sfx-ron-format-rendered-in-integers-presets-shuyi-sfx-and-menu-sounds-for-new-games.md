@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2511"]
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 2225 — Sound effects from a few numbers
@@ -190,8 +190,9 @@ parked.
     reported, not read as a sound. Conflicts are per kind (ADR-0019 §2),
     and no other `Sound` format claims `ron`.
   - The registry's test (`crates/assets/src/format/tests.rs` line 644)
-    expects `["wav", "ogg-vorbis", "sfx"]` for `Sound`, `["sfx"]` for
-    `SfxDef`, and 13 kinds (12 today).
+    expects `["wav", "ogg-vorbis", "flac", "mp3", "sfx"]` for `Sound`,
+    `["sfx"]` for `SfxDef`, and 15 kinds (14 today, with 2203's
+    features).
 - **The manifest** (`crates/assets/src/audio.rs`):
   - `Check::sound` accepts a `.sfx.ron` name; its message becomes "must
     be .ogg, .wav or .sfx.ron";
@@ -435,37 +436,38 @@ number, which adds them.
 
 ## Acceptance criteria
 
-- [ ] The ADR is merged, and `docs/formats.md` lists `SfxDefRon` and
+- [x] The ADR is merged, and `docs/formats.md` lists `SfxDefRon` and
       `SfxRon`.
-- [ ] `cargo build -p shuyi-assets --no-default-features --features sfx
+- [x] `cargo build -p shuyi-assets --no-default-features --features sfx
       --target thumbv7em-none-eabihf` passes, in CI's `no-std` job and
       in the `run-gates` skill, beside the build without the feature.
-- [ ] Each preset renders to the bytes its row in
+- [x] Each preset renders to the bytes its row in
       `crates/assets/tests/golden/sfx.ron` pins, on x64, ARM64 and
       wasm32, and rendering twice gives the same bytes.
-- [ ] Over a cycle, the sine stays within 66 (0.2 % of 32 767) of
+- [x] Over a cycle, the sine stays within 66 (0.2 % of 32 767) of
       `32 767 × f64::sin`, in a host test.
-- [ ] A game made with `shuyi new` from each template has the four menu
+- [x] A game made with `shuyi new` from each template has the four menu
       sounds: its test passes, and CI's templates job passes.
-- [ ] In such a game, a `.sfx.ron` with an unknown field or a number
+- [x] In such a game, a `.sfx.ron` with an unknown field or a number
       out of range fails `cargo shuyi check` with the sound file, its
       line and the message.
-- [ ] Without the `sfx` feature, a manifest that names a `.sfx.ron`
+- [x] Without the `sfx` feature, a manifest that names a `.sfx.ron`
       gets the message that names the feature (a unit test).
-- [ ] `shuyi import x.sfx.ron --kind "sound effect" --print` prints the
+- [x] `shuyi import x.sfx.ron --kind "sound effect" --print` prints the
       file's text.
-- [ ] Hello, Grid's `src/sound.rs` has no float and no `#[allow]`; its
-      tests, `check --baked` and its web build pass.
-- [ ] `shuyi sfx coin --out x.sfx.ron --wav x.wav --json` matches its
+- [x] ~~Hello, Grid's `src/sound.rs` has no float and no `#[allow]`; its
+      tests, `check --baked` and its web build pass.~~ (not done: split
+      off to 2277, step 7)
+- [x] ~~`shuyi sfx coin --out x.sfx.ron --wav x.wav --json` matches its
       schema and writes both files; `x.sfx.ron` reads back to the same
       `SfxDef`; `shuyi sfx nope` answers an error that lists the
-      presets.
-- [ ] If steps 7 and 8 were split off, their follow-up ticket is in
+      presets.~~ (not done: split off to 2277, step 8)
+- [x] If steps 7 and 8 were split off, their follow-up ticket is in
       `tickets/open/`, blocked by 2225, with the two criteria above,
       and the *Either order* items' `shuyi sfx` lines name it.
-- [ ] Each *Either order* item is settled: done here, or added to the
+- [x] Each *Either order* item is settled: done here, or added to the
       open ticket's file.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -503,4 +505,132 @@ number, which adds them.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done.** Steps 1 to 6 and 9, split at the ticket's own point:
+
+- ADR-0143. `shuyi_assets::sfx` behind the new `sfx` feature (no
+  dependency, builds without `std`): `SfxDef` (kind `"sound effect"`,
+  ADR-0039 kind 2: `#[non_exhaustive]`, `SfxDef::new`), `Wave`
+  (`#[non_exhaustive]`), `Vibrato`, `Step`, `problems`, `from_source`
+  (each problem on its field's line), `to_text`, `render`, `to_wav`
+  (through `audio::pcm16_wav`), `MAX_MS`, `MIN_HZ`, `MAX_HZ`, the ten
+  presets (`PRESETS`, `preset`, `preset_source`) and the formats
+  `SfxDefRon` (with `Encode`) and `SfxRon`, registered by
+  `register_standard` with the feature.
+- `audio::playable`, `audio::SFX_SUFFIX`; the manifest takes `.sfx.ron`
+  ("must be .ogg, .wav, .flac, .mp3 or .sfx.ron"); `format_problem`'s
+  `.sfx.ron` branch beside FLAC's and MP3's in `audio/decode.rs`, with
+  its reader as an `Option` (`decode::sfx_problem`, unit-tested without
+  it).
+- `BasicData::load` reads `audio.ron` (`basic::AUDIO_RON`) when the
+  bundle has it; `run_game`'s sounds are the installed bundle's through
+  `audio::playable`. The template's `base` part has `files/audio.ron`
+  and `files/sfx/{move,select,cancel,cursor}.sfx.ron` (the presets
+  `blip`, `select`, `cancel` and `tick`; `ui_move` and `ui_cursor` with
+  `min_gap_ms: 40`), turns `sfx` on (`shuyi-assets` back in the root
+  `[workspace.dependencies]`, a machete ignore), and a test that every
+  cue `AudioConfig::DEFAULT` names plays. The grid stage needs nothing.
+- `shuyi-cli` turns `sfx` on; `import` has the `sound effect` kind with
+  its text; the Playdate bake reads a `.sfx.ron` as its render.
+- The `no_std` line with `--features sfx` in CI's `no-std` job, the
+  `no-std` gate and the `run-gates` skill.
+- Golden rows: the presets' WAV hashes (and `hit` at seed 7) in
+  `crates/assets/tests/golden/sfx.ron`; `sound: sfx` and
+  `sound effect: sfx` in `formats.ron`.
+- Docs: `docs/formats.md` (both formats in the table, *Sound effects
+  (`.sfx.ron`)*, the WAV and OGG entry), `docs/modules.md` (the row
+  ready), `docs/contract.md` and `docs/templates.md` (the templates'
+  menu sounds), `docs/ROADMAP.md`, and the book's chapter 3
+  (`assets-and-formats.md`).
+
+**How the presets were checked.** Not by ear: no one listened in this
+session. Each was rendered and checked by its numbers (length in
+samples, peak, how often it crosses zero against its pitch: `coin` 401
+rises, 988 hz for 60 ms then 1 314 hz for 260 ms), and the ten WAVs were
+written to the session's scratchpad for a person to hear. No ticket:
+tuning them by ear is a change to a preset file and its golden row,
+whenever someone listens.
+
+**Deviations.**
+
+- *Split.* Steps 7 and 8 (Hello, Grid on `.sfx.ron` files, `shuyi sfx`)
+  are ticket 2277, as the ticket's own split rule says. Two parts of step
+  9 went with them: the `shuyi-new-game` skill's section on sounds (from
+  1134) and the tutorial's push and win sounds with their chapter (from
+  2803), since both were written around `shuyi sfx`, which 2277 adds;
+  2277 also takes the MCP arm and the template's `AGENTS.md` row.
+- *`decode_to_wav` renders a `.sfx.ron` too*, beside FLAC and MP3 (the
+  ticket named only `playable`): so the shared player's
+  `load_sound_file` plays one even from a hook that passed it raw, and
+  the Playdate bake needs only its `is_wav` test widened. `playable` is
+  `decode_to_wav` for a `.sfx.ron` name, bytes unchanged otherwise.
+- *A render clamps out-of-range numbers* into their ranges first, so any
+  `SfxDef` (a game can build one in code) renders at most 5 seconds and
+  never overflows; `problems` still reports them.
+- *A preset's seed moves `hz` and `to_hz` by one factor*, so a preset
+  with no slide gets none; the ticket's "moves `hz` and `to_hz` by up to
+  10 %" allowed either.
+- *Stale facts fixed in the ticket, checked against `main`:* the
+  registry's `Sound` list has `flac` and `mp3` since 2203, so the test
+  expects five ids and 15 kinds (the ticket said three and 13);
+  `AudioConfig::DEFAULT` has a fifth field, `denied_cue`, which plays
+  `ui_cancel`, so the manifest still has four cues and the template's
+  test checks all five fields; the manifest needs `music_fade_ms`,
+  `music`, `pools` and `credits`, so `audio.ron` writes them; 2210 and
+  3030 are done since the ticket was written and change nothing here
+  (no `Pcm` kind exists).
+- *No `#[allow]`* anywhere: the one serde helper that skips a default
+  field is generic (`is_default`).
+
+**Either order, settled.** 2512 (open): nothing to do, its own text
+names the menu sounds as data. 1134 and 2803: in 2277. 3029: here.
+2003: `docs/modules.md`'s row is ready. 2234: here (`SOUND_EXTENSIONS`
+beside `SFX_SUFFIX`, `pcm16_wav`). MCP: 2277. 2116: here. 2378 (open):
+its clause is now *From 2225 (done)* and it does the lengths. 2020
+(open): the same, it adds `sfx` to its walk. 2736, 2737, 2738 (parked)
+and 2739: their clauses now say the sounds come from the presets. 2786:
+*From 2225 (done)*, it writes the skill's file sounds and the recipe.
+2384: its clause now says `run_game` has no music folder yet. 2272,
+2335 and 2366 named 2225 in passing: pointed at what holds.
+
+**Follow-up tickets:** 2277 (`shuyi sfx`, Hello, Grid, the tutorial's
+sounds and the skill's section).
+
+**The game.** Searched the game (`gh search code --repo
+Zafnok/visions-of-shuyi`) for `must be .ogg` (only `docs/engine/pins.md`,
+a note), `format_problem` (`crates/content/src/audio.rs` checks a WAV
+it renders; its own `crates/tools/src/sfx.rs` writes WAVs),
+`decode_to_wav` (none) and `BasicData` (its skills only: the game has its
+own `GameData`). Nothing in the game must change.
+
+Game: nothing to adopt, the game ships its own recorded sounds and is
+not on the short path; `sfx` is off unless a crate turns it on.
+
+No break: every change adds (a module behind a feature, two functions,
+a constant, golden rows).
+
+Behaviour: shuyi-assets: the manifest's message for a sound file of
+another extension is now "must be .ogg, .wav, .flac, .mp3 or
+.sfx.ron", and a `.sfx.ron` name is a sound file.
+
+Behaviour: shuyi-assets: with the `sfx` feature on (any crate of the
+build, `shuyi-cli` among them), `Formats::standard()` lists `sfx` for
+`Sound` and a new kind `sound effect`; the `Sound` kind claims `.ron`,
+so `shuyi import` of a `.ron` file no kind reads also gives `SfxRon`'s
+error that a sound in RON must end in `.sfx.ron`.
+
+Behaviour: shuyi-assets: `audio::decode_to_wav` renders a `.sfx.ron`
+(`None` when its bytes are a WAV already), and errors without the
+`sfx` feature.
+
+Behaviour: shuyi-ui: `BasicData::load` reads `audio.ron` when the
+bundle has it, and its problems join the load's: a short-path game that
+ships an `audio.ron` its loader ignored now has those cues, or fails to
+load if they're wrong.
+
+Behaviour: shuyi-app: `run_game` plays the sounds a short-path game's
+`audio.ron` names, from its files (they were silent).
+
+Size: 2,202 counted lines, the ticket's own split point (after step 6):
+the format with its renderer, checks, formats, tests, ADR and docs is
+most of it and is one format (half of it would be a type no file reads),
+and the templates' menu sounds are its first use; the rest is 2277.

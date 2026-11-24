@@ -411,10 +411,10 @@ it is technical.
     `fixtures()`), and `proportional-font` and `bmfont` join the walk
     inside `fixtures()`, each at its fixture's path, so that walk and
     its unit test have five formats; if not, 2224 adds them;
-  - with 2225: if it is done, add `sfx` to `fuzz`'s list, and have the
-    path function give the two `sfx` formats `a.sfx.ron` in the walk of
-    every format alone, since `SfxRon` refuses any other name; if not,
-    2225 adds both;
+  - **From 2225 (done):** add `sfx` to `fuzz`'s list, and have the path
+    function give the two `sfx` formats (`sfx::SfxRon`, `sfx::SfxDefRon`)
+    `a.sfx.ron` in the walk of every format alone, since `SfxRon`
+    refuses any other name;
   - with 2230: if it is done, register `Json<Table>` and a `Csv<T, R>`
     of a small kind and row type of `fuzz.rs`'s own in
     `fuzz::registry()`, and add the `json` and `csv` features to
