@@ -285,12 +285,11 @@ each part is one PR.
   (`frame-png --every --count --apng`, 2514, done);
 - a hint: after 5 seconds with no input (`Harness::wait` in its test),
   the first legal swap's two gems in a range named `hint`;
-- the eval: if 2524 is done, `evals/tasks/match-three.ron` with
+- the eval (from 2524, done): `evals/tasks/match-three.ron` with
   `reference: Project("examples/match-three")`, targets `desktop` and
   `web`, and checks `Gates`, `Check`, `Targets`, `Web`, `Replay` and a
-  `Scene` check of `/score` and `/moves_left`; `cargo xtask
-  eval-reference match-three` passes. If not, add that task to 2524's
-  first tasks.
+  `Scene` check of `/score` and `/moves_left`; `cargo xtask eval-grade`
+  passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - in this PR, anything of parts 2 and 3 beyond writing their tickets: no
