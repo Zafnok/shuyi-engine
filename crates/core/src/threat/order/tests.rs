@@ -33,16 +33,23 @@ fn strikes_on_both_sides() -> Skirmish {
 /// The tactics order of `stage`'s legal commands, capped at `cap`, with
 /// `pick` as the game's pick.
 fn ordered(stage: &Skirmish, cap: usize, pick: Option<Skirm>) -> Vec<Skirm> {
+    ordered_by(stage, cap, pick, false)
+}
+
+/// [`ordered`] with `targets_after_steps` set to `by_piece`.
+fn ordered_by(stage: &Skirmish, cap: usize, pick: Option<Skirm>, by_piece: bool) -> Vec<Skirm> {
     let mut hooks = SkirmishHooks::new();
     hooks.pick = pick;
-    TacticsOrder::new(hooks, cap).order(stage, stage.legal_commands())
+    TacticsOrder::new(hooks, cap)
+        .with_targets_after_steps(by_piece)
+        .order(stage, stage.legal_commands())
 }
 
 /// `stage`'s steps, as the commands they list, and the hooks after.
 fn steps_of(stage: &Skirmish) -> (Steps, Vec<Skirm>, SkirmishHooks) {
     let mut hooks = SkirmishHooks::new();
     let legal = stage.legal_commands();
-    let steps = steps(&mut hooks, stage, &legal);
+    let steps = steps(&mut hooks, stage, &legal, false);
     (steps, legal, hooks)
 }
 
@@ -367,7 +374,7 @@ fn strikes_keep_one_per_way_and_target_and_hold_back_the_second_ways() {
             value: (9, 0),
         },
     ];
-    let (firsts, held) = strikes(&kinds);
+    let (firsts, held) = strikes(&kinds, false);
     assert_eq!(firsts, [6, 1, 3, 4]);
     assert_eq!(held, [2]);
 }
@@ -464,6 +471,7 @@ proptest! {
         hurt in proptest::array::uniform4(0i32..10),
         cap in 0usize..40,
         pick in proptest::option::of(any::<proptest::sample::Index>()),
+        by_piece in any::<bool>(),
     ) {
         let Some([a, b, x, y]) = tiles_from(seeds) else {
             return Ok(());
@@ -474,8 +482,8 @@ proptest! {
         }
         let legal = stage.legal_commands();
         let pick = pick.map(|index| legal[index.index(legal.len())]);
-        let order = ordered(&stage, cap, pick);
-        let full = ordered(&stage, usize::MAX, pick);
+        let order = ordered_by(&stage, cap, pick, by_piece);
+        let full = ordered_by(&stage, usize::MAX, pick, by_piece);
 
         prop_assert!(order.len() <= cap.max(1));
         for (i, command) in order.iter().enumerate() {
@@ -485,5 +493,293 @@ proptest! {
         }
         prop_assert_eq!(order.last(), Some(&Skirm::End));
         prop_assert_eq!(&order[..order.len() - 1], &full[..order.len() - 1]);
+    }
+}
+
+/// A toy game whose legal commands are `0..len`, for orders told command
+/// by command what each is ([`TableHooks`]).
+#[derive(Debug, Clone)]
+struct Table(usize);
+
+impl TurnRules for Table {
+    type Command = usize;
+    type Event = ();
+    type Error = ();
+    type Outcome = ();
+
+    fn check(&self, _: &usize) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn apply(&mut self, _: &usize) -> Result<Vec<()>, ()> {
+        Ok(Vec::new())
+    }
+
+    fn legal_commands(&self) -> Vec<usize> {
+        (0..self.0).collect()
+    }
+
+    fn outcome(&self) -> Option<()> {
+        None
+    }
+}
+
+impl Sides for Table {
+    type Side = ();
+
+    fn side_to_move(&self) {}
+
+    fn turn(&self) -> u32 {
+        1
+    }
+}
+
+/// Command `i` is `kinds[i]`; every piece stands on (5, 1), a tile is as
+/// far from the goals as its `x`, and row 0 is out of every threat.
+struct TableHooks {
+    kinds: Vec<Kind<u8>>,
+    pick: Option<usize>,
+}
+
+impl OrderHooks<Table> for TableHooks {
+    type Piece = u8;
+
+    fn prepare(&mut self, _: &Table) {}
+
+    fn classify(&mut self, _: &Table, command: &usize) -> Kind<u8> {
+        self.kinds[*command]
+    }
+
+    fn pick(&mut self, _: &Table) -> Option<usize> {
+        self.pick
+    }
+
+    fn at(&self, _: &Table, _: u8) -> Option<Pos> {
+        Some(p(5, 1))
+    }
+
+    fn distance(&mut self, _: &Table, _: u8, from: Pos) -> Option<u32> {
+        u32::try_from(from.x).ok()
+    }
+
+    fn safe(&self, _: &Table, at: Pos) -> bool {
+        at.y == 0
+    }
+}
+
+/// The order of commands tagged `kinds`, with `pick`, capped at `cap`.
+fn table_order(kinds: &[Kind<u8>], pick: Option<usize>, cap: usize, by_piece: bool) -> Vec<usize> {
+    let hooks = TableHooks {
+        kinds: kinds.to_vec(),
+        pick,
+    };
+    TacticsOrder::new(hooks, cap)
+        .with_targets_after_steps(by_piece)
+        .order(&Table(kinds.len()), Table(kinds.len()).legal_commands())
+}
+
+fn step(piece: u8, (x, y): (i32, i32)) -> Kind<u8> {
+    Kind::Step {
+        piece,
+        dest: p(x, y),
+    }
+}
+
+fn spare(piece: u8, (x, y): (i32, i32)) -> Kind<u8> {
+    Kind::Spare {
+        step: Some((piece, p(x, y))),
+    }
+}
+
+/// Two pieces: `A` can strike 5 and 6, each in two ways, and `B` 5.
+fn two_targets_two_ways() -> Vec<Kind<u8>> {
+    vec![
+        kind_strike(A, 5, 0, 3),
+        kind_strike(A, 5, 1, 2),
+        // A's best strike.
+        kind_strike(A, 6, 0, 4),
+        kind_strike(A, 6, 1, 1),
+        // B's.
+        kind_strike(B, 5, 0, 2),
+        // A's advance and hold, B's advance and hold.
+        step(A, (2, 1)),
+        step(A, (3, 0)),
+        step(B, (1, 1)),
+        step(B, (4, 0)),
+        Kind::Extra {
+            group: 0,
+            value: (1, 0),
+            once: None,
+        },
+        Kind::Other,
+        // Further from the goals than where A stands, and threatened.
+        step(A, (6, 1)),
+        Kind::End,
+        // The game's pick.
+        Kind::Other,
+    ]
+}
+
+#[test]
+fn by_piece_each_pieces_best_strike_first_and_its_other_targets_after_the_holds() {
+    let kinds = two_targets_two_ways();
+    // Each piece's best strike, the pick, the extra, the advances, the
+    // holds, A's best on its second target, the other ways, the rest, the
+    // end.
+    assert_eq!(
+        table_order(&kinds, Some(13), usize::MAX, true),
+        [2, 4, 13, 9, 5, 7, 6, 8, 0, 1, 3, 10, 11, 12]
+    );
+    // Without it, A's best on 5 comes in step 1.
+    assert_eq!(
+        table_order(&kinds, Some(13), usize::MAX, false),
+        [2, 0, 4, 13, 9, 5, 7, 6, 8, 1, 3, 10, 11, 12]
+    );
+    // Capped at 4, every piece has had its say and one advance is in.
+    assert_eq!(table_order(&kinds, None, 4, true), [2, 4, 9, 12]);
+    assert_eq!(table_order(&kinds, None, 4, false), [2, 0, 4, 12]);
+}
+
+#[test]
+fn by_piece_strikes_hold_back_other_targets_before_other_ways() {
+    let kinds = [
+        kind_strike(0, 5, 0, 1),
+        kind_strike(0, 5, 0, 3),
+        kind_strike(0, 5, 1, 2),
+        kind_strike(1, 5, 0, 2),
+        kind_strike(0, 6, 1, 0),
+        Kind::Other,
+        Kind::Strike {
+            piece: 1,
+            target: None,
+            way: 2,
+            value: (9, 0),
+        },
+    ];
+    let (firsts, held) = strikes(&kinds, true);
+    assert_eq!(firsts, [6, 1]);
+    // Piece 1 on 5, piece 0 on 6, then piece 0's bow on 5.
+    assert_eq!(held, [3, 4, 2]);
+}
+
+#[test]
+fn the_setting_is_off_by_default_and_set_by_its_builder() {
+    let order = TacticsOrder::new((), 4);
+    assert!(!order.targets_after_steps);
+    assert!(order.with_targets_after_steps(true).targets_after_steps);
+}
+
+#[test]
+fn a_spare_step_is_an_advance_or_a_hold_never_the_rest() {
+    let kinds = [
+        spare(A, (2, 1)),
+        spare(A, (3, 0)),
+        // Neither nearer nor safe.
+        spare(A, (6, 1)),
+        Kind::Spare { step: None },
+        Kind::Other,
+        Kind::End,
+    ];
+    assert_eq!(table_order(&kinds, None, usize::MAX, false), [0, 1, 4, 5]);
+    // The pick, with a step or without.
+    for pick in [2, 3] {
+        assert_eq!(
+            table_order(&kinds, Some(pick), usize::MAX, false),
+            [pick, 0, 1, 4, 5]
+        );
+    }
+    // A spare advance as the pick is listed once.
+    assert_eq!(
+        table_order(&kinds, Some(0), usize::MAX, false),
+        [0, 1, 4, 5]
+    );
+
+    // As steps, the same advance and hold, and the rest has the third.
+    let steps: Vec<Kind<u8>> = vec![
+        step(A, (2, 1)),
+        step(A, (3, 0)),
+        step(A, (6, 1)),
+        Kind::Spare { step: None },
+        Kind::Other,
+        Kind::End,
+    ];
+    assert_eq!(
+        table_order(&steps, None, usize::MAX, false),
+        [0, 1, 2, 4, 5]
+    );
+}
+
+#[test]
+fn a_spare_counts_with_its_pieces_steps() {
+    // A step and a spare of one piece: the nearer one is its advance,
+    // whichever kind it is.
+    let kinds = [step(A, (4, 1)), spare(A, (2, 1)), Kind::End];
+    assert_eq!(table_order(&kinds, None, usize::MAX, false), [1, 0, 2]);
+    let kinds = [spare(A, (4, 1)), step(A, (2, 1)), Kind::End];
+    assert_eq!(table_order(&kinds, None, usize::MAX, false), [1, 2]);
+}
+
+/// Any kind of command, over pieces 0–2, targets 5 and 6, and tiles of
+/// rows 0 and 1.
+fn any_kind() -> impl Strategy<Value = Kind<u8>> {
+    let tile = (0i32..8, 0i32..2).prop_map(|(x, y)| p(x, y));
+    prop_oneof![
+        (0u8..3, proptest::option::of(5u8..7), 0u32..2, -3i64..4).prop_map(
+            |(piece, target, way, value)| Kind::Strike {
+                piece,
+                target,
+                way,
+                value: (value, 0),
+            }
+        ),
+        (
+            0u8..2,
+            -3i64..4,
+            proptest::option::of((0u8..3, proptest::option::of(5u8..7), 0u32..2))
+        )
+            .prop_map(|(group, value, once)| Kind::Extra {
+                group,
+                value: (value, 0),
+                once,
+            }),
+        (0u8..3, tile.clone()).prop_map(|(piece, dest)| Kind::Step { piece, dest }),
+        proptest::option::of((0u8..3, tile)).prop_map(|step| Kind::Spare { step }),
+        Just(Kind::End),
+        Just(Kind::Drop),
+        Just(Kind::Other),
+    ]
+}
+
+proptest! {
+    #[test]
+    fn any_order_lists_given_commands_once_and_the_first_end_last(
+        kinds in proptest::collection::vec(any_kind(), 0..24),
+        cap in 0usize..30,
+        pick in proptest::option::of(0usize..24),
+        by_piece in any::<bool>(),
+    ) {
+        let pick = pick.filter(|&pick| pick < kinds.len());
+        let order = table_order(&kinds, pick, cap, by_piece);
+        let full = table_order(&kinds, pick, usize::MAX, by_piece);
+
+        prop_assert!(order.len() <= cap.max(1));
+        for (i, &command) in order.iter().enumerate() {
+            prop_assert!(command < kinds.len());
+            prop_assert!(!order[..i].contains(&command));
+            prop_assert!(kinds[command] != Kind::Drop);
+            if kinds[command] == (Kind::Spare { step: None }) {
+                prop_assert_eq!(Some(command), pick);
+            }
+        }
+        if let Some(end) = kinds.iter().position(|kind| *kind == Kind::End) {
+            prop_assert_eq!(order.last(), Some(&end));
+            prop_assert_eq!(full.last(), Some(&end));
+        }
+        // The setting only reorders.
+        let mut sorted = full.clone();
+        sorted.sort_unstable();
+        let mut other = table_order(&kinds, pick, usize::MAX, !by_piece);
+        other.sort_unstable();
+        prop_assert_eq!(sorted, other);
     }
 }

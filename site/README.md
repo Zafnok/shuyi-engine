@@ -60,7 +60,8 @@ python -m http.server --directory public 1111
 | `content/changelog.md`, `content/news/generated/` | **Never committed**: `cargo xtask changelog --site site/content` writes the Changelog page and a News post for each release (`release-vX-Y-Z.md`, or `changes-YYYY-MM.md` before the first tag), and `pages.yml` runs it before `zola build`. It needs the tags and the whole history (`git clone` in full, not shallow) |
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
 | `content/learn/` | Learn: `_index.md`, the one way in; `book/`, the book ([The book's order](#the-book-s-order)); `errors/`, which `errors.sh` writes; and `playground.md`, the playground ([The playground](#the-playground)) |
-| `content/learn/book/` | The book ([ADR-0090](../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)): `_index.md`, its front page, whose `extra.parts` gives its order; its flat pages, each naming its part in `extra.part` (`before-you-start.md`; the chapters, numbered by `extra.chapter`; the appendices, lettered by `extra.appendix`, the glossary the last); and `box-pusher/`, its project |
+| `content/learn/book/` | The book ([ADR-0090](../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)): `_index.md`, its front page, whose `extra.parts` gives its order; its flat pages, each naming its part in `extra.part` (`before-you-start.md`; the chapters, numbered by `extra.chapter`; the appendices, lettered by `extra.appendix`, the glossary the last); `box-pusher/`, its project; and `guides/`, the guides |
+| `content/learn/book/guides/` | **Never committed**: the guides, which `cargo xtask site-data` copies from `docs/guides/` before each build ([The book's order](#the-book-s-order)) |
 | `content/learn/book/box-pusher/` | The book's project: `_index.md`, its landing page (`extra.project = true`, its code's folder in `extra.code`, its game's name in `extra.game` and its files' folder in a step in `extra.game_files`), and a page per step, named as its folder in `tutorial/`, its number in `extra.step`, the chapter it comes after in `extra.follows` and the files its playground edits in `extra.files` ([The playground](#the-playground)) |
 | `tutorial/` | The project's code: one folder per step, a whole game project and no member of the workspace, with its own `Cargo.lock` and a path dependency on the engine's crates. CI's `tutorial` job builds and tests each with `--locked`, so a lock `cargo test` would rewrite fails there (ticket 2062). `shuyi new`'s files for agents and CI, and the pinned Rust (the root's applies), are left out. It keeps its name while the book has one project (ADR-0090 §2) |
 | `tutorial/tries.toml`, `static/tutorial-tries/` | The pictures of the book's project and its chapters: each try names a step, or `book` for Moon Garden (`snippets/`), its keys and, for a before-and-after, the edits a page asks of the reader. `cargo xtask tutorial-tries` renders them into `static/tutorial-tries/<name>/`, where they are checked in. CI's `tutorial-tries` job renders them again and compares |
@@ -69,7 +70,7 @@ python -m http.server --directory public 1111
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, and `book-macros.html` the book's order, the pager through it, the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)), and the book's contents and the page's headings beside each page ([Beside each page](#beside-each-page)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)), and `shortcodes/exercise.html` an exercise ([Exercises](#exercises)) |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `book.html` the book's front page and contents, `chapter.html` every page of the book, a step's too, `project.html` a project's landing page, `guides.html` the guides' landing page, and `book-macros.html` the book's order, the pager through it, the reader's filter's bar, popup and order as JSON ([The reader's filter](#the-reader-s-filter)), and the book's contents and the page's headings beside each page ([Beside each page](#beside-each-page)); `shortcodes/snippet.md` shows the book's code, `shortcodes/newcomer.md` marks a passage for a newcomer ([Marking a passage](#marking-a-passage)), `shortcodes/check.html` is a quick check ([Quick checks](#quick-checks)), and `shortcodes/exercise.html` an exercise ([Exercises](#exercises)) |
 | `static/book-filter.js` | The reader's filter: plain JavaScript with no build step ([The reader's filter](#the-reader-s-filter)) |
 | `static/book-side.js` | The folds of the book's contents and of the page's headings beside each page of the book, and the heading being read: plain JavaScript ([Beside each page](#beside-each-page)) |
 | `static/book-check.js` | The quick checks' answers as buttons, plain JavaScript too ([Quick checks](#quick-checks)) |
@@ -398,8 +399,18 @@ parts = [
 - The `chapters` entry holds the chapters by `weight` (10–100 by tens).
   After each come the project's steps whose `follows` names the chapter's
   file, by `weight`, and the project's landing page before its first step.
-- A `section` entry (the guides, 2004) holds that folder's landing page,
-  then its pages.
+- A `section` entry holds that folder's landing page, then its pages, by
+  `weight`. The guides, `{ section = "guides" }`, come after the chapters.
+
+The guides' folder, `content/learn/book/guides/`, is never committed:
+`cargo xtask site-data` makes it again from `docs/guides/` before each
+build (ticket 2004). The README becomes its `_index.md` (template
+`guides.html`), and each guide a page, weighted in the order the README
+links them, with its title and the first sentence after its facts as its
+front matter. A link between guides becomes an `@/` link, and any other
+relative link one to the file on GitHub. Edit `docs/guides/`, never the
+copies. Their Rust is the `shuyi` crate's doc test, so `check-build.sh`
+lets the guides, alone in the book, have fenced Rust.
 
 The contents (`book.html`, and beside each page), the pager
 (`book-macros.html`, through the whole book) and each page's top line

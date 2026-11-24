@@ -60,6 +60,13 @@ pub fn enabled_modules<G: GameData>() -> Vec<Box<dyn Module<G>>> {
     Vec::new()
 }
 
+/// The top-down grid guide, `docs/guides/top-down-grid.md`, whose code
+/// runs as this crate's doc test (ticket 2004). Only `cargo test --doc`
+/// builds it.
+#[cfg(doctest)]
+#[doc = include_str!("../../../docs/guides/top-down-grid.md")]
+pub struct TopDownGridGuide;
+
 #[cfg(test)]
 mod tests {
     use shuyi_ui::toy::{Toy, game};

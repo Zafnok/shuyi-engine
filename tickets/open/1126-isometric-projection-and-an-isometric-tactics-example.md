@@ -58,8 +58,11 @@ None.
   bots. It uses CC0 isometric art (for example Kenney's isometric packs).
 - The `Isometric` perspective marker (ADR-0009 §3), whose projection is
   `Projection::Isometric`. The grid kit takes any marker.
-- Guides (ADR-0009 §5): write `docs/guides/isometric.md` in full. If 2004
-  isn't done, create the file and 2004 adds it to its list.
+- Guides (ADR-0009 §5): write `docs/guides/isometric.md` in full.
+  **From 2004 (done):** it is a planned page now: replace it, with its
+  facts under the title (`docs/guides/README.md`, *Each guide*) set to
+  `- **Status:** ready`, and move it under *Built* in the README;
+  `cargo xtask check-modules` checks it.
 - The new-game wizard (ADR-0013 §3–§4): set the `isometric` answer in
   `docs/modules.ron` (2003 put it there, parked) to ready, as
   `top-down-grid` is: `status: ready`, `tickets: []`. If 2503 is done,

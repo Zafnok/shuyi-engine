@@ -52,6 +52,7 @@ mod exercises;
 mod flaky;
 mod gates;
 mod golden;
+mod guides;
 mod ids;
 mod layers;
 mod links;
@@ -125,7 +126,11 @@ usage:
       Check the modules against docs/modules.md and docs/modules.ron (ADR-0009):
       no default crate depends on one, each has a README, its metadata and a
       row, answers the concerns list, alternatives name each other, and each
-      feature of the shuyi crate names a row.
+      feature of the shuyi crate names a row. And the guides, docs/guides/
+      (ticket 2004): each answer of perspective, kind and world-drawing (but
+      flat) has one, each answer they name is in docs/modules.ron, their
+      links and tickets exist, a planned one names an open ticket, and the
+      README lists each.
   cargo xtask check-pins
       Check that every workflow's actions are pinned by commit SHA, one SHA per
       action, every template's workflows in .github/dependabot.yml, and the
@@ -262,6 +267,9 @@ usage:
       are in tickets/done/, In progress when some are, Planned when none is,
       and its link text when it has none. Fails on a card with both `tickets`
       and `status`, or naming a ticket in neither tickets/open/ nor done/.
+      Then copy docs/guides/ into <dir>/content/learn/book/guides/ (ticket
+      2004), the README as its _index.md, with front matter and the links
+      made the site's.
   cargo xtask tutorial-tries [--check] [<name>...]
       Render the tutorial's and the book's pictures from
       site/tutorial/tries.toml (tickets 2818, 2819), or those named: each game
@@ -326,7 +334,11 @@ fn main() -> ExitCode {
             report("check-targets", &targets::run(&root), &[])
         }
         Some("check-modules") if args.len() == 1 => {
-            report("check-modules", &modules::run(&root), &[])
+            // The modules, then the guides against the same concerns
+            // (ticket 2004).
+            let mut errors = modules::run(&root);
+            errors.extend(guides::run_repo(&root));
+            report("check-modules", &errors, &[])
         }
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         Some("check-toolchain") if args.len() == 1 => {
@@ -769,7 +781,9 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let errors = site_data::run(root, &options).err().unwrap_or_default();
+    // The feature cards' statuses, then the book's guides (ticket 2004).
+    let mut errors = site_data::run(root, &options).err().unwrap_or_default();
+    errors.extend(guides::write_site(root, &options.site).err());
     report("site-data", &errors, &[])
 }
 
