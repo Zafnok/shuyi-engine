@@ -12,11 +12,17 @@ one it builds first.
 
 ## What starts it
 
-The engine's template, with its `grid` short name:
+The engine's template, with the perspective `top-down-grid`, the
+default, or its `grid` short name:
 
 ```bash
+cargo shuyi new ../my-game --no-input --perspective top-down-grid --name "My Game"
 cargo shuyi new ../my-game --template grid --name "My Game"
 ```
+
+Both make the same game. The other answers it takes are the catalog's
+defaults (`--kind tactics`, `--online none`, `--targets desktop,web`;
+[`templates.md`](../templates.md#the-wizards-questions)).
 
 It writes the game's rules in a crate of their own,
 `crates/rules/src/lib.rs`, the stage's map,

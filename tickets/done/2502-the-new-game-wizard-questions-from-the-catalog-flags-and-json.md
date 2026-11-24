@@ -275,7 +275,11 @@ fields in `modules`, `NewInput::id`, `NewOutput::id`).
 - The answers' one-line description is the catalog answer's `name`: no
   new field.
 - The direction menu: 3108 isn't done, so there was none to replace.
-- Either-order clauses: 2004, 2205, 2206, 2707, 2719, 2726, 2732, 2735,
+- 2004 merged first and took its *if not* branch, so this ticket made
+  the ready guide, `docs/guides/top-down-grid.md`, name the answers and
+  the `--no-input` command that start it, and the guides' README says a
+  guide names them; the planned guides have nothing to start yet.
+- Either-order clauses: 2205, 2206, 2707, 2719, 2726, 2732, 2735,
   2739, 2754, 2771, 2848, 3108, 3109 and 3338 aren't done, so nothing was
   done for them here; each one's clause now says what holds, and those
   about the questions' list name 3424 (2504, 2551 and 2775 wait for it
