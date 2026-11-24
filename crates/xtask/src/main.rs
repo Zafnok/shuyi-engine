@@ -305,7 +305,11 @@ fn main() -> ExitCode {
             report("check-targets", &targets::run(&root), &[])
         }
         Some("check-modules") if args.len() == 1 => {
-            report("check-modules", &modules::run(&root), &[])
+            // The modules, then the guides against the same concerns
+            // (ticket 2004).
+            let mut errors = modules::run(&root);
+            errors.extend(guides::run_repo(&root));
+            report("check-modules", &errors, &[])
         }
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         Some("check-toolchain") if args.len() == 1 => {
@@ -671,7 +675,9 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let errors = site_data::run(root, &options).err().unwrap_or_default();
+    // The feature cards' statuses, then the book's guides (ticket 2004).
+    let mut errors = site_data::run(root, &options).err().unwrap_or_default();
+    errors.extend(guides::write_site(root, &options.site).err());
     report("site-data", &errors, &[])
 }
 

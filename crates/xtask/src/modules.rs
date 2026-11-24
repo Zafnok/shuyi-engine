@@ -17,9 +17,7 @@
 //! 4. two modules answering one concern where one's `alternatives` doesn't
 //!    name the other, unless the concern is `alternatives: false`;
 //! 5. a feature of the `shuyi` crate that names no catalog row (feature
-//!    `physics` is the row of `shuyi-physics`);
-//! 6. the guides, `docs/guides/`, out of step with the concerns
-//!    ([`crate::guides`], ticket 2004).
+//!    `physics` is the row of `shuyi-physics`).
 //!
 //! [`check`] is a pure function over plain data; [`run`] feeds it the
 //! repository.
@@ -30,7 +28,6 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use crate::guides;
 use crate::layers::{self, Graph, Kind, Member};
 
 /// The concerns, from the repository's root.
@@ -147,13 +144,9 @@ pub fn run(repo_root: &Path) -> Vec<String> {
     let catalog = read(CATALOG);
     let graph = layers::metadata(repo_root).and_then(|json| layers::parse_graph(&json));
     match (concerns, catalog, graph) {
-        (Ok(concerns), Ok(catalog), Ok(graph)) => {
-            let mut errors = check(&graph, &concerns, &catalog, |member| {
-                member.dir.join("README.md").is_file()
-            });
-            errors.extend(guides::run(repo_root, &concerns));
-            errors
-        }
+        (Ok(concerns), Ok(catalog), Ok(graph)) => check(&graph, &concerns, &catalog, |member| {
+            member.dir.join("README.md").is_file()
+        }),
         (concerns, catalog, graph) => concerns
             .err()
             .into_iter()

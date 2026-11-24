@@ -12,7 +12,7 @@
 //! - `Tickets:` the tickets that build it, by id, `, ` between (none for a
 //!   ready guide with nothing left to build).
 //!
-//! [`check`], part of `cargo xtask check-modules`, fails on:
+//! [`check`], run by `cargo xtask check-modules` after the modules, fails on:
 //!
 //! 1. a guide whose facts don't read;
 //! 2. an answer a guide names that `docs/modules.ron` doesn't have;
@@ -24,7 +24,7 @@
 //! 7. a guide with a fenced Rust block that [`DOC_TESTS`] doesn't include
 //!    as a doc test.
 //!
-//! [`write_site`], part of `cargo xtask site-data`, copies them into the
+//! [`write_site`], run by `cargo xtask site-data` after the cards, copies them into the
 //! book (ADR-0090 §1–§2): the README as the section's `_index.md`, each
 //! guide as a page, in the README's order, with front matter, a link
 //! between guides made a Zola link and any other relative link one to the
@@ -35,7 +35,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
-use crate::modules::{CONCERNS, Concerns};
+use crate::modules::{CONCERNS, Concerns, parse_concerns};
 
 #[cfg(test)]
 mod tests;
@@ -438,6 +438,19 @@ pub fn run(root: &Path, concerns: &Concerns) -> Vec<String> {
             })
         }
         Err(e) => vec![e],
+    }
+}
+
+/// Checks the guides of the repository at `root` against its concerns,
+/// `docs/modules.ron`: `cargo xtask check-modules`' part.
+pub fn run_repo(root: &Path) -> Vec<String> {
+    let concerns = fs::read_to_string(root.join(CONCERNS))
+        .map_err(|e| format!("{CONCERNS}: {e}"))
+        .and_then(|text| parse_concerns(&text));
+    match concerns {
+        Ok(concerns) => run(root, &concerns),
+        // `modules::run` reports the concerns' file.
+        Err(_) => Vec::new(),
     }
 }
 
