@@ -14,7 +14,7 @@ completed:
 # 2093 — Remove the research scripts, keep the reports
 
 > **Parked** This waits for 3083, which is parked behind the hosted
-> preview service (2602). Nobody starts it until Nick unparks 3083 and
+> preview service (2602, 2609–2611). Nobody starts it until Nick unparks 3083 and
 > 3083 is done.
 
 ## Context

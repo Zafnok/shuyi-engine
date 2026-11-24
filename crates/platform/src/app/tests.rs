@@ -10,6 +10,7 @@ use core::cell::RefCell;
 
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::Gain;
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
@@ -114,10 +115,7 @@ fn a_frame_takes_input_then_acts_steps_plays_and_presents() {
     assert_eq!((first.dt, first.ticks), (0.0, 0));
     // Its click went to the device, and the frame drawn after the update
     // to the display.
-    let click = SoundRequest::Sound {
-        cue: "click".into(),
-        volume: 1.0,
-    };
+    let click = SoundRequest::sound("click", 1.0);
     assert_eq!(p.speaker().requests(), [click]);
     assert_eq!(app.audio().len(), 1);
     assert_eq!(p.presented(), 1);
@@ -341,12 +339,34 @@ fn the_game_is_shown_with_its_look_and_its_background() {
     assert_eq!(p.looked, Some(false));
 }
 
+#[test]
+fn the_card_and_the_game_ask_for_the_games_scale() {
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
+    );
+    let mut app = App::new(start);
+    let mut p = RecordLook::default();
+    let _ = app.frame(&mut p, Millis(0));
+    // The card, before the player's settings are read: the toy's default.
+    assert!(matches!(p.headless.last_frame(), Some(Presented::Card(_))));
+    assert_eq!(p.scales, [ScaleMode::Fit]);
+    let _ = app.frame(&mut p, Millis(16));
+    assert!(matches!(
+        p.headless.last_frame(),
+        Some(Presented::Game { .. })
+    ));
+    assert_eq!(p.scales.last(), Some(&ScaleMode::Fit));
+}
+
 /// A headless backend that notes whether the game's frames came with
-/// their look.
+/// their look, and each frame's scale.
 #[derive(Default)]
 struct RecordLook {
     headless: HeadlessPlatform,
     looked: Option<bool>,
+    scales: Vec<ScaleMode>,
 }
 
 impl Platform for RecordLook {
@@ -358,6 +378,7 @@ impl Platform for RecordLook {
         if let Show::Game { look, .. } = frame.show {
             self.looked = Some(look.is_some());
         }
+        self.scales.push(frame.scale);
         self.headless.present(frame);
     }
 
@@ -820,10 +841,7 @@ fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
     let _ = app.frame(&mut p, Millis(17));
     assert!(!app.is_paused());
     assert_eq!(log.borrow().len(), 2);
-    let click = SoundRequest::Sound {
-        cue: "click".into(),
-        volume: 1.0,
-    };
+    let click = SoundRequest::sound("click", 1.0);
     assert_eq!(p.speaker().requests(), [click]);
     assert!(silenced(&p), "{:?}", p.speaker().gains());
     p.push_system(SystemEvent::FocusGained);

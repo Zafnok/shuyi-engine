@@ -86,13 +86,18 @@ check on the numbers.
     instructions) applied to 33.3 ms, with 20 % headroom, taking the
     scenario with the worst ratio;
   - `think_units_per_frame` (3009) is set the same way;
-  - **From 3001 (done):** `targets/playdate.ron` is already `status:
-    Supported`. 3001 set every profile but `switch`, `android` and
-    `ios` so, before any device run; ADR-0008 §1 calls a target
-    supported once its example runs on the device, which this ticket
-    makes true. Keep it `Supported`. A scenario that misses 30 fps gets
-    its follow-up ticket (below), not a demotion, which would drop the
-    Playdate from 3008's gate.
+  - **Either order with 3338:** if 3338 is done, `targets/playdate.ron`
+    is `status: Preview`: set it to `Supported` in this PR, and write
+    the run under `## On the device` in `docs/targets/playdate.md` (the
+    hardware revision, the SDK version, the date); if not, keep it
+    `Supported` and write the run under that heading, and 3338 keeps it
+    so. A scenario that misses 30 fps gets its follow-up ticket
+    (below), not a demotion.
+  - **Either order with 3342:** if 3342 is done, set
+    `targets/playdate.ron`'s `startup_instructions` from the measured
+    start-up's ratio, as `frame_instructions` is set; if not, nothing
+    to do (3342 adds the budget, derived from `startup_ms`,
+    provisional).
 
   The PR carries the measurements that justify every number it changes.
 - **If a scenario misses 30 fps.** Write a ticket per cause found (for
@@ -128,8 +133,9 @@ check on the numbers.
       hardware revision and the SDK version.
 - [ ] The `playdate` profile's budgets are set from the measurements, and
       the PR shows the arithmetic.
-- [ ] `targets/playdate.ron` stays `status: Supported`, and a
-      follow-up ticket exists for each scenario that misses 30 fps.
+- [ ] `targets/playdate.ron` is `status: Supported`, with the run
+      recorded under `## On the device`, and a follow-up ticket exists
+      for each scenario that misses 30 fps.
 - [ ] Nick's sign-off is recorded in the completion notes.
 - [ ] All gates in the `run-gates` skill pass.
 

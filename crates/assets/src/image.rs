@@ -13,7 +13,14 @@
 //! [`ImageTable::load_with`] builds the table with every image format a
 //! game registers. Its pixels are the [`Image`] kind, which `Png` reads
 //! with the `png` feature. A game that draws through `shuyi-app` needs
-//! none: the platform decodes a PNG's pixels when it uploads the picture.
+//! none for a PNG: the platform decodes a PNG's pixels when it uploads the
+//! picture, and any other picture's with [`Formats::standard`] (ticket
+//! 2234).
+//!
+//! JPEG, WebP, QOI and JPEG XL are formats of both kinds too, each behind
+//! its own feature (`jpeg`, `webp`, `qoi`, `jpeg-xl`; ticket 2203):
+//! `Jpeg` and `JpegInfo`, and so on. [`Formats::standard`] registers
+//! those whose feature is on, so the table sizes their files.
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +30,22 @@ use crate::bitmap::Bitmap;
 use crate::bundle::Bundle;
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, Formats};
+
+#[cfg(any(
+    feature = "jpeg",
+    feature = "webp",
+    feature = "qoi",
+    feature = "jpeg-xl"
+))]
+mod codecs;
+#[cfg(feature = "jpeg")]
+pub use codecs::{Jpeg, JpegInfo};
+#[cfg(feature = "jpeg-xl")]
+pub use codecs::{JpegXl, JpegXlInfo};
+#[cfg(feature = "qoi")]
+pub use codecs::{Qoi, QoiInfo};
+#[cfg(feature = "webp")]
+pub use codecs::{WebP, WebPInfo};
 
 /// The longest side an image may have, in pixels: what every graphics card
 /// the engine runs on (WebGL included) takes as one texture.

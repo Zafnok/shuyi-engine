@@ -64,6 +64,13 @@ pub fn state_hash<T: Serialize + ?Sized>(value: &T) -> Result<StateHash, HashErr
     Ok(StateHash(hasher.0))
 }
 
+/// The 64-bit FNV-1a hash of `bytes`, as [`state_hash`] runs it.
+pub(crate) fn fnv1a(bytes: &[u8]) -> u64 {
+    let mut hasher = Hasher(FNV_OFFSET);
+    hasher.bytes(bytes);
+    hasher.0
+}
+
 /// The tag bytes of the form, one per kind of value.
 mod tag {
     pub const FALSE: u8 = 0x00;

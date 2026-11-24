@@ -25,6 +25,12 @@ It is a module (ADR-0009): off by default, a feature of the `shuyi`
 crate (2003), listed in the catalog under its concern. The arena of
 plain structs stays the default (ADR-0003 §4, as 2904 amends it).
 
+Three stores for many things are planned side by side: the arena
+(`Arena<T>`, 2139, parked), this module's `World`, and the real-time
+strategy columns (2705, parked). 2904's ADR settles the one entity model
+the engine teaches: how the arena and `World` share it (kits name
+neither store). 2705 measures all three at scale.
+
 ## Nick input
 
 None.
@@ -60,8 +66,9 @@ None.
     name given at registration (its §3, never `core::any::type_name`),
     with no reflection and no registry of the module's own;
   - no floats in the module's own code (`AGENTS.md` rule 5); a game's
-    components may hold `Fx` (1119) or integers. Hold it as 2015 holds
-    `shuyi-core`: put
+    components may hold `Fx` (2139) or integers. The module itself
+    needs no `Fx`, so 2139 (parked) doesn't block it. Hold it as 2015
+    holds `shuyi-core`: put
     `#![cfg_attr(not(test), deny(clippy::float_arithmetic))]` in
     `crates/ecs/src/lib.rs`.
 - **Entries in `tools/layers.ron`** (2015) for `shuyi-ecs`, and for
@@ -93,8 +100,9 @@ None.
 - running a schedule inside a game's stage, the parallel scheduler and
   the example (2108);
 - scenes (2221);
-- relations, observers, events beyond `Commands` (follow-ups if a game
-  needs them);
+- relations (parent and child entities), observers, and events beyond
+  `Commands`. No ticket plans them yet: a game that needs one writes a
+  follow-up ticket (the `write-ticket` skill), blocked by this one;
 - measuring the module at the scale of an RTS army (2705, parked).
   **Either order with 2705:** if 2705 is done, read its report,
   `docs/research/units-at-scale.md`, beside 2904's numbers, and

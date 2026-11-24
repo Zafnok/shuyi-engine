@@ -30,14 +30,16 @@ priority) and a retrigger time. Godot's players have `max_polyphony`.
 Unity's `AudioSource` and GameMaker's `audio_play_sound` take a
 priority, and a GameMaker game sets how many sounds play at once.
 
-What the code has once 2345 is done:
+What the code has since 2345 (done):
 
 - `Cues::apply` turns a frame's requests into `SoundRequest`s, picks
   each sound's file and volume, and drops a play inside its cue's gap as
   `DroppedSound { cue, why: DropWhy::Gap }`. `DropWhy` is
-  `#[non_exhaustive]`. The Harness lists the drops
-  (`Harness::dropped_sounds`), and `run` answers them under `dropped`
-  (`Dropped { frame, cue, why }`, `why` being `gap`).
+  `#[non_exhaustive]`, and `DropWhy::word` names a reason (`gap`). The
+  Harness lists the drops (`Harness::dropped_sounds`). **From 3419
+  (done):** `run`'s answer lists them under `dropped` (`Dropped { frame,
+  cue, why }` in `crates/cli/src/contract/session.rs`, `why` being
+  `DropWhy::word`).
 - `SoundRequest::Sound` is `{ cue, volume, variant, cue_volume }`.
   Nothing counts the copies playing.
 - `shuyi-app`'s `Backend::play` (`crates/app/src/audio.rs`) returns
@@ -64,7 +66,7 @@ Why it matters:
   defaults are today's behaviour, so its manifest loads as it is. Its
   code changes where the API breaks (Scope, *For the game*).
 
-The rules, as 2345's ADR decides them:
+The rules, as 2345's ADR (ADR-0139, §4) decides them:
 
 - a copy ends at its start plus its file's length, read from the file's
   header;
@@ -130,16 +132,16 @@ None.
   - the manifest's binary form changes, so `pack::VERSION`
     (`crates/assets/src/pack.rs`) becomes the next number, and the
     pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted;
-  - **Either order with 2225:** if 2225 is done, `sound_length_ms`
-    gives a `.sfx.ron` the length it renders to (`n × 1000 /
-    SAMPLE_RATE`, `n` from its `SfxDef`), whether the bytes are its RON
-    text (as `AudioManifestRon` reads the bundle) or the WAV a game's
-    hook rendered, and `SfxRon` fills the `Sound` kind's `length_ms`; if
-    not, nothing to do (2225 does it).
-  - **Either order with 2234:** if 2234 is done, `sound_length_ms`
-    gives a `.flac` or `.mp3` file the length of 2234's
-    `audio::track_length_ms`, so a FLAC sound of a cue with
-    `max_copies` has a length; if not, nothing to do (2234 does it).
+  - **From 2225 (done):** `sound_length_ms` gives a `.sfx.ron` (a name
+    `audio::SFX_SUFFIX` ends) the length it renders to (`n × 1000 /
+    SAMPLE_RATE`, `n` from its `SfxDef`: `sfx::render`'s count), whether
+    the bytes are its RON text (as `AudioManifestRon` reads the bundle)
+    or the WAV a game's hook rendered (`audio::playable`), and
+    `sfx::SfxRon` fills the `Sound` kind's `length_ms`. Both behind the
+    `sfx` feature, as the format is.
+  - **From 2234 (done):** `sound_length_ms` gives a `.flac` or `.mp3`
+    file the length of `audio::track_length_ms`, so a FLAC sound of a
+    cue with `max_copies` has a length.
 - **Copies in `Cues`** (`crates/platform/src/audio/cues.rs`, `no_std`,
   integers only):
   - `CopyId`: a `Copy`, `Ord` id around a `u64` counter that `Cues`
@@ -178,11 +180,13 @@ None.
     `crates/platform/src/audio.rs`'s tests,
     `crates/platform/src/app/tests.rs` and
     `crates/platform/src/headless/tests.rs`.
-- **The contract:** `run`'s `dropped` gives `why` as `copies`,
-  `voices` and `cut` for the new reasons, with no change of shape. If
-  the schemas change (a doc comment that lists the words, say), raise
-  `contract::VERSION` (`crates/cli/src/contract.rs`), regenerate them
-  and add the line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
+- **The contract (from 3419, done):** `DropWhy::word` names the new
+  reasons `copies`, `voices` and `cut`, and `run`'s `dropped` gives them
+  as `why` with no change of shape. `Dropped::why`'s doc comment lists
+  the words (`gap` today): add the new ones there and in
+  `docs/contract.md`'s `run` row, raise `contract::VERSION`
+  (`crates/cli/src/contract.rs`), regenerate the schemas and add the
+  line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
 - **`shuyi-app` stops one copy alone** (`crates/app/src/audio.rs`,
   `crates/app/src/backend.rs`):
   - **From 2344 (done):** `Backend::play` returns `Self::Playing`, one
@@ -225,7 +229,7 @@ None.
 - **Docs:** `docs/formats.md` (the new fields, their checks, and that
   lengths are measured, never written), `docs/platform-backends.md`
   (`copy` and `StopCopy`: a backend stops one copy alone),
-  `docs/contract.md` (the new `why` words). 2345's ADR already decides
+  `docs/contract.md` (the new `why` words). 2345's ADR (ADR-0139) already decides
   these rules; if the code must differ from it, amend it (the
   `write-adr` skill).
 - **Public types (ADR-0039):** `WhenFull` may grow (a "stop quietest"
@@ -248,12 +252,12 @@ None.
 snapshots not counted), the lengths go first as a ticket of their own
 (`write-ticket`, 23xx, After MVP, blocked by 2345): `sound_length_ms`,
 `lengths_ms`, `measure_sounds`, the `Sound` kind's `length_ms`, the pack
-version and the 2225 clause. That PR adds it to this ticket's
-`blocked_by` and points 2225's clause at it.
+version and the `.sfx.ron` lengths (*From 2225*). That PR adds it to this
+ticket's `blocked_by`.
 
 **Out (do not do):**
 - what 2345 does: the cue rules' place in `App`, variants, the random
-  volume, gaps, `Dropped` in the contract, and the ADR;
+  volume, gaps, and the ADR; `Dropped` in the contract (3419);
 - pitch or rate variation (2379, parked);
 - limits per owner, culling by distance and positional sound (2363,
   parked). A sound 2363 drops never reaches `Cues`, so it holds no copy
@@ -269,7 +273,8 @@ version and the 2225 clause. That PR adds it to this ticket's
 
 ## Implementation steps
 
-1. Read 2345's ADR and its `Cues`; `crates/assets/src/audio.rs`
+1. Read 2345's ADR (ADR-0139) and its `Cues`
+   (`crates/platform/src/audio/cues.rs`); `crates/assets/src/audio.rs`
    (`Check::sound`, `wav_format`, `ogg_length_ms`, the tests' `wav` and
    `ogg_file`); `crates/assets/src/audio/formats.rs`;
    `crates/platform/src/audio.rs`, `headless.rs` and `harness.rs`;

@@ -8,3 +8,8 @@
 *.otf  binary
 *.wasm binary
 *.bin  binary
+*.webp binary
+*.qoi  binary
+*.jxl  binary
+*.flac binary
+*.mp3  binary

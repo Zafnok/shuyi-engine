@@ -13,9 +13,11 @@ use super::builtin_tests::{
     ATLAS, CREDITS, FILM, LIGHTS, MANIFEST, MAP, NAMES, PALETTE, PATTERN_MAP, SCRIPT, Shot, TABLE,
     Table, bundle, lang_pack, map_text, ogg, ogg_file, pack_files, png_file, wav,
 };
+use super::codec_tests::{FLAC, JPEG, JPEG_XL, MP3, QOI, WEBP};
 use super::*;
 use crate::audio::{
-    self, AudioManifest, AudioManifestRon, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
+    self, AudioManifest, AudioManifestRon, Flac, FlacTrack, Mp3, Mp3Track, MusicTrack, OggVorbis,
+    OggVorbisTrack, Sound, Wav,
 };
 use crate::bitmap::dither::Dithered;
 use crate::bitmap::{OneBitFile, OneBitInfo, OneBitPicture};
@@ -26,7 +28,10 @@ use crate::dialogue::{DialogueFile, Dlg, NoDirective};
 use crate::font::{FontAtlasDef, FontAtlasRon};
 use crate::golden::Golden;
 use crate::grid_map::{GridMap, NoFeature};
-use crate::image::{Image, ImageInfo, Png, PngInfo, png_header};
+use crate::image::{
+    Image, ImageInfo, Jpeg, JpegInfo, JpegXl, JpegXlInfo, Png, PngInfo, Qoi, QoiInfo, WebP,
+    WebPInfo, png_header,
+};
 use crate::keymap::{KeymapDef, KeymapRon, sample};
 use crate::lang::LangPack;
 use crate::lighting::{Lighting, LightingRon};
@@ -34,6 +39,7 @@ use crate::names::{Names, NamesRon};
 use crate::onebit::{PatternMapDef, PatternMapRon};
 use crate::palette::{PaletteDef, PaletteRon};
 use crate::ron::Ron;
+use crate::sfx::{SfxDef, SfxDefRon, SfxRon};
 use crate::target::{TargetProfile, TargetRon};
 
 /// The table and the names of the rows checked so far, for the guard.
@@ -90,6 +96,7 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     kind::<OneBitPicture>(formats, rows, &mut missing);
     kind::<Sound>(formats, rows, &mut missing);
     kind::<MusicTrack>(formats, rows, &mut missing);
+    kind::<SfxDef>(formats, rows, &mut missing);
     kind::<AudioManifest>(formats, rows, &mut missing);
     kind::<CreditsFile>(formats, rows, &mut missing);
     kind::<FontAtlasDef>(formats, rows, &mut missing);
@@ -124,6 +131,25 @@ fn check_rows() -> Rows {
     rows.format(&Wav, "a.wav", &wav(1, rate, 1), None);
     rows.format(&OggVorbis, "a.ogg", &ogg(2, rate), None);
     rows.format(&OggVorbisTrack, "a.ogg", &ogg_file(rate, 88_200), None);
+    // Ticket 2203's formats, on their fixtures: the lossy ones for the
+    // pictures but QOI, so a decoder's rounding is pinned.
+    rows.format(&JpegInfo, "a.jpg", JPEG, None);
+    rows.format(&Jpeg, "a.jpg", JPEG, None);
+    rows.format(&WebPInfo, "a.webp", WEBP, None);
+    rows.format(&WebP, "a.webp", WEBP, None);
+    rows.format(&QoiInfo, "a.qoi", QOI, None);
+    rows.format(&Qoi, "a.qoi", QOI, None);
+    rows.format(&JpegXlInfo, "a.jxl", JPEG_XL, None);
+    rows.format(&JpegXl, "a.jxl", JPEG_XL, None);
+    rows.format(&Flac, "a.flac", FLAC, None);
+    rows.format(&FlacTrack, "a.flac", FLAC, None);
+    rows.format(&Mp3, "a.mp3", MP3, None);
+    rows.format(&Mp3Track, "a.mp3", MP3, None);
+    let coin = crate::sfx::preset_source("coin")
+        .unwrap_or_default()
+        .as_bytes();
+    rows.format(&SfxRon, "sfx/coin.sfx.ron", coin, None);
+    rows.format(&SfxDefRon, "sfx/coin.sfx.ron", coin, None);
     let sounds = bundle(vec![
         ("audio/audio.ron", MANIFEST.into()),
         ("audio/sfx/gone.wav", wav(1, rate, 1)),

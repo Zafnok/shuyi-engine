@@ -585,13 +585,16 @@ fn old_new_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
             .filter_map(|row| row["metrics"][metric].as_f64())
             .collect()
     };
+    // A stalled stream is heard as a gap is: the track stops while the rest plays on.
     let gaps: f64 = side("new", "underruns").iter().sum();
-    let status = if gaps == 0.0 && !side("new", "underruns").is_empty() {
+    let stalled: f64 = side("new", "stalled_frames").iter().sum();
+    let status = if gaps == 0.0 && stalled == 0.0 && !side("new", "underruns").is_empty() {
         "passed"
     } else {
         "failed"
     };
-    let detail = gaps_detail(gaps, &side("new", "dry_callbacks"));
+    let stalls = stalls_of(rows.iter().filter(|row| row["side"] == "new"));
+    let detail = gaps_detail(gaps, &side("new", "dry_callbacks"), stalls.as_ref());
     let mut cells = vec![cell(platform, "old-new:underruns", true, status, &detail)];
     for (metric, limit) in limits {
         let (old, new) = (side("old", metric), side("new", metric));
@@ -722,10 +725,45 @@ fn parse_log(text: &str) -> Result<Log, String> {
             Some("warn") => log.warnings.push(text),
             Some("failed") => log.failed = Some(text),
             Some("done") => log.done = true,
+            Some("streams") => {
+                log.stalls
+                    .extend(
+                        event["tracks"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|track| {
+                                let stalled =
+                                    track["stalled"].as_u64().filter(|frames| *frames > 0)?;
+                                Some((track["track"].as_str()?.to_owned(), stalled))
+                            }),
+                    );
+            }
             _ => {}
         }
     }
     Ok(log)
+}
+
+/// What a failed scenario's run adds when a stream stalled in it: a stall delays the
+/// track for the rest of it, so everything after differs (ticket 3320).
+fn stalls_note(run: &Path, log: &Log) -> Option<String> {
+    if log.stalls.is_empty() {
+        return None;
+    }
+    let stalled: Vec<String> = log
+        .stalls
+        .iter()
+        .map(|(track, frames)| format!("{track} stalled {frames} frames"))
+        .collect();
+    let run = run.file_name().map_or_else(
+        || run.display().to_string(),
+        |name| name.to_string_lossy().into_owned(),
+    );
+    Some(format!(
+        "in {run} the feeder fell behind: {}",
+        stalled.join(", ")
+    ))
 }
 
 /// A scenario against its expected signals in each run, and the runs against
@@ -743,14 +781,18 @@ fn scenario_cells(
     for run in runs {
         match read_run(run, name) {
             Ok((recording, log)) => {
-                problems.extend(compare::check(
+                let found = compare::check(
                     &scenario.expect,
                     scenario.end,
                     &recording,
                     &log,
                     oracle,
                     tolerance,
-                ));
+                );
+                if !found.is_empty() {
+                    problems.extend(stalls_note(run, &log));
+                }
+                problems.extend(found);
                 recordings.push(recording);
             }
             Err(e) => problems.push(e),
@@ -896,21 +938,55 @@ pub(crate) fn judge(ratios: &Ratios, limit: Limit) -> &'static str {
     }
 }
 
-/// What an `underruns` cell says: the gaps a recording showed and, where the output
-/// counts the callbacks that found its buffer empty (`dry`, one sample a run), whose
-/// they are (ticket 3089). A gap with no dry callback isn't the output's: the loopback,
-/// or what the mix was given.
-fn gaps_detail(gaps: f64, dry: &[f64]) -> String {
-    let said = format!("{gaps} gaps while everything played");
-    if dry.is_empty() {
-        return said;
-    }
+/// What an `underruns` cell says: the gaps a recording showed and whose they are.
+/// Where the output counts the callbacks that found its buffer empty (`dry`, one
+/// sample a run, ticket 3089), a gap with none isn't the output's. Where the feeder
+/// counts each track's stalled frames (`stalls`, by track, ticket 3320), a stall is
+/// the feeder's, a gap or not: the track stopped while the rest played on. A gap
+/// that is neither's is the loopback's, or what the mix was given.
+fn gaps_detail(gaps: f64, dry: &[f64], stalls: Option<&BTreeMap<String, f64>>) -> String {
+    let mut said = vec![format!("{gaps} gaps while everything played")];
     let times: f64 = dry.iter().sum();
-    if gaps > 0.0 && times == 0.0 {
-        format!("{said}; the output's buffer never ran dry, so not the output's")
-    } else {
-        format!("{said}; the output's buffer ran dry {times} times")
+    let output_clear = gaps > 0.0 && !dry.is_empty() && times == 0.0;
+    let stalled: Vec<String> = stalls
+        .into_iter()
+        .flatten()
+        .filter(|(_, frames)| **frames > 0.0)
+        .map(|(track, frames)| format!("{track} stalled {frames} frames"))
+        .collect();
+    if output_clear && stalls.is_none() {
+        said.push("the output's buffer never ran dry, so not the output's".to_owned());
+    } else if output_clear {
+        said.push("the output's buffer never ran dry".to_owned());
+    } else if !dry.is_empty() {
+        said.push(format!("the output's buffer ran dry {times} times"));
     }
+    if !stalled.is_empty() {
+        said.push(format!("the feeder fell behind: {}", stalled.join(", ")));
+    } else if stalls.is_some() && output_clear {
+        said.push(
+            "no stream stalled, so neither the output's nor the feeder's: the loopback, or the mix"
+                .to_owned(),
+        );
+    } else if stalls.is_some() {
+        said.push("no stream stalled".to_owned());
+    }
+    said.join("; ")
+}
+
+/// Each track's stalled frames over `rows`, the timings' rows, by track: `None` where
+/// no row says (a backend whose feeder doesn't count them).
+fn stalls_of<'a>(rows: impl IntoIterator<Item = &'a Value>) -> Option<BTreeMap<String, f64>> {
+    let mut counted = false;
+    let mut stalls = BTreeMap::new();
+    for streams in rows.into_iter().filter_map(|row| row["streams"].as_array()) {
+        counted = true;
+        for track in streams {
+            let name = track["track"].as_str().unwrap_or("a track").to_owned();
+            *stalls.entry(name).or_insert(0.0) += track["stalled"].as_f64().unwrap_or(0.0);
+        }
+    }
+    counted.then_some(stalls)
 }
 
 /// The performance verdicts from `base/perf.jsonl`: old against old, which
@@ -935,21 +1011,26 @@ fn performance_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value>
             .filter_map(|row| row["metrics"][metric].as_f64())
             .collect()
     };
-    // A count, not a ratio: a gap in either side is a gap.
-    let underruns: f64 = ["a", "b"]
-        .iter()
-        .flat_map(|name| side(name, "underruns"))
-        .sum();
-    let status = if underruns == 0.0 && !side("a", "underruns").is_empty() {
+    // A count, not a ratio: a gap in either side is a gap, and so is a stalled
+    // stream, which the other sounds playing on hide from the recording.
+    let both = |metric: &str| -> Vec<f64> {
+        ["a", "b"]
+            .iter()
+            .flat_map(|name| side(name, metric))
+            .collect()
+    };
+    let underruns: f64 = both("underruns").iter().sum();
+    let stalled: f64 = both("stalled_frames").iter().sum();
+    let status = if underruns == 0.0 && stalled == 0.0 && !side("a", "underruns").is_empty() {
         "passed"
     } else {
         "failed"
     };
-    let dry: Vec<f64> = ["a", "b"]
-        .iter()
-        .flat_map(|name| side(name, "dry_callbacks"))
-        .collect();
-    let detail = gaps_detail(underruns, &dry);
+    let stalls = stalls_of(
+        rows.iter()
+            .filter(|row| row["side"] == "a" || row["side"] == "b"),
+    );
+    let detail = gaps_detail(underruns, &both("dry_callbacks"), stalls.as_ref());
     let mut cells = vec![cell(platform, "perf:underruns", true, status, &detail)];
     for (metric, limit) in limits {
         let before = side("a", metric);

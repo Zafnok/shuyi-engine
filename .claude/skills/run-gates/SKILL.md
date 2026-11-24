@@ -235,6 +235,7 @@ proc macros are linked, for the host, by MSYS2's `gcc` as usual.
 ```bash
 cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
+cargo build -p shuyi-assets --no-default-features --features sfx --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
 RUSTFLAGS="--cfg shuyi_playdate_sdk" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
@@ -491,6 +492,7 @@ They run on every PR, docs-only ones too:
 cargo xtask ticket-lint --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # the title the PR will have, as CI does; without them on main
 cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses (ticket 2804)
 cargo xtask check-links   # relative links in every *.md resolve (no network)
+cargo xtask template-lines --check   # a new `blank` game's code within tools/line-budget.ron's cap, and less than 10 under it (ticket 2512); prints each template's and example's code, tests, data and setup
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
 cargo xtask check-devcontainers   # the book's dev container builds every step of site/tutorial/ and keeps the root's image and setup (ticket 2837); the steps resolve one set of features, native and web (`cargo tree`, ticket 2839)
@@ -596,6 +598,13 @@ and the arms of `main!` are not. A feature added to an engine crate goes
 in its entry, or in the test's `LEFT_OUT` with the reason in the entry:
 a test fails on one in neither. A side whose manifest lacks the feature
 yet builds without it. That file's docs say the same.
+
+A proc-macro crate (`shuyi-embed-macros`) is in `UNCHECKED` there, with
+its reason: `cargo-semver-checks` reads library targets only, and fails
+on one. It is listed on both sides like every crate and never
+semver-checked; each line its listing loses is a break instead (a
+`listing_line_removed` finding), which needs its `Breaking:` line. A
+test fails on a proc-macro crate missing from `UNCHECKED` (ticket 3506).
 
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).

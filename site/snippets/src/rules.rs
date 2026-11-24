@@ -375,6 +375,28 @@ mod tests {
     }
     // ANCHOR_END: hash
 
+    // ANCHOR: luck
+    #[test]
+    fn a_stream_per_purpose_keeps_a_new_draw_from_moving_the_others() {
+        use shuyi::core::{Bag, RandomSource};
+
+        let mut weather = SimRng::stream(7, "weather");
+        let mut pests = SimRng::stream(7, "pests");
+        let first_pest = pests.clone().range(1..7);
+        // A new draw for the weather leaves the pests' luck as it was.
+        let _rain = weather.chance(1, 4);
+        assert_eq!(pests.range(1..7), first_pest);
+
+        // A shuffle bag of seeds: each of the four once, then again.
+        let mut packets = Bag::new(vec!["bean", "pea", "leek", "kale"]);
+        let mut dealt: Vec<&str> = (0..4)
+            .filter_map(|_| packets.draw(&mut weather).copied())
+            .collect();
+        dealt.sort_unstable();
+        assert_eq!(dealt, ["bean", "kale", "leek", "pea"]);
+    }
+    // ANCHOR_END: luck
+
     // ANCHOR: tick-test
     #[test]
     fn the_bee_flies_a_plot_every_ten_steps_and_its_record_replays() {

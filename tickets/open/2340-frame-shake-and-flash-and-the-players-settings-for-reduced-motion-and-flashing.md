@@ -45,7 +45,7 @@ What Shuyi has today (checked 2026-10-21):
   and tests rely on it being off.
 - Planned and parked: 2326's GPU screen passes, which drop a pass
   marked `flashing` when this ticket's `Settings::flashing` is off,
-  wait for the wgpu renderer (3034); 1120's camera shake needs 1119;
+  wait for the wgpu renderer (3325); 1120's camera shake needs 1119;
   2722 asks for a visual novel's shake and flash through `Ctx::shake`
   and `Ctx::flash`; 1120's camera shake is scaled by the player's
   `shake_strength` (1120's either-order clause with 2340 says who ties
@@ -134,9 +134,8 @@ None.
       divided by 1000 and rounded toward zero, where `n` is
       `splitmix64(SHAKE_SEED ^ (a << 32) ^ (now_ms / 33)) % 2001`, less
       1000. So the direction changes about 30 times a second.
-      `splitmix64` is `audio::splitmix64` (`crates/ui/src/audio.rs`;
-      once 2114 is done it is a re-export of `shuyi_core::rng::mix64`,
-      the same function).
+      `splitmix64` is `audio::splitmix64` (`crates/ui/src/audio.rs`),
+      a re-export of `shuyi_core::rng::mix64` since 2114.
   - The same asks at the same times give the same offsets, in a replay,
     a test or `frame-png`.
 - **`shuyi_ui::frame::flash`** (`crates/ui/src/frame/flash.rs`,

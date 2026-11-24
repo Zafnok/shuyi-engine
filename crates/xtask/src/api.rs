@@ -32,6 +32,10 @@
 //!   needs the root's patch (ADR-0075), and the semver check builds a crate
 //!   outside this workspace. `shuyi`'s `app` builds it without it too.
 //!
+//! - A crate of [`UNCHECKED`] (a proc-macro crate, ticket 3506) is listed
+//!   and never semver-checked, as `cargo-semver-checks` reads library
+//!   targets only. Each line its listing loses is a break instead.
+//!
 //! No crate is checked in every combination of its features. A test holds
 //! each entry to its manifest: a new feature is chosen, or left out with a
 //! reason. A side whose manifest lacks a chosen feature builds without it,
@@ -112,7 +116,20 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi-assets",
-        features: Features::Only(&["std", "png", "sample-actions", "golden", "parse-count"]),
+        features: Features::Only(&[
+            "std",
+            "png",
+            "sample-actions",
+            "golden",
+            "parse-count",
+            "jpeg",
+            "webp",
+            "qoi",
+            "jpeg-xl",
+            "flac",
+            "mp3",
+            "sfx",
+        ]),
     },
     ApiCrate {
         name: "shuyi-ui",
@@ -162,12 +179,62 @@ pub const API_CRATES: &[ApiCrate] = &[
         name: "shuyi-alloc-count",
         features: Features::Only(&["global"]),
     },
+    // The embedding (ADR-0138): neither has a feature.
+    ApiCrate {
+        name: "shuyi-embed",
+        features: Features::Only(&[]),
+    },
+    ApiCrate {
+        name: "shuyi-embed-macros",
+        features: Features::Only(&[]),
+    },
     // The script runtime (ADR-0093) has no feature.
     ApiCrate {
         name: "shuyi-script",
         features: Features::Only(&[]),
     },
 ];
+
+/// The crates of [`API_CRATES`] `cargo-semver-checks` can't read, each with
+/// why (ticket 3506). Each is listed on both sides as every crate is, and
+/// never semver-checked: each line its listing loses is a finding of
+/// [`LISTING_LINE_REMOVED`] instead, a break as a semver finding is. A test
+/// holds this to the workspace's proc-macro crates.
+pub const UNCHECKED: &[(&str, &str)] = &[(
+    "shuyi-embed-macros",
+    "a proc-macro crate: cargo-semver-checks reads library targets only; its listing is what \
+     holds it",
+)];
+
+/// The lint of the finding an [`UNCHECKED`] crate's lost listing lines make.
+pub const LISTING_LINE_REMOVED: &str = "listing_line_removed";
+
+/// Why `name` is never semver-checked, if it is one of [`UNCHECKED`].
+pub fn unchecked(name: &str) -> Option<&'static str> {
+    UNCHECKED
+        .iter()
+        .find(|(krate, _)| *krate == name)
+        .map(|(_, why)| *why)
+}
+
+/// The findings of an [`UNCHECKED`] crate: its listing's lines the head
+/// lost, as one [`LISTING_LINE_REMOVED`] finding, or none.
+pub fn unchecked_findings(base: &[String], head: &[String]) -> Vec<Finding> {
+    let head_lines: HashSet<&String> = head.iter().collect();
+    let items: Vec<String> = base
+        .iter()
+        .filter(|line| !head_lines.contains(line))
+        .cloned()
+        .collect();
+    if items.is_empty() {
+        Vec::new()
+    } else {
+        vec![Finding {
+            lint: LISTING_LINE_REMOVED.to_string(),
+            items,
+        }]
+    }
+}
 
 /// The outside crates the public API may name (ADR-0119, ticket 2089): each
 /// crate's path, and the engine crates whose listing may name it (`&[]`:
@@ -332,6 +399,8 @@ pub struct CrateApi {
     /// The head's listing lines that name an outside crate [`OUTSIDE_CRATES`]
     /// doesn't allow here, each with the crate's path (ticket 2089).
     pub outside: Vec<(String, String)>,
+    /// Why no semver check ran on it, for a crate of [`UNCHECKED`].
+    pub unchecked: Option<&'static str>,
 }
 
 impl CrateApi {
@@ -361,6 +430,7 @@ impl CrateApi {
                 .collect(),
             findings,
             outside: Vec::new(),
+            unchecked: None,
         }
     }
 
@@ -613,12 +683,17 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
                 Some(base_package) => {
                     let base_features = &base_package.features;
                     let base = listing(&base_root, krate, base_features, &base_target_dir, runner)?;
-                    let features = krate.features.semver_args(head_features, base_features);
-                    let findings = semver(root, name, &features, &base_root, runner)?;
+                    let findings = if unchecked(name).is_some() {
+                        unchecked_findings(&base, &head)
+                    } else {
+                        let features = krate.features.semver_args(head_features, base_features);
+                        semver(root, name, &features, &base_root, runner)?
+                    };
                     CrateApi::new(name, Some(&base), &head, findings)
                 }
             };
             api.outside = outside;
+            api.unchecked = unchecked(name);
             Ok(api)
         })
         .collect()
@@ -1198,6 +1273,11 @@ pub fn summary(
     for krate in crates {
         let (name, findings) = if krate.new {
             (format!("`{}` (new)", krate.name), "not checked".to_string())
+        } else if let Some(why) = krate.unchecked {
+            (
+                format!("`{}`", krate.name),
+                format!("{}, not run: {why}", krate.finding_items()),
+            )
         } else {
             (
                 format!("`{}`", krate.name),

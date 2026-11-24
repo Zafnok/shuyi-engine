@@ -307,10 +307,29 @@ crate" paragraph to the README's *The name* section.
 
     It links `docs/formats.md#writing-a-format-plugin` and
     `docs/platform-backends.md` instead of repeating them.
+  - **Either order with 3519:** if 3519 is done, move its *What a
+    module adds* section from `docs/modules.md` into
+    `docs/writing-a-module.md`. The page says a module's tools
+    (`GameTools::module_tools`) and option rows
+    (`InstalledModule::option_rows`) show in `shuyi tool` and `run
+    --json` once the game installs the module: the probe reads
+    metadata only, so it can't list them. If not, nothing to do (3519
+    writes the section in `docs/writing-a-module.md` itself).
   - The `add` row of `docs/contract.md`.
+  - The README's "Naming your crate" paragraph (Nick input, above).
+  - **Either order with 2849:** if 2849 is done, `TRADEMARKS.md`
+    exists; replace its line saying the `shuyi-*` naming rule is open
+    with Nick's rule, and link the README paragraph; if not, nothing to
+    do (2849 writes the rule from `docs/decisions.md`).
   - 2809, which waits for this ticket, adds the line `shuyi add
     <crate>@<version>` and a link to `docs/writing-a-module.md` to its
     Assets page's Modules group.
+- **Either order with 3518:** if 3518 is done, test `shuyi add --path`
+  on its outside module (`tools/outside-module/probe-module`), and have
+  the metadata read state the engine versions an outside module
+  supports as 3518's ADR says; if not, nothing to do (3518 adds its
+  module to its game with an edited `Cargo.toml`, and uses this
+  ticket's metadata read once this is done).
 - **The skill pack:** the skill that runs `shuyi add`,
   `skills/shuyi-new-game/SKILL.md` (1134, done), learns the outside
   sources. It must show the user the source, license and skill before

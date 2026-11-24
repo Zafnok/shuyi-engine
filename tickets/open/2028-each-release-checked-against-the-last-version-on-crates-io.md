@@ -211,7 +211,7 @@ None.
 - A check on the PR that raises the version. The tag's run refuses a
   wrong version before anything is published, and `--version` lets a
   session ask first.
-- Yanking or fixing a version already published.
+- Yanking or fixing a version already published: 3512's runbook and ADR.
 - Lowering a lint's level, or skipping a crate, to pass (`AGENTS.md`
   rule 6).
 - A crates.io token: the job reads the public index and downloads

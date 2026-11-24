@@ -1,6 +1,6 @@
 # ADR-0044: A planner's candidate order: ranked groups in the core, and the tactics order in the kit
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0145 (§2: one strike per piece first, and `Kind::Spare`)
 - **Date:** 2026-10-24
 - **Related tickets:** 2132 (this), 2128 (the turn planner), 2131 (threat
   areas), game 0506 and 1180

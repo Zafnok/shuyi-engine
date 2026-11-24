@@ -80,7 +80,7 @@ open ticket that day added a fourth group:
     so they come after the release.
 - **Breaks no attribute softens,** done before the release: 2347
   (styled text) and 3218 (done, typed label arguments), 2405 and 2409 (mouse
-  and touch on the engine's widgets), 2133 (the bots' settings files),
+  and touch on the engine's widgets), 2133 (done, the bots' settings files),
   2136 (motions moved onto `ease`), 2239 (a check on translated lines),
   3041 (macroquad's `log-rs`) and 3044 (the window kept as it was left).
 
@@ -128,8 +128,8 @@ The sign-off also:
 - holds the release's setup, which is Nick's own clicks. The crates
   exist already (the 0.0.0 placeholders, below), so no token is made
   for this release: Nick adds this repository's `release.yml` and the
-  `release` environment as the trusted publisher on each crate's
-  settings page on crates.io, and turns on the setting that refuses API
+  `release` environment as the trusted publisher on the settings page
+  of each of the fourteen crates he holds on crates.io, and turns on the setting that refuses API
   tokens for the crate if crates.io offers it. The session writes the
   clicks here, checked against crates.io on the day, before it asks.
   The setup also has two clicks on GitHub, which Nick may do at any
@@ -147,6 +147,11 @@ The sign-off also:
     `https://github.com/Zafnok/shuyi-engine/settings/security_analysis`,
     turn it on.
 
+  Private vulnerability reporting was already on on 2026-11-23 (`gh api
+  repos/Zafnok/shuyi-engine/private-vulnerability-reporting`), so check
+  it only. If 2849 is done and Nick bound the checks there, check the
+  ruleset read-only and skip that click.
+
 ## Scope
 
 **In:**
@@ -157,8 +162,11 @@ The sign-off also:
   one version for `shuyi` and all `shuyi-*` crates. It says:
   - **What a breaking change needs:** a `Breaking:` line and a
     `migration` block under it in the ticket's completion notes (2804),
-    a version bump after the first release (`work-ticket` §3), and a
-    pin bump in the game. It cites ADR-0038 (2010) for how a break is
+    the version raised at release time from the `Breaking:` lines since
+    the last tag (2028), never in the PR (3510 changed `work-ticket`
+    §3), and a pin bump in the game. It cites 3510's publishing ADR
+    (exact `=` pins between the crates, the publish list from the
+    workspace) and doesn't restate it. It cites ADR-0038 (2010) for how a break is
     found (CI's `api` job: cargo-semver-checks against each PR's base) and
     recorded (a `Breaking:` line in the ticket's completion notes)
     instead of restating it, and it says how the `Breaking:` lines since
@@ -193,17 +201,21 @@ The sign-off also:
     2110 is done (after the MVP), reads the old one through a step
     instead of resetting it. Until then a version they can't read is
     refused, as `PlayerKeys` and `Profiles` do today.
-  - **A *Rust version* section.** Before the first release,
-    `rust-version` equals the pinned Rust's `X.Y`, which `cargo xtask
-    check-toolchain` (2012) enforces. After it, the section says what
-    `rust-version` promises to games: the pin, or a stated lag behind
-    it. It says what raising it needs: on 0.x, a minor version and a
-    changelog line, like any breaking change. And it says that the PR
-    which first sets `rust-version` below the pin adds an `msrv` CI job,
-    either `cargo check --workspace --locked` on exactly that Rust (as
-    Bevy's `msrv` job does) or `cargo hack check --rust-version`. That
-    same PR changes check-toolchain's rule from equal to at-or-below.
-    The `bump-rust` skill (2012) then points at this section.
+  - **A *Rust version* section.** **Either order with 3511:** if 3511
+    is done, the section links its ADR and states the policy it set
+    (the root `rust-version` trails the pin, CI's `msrv` job builds on
+    it, check-toolchain accepts at-or-below for the root and equal for
+    the templates, a raise never goes in a patch and carries a
+    `Behaviour:` line); if not, the section keeps today's rule
+    (`rust-version` equals the pin's `X.Y`, enforced by `cargo xtask
+    check-toolchain`, 2012) and says 3511 decouples them, and nothing
+    else is needed here (3511 amends this section when it lands).
+  - **Either order with 3518:** if 3518 is done, the version-policy ADR
+    cites 3518's ADR on how the extension traits are versioned and
+    follows its choice (a separately versioned crate of extension
+    traits, or one version with each outside module stating the engine
+    versions it supports); if not, nothing to do (3518's ADR amends this
+    one).
 - **The policy covers the engine's text formats too.** These are every
   format `Formats::standard()` registers, plus keymaps, language packs,
   cinematics, `.map`, `.dlg`, target profiles and `shuyi.ron`. They are
@@ -291,30 +303,54 @@ The sign-off also:
   `<ENGINE_SITE>/v<x.y>/llms-full.txt`.
 - A release workflow (`.github/workflows/release.yml`): on a tag
   `vX.Y.Z`, a check that the tag is `v` and the workspace's `version`,
-  the gates, then `cargo publish` of each crate in dependency order
-  (`shuyi-alloc-count`, `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
-  `shuyi-platform`, `shuyi-app`, `shuyi`, `shuyi-cli`, `shuyi-playdate`;
-  `xtask` is never published). `shuyi-platform`, `shuyi-app`, `shuyi-cli`
-  and `shuyi-playdate` depend on `shuyi-alloc-count`, so it goes first.
-  No crates.io token is stored anywhere (2011's ADR). The publish job runs
+  the gates, then `cargo publish --workspace`, which publishes the
+  fourteen engine crates (3510's `cargo xtask check-publish --order`,
+  `shuyi-embed`, `shuyi-embed-macros`, `shuyi-script`, `shuyi-sound`
+  and `shuyi-sound-out` among them) in dependency order; every other
+  member is `publish = false` (3510). A run that stops part way follows
+  3510's runbook. No crates.io token is stored anywhere (2011's ADR). The publish job runs
   in a `release` environment with `permissions: id-token: write`. It
   gets a short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
-  crate trust a workflow only once the crate exists. The nine crates
-  exist since the 0.0.0 placeholders (below), so the first real version
-  goes out through the workflow too, with no publish by hand. Check
-  this against crates.io's docs on the day. No job of the tag's run
-  reads the Actions cache.
+  crate trust a workflow only once the crate exists. The fourteen crates
+  exist since the 0.0.0 placeholders (the last five held on 2026-11-24;
+  below), so the first real version goes out through the workflow too,
+  with no publish by hand. Check this against crates.io's docs on the
+  day. No job of the tag's run reads the Actions cache.
+  **Either order with 3517:** if 3517 is done, `shuyi-contract` is one
+  more engine crate: check that `cargo publish --workspace` publishes
+  it before `shuyi-cli`, and give it a 0.0.0 placeholder with the other
+  crates and a trusted-publisher click; if not, nothing to do (3517
+  gives `shuyi-contract` its crates.io metadata and its place in the
+  publish order).
 - **`SECURITY.md`** at the root, short: *Supported versions* (the latest
   0.x release only, no backports or LTS); how to report (the Security
   tab's "Report a vulnerability", never a public issue); and the
   response time, best effort with no number. **Either order with 2020:**
   if 2020 is done, it links `docs/formats.md`, *Untrusted files*; if not,
-  2020 adds the link. 1132, parked, grows this file if it lands later.
+  2020 adds the link. **Either order with 2849:** if 2849 is done,
+  `SECURITY.md` exists; change its *Supported versions* line from
+  `main` to the latest 0.x release, and check the rest against this
+  list; if not, write it as above. 1132, parked, grows this file if it
+  lands later.
+  - **Either order with 3512:** if 3512 is done, `SECURITY.md` gets one
+    line saying how a fix is released (a patch release of every crate,
+    a GHSA, affected versions yanked), linking 3512's ADR, and the
+    version-policy ADR cites it on fixes; if not, add that line here
+    linking the ADR 3512 will write, and 3512 makes its skill name
+    `release.yml` as the publish step.
+  - **Either order with 2846:** if 2846 is done, `SECURITY.md` links
+    its page `docs/cyber-resilience.md` in one line (what the engine
+    gives a game's maker for the EU Cyber Resilience Act); if not,
+    nothing to do here (2846's page names the Security tab's private
+    reporting, and it links `SECURITY.md` once this ticket writes it,
+    so the PR closing 2846 adds the link to `SECURITY.md` if this one
+    landed first).
 - **Owners and the credential:** `Zafnok` stays the crates' one owner,
   and the release's only credential is the trusted publisher's. The
-  list of accounts (`docs/continuity.md`) waits for 2016, which reads
-  them from crates.io when it is unparked.
+  list of accounts (`docs/continuity.md`) is written by 2849, or by 2016
+  if it is unparked first. At the release, add its crates.io row: the
+  trusted publisher.
 - **Docs at the release's version** (2808): the release workflow runs
   `cargo xtask llms --full-only --out <dir>` at the tag and attaches
   `llms-full.txt` to the GitHub release. `pages.yml` downloads, for each
@@ -349,7 +385,9 @@ The sign-off also:
 - The names are held already: on 2026-10-21 Nick had the six crates
   published as empty 0.0.0 placeholders, `shuyi` on 2026-10-22, and
   `shuyi-alloc-count` and `shuyi-playdate` on 2026-11-01, all owned by
-  `Zafnok` (`docs/decisions.md`). The first release is the
+  `Zafnok` (`docs/decisions.md`). The other five engine crates
+  (`shuyi-embed`, `shuyi-embed-macros`, `shuyi-script`, `shuyi-sound`,
+  `shuyi-sound-out`) were held the same way on 2026-11-24. The first release is the
   next version of each and replaces the placeholder's README and
   description. Nick wants no real version until the engine is stable,
   so the placeholders don't hurry this ticket; only a threat to the
@@ -374,7 +412,11 @@ The sign-off also:
 
 **Out (do not do):**
 - The MVP tickets themselves.
-- `docs.rs` beyond what `cargo publish` gives.
+- The docs.rs metadata, feature labels and the CI job that imitates a
+  docs.rs build: 2842. **Either order with 2842:** if 2842 is done,
+  after the publish open each crate's docs.rs page and check that its
+  build passed; if not, nothing to do (2842 does it, and the next
+  release carries it).
 - `shuyi upgrade` and the warnings in `shuyi check` that rest on the
   formats' rule (2517, after this release).
 - Checking a release against the last version on crates.io (`cargo
@@ -387,7 +429,7 @@ The sign-off also:
 1. Write the ADR and the changelog.
 2. Fill in the metadata; `cargo package` for each crate must pass.
 3. Write the release workflow with trusted publishing; dry-run it with
-   `cargo publish --dry-run`.
+   `cargo publish --dry-run --workspace`.
 4. Read the settings with `gh api`, GET only: `rules/branches/main`
    holds `pull_request` and `required_status_checks` naming `ci-result`
    and `mutants (diff)`, and `private-vulnerability-reporting` is
@@ -414,7 +456,10 @@ game's ticket for the move waits for.
 
 ## Tests required
 
-- `cargo package` and `cargo publish --dry-run` for each crate, in CI.
+- `cargo package` (with verification) and `cargo publish --dry-run
+  --workspace` of the fourteen together, in CI; 3510's step runs
+  `--no-verify` until the templates, targets and skills move into the
+  packages here.
 - Integration (2003's operations): `shuyi modules` and `shuyi add` on
   a game whose `shuyi` comes from a registry, not a checkout.
 

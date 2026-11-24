@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use super::source::{LineKind, SourceText};
 use super::{Lang, LangCode, LangPack, PackRules};
 use crate::dialogue::{
-    ChoiceOption, DialogueLimits, LineId, Scene, Step, caption_key, longest_width, scene_of,
+    BoxFit, ChoiceOption, LineId, Scene, Step, box_fit, caption_key, longest_width, scene_of,
     token_problems,
 };
 use crate::error::{ContentError, codes};
@@ -191,12 +191,36 @@ fn is_caption(key: &str) -> bool {
     key.starts_with(CAPTION_PREFIX)
 }
 
-/// The most cells a line of `kind` may take under `limits`, if it has a
-/// limit.
-fn limit(kind: LineKind, limits: &DialogueLimits) -> Option<usize> {
+/// What is wrong with `text`, the translation of an English line of
+/// `kind`, by the size `rules` give it, with every name token as long as
+/// `longest_name`: a speech or narration line fits the text box
+/// ([`box_fit`]), a reply its `max_option`, and a caption has no limit.
+fn fit_problem(
+    text: &str,
+    kind: LineKind,
+    rules: &PackRules<'_>,
+    longest_name: usize,
+) -> Option<String> {
+    let limits = &rules.limits;
     match kind {
-        LineKind::Speech => Some(limits.max_text),
-        LineKind::Reply => Some(limits.max_option),
+        LineKind::Speech => {
+            match box_fit(text, rules.tokens, Some(longest_name), limits, rules.widths) {
+                BoxFit::Fits => None,
+                BoxFit::Long { cells } => Some(format!(
+                    "text is {cells} cells; the limit is {}",
+                    limits.max_text
+                )),
+                BoxFit::Lines { lines } => Some(format!(
+                    "text takes {lines} lines of {} cells; the box shows {}",
+                    limits.box_width, limits.box_lines
+                )),
+            }
+        }
+        LineKind::Reply => {
+            let cells = longest_width(text, rules.tokens, Some(longest_name), rules.widths);
+            (cells > limits.max_option)
+                .then(|| format!("text is {cells} cells; the limit is {}", limits.max_option))
+        }
         LineKind::Caption => None,
     }
 }
@@ -221,9 +245,10 @@ fn variants_message(variants: &[&str]) -> String {
 /// variants. Its key is a line id or a caption key, used once in the pack.
 /// Its text follows the token rule of English dialogue (only the game's
 /// tokens and name tokens with an id in `data`'s names table). When English
-/// has the line, the text also keeps to the line's length limit, counted in
-/// cells, with every name token as long as the longest of `names` (the
-/// pack's).
+/// has the line, the text also keeps to the line's size ([`fit_problem`]:
+/// a speech or narration line fits one page of the text box, as English
+/// does), counted in cells, with every name token as long as the longest
+/// of `names` (the pack's).
 pub(super) fn add_lines(
     (file, source): (&str, &str),
     data: &SourceText,
@@ -264,12 +289,10 @@ pub(super) fn add_lines(
             for problem in token_problems(text, rules.tokens, Some(&data.names)) {
                 errors.push(at(&problem));
             }
-            let width = longest_width(text, rules.tokens, Some(longest_name), rules.widths);
-            match english.and_then(|line| limit(line.kind, &rules.limits)) {
-                Some(limit) if width > limit => {
-                    errors.push(at(&format!("text is {width} cells; the limit is {limit}")));
-                }
-                _ => {}
+            if let Some(problem) =
+                english.and_then(|line| fit_problem(text, line.kind, rules, longest_name))
+            {
+                errors.push(at(&problem));
             }
         }
         let entry = LineEntry {
@@ -451,14 +474,6 @@ mod tests {
         assert_eq!(scene_of_key("caption.ch1_gate"), None);
         assert!(is_caption("caption.a_0123abcd"));
         assert!(!is_caption("a_0123abcd"));
-    }
-
-    #[test]
-    fn only_text_boxes_and_replies_have_a_limit() {
-        let limits = crate::dialogue::tests::LIMITS;
-        assert_eq!(limit(LineKind::Speech, &limits), Some(limits.max_text));
-        assert_eq!(limit(LineKind::Reply, &limits), Some(limits.max_option));
-        assert_eq!(limit(LineKind::Caption, &limits), None);
     }
 
     #[test]

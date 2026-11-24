@@ -395,7 +395,7 @@
           "default": {}
         },
         "seconds_per_try": {
-          "description": "The wall time of a try, on average, in seconds: the one number\nthat changes with the machine and the thread count.",
+          "description": "The wall time of a try, on average, in seconds to the microsecond:\nthe one number that changes with the machine and the thread count.",
           "type": "number",
           "format": "double"
         },

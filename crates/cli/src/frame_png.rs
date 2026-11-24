@@ -25,8 +25,8 @@
 //! APNG a README and the website's Examples card show, which a test of the
 //! game keeps equal to what the part makes ([`preview::check`]).
 //!
-//! [`Painter`] decodes a game's font atlas and images from PNG and paints
-//! with the raster, `shuyi_ui::frame::raster`: the reference picture of a
+//! [`Painter`] decodes a game's font atlas and images and paints with the
+//! raster, `shuyi_ui::frame::raster`: the reference picture of a
 //! frame, which `shuyi-app` must match. Its module docs say what it draws.
 
 use std::fmt::Write as _;
@@ -34,7 +34,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use shuyi_assets::font::FontAtlasDef;
-use shuyi_assets::image::ImageTable;
+use shuyi_assets::format::{AssetPath, DecodeCx, Formats};
+use shuyi_assets::image::{ImageTable, PNG_SIGNATURE};
 use shuyi_assets::target::{Color, TargetProfile};
 use shuyi_platform::harness::{MAX_FRAMES, MAX_WAIT};
 use shuyi_platform::script::{FRAME_DT, check_waits};
@@ -590,19 +591,36 @@ fn summary(shown: &str, frame: &Image, warning: Option<&str>) -> String {
     out
 }
 
-/// Decodes PNG file `png`.
+/// Decodes picture file `png`: a PNG, or any other file a format of
+/// `Formats::standard()` reads, those whose feature of `shuyi-assets` the
+/// game turns on (JPEG, WebP, QOI, JPEG XL; ticket 2234), as `shuyi-app`
+/// decodes it.
 pub fn decode_image(png: &[u8]) -> Result<Image, String> {
-    let (width, height, rgba) = decode_png(png)?;
-    Ok(Image {
-        width,
-        height,
-        rgba,
-    })
+    decode_with(&Formats::standard(), "", png)
+}
+
+/// The picture file at `path`, whose bytes are `bytes`: a PNG decoded as
+/// one, any other file by `formats`, whose error names the formats it has.
+fn decode_with(formats: &Formats, path: &str, bytes: &[u8]) -> Result<Image, String> {
+    if bytes.starts_with(PNG_SIGNATURE) {
+        let (width, height, rgba) = decode_png(bytes)?;
+        return Ok(Image {
+            width,
+            height,
+            rgba,
+        });
+    }
+    formats
+        .decode(&AssetPath::new(path), bytes, &DecodeCx::new())
+        .map_err(|errors| {
+            let messages: Vec<String> = errors.into_iter().map(|e| e.message).collect();
+            messages.join("; ")
+        })
 }
 
 /// The raster's [`raster::Painter`], with its font atlas and images
-/// decoded from PNG files, ready to render any number of frames (each
-/// image is decoded once).
+/// decoded from their files ([`decode_image`]), ready to render any number
+/// of frames (each image is decoded once).
 pub struct Painter(raster::Painter);
 
 impl Painter {
@@ -619,9 +637,11 @@ impl Painter {
         clear: Rgb,
     ) -> Result<Self, String> {
         let atlas_image = decode_image(atlas_png).map_err(|e| format!("font atlas image: {e}"))?;
+        let formats = Formats::standard();
+        let decode = |path: &str, bytes: B| decode_with(&formats, path, bytes.as_ref()).ok();
         let images = images
             .ids()
-            .filter_map(|id| Some((id, decode_image(read(id.path())?.as_ref()).ok()?)))
+            .filter_map(|id| Some((id, decode(id.path(), read(id.path())?)?)))
             .collect();
         Ok(Self(raster::Painter::new(
             atlas,

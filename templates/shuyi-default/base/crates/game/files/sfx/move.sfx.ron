@@ -1,0 +1,10 @@
+// The menu's highlight moving (the engine's preset `blip`). A sound effect
+// is a few numbers: `cargo shuyi check` checks them, and the game renders
+// them to a sound as it loads.
+(
+    wave: Square(duty: 50),
+    hz: 880,
+    hold_ms: 15,
+    fade_ms: 35,
+    volume: 30,
+)

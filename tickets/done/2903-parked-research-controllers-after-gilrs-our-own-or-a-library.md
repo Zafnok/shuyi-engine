@@ -121,6 +121,12 @@ What was done:
   file names. 2408, 1121, 2406, 2008, 3034 and `docs/ROADMAP.md` follow.
 - New ticket 2414 (not parked) tries both libraries on the Steam Deck,
   and 2402 waits for it.
+- Nick then asked for controller support on desktop to be a toggle, on
+  by default, to save the 1.8 MB: ADR-0146 §4 and 2402's Scope. And he
+  made it a rule: an optional dependency that makes games bigger comes
+  behind a toggle (`docs/decisions.md`, 2026-11-24; `AGENTS.md` rule 13).
+- Merged `main` after 3034 landed: 3327 and 3333 now name SDL3 for the
+  native pads, and the web's pad reading moves to `web-sys` with 3331.
 
 Deviations:
 
@@ -144,4 +150,6 @@ Game: nothing to adopt, the research changes no engine code; 2402's PR
 says what the game's pin bump needs (CMake on its machines).
 
 Nick input: unparked 2903 alone; chose SDL3 with a fix for Switch;
-asked for the Steam Deck as a follow-up (2414).
+asked for the Steam Deck as a follow-up (2414); made desktop controller
+support a toggle (on by default), and toggles for size-adding optional
+dependencies a rule.

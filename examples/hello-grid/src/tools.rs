@@ -31,7 +31,8 @@ use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::palette::PaletteDef;
 use shuyi::assets::target::Color;
 use shuyi::core::bots::playtest::{
-    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_try,
+    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, bot_seed,
+    play_try,
 };
 use shuyi::core::{Bot, Determinize, Knob, Made, RandomBot, Report, TerrainId};
 use shuyi::platform::harness::Harness;
@@ -518,12 +519,13 @@ impl Entrant<Stage, Stage> for Hero {
     }
 }
 
-/// The playtest's heroes: `random` (a random bot of the try's seed) and
+/// The playtest's heroes: `random` (a random bot of the try's
+/// [`bot_seed`]) and
 /// `walk` ([`Walk`], to the tile in reach nearest the goal).
 pub const ENTRANTS: [Hero; 2] = [
     Hero {
         name: "random",
-        bot: |seed| Box::new(RandomBot::new(seed)),
+        bot: |seed| Box::new(RandomBot::new(bot_seed(seed))),
     },
     Hero {
         name: "walk",

@@ -121,6 +121,19 @@ ducks: [
 ],
 ```
 
+A sound of several files plays one of them each time. Its entry can say how: `pick` is
+`Random` (the default), `NoRepeat` (never the last one again), `Shuffle` (each once, in a
+new order each round) or `InOrder`; `volume_min` makes each play pick a volume from it
+up to `volume`; and `min_gap_ms` drops a play that comes sooner than that after the last
+one, so a cursor that moves several cells in a frame ticks once. The engine decides these
+before any platform plays the sound, so the game sounds the same everywhere, and a test
+sees the drops (`h.dropped_sounds()`), as an agent does in `run`'s answer (`dropped`):
+
+```ron
+(id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
+ volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+```
+
 The game's options screen shows the group's volume with a row of its own, named by its
 id: `ctx.volume("ambience")` reads it, and `ctx.preview_volume("ambience", v)` sets it.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in

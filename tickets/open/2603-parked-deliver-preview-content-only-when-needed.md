@@ -6,18 +6,20 @@ milestone: "Parked: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2602"]
+blocked_by: ["2602", "2611"]
 nick_input: none
 completed:
 ---
 
 # 2603 — Deliver preview content only when needed
 
-> **Parked** This follows the hosted preview experiment (2602) and stays parked with networking until Nick unblocks it.
+> **Parked** This follows the hosted preview experiment (2602, then 2609, 2610 and 2611) and stays parked with networking until Nick unblocks it.
 
 ## Context
 
-Server-held content can keep future chapters unavailable to a current preview visitor. This is a time boundary: a delivered chapter can be captured. The hosted action-to-pixels preview (2602) gives a generic server boundary without shipping the whole pack.
+Server-held content can keep future chapters unavailable to a current preview visitor. This is a time boundary: a delivered chapter can be captured. The hosted action-to-pixels preview (2602's worker, behind 2609's server) gives a generic server boundary without shipping the whole pack.
+
+**From 2602 (done):** a visitor's game runs in `preview-worker`, in the game's tool program, from the game's own files, and answers only with pictures and their text; the server (2609) serves no file. Content held back is the worker's to load when its reveal comes ([ADR-0141](../../docs/adr/0141-the-hosted-preview-a-worker-per-visitor-actions-in-pictures-out.md)).
 
 ## Nick input
 

@@ -70,8 +70,11 @@ None.
   If not, add `SideView { tile }` (`x·w, y·h`, depth by layer order)
   beside `TopDown` in the projection 1120's markers read, with its
   tests, and 1126 moves it into `shuyi_ui::world::Projection`.
-- Guides (ADR-0009 §5): write `docs/guides/side-view.md` in full. If
-  2004 isn't done, create the file and 2004 adds it to its list.
+- Guides (ADR-0009 §5): write `docs/guides/side-view.md` in full.
+  **From 2004 (done):** it is a planned page now: replace it, with its
+  facts under the title (`docs/guides/README.md`, *Each guide*) set to
+  `- **Status:** ready`, and move it under *Built* in the README;
+  `cargo xtask check-modules` checks it.
 - The new-game wizard (ADR-0013 §3–§4): set the `side-view` answer in
   `docs/modules.ron` to ready (2003 wrote it parked). If 2503 is done,
   add the part `stage-side-view` to the built-in template: a room with
@@ -102,13 +105,12 @@ None.
 - **The debug view (2317).** If 2317 is done, the platformer example
   calls its collision helpers, and draws the controller's ground and
   wall probes as `Note` lines. If it isn't, 2317 does this.
-- **The agent eval.** If 2524 is done, `examples/platformer` becomes
+- **The agent eval (from 2524, done).** `examples/platformer` becomes
   the reference of `evals/tasks/platformer.ron`: set
   `reference: Project("examples/platformer")`, empty its `waits_for`,
-  make the example's scene data answer its `Scene` checks (the level
-  and the coins its prompt names), and `cargo xtask eval-reference
-  platformer` passes in CI. If 2524 isn't done, nothing here: 2524
-  gives the task this reference (its scope says so).
+  make the example's scene data answer its `Scene` checks (`/level`,
+  `/coins` and `/won`, which its prompt names), and `cargo xtask
+  eval-grade evals/tasks/platformer.ron examples/platformer` passes. `cargo xtask eval-reference platformer` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - slopes, unless the example needs them;

@@ -54,7 +54,9 @@ statically (`build-from-source-static`):
 - **The seam stays:** the source fills the same `PadState`s, and
   `shuyi-ui`'s `Pads` keeps every rule. `PadKind` still comes from the
   USB ids, which SDL reports.
-- **The web keeps `gamepad.js`.** SDL on the web needs Emscripten.
+- **The web keeps its own reading** of the browser's Gamepad API
+  (`gamepad.js`, moved to `web-sys` by 3331, ADR-0136). SDL on the web
+  needs Emscripten.
 - **gilrs leaves** in the same PR, with `libudev` from the Linux setup
   if nothing else needs it (ADR-0021 §5).
 
@@ -94,7 +96,25 @@ ship: today, starting Switch 2 pads over USB.
   gilrs's or another driver's source (ADR-0021 §2). Rumble, lights and
   the pad's other commands come only when a document describes them.
 
-### 4. What stays out
+### 4. Controller support is a cargo feature, on by default
+
+Nick (2026-11-24): "make that a toggle (default ON) to include controller
+support on game build for non-console targets like PC/mac/linux".
+
+- `shuyi-app` has a default feature, `pads`. With it on, the native pad
+  source is SDL3's (§1) and `shuyi-pads`'s (§3). With it off
+  (`default-features = false`, or the game's own feature list leaving it
+  out), the native source is a null one that reports no pads, and
+  neither SDL, `nusb` nor CMake is needed to build.
+- It covers Windows, macOS and Linux only. The web keeps its own pad
+  reading either way, and console backends have their own.
+- A game built without it logs once at start that controllers are off,
+  so a missing pad isn't a mystery; `shuyi doctor` asks for CMake only
+  when the feature is on.
+- The templates keep the default (on), and the book says how to turn it
+  off and what it saves.
+
+### 5. What stays out
 
 - Our own XInput, WGI, evdev and Game Controller code (2402 and 2403 as
   first written): SDL covers them.
@@ -106,7 +126,8 @@ ship: today, starting Switch 2 pads over USB.
 - Pads work as the tests saw: Xbox and Sony pads completely on Windows,
   and SDL's own drivers for the rest; Switch 2 pads once 2403 lands.
   Android and iOS pads come with SDL if 3015 is unparked.
-- The engine carries a C library (SDL, Zlib) and needs CMake to build.
+- The engine carries a C library (SDL, Zlib) and needs CMake to build,
+  unless a game turns the `pads` feature off (§4).
   Its releases come monthly; the engine pins `sdl3-sys` and moves on
   purpose, like wgpu and winit.
 - The logo button, gyro, touchpads, lights and battery are available

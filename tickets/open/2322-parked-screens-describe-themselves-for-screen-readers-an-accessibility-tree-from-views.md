@@ -14,6 +14,13 @@ completed:
 # 2322 — An accessibility tree from the engine's views
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't ask for it, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+>
+> Two things weigh on unparking it, and 3526 puts the question to Nick.
+> Every widget written before the tree exists is one more to retrofit;
+> once 3230 lands, a widget describes itself through the one widget
+> contract instead. And the tree is more than a screen reader's: it
+> would give agents a view of the UI by meaning rather than pixels,
+> through the MCP server.
 
 ## Context
 
@@ -86,6 +93,12 @@ None.
     item inside the widget `Focus::at()` names, and a menu with
     `MenuView::active` false has no focused item; if not, nothing to do
     here (2355 does it, its clause says so).
+- **Either order with 3230:** if 3230 is done, add `fn describe(&self,
+  ctx: &Ctx<G>) -> Option<AccessNode>` to `shuyi_ui::widgets::Widget`,
+  defaulted to `None`, and the menu, question and name entry describe
+  themselves through it, so a game's own widget joins the tree; if not,
+  nothing to do (3230 adds `describe` to `Widget` when it lands, its
+  clause says so).
 
   Text that a view holds as `StyledText` (2347: help lines, a question's
   keys, the text box's wait corner) gives its `plain()` as the node's

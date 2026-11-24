@@ -284,18 +284,24 @@ fn dependency(engine: &Engine, root: Option<&str>, krate: &str) -> String {
 }
 
 /// The engine's rules and docs for a game's agent, as a Markdown list, one
-/// link or path per line: those of the engine the game builds with.
+/// link or path per line: those of the engine the game builds with. At a
+/// commit or in a checkout the guides are their own line: the book copies
+/// them from `docs/guides/` as it builds (ticket 2004).
 fn engine_docs(engine: &Engine, root: Option<&str>) -> String {
     match (engine, root) {
         (Engine::Path { .. }, Some(root)) => format!(
             "- its rules: `{root}/AGENTS.md`\n\
              - its book, in Markdown: `{root}/site/content/learn/`, whose code is in \
-             `{root}/site/snippets/`"
+             `{root}/site/snippets/`\n\
+             - its guides, which kits and modules go with each kind of game: \
+             `{root}/docs/guides/`"
         ),
         (Engine::Rev { rev }, _) => format!(
             "- its rules: [`AGENTS.md`]({ENGINE_GIT}/blob/{rev}/AGENTS.md)\n\
              - its book, in Markdown: [`site/content/learn`]({ENGINE_GIT}/tree/{rev}/site/content/learn), \
-             whose code is in `site/snippets/` at the same commit"
+             whose code is in `site/snippets/` at the same commit\n\
+             - its guides, which kits and modules go with each kind of game: \
+             [`docs/guides`]({ENGINE_GIT}/tree/{rev}/docs/guides)"
         ),
         _ => format!(
             "- its rules: [`AGENTS.md`]({ENGINE_GIT}/blob/main/AGENTS.md)\n\

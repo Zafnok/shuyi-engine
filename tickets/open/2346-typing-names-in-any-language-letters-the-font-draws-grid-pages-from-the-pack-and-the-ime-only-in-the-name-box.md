@@ -219,9 +219,9 @@ None.
      - while typing, when the caret cell moves it calls
        `set_ime_position` with the window pixel just under that cell
        (so the IME's list doesn't hide the name), placed as `render.rs`
-       places the console: `shuyi_ui::frame::console::layout`, in
-       physical pixels. **Either order with 2333:** if it is done, its
-       placement function instead;
+       places the console: **from 2333 (done):** `render::placement`
+       (`shuyi_ui::frame::console::place` with the frame's scale mode,
+       in physical pixels), as the pointer does;
      - with no caret it only turns the IME on;
      - the decisions are a pure function, tested without a window.
    - On macOS, Linux and the web these calls do nothing in miniquad
@@ -260,9 +260,10 @@ as `Rows` (wide glyphs are there: 2301, done).
   Chinese").
 - The IME's composing text drawn in the box (preedit, underlined), and
   the IME on macOS, Linux and the web: miniquad 0.4.11 has neither.
-  Parked 3034's research names text input and the IME over winit.
-- The clipboard and paste: a name box doesn't need them. Chat (1149,
-  parked) and the editor (2507, parked) will, when they start.
+  3329 (parked, from 3034's research) does both on winit (ADR-0136
+  §12), on the `Frame::typing` and the caret this ticket adds.
+- The clipboard, paste, a caret that moves and undo: 3232 (blocked by
+  this one) adds them to every text box, the name box included.
 - The profiles screen asking the system keyboard (`Ctx::system_keyboard`)
   when there is one, and checking its answer with the same rules: 2380
   (blocked by this one). It checks a whole name with the rule for one

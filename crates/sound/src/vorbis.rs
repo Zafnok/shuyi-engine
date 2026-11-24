@@ -30,6 +30,9 @@ const GRANULE_AT: usize = 6;
 const SERIAL_AT: usize = 14;
 /// The flag of a stream's last page.
 const LAST_PAGE: u8 = 4;
+/// How far before a frame [`VorbisSource::seek_exact`] seeks first: more than
+/// most pages hold, so that the page it lands on ends before the frame.
+pub const SEEK_LEAD: u64 = 8192;
 
 /// The granule position and serial number of the page that ends `bytes`, if it
 /// is a stream's last, as its flag says.
@@ -108,6 +111,26 @@ impl<B: AsRef<[u8]>> VorbisSource<B> {
         })
     }
 
+    /// A source of `bytes` whose next read gives `frame` exactly: an exact seek
+    /// ([`seek_exact`](Self::seek_exact)), or where that can't land, a second
+    /// source of the same bytes that [`skip`](Self::skip)s there. A loop's way
+    /// round a region far into a file (ticket 2397).
+    pub fn new_at(bytes: B, limits: &Limits, frame: u64) -> Result<Self, Error>
+    where
+        B: Clone,
+    {
+        let mut source = Self::new(bytes.clone(), limits)?;
+        match source.seek_exact(frame) {
+            Ok(()) => Ok(source),
+            Err(Error::NoRewind) => {
+                let mut source = Self::new(bytes, limits)?;
+                source.skip(frame)?;
+                Ok(source)
+            }
+            Err(other) => Err(other),
+        }
+    }
+
     /// The file's comments, as it has them, each a name and its value.
     pub fn comments(&self) -> &[(String, String)] {
         &self.reader.comment_hdr.comment_list
@@ -120,6 +143,17 @@ impl<B: AsRef<[u8]>> VorbisSource<B> {
             .iter()
             .find(|(key, _)| key.eq_ignore_ascii_case(name))
             .map(|(_, value)| value.as_str())
+    }
+
+    /// The loop region the file's `LOOPSTART` and `LOOPLENGTH` comments name, in
+    /// frames, held to the end its last page gives
+    /// ([`tags::loop_region`](crate::tags::loop_region)): `None` if it has neither.
+    pub fn loop_region(&self) -> Result<Option<crate::mix::Region>, Error> {
+        crate::tags::loop_region(
+            self.comment(crate::tags::LOOP_START),
+            self.comment(crate::tags::LOOP_LENGTH),
+            self.end,
+        )
     }
 
     /// The name of what encoded the file.
@@ -158,6 +192,60 @@ impl<B: AsRef<[u8]>> VorbisSource<B> {
         self.ended = false;
         self.at = None;
         Ok(())
+    }
+
+    /// Moves to exactly `frame`, so that the next read gives it: what the module's
+    /// documentation says, done. It seeks a page [`SEEK_LEAD`] frames before, and
+    /// further each time the page it lands on ends past `frame`, decodes until a
+    /// page's end says where it is, and drops what comes before `frame`. Past the
+    /// sound's end the next read gives nothing.
+    ///
+    /// Where no page before `frame` ends before it (within [`SEEK_LEAD`] of the
+    /// start, or in a file whose pages are longer than the way in), it can't: that
+    /// is `NoRewind`, and the way there is a new decoder that
+    /// [`skip`](Self::skip)s. Within the lead nothing has moved; past it, the
+    /// source is somewhere else.
+    pub fn seek_exact(&mut self, frame: u64) -> Result<(), Error> {
+        let mut lead = SEEK_LEAD;
+        loop {
+            let Some(from) = frame.checked_sub(lead).filter(|&from| from > 0) else {
+                return Err(Error::NoRewind);
+            };
+            self.seek_page(from)?;
+            while self.position().is_none() && !self.ended {
+                self.next_packet()?;
+            }
+            match self.position() {
+                Some(at) if at <= frame => return self.drop_frames(frame - at),
+                // The sound ends before `frame`: nothing more comes.
+                None => return Ok(()),
+                Some(_) => lead = lead.saturating_mul(2),
+            }
+        }
+    }
+
+    /// Reads and drops the next `frames` frames, or what is left of the sound: the
+    /// way to a frame from the start, where [`seek_exact`](Self::seek_exact) can't.
+    pub fn skip(&mut self, frames: u64) -> Result<(), Error> {
+        self.check_broken()?;
+        self.drop_frames(frames)
+    }
+
+    /// Drops the next `frames` frames, or what is left of the sound.
+    fn drop_frames(&mut self, mut frames: u64) -> Result<(), Error> {
+        let channels = usize::from(self.format.channels.count());
+        loop {
+            let waiting = (self.packet.len() - self.sent) / channels;
+            let dropped = usize::try_from(frames).map_or(waiting, |frames| frames.min(waiting));
+            self.sent += dropped * channels;
+            frames -= dropped as u64;
+            // Each turn drops what the packet has, or decodes the next one: one
+            // that ends the sound ends the drop.
+            if frames == 0 || self.ended {
+                return Ok(());
+            }
+            self.next_packet()?;
+        }
     }
 
     fn check_broken(&self) -> Result<(), Error> {

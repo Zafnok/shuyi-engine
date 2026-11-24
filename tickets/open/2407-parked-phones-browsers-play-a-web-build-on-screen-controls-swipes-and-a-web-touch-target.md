@@ -6,14 +6,14 @@ milestone: "Parked: export targets"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2405"]
+blocked_by: ["2405", "3527"]
 nick_input: decision
 completed:
 ---
 
 # 2407 — Phones' browsers play a web build
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; on 2026-10-20 he kept parked the gaps the game doesn't need): the game doesn't ask for it, so this waits until after the MVP (`docs/ROADMAP.md`). It also waits for Nick's answer below: on 2026-10-20 he left phones' browsers as a target for later (`docs/decisions.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; on 2026-10-20 he kept parked the gaps the game doesn't need): the game doesn't ask for it, so this waits until after the MVP (`docs/ROADMAP.md`). It also waits for Nick's answer below: on 2026-10-20 he left phones' browsers as a target for later (`docs/decisions.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. Decision ticket 3527 asks Nick this question (question 3).
 
 ## Context
 
@@ -61,7 +61,7 @@ What is planned:
   agreements.
 - 1121 (parked, real time) leaves out gestures and on-screen controls.
 - 2405 (done) brings the pointer to menus and grid maps, and 2413
-  reads the mouse and touches in `shuyi-app`.
+  (done) reads the mouse and touches in `shuyi-app`.
   A tap is a click there, through macroquad's touch-as-mouse. Its
   events carry no touch id, and it leaves several touches at once to
   this ticket.
@@ -196,6 +196,8 @@ grows past that, its painter goes in a ticket of its own.
      side, as the controls' places are, and a time in milliseconds.
    - Only from a touch that starts on no control. A swipe is no click:
      2405's `clicked` stays `None` for it.
+   - A touch that starts on a hit marked draggable (3233) is a drag,
+     never a swipe.
    - Counted by controls-fit when a profile lists them.
    - Last in order: it may wait until a game or an example asks.
 3. **30xx: the `web-touch` target.**

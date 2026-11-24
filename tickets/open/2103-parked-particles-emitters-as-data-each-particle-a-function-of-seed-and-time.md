@@ -121,7 +121,7 @@ None.
 - particles that speed up or slow down over their life along an ease
   curve (a follow-up could give `EmitterDef` a `shuyi_core::ease::Ease`,
   2109);
-- GPU particles and the wgpu renderer (3034);
+- GPU particles and the wgpu renderer (3325);
 - an editor for emitters (2506–2508);
 - systems or components of `shuyi-ecs`, or code over `Arena<T>`:
   `EmitterDef`, `Emitter` and `particles_at` are plain values and a pure

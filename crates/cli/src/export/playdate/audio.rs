@@ -98,16 +98,22 @@ pub fn jobs(audio: &GameAudio, root: &Path) -> Result<Vec<Job>, String> {
     Ok(jobs.into_values().collect())
 }
 
-/// The mono samples of the audio file `bytes` named `name` (`.wav`, or else
-/// OGG Vorbis), at [`SAMPLE_RATE`]: a stereo file's channels are averaged.
+/// The mono samples of the audio file `bytes` named `name` (`.wav`; a
+/// `.flac` or `.mp3`, through the WAV `audio::decode_to_wav` makes of it,
+/// ticket 2234; a `.sfx.ron` sound effect, rendered from its numbers the
+/// same way, ticket 2225; or else OGG Vorbis), at [`SAMPLE_RATE`]: a stereo
+/// file's channels are averaged.
 pub fn decode(name: &str, bytes: &[u8]) -> Result<Vec<i16>, String> {
-    let is_wav = Path::new(name)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"));
-    let (channels, rate, samples) = if is_wav {
-        decode_wav(bytes)
-    } else {
-        decode_ogg(bytes)
+    let extension = Path::new(name).extension().and_then(|ext| ext.to_str());
+    // A `.flac`, `.mp3` or `.sfx.ron` file `decode_to_wav` leaves is a WAV
+    // already (a game's hook decoded or rendered it).
+    let is_wav = shuyi_assets::sfx::is_sfx_name(name)
+        || extension
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("wav") || ext == "flac" || ext == "mp3");
+    let (channels, rate, samples) = match shuyi_assets::audio::decode_to_wav(name, bytes) {
+        Some(wav) => wav.and_then(|wav| decode_wav(&wav)),
+        None if is_wav => decode_wav(bytes),
+        None => decode_ogg(bytes),
     }
     .map_err(|e| format!("{name}: {e}"))?;
     if rate != SAMPLE_RATE {

@@ -35,7 +35,7 @@ use alloc::format;
 use core::fmt;
 use core::future::Future;
 
-use shuyi_assets::audio::{AudioManifest, Files};
+use shuyi_assets::audio::{AudioManifest, Files, LoopRegion, MusicCue, decode_to_wav};
 use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SharedSamples, SoundGroups, SoundId};
 
 use self::voice::Voices;
@@ -60,6 +60,27 @@ impl fmt::Display for Unsupported {
 
 impl core::error::Error for Unsupported {}
 
+/// Where a looped track goes round, as its backend will play it: what
+/// [`Backend::set_loop_region`] says (ticket 2397). More may come
+/// (ADR-0039): a match on it has a `_` arm.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum Looping {
+    /// The whole track, from its end back to its start.
+    Whole,
+    /// From the start up to `end` once, then from `start` to `end` again and
+    /// again: seconds into the track, from the frames the backend plays.
+    Region {
+        /// Where it goes back to.
+        start: f64,
+        /// Where it comes round, after its last frame.
+        end: f64,
+    },
+    /// The whole track, because the region its file names doesn't read:
+    /// why, naming the field at fault.
+    Unread(String),
+}
+
 /// What playing audio needs from the platform: all a backend writes for the
 /// sound of a game (ADR-0063).
 ///
@@ -80,7 +101,7 @@ pub trait Backend {
     /// The track, once `loading` has finished (called once per frame).
     fn poll_music(&mut self, loading: &mut Self::Loading) -> Option<Result<Self::Sound, String>>;
     /// How long `sound` plays, in seconds, if that is known: it is for an
-    /// OGG file loaded with [`load_music`](Self::load_music).
+    /// OGG, FLAC or MP3 file loaded with [`load_music`](Self::load_music).
     fn length(&self, sound: &Self::Sound) -> Option<f64>;
     /// Plays `sound` from the start at `volume` (0–1): this playback.
     fn play(&mut self, sound: &Self::Sound, volume: f32, looped: bool) -> Self::Playing;
@@ -95,18 +116,26 @@ pub trait Backend {
 
     /// Readies the sound file `file` of the manifest. By default it reads
     /// the file with `files` and decodes it with
-    /// [`load_sound`](Self::load_sound); a device that loads a sound from
-    /// its own path says so here.
+    /// [`load_sound`](Self::load_sound): a FLAC or MP3 file as the WAV
+    /// [`decode_to_wav`] makes of it, which every backend reads (ticket
+    /// 2234), and one that doesn't decode is an error that never reaches
+    /// the backend. A device that loads a sound from its own path says so
+    /// here.
     fn load_sound_file(
         &mut self,
         file: &str,
         files: &Files<'_>,
     ) -> impl Future<Output = Result<Self::Sound, String>> {
         let bytes = (files.sound)(file);
+        let decoded = bytes
+            .as_deref()
+            .and_then(|bytes| decode_to_wav(file, bytes));
         async move {
-            match bytes {
-                Some(bytes) => self.load_sound(&bytes).await,
-                None => Err("not in the asset bundle".to_owned()),
+            match (bytes, decoded) {
+                (None, _) => Err("not in the asset bundle".to_owned()),
+                (Some(bytes), None) => self.load_sound(&bytes).await,
+                (Some(_), Some(Ok(wav))) => self.load_sound(&wav).await,
+                (Some(_), Some(Err(why))) => Err(why),
             }
         }
     }
@@ -129,6 +158,22 @@ pub trait Backend {
     /// sound plays at 1.0.
     fn set_rate(&mut self, sound: &Self::Sound, rate: u32) -> Result<(), Unsupported> {
         let _ = (sound, rate);
+        Err(Unsupported)
+    }
+
+    /// Readies the music track `sound`'s looped plays, from its next
+    /// [`play`](Self::play), to go round a region (ticket 2397): `region`,
+    /// the cue's, or where that is `None` the region the file itself names
+    /// (an Ogg file's `LOOPSTART` and `LOOPLENGTH`), and says which it will
+    /// play. The way round is the backend's to make exact, never a seek of
+    /// the main thread's at the moment it is heard. Without it a track loops
+    /// whole, and a cue that names a region is warned of once.
+    fn set_loop_region(
+        &mut self,
+        sound: &Self::Sound,
+        region: Option<LoopRegion>,
+    ) -> Result<Looping, Unsupported> {
+        let _ = (sound, region);
         Err(Unsupported)
     }
 
@@ -171,6 +216,7 @@ pub trait Backend {
 enum Feature {
     Pause,
     Rate,
+    Region,
 }
 
 impl Feature {
@@ -179,7 +225,58 @@ impl Feature {
         match self {
             Self::Pause => "this backend can't pause sounds: they are muted instead",
             Self::Rate => "this backend can't change a sound's rate: it plays as recorded",
+            Self::Region => {
+                "this backend can't loop part of a track: a track with a loop region loops whole"
+            }
         }
+    }
+}
+
+/// Readies `sound`, the track of music cue `cue` (`def`), to go round its
+/// region, and says where it goes round in seconds, for the clock: `None`
+/// for the whole track, as on a backend that can't (warned of once, if the
+/// cue names a region) and for a file whose region doesn't read (warned of
+/// each time it loads, naming the file).
+fn loop_region<B: Backend>(
+    backend: &mut B,
+    sound: &B::Sound,
+    (cue, def): (&str, &MusicCue),
+    music_dir: &str,
+    provided: &mut Provided,
+    warnings: &mut Vec<String>,
+) -> Option<(f64, f64)> {
+    let asked = def.loop_region();
+    match backend.set_loop_region(sound, asked) {
+        Ok(Looping::Region { start, end }) => {
+            // The clock's length is the cue's: a file's region a hair past it
+            // ends there for the clock, and the sound is as the file says.
+            let end = end.min(f64::from(def.length_ms) / 1000.0);
+            (start < end).then_some((start, end))
+        }
+        Ok(Looping::Unread(why)) => {
+            let file = &def.file;
+            warnings.push(format!(
+                "music \"{cue}\": {music_dir}/{file}: {why}; it loops whole"
+            ));
+            None
+        }
+        Ok(_) => None,
+        Err(unsupported) => {
+            if asked.is_some() {
+                provided.call(Feature::Region, Err(unsupported), warnings);
+            }
+            None
+        }
+    }
+}
+
+/// Where a track is `elapsed` seconds after it started, going round
+/// `region` (`start`, `end`) if it has one: up to its end it is `elapsed`,
+/// and from there back by the region's length as often as it fits.
+fn through(region: Option<(f64, f64)>, elapsed: f64) -> f64 {
+    match region {
+        Some((start, end)) if elapsed >= end => start + (elapsed - start) % (end - start),
+        _ => elapsed,
     }
 }
 
@@ -234,8 +331,9 @@ impl Provided {
 /// The audio player: owns the decoded sounds and the music tracks.
 pub struct Player<B: Backend> {
     manifest: AudioManifest,
-    /// Every sound cue's decoded variants.
-    sounds: BTreeMap<String, Vec<B::Sound>>,
+    /// Every sound cue's decoded files, one slot per file of its `files`:
+    /// `None` for one that failed (warned at the load).
+    sounds: BTreeMap<String, Vec<Option<B::Sound>>>,
     /// The sounds the game added at run time, by cue.
     added: BTreeMap<String, B::Sound>,
     /// Music tracks loading or loaded, by cue.
@@ -247,7 +345,6 @@ pub struct Player<B: Backend> {
     music_dir: String,
     /// The voice clips (game ADR-0046).
     voices: Voices<B>,
-    rng: VariantRng,
     /// Problems to log (missing files, decode errors).
     warnings: Vec<String>,
     /// The last frame's gains (ADR-0091), kept while suspended: every
@@ -352,6 +449,9 @@ struct Track<B: Backend> {
     /// Its cue's gain, as the last frame gave it.
     group_gain: Gain,
     looped: bool,
+    /// Where it goes round, in seconds, as the backend said once it loaded:
+    /// `None` for the whole track.
+    region: Option<(f64, f64)>,
 }
 
 impl<B: Backend> Track<B> {
@@ -376,14 +476,14 @@ impl<B: Backend> Player<B> {
     /// Readies every sound in `manifest` (reading its files through `files`,
     /// the game's own sounds). A sound that fails is left out with a warning.
     /// Music tracks are looked for in `music_dir` and voice clips in
-    /// `voice_dir`. `seed` seeds the variant picker.
+    /// `voice_dir`. Which file of a cue plays, and at what volume, is the
+    /// request's ([`SoundRequest::Sound`]): the cue rules picked them.
     pub async fn load(
         backend: &mut B,
         manifest: AudioManifest,
         files: &Files<'_>,
         music_dir: String,
         voice_dir: String,
-        seed: u64,
     ) -> Self {
         let mut warnings = Vec::new();
         let mut sounds = BTreeMap::new();
@@ -391,10 +491,11 @@ impl<B: Backend> Player<B> {
             let mut variants = Vec::new();
             for file in &sound.files {
                 match backend.load_sound_file(file, files).await {
-                    Ok(s) => variants.push(s),
+                    Ok(s) => variants.push(Some(s)),
                     Err(e) => {
                         let shown = (files.sound_shown)(file);
                         warnings.push(format!("sound \"{cue}\": {shown}: {e}"));
+                        variants.push(None);
                     }
                 }
             }
@@ -408,7 +509,6 @@ impl<B: Backend> Player<B> {
             abandoned: Vec::new(),
             music_dir,
             voices: Voices::new(voice_dir),
-            rng: VariantRng::new(seed),
             warnings,
             gains: KeptGains::full(),
             handled: BTreeMap::new(),
@@ -567,13 +667,19 @@ impl<B: Backend> Player<B> {
     /// (a crossfade) it is the newest that sounds: the old one until the
     /// new one has loaded. A track played once is still reported after it has ended
     /// (not every device says when it does; `ui` knows its length). A paused
-    /// track's seconds hold; a muted one's run on.
+    /// track's seconds hold; a muted one's run on. A track that goes round a
+    /// region is where it really is: past the region's end, back by its
+    /// length as often as it has gone round (ticket 2397), and a track the
+    /// backend loops whole counts on whatever its cue says.
     pub fn music_playing(&self, now: f64) -> Option<(&str, f64)> {
         self.tracks
             .iter()
-            .filter_map(|(cue, track)| Some((cue.as_str(), track.started_at?, track.held_at)))
+            .filter_map(|(cue, track)| Some((cue.as_str(), track.started_at?, track)))
             .max_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(cue, started_at, held_at)| (cue, (held_at.unwrap_or(now) - started_at).max(0.0)))
+            .map(|(cue, started_at, track)| {
+                let elapsed = (track.held_at.unwrap_or(now) - started_at).max(0.0);
+                (cue, through(track.region, elapsed))
+            })
     }
 
     /// The file of the voice clip sounding at `now` (on
@@ -588,15 +694,26 @@ impl<B: Backend> Player<B> {
     /// Applies one sound request (the voice's are [`Voices`]').
     fn sound(&mut self, backend: &mut B, request: &SoundRequest) {
         match request {
-            SoundRequest::Sound { cue, volume } => {
+            SoundRequest::Sound {
+                cue,
+                volume,
+                variant,
+                cue_volume,
+            } => {
                 // A looped cue played this way (a bug the debug build
                 // catches) plays once: nothing could stop it.
-                self.play_sound(backend, cue, *volume, false);
+                let picked = Picked::new(*variant, *cue_volume, *volume);
+                self.play_sound(backend, cue, picked, false);
             }
             SoundRequest::Start {
-                id, cue, volume, ..
+                id,
+                cue,
+                volume,
+                variant,
+                cue_volume,
             } => {
-                self.start_sound(backend, *id, cue, *volume);
+                let picked = Picked::new(*variant, *cue_volume, *volume);
+                self.start_sound(backend, *id, cue, picked);
             }
             SoundRequest::Stop { id } => {
                 if let Some(handled) = self.handled.remove(id) {
@@ -637,32 +754,33 @@ impl<B: Backend> Player<B> {
         }
     }
 
-    /// Plays a variant of sound `cue` at `volume` times its own and its
-    /// gain, looped or not: the playback, unless the cue is unknown or none
-    /// of its files loaded.
+    /// Plays the file of sound `cue` that `picked` names, at its volumes
+    /// and the cue's gain, looped or not: the playback and the cue's own
+    /// volume (0–1), unless the cue is unknown or that file didn't load.
     fn play_sound(
         &mut self,
         backend: &mut B,
         cue: &str,
-        volume: f32,
+        picked: Picked,
         looped: bool,
-    ) -> Option<B::Playing> {
+    ) -> Option<(B::Playing, f32)> {
         let manifest = self.manifest.sounds.get(cue);
-        let (variants, own) = match (manifest, self.sounds.get(cue), self.added.get(cue)) {
-            (Some(def), Some(variants), _) => (variants.as_slice(), percent(def.volume)),
+        let (sound, own) = match (manifest, self.sounds.get(cue), self.added.get(cue)) {
+            (Some(_), Some(files), _) => (
+                files.get(picked.variant).and_then(Option::as_ref),
+                percent(picked.cue_volume),
+            ),
             // A sound added plays at its own volume, full.
-            (None, _, Some(added)) => (core::slice::from_ref(added), 1.0),
+            (None, _, Some(added)) => (Some(added), 1.0),
             _ => {
                 self.warnings.push(format!("unknown sound cue \"{cue}\""));
                 return None;
             }
         };
-        if variants.is_empty() {
-            return None; // Its files failed to load (warned then).
-        }
-        let sound = &variants[self.rng.below(variants.len())];
-        let volume = own * volume * factor(self.gains.view().sound(cue));
-        Some(backend.play(sound, volume, looped))
+        // A file that failed to load (warned then) plays nothing.
+        let sound = sound?;
+        let volume = own * picked.volume * factor(self.gains.view().sound(cue));
+        Some((backend.play(sound, volume, looped), own))
     }
 
     /// Pauses every sound started with a handle, or resumes the ones paused.
@@ -685,15 +803,14 @@ impl<B: Backend> Player<B> {
     }
 
     /// Starts sound `cue` as `id`, looped if its cue says so.
-    fn start_sound(&mut self, backend: &mut B, id: SoundId, cue: &str, volume: f32) {
-        let def = self.manifest.sounds.get(cue);
-        let (looped, cue_volume) = def.map_or((false, 1.0), |d| (d.looped, percent(d.volume)));
-        if let Some(playing) = self.play_sound(backend, cue, volume, looped) {
+    fn start_sound(&mut self, backend: &mut B, id: SoundId, cue: &str, picked: Picked) {
+        let looped = self.manifest.sounds.get(cue).is_some_and(|d| d.looped);
+        if let Some((playing, cue_volume)) = self.play_sound(backend, cue, picked, looped) {
             let handled = Handled {
                 playing,
                 cue: cue.to_owned(),
                 cue_volume,
-                volume,
+                volume: picked.volume,
                 gain: self.gains.view().sound(cue),
                 paused: false,
             };
@@ -725,6 +842,7 @@ impl<B: Backend> Player<B> {
                     volume: percent(def.volume),
                     group_gain: self.gains.view().music(cue),
                     looped: def.looped,
+                    region: None,
                 };
                 self.tracks.insert(cue.clone(), track);
             }
@@ -785,7 +903,7 @@ impl<B: Backend> Player<B> {
     /// point ([`RATE_ONE`] as recorded). On a backend without a rate it plays
     /// as recorded, and the log says so once.
     pub fn set_rate(&mut self, backend: &mut B, cue: &str, rate: u32) {
-        for sound in self.sounds.get(cue).into_iter().flatten() {
+        for sound in self.sounds.get(cue).into_iter().flatten().flatten() {
             let result = backend.set_rate(sound, rate);
             self.provided
                 .call(Feature::Rate, result, &mut self.warnings);
@@ -795,6 +913,7 @@ impl<B: Backend> Player<B> {
     /// Finishes loads: a track asked to play starts now.
     fn poll(&mut self, backend: &mut B, now: f64) {
         let suspended = self.suspended;
+        let (provided, warnings) = (&mut self.provided, &mut self.warnings);
         for (cue, track) in &mut self.tracks {
             let TrackState::Loading(loading) = &mut track.state else {
                 continue;
@@ -802,6 +921,11 @@ impl<B: Backend> Player<B> {
             match backend.poll_music(loading) {
                 None => {}
                 Some(Ok(sound)) => {
+                    if let (true, Some(def)) = (track.looped, self.manifest.music.get(cue)) {
+                        let dir = &self.music_dir;
+                        let cue = (cue.as_str(), def);
+                        track.region = loop_region(backend, &sound, cue, dir, provided, warnings);
+                    }
                     if track.playing {
                         let volume = track.level(suspended);
                         track.playback = Some(backend.play(&sound, volume, track.looped));
@@ -816,8 +940,7 @@ impl<B: Backend> Player<B> {
                         .get(cue)
                         .map_or("?", |m| m.file.as_str());
                     let dir = &self.music_dir;
-                    self.warnings
-                        .push(format!("music \"{cue}\": {dir}/{file}: {e}"));
+                    warnings.push(format!("music \"{cue}\": {dir}/{file}: {e}"));
                     track.state = TrackState::Failed;
                 }
             }
@@ -926,28 +1049,22 @@ fn percent(volume: u8) -> f32 {
     f32::from(volume) / 100.0
 }
 
-/// Picks sound variants (`audio.md`: footsteps vary each step). A small
-/// `SplitMix64`, separate from core's simulation RNG (game ADR-0019): what
-/// plays never affects the game.
-pub(crate) struct VariantRng(u64);
+/// What a sound request picked: its file, the cue's volume in percent, and
+/// the request's own volume (0–1).
+#[derive(Debug, Clone, Copy)]
+struct Picked {
+    variant: usize,
+    cue_volume: u8,
+    volume: f32,
+}
 
-impl VariantRng {
-    pub(crate) fn new(seed: u64) -> Self {
-        Self(seed)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    /// A number below `n` (`n` ≥ 1).
-    pub(crate) fn below(&mut self, n: usize) -> usize {
-        let n = u64::try_from(n.max(1)).unwrap_or(u64::MAX);
-        usize::try_from(self.next_u64() % n).unwrap_or(0)
+impl Picked {
+    const fn new(variant: usize, cue_volume: u8, volume: f32) -> Self {
+        Self {
+            variant,
+            cue_volume,
+            volume,
+        }
     }
 }
 
@@ -961,7 +1078,6 @@ mod tests {
 
     use alloc::borrow::Cow;
 
-    use proptest::prelude::*;
     use serde::Deserialize;
     use shuyi_assets::audio::{Bytes, CreditRef, MusicCue, SoundCue};
     use shuyi_assets::voice::ClipVariant;
@@ -1037,11 +1153,17 @@ mod tests {
             music: &[MusicCommand],
             now: f64,
         ) {
-            let requests: Vec<SoundRequest> = requests
-                .iter()
-                .filter_map(SoundRequest::from_request)
-                .collect();
-            self.play(backend, &requests, music, now);
+            // As `App` hands them over: through the cue rules.
+            let (mut picked, mut dropped) = (Vec::new(), Vec::new());
+            let mut cues = crate::audio::cues::Cues::new(7);
+            cues.apply(
+                &self.manifest,
+                Millis(0),
+                requests,
+                &mut picked,
+                &mut dropped,
+            );
+            self.play(backend, &picked, music, now);
         }
     }
 
@@ -1113,6 +1235,9 @@ mod tests {
         pub(crate) plays: u32,
         /// Logs the frames' opening and closing too.
         pub(crate) frames: bool,
+        /// What `set_loop_region` says with no region asked for, the file's:
+        /// `None` for a backend that can't loop a region at all.
+        pub(crate) looping: Option<Looping>,
     }
 
     impl Backend for Fake {
@@ -1172,6 +1297,22 @@ mod tests {
             self.log.borrow_mut().push(format!("stop #{playing}"));
         }
 
+        fn set_loop_region(
+            &mut self,
+            sound: &String,
+            region: Option<LoopRegion>,
+        ) -> Result<Looping, Unsupported> {
+            let file = self.looping.clone().ok_or(Unsupported)?;
+            let asked = region.map(|r| (r.start_ms, r.end_ms));
+            self.log
+                .borrow_mut()
+                .push(format!("loop {sound} {asked:?}"));
+            Ok(region.map_or(file, |r| Looping::Region {
+                start: f64::from(r.start_ms) / 1000.0,
+                end: f64::from(r.end_ms) / 1000.0,
+            }))
+        }
+
         fn add_sound(&mut self, samples: &SharedSamples) -> Result<String, String> {
             let sound = format!("pcm{}", samples.frames());
             self.log.borrow_mut().push(format!("add {sound}"));
@@ -1219,6 +1360,10 @@ mod tests {
         m.music
             .insert("sting".into(), track("sting.ogg", 100, false));
         m.music.insert("lost".into(), track("lost.ogg", 100, true));
+        // A second of intro, then round the next three.
+        let around = LoopRegion::new(1000, 4000)
+            .map(|region| track("intro.ogg", 100, true).with_loop(region));
+        m.music.extend(around.map(|cue| ("intro".to_owned(), cue)));
         m
     }
 
@@ -1255,7 +1400,7 @@ mod tests {
 
     pub(crate) fn audio(backend: &mut Fake) -> Audio<Fake> {
         let (music, voice) = ("music".into(), "voice/en".into());
-        block_on(Audio::load(backend, manifest(), &files(), music, voice, 7))
+        block_on(Audio::load(backend, manifest(), &files(), music, voice))
     }
 
     fn sound(cue: &str, volume: f32) -> Request {
@@ -1522,7 +1667,7 @@ mod tests {
             beep.files.push("sfx/gone.wav".into());
         }
         let dirs = ("music".into(), "voice/en".into());
-        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1, 1));
+        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1));
         assert_eq!(
             audio.take_warnings()[0],
             "sound \"beep\": bundle/sfx/gone.wav: not in the asset bundle"
@@ -1534,6 +1679,36 @@ mod tests {
         );
         let got = fake.calls();
         assert!(got.is_empty(), "{got:?}");
+    }
+
+    /// The player plays the file a request names at the volume it says;
+    /// a file that failed keeps its slot, so the others keep their index.
+    #[test]
+    fn the_file_a_request_names_plays_at_its_volume_and_a_failed_file_plays_nothing() {
+        let mut fake = Fake::default();
+        let mut m = manifest();
+        if let Some(step) = m.sounds.get_mut("step") {
+            step.files[1] = "sfx/broken.wav".into();
+        }
+        let dirs = ("music".into(), "voice/en".into());
+        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1));
+        assert_eq!(
+            audio.take_warnings(),
+            [
+                "sound \"broken\": bundle/sfx/broken.wav: not a PCM WAV",
+                "sound \"step\": bundle/sfx/broken.wav: not a PCM WAV"
+            ]
+        );
+        let step =
+            |variant, cue_volume| SoundRequest::sound("step", 0.5).with_pick(variant, cue_volume);
+        let requests = [step(2, 80), step(1, 80), step(0, 40), step(3, 80)];
+        audio.play(&mut fake, &requests, &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            ["play wav400 0.40", "play wav200 0.20"],
+            "the third file, nothing for the failed second or a fourth past the end, then the first"
+        );
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
     }
 
     #[test]
@@ -1949,20 +2124,6 @@ mod tests {
         assert!(percent(0).abs() < f32::EPSILON);
     }
 
-    #[test]
-    fn the_rng_is_deterministic_per_seed() {
-        let draws = |seed| {
-            let mut rng = VariantRng::new(seed);
-            (0..8).map(|_| rng.next_u64()).collect::<Vec<_>>()
-        };
-        assert_eq!(draws(1), draws(1));
-        assert_ne!(draws(1), draws(2));
-        // SplitMix64's published first output for seed 0.
-        assert_eq!(VariantRng::new(0).next_u64(), 0xE220_A839_7B1D_CDAF);
-        assert_eq!(VariantRng::new(5).below(0), 0);
-        assert_eq!(VariantRng::new(5).below(1), 0);
-    }
-
     /// A backend of the required methods alone, as a new platform's first day
     /// is: every provided method is at its default.
     #[derive(Default)]
@@ -2012,7 +2173,7 @@ mod tests {
     fn loaded<B: Backend>(backend: &mut B) -> Player<B> {
         let (music, voice) = ("music".to_owned(), "voice".to_owned());
         let files = files();
-        let mut player = block_on(Player::load(backend, manifest(), &files, music, voice, 1));
+        let mut player = block_on(Player::load(backend, manifest(), &files, music, voice));
         player.take_warnings();
         player
     }
@@ -2026,6 +2187,42 @@ mod tests {
         let mut backend = Required::default();
         let player = loaded(&mut backend);
         (backend, player)
+    }
+
+    /// Ticket 2203's FLAC fixture: 50 ms of stereo at 44.1 kHz.
+    const FLAC: &[u8] = include_bytes!("../../../assets/tests/fixtures/formats/tone.flac");
+
+    /// The files of a FLAC sound, `sfx/tone.flac`, and of a broken one.
+    fn flac_files(file: &str) -> Bytes {
+        match file {
+            "sfx/tone.flac" => Some(Cow::Borrowed(FLAC)),
+            "sfx/broken.flac" => Some(Cow::Borrowed(&FLAC[..40])),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_flac_sound_reaches_the_backend_as_a_wav() {
+        let files = Files::new(&flac_files, &shown, &|_: &str| false, "music");
+        // The fake reads only a PCM WAV: 2,205 frames of two samples.
+        let loaded = block_on(Fake::default().load_sound_file("sfx/tone.flac", &files));
+        assert_eq!(loaded, Ok("wav4410".to_owned()));
+        // A backend that takes anything never gets the broken one.
+        let broken = block_on(Required::default().load_sound_file("sfx/broken.flac", &files));
+        let why = broken.unwrap_err();
+        assert!(why.starts_with("not a readable FLAC file: "), "{why}");
+        // The player warns, as for any sound that doesn't load.
+        let mut m = AudioManifest::default();
+        let files_of = ["sfx/tone.flac", "sfx/broken.flac"].map(str::to_owned);
+        let chime = SoundCue::new(files_of.to_vec(), 100, CreditRef::Own);
+        m.sounds.insert("chime".into(), chime);
+        let mut fake = Fake::default();
+        let (music, voice) = ("music".into(), "voice".into());
+        let mut audio = block_on(Audio::load(&mut fake, m, &files, music, voice));
+        assert_eq!(
+            audio.take_warnings(),
+            [format!("sound \"chime\": bundle/sfx/broken.flac: {why}")]
+        );
     }
 
     #[test]
@@ -2071,7 +2268,7 @@ mod tests {
     #[test]
     fn pausing_without_a_pause_warns_once_and_mutes_until_the_resume() {
         let (mut backend, mut player) = required();
-        let start = SoundRequest::start(handle(), "rain", 1.0);
+        let start = SoundRequest::start(handle(), "rain", 1.0).with_pick(0, 50);
         player.play(&mut backend, &[start], &[], 0.0);
         for _ in 0..2 {
             player.play(&mut backend, &[SoundRequest::PauseSounds], &[], 0.0);
@@ -2112,6 +2309,8 @@ mod tests {
         let requests = [SoundRequest::Sound {
             cue: "nope".to_owned(),
             volume: 1.0,
+            variant: 0,
+            cue_volume: 100,
         }];
         let half = levels(50, 50, 50);
         let frame = AudioFrame {
@@ -2174,7 +2373,7 @@ mod tests {
     fn the_same_gain_again_leaves_a_started_sound_alone() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
-        let start_rain = SoundRequest::start(handle(), "rain", 1.0);
+        let start_rain = SoundRequest::start(handle(), "rain", 1.0).with_pick(0, 50);
         audio.play(&mut fake, &[start_rain], &[], 0.0);
         fake.calls();
         audio.set_gains(&mut fake, levels(100, 100, 100).view());
@@ -2215,7 +2414,7 @@ mod tests {
         audio.set_gains(&mut fake, levels(100, 50, 100).view());
         audio.play(
             &mut fake,
-            &[SoundRequest::start(handle(), "rain", 1.0)],
+            &[SoundRequest::start(handle(), "rain", 1.0).with_pick(0, 50)],
             &[],
             0.0,
         );
@@ -2235,7 +2434,7 @@ mod tests {
         let beep = m.sounds.get("beep").cloned();
         m.sounds.extend(beep.map(|b| ("ui_move".to_owned(), b)));
         let dirs = ("music".into(), "voice/en".into());
-        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1, 1));
+        let mut audio = block_on(Audio::load(&mut fake, m, &files(), dirs.0, dirs.1));
         let quiet = levels(100, 50, 100);
         let gains = quiet.gains.clone().with(&quiet.groups, UI, Gain::new(1024));
         audio.set_gains(&mut fake, Gains::new(&quiet.groups, &gains));
@@ -2263,6 +2462,241 @@ mod tests {
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
         audio.play(&mut fake, &[], &[gain("title", 0.25)], 0.0);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.10"]);
+    }
+
+    /// The player on [`Fake`] with `intro` and `title` loaded and ready, the
+    /// backend saying `looping` of a file with no region asked for.
+    fn looping(looping: Option<Looping>) -> (Fake, Audio<Fake>) {
+        let mut fake = Fake {
+            looping,
+            ..Fake::default()
+        };
+        fake.ready
+            .extend(["music/intro.ogg".into(), "music/title.ogg".into()]);
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        (fake, audio)
+    }
+
+    /// Where the music's clock is `at`.
+    fn at(audio: &Audio<Fake>, at: f64) -> Option<f64> {
+        audio.music_playing(at).map(|(_, secs)| secs)
+    }
+
+    /// Whether `secs` is `expected`, to well under a frame.
+    fn near(secs: Option<f64>, expected: f64) -> bool {
+        secs.is_some_and(|secs| (secs - expected).abs() < 1e-9)
+    }
+
+    /// Ticket 2397: the intro once, then round the region, however often.
+    #[test]
+    fn a_track_with_a_region_plays_its_intro_once_then_goes_round_it() {
+        let (mut fake, mut audio) = looping(Some(Looping::Whole));
+        let cmds = [cmd(load, "intro"), cmd(start, "intro")];
+        audio.play(&mut fake, &[], &cmds, 10.0);
+        let calls = fake.calls();
+        assert!(
+            calls.contains(&"loop music/intro.ogg Some((1000, 4000))".to_owned()),
+            "{calls:?}"
+        );
+        assert!(
+            calls.contains(&"play music/intro.ogg 1.00 looped".to_owned()),
+            "{calls:?}"
+        );
+        for (secs, position) in [
+            (0.0, 0.0),
+            (0.999, 0.999),
+            (1.0, 1.0),
+            (3.999, 3.999),
+            // Round from the end to the start, once.
+            (4.0, 1.0),
+            (4.5, 1.5),
+            (6.999, 3.999),
+            (7.0, 1.0),
+            // A long way in: 333 times round and half a second.
+            (4.0 + 3.0 * 333.0 + 0.5, 1.5),
+        ] {
+            let got = at(&audio, 10.0 + secs);
+            assert!(near(got, position), "{secs}: {got:?}");
+        }
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
+    }
+
+    #[test]
+    fn a_track_without_a_region_is_asked_for_its_files_and_goes_round_that() {
+        // The backend found the file's own: 0.5 s to 1.5 s.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 0.5,
+            end: 1.5,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(
+            fake.calls()
+                .contains(&"loop music/title.ogg None".to_owned())
+        );
+        assert!(near(at(&audio, 1.25), 1.25));
+        assert!(near(at(&audio, 1.75), 0.75));
+        assert!(near(at(&audio, 3.5), 0.5));
+        // A track played once is never asked: it has nothing to go round.
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(stop, "title"), cmd(load, "sting")],
+            5.0,
+        );
+        fake.ready.push("music/sting.ogg".into());
+        audio.play(&mut fake, &[], &[cmd(start, "sting")], 5.0);
+        assert!(!fake.calls().iter().any(|call| call.starts_with("loop")));
+        assert!(near(at(&audio, 8.0), 3.0));
+    }
+
+    #[test]
+    fn a_files_region_past_the_cues_length_ends_there_for_the_clock() {
+        // `title` is 60 s long; the file says its region runs to 60.001 s.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 30.0,
+            end: 60.001,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 59.999), 59.999));
+        assert!(near(at(&audio, 60.0), 30.0));
+        // An intro longer than the region is counted as it is, until the region's end.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 30.0,
+            end: 31.0,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 10.0), 10.0));
+        assert!(near(at(&audio, 31.25), 30.25));
+        // One that starts past the length isn't one the clock can follow.
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 60.0,
+            end: 61.0,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert!(near(at(&audio, 60.5), 60.5));
+    }
+
+    #[test]
+    fn a_files_region_that_does_not_read_is_warned_of_naming_the_file() {
+        let why = Looping::Unread("LOOPLENGTH is 0: a region has a frame at least".into());
+        let (mut fake, mut audio) = looping(Some(why));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            0.0,
+        );
+        assert_eq!(
+            audio.take_warnings(),
+            [
+                "music \"title\": music/title.ogg: LOOPLENGTH is 0: a region has a frame at least; it loops whole"
+            ]
+        );
+        assert!(
+            near(at(&audio, 70.0), 70.0),
+            "ui wraps it at the whole length"
+        );
+    }
+
+    /// A whole-file backend: the cue's region is warned of once, and the
+    /// clock counts on as the whole track plays (`ui` wraps it at its length).
+    #[test]
+    fn a_backend_without_regions_loops_whole_and_warns_once() {
+        let (mut fake, mut audio) = looping(None);
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            0.0,
+        );
+        assert!(
+            fake.calls()
+                .contains(&"play music/intro.ogg 1.00 looped".to_owned())
+        );
+        let warned =
+            ["this backend can't loop part of a track: a track with a loop region loops whole"];
+        assert_eq!(audio.take_warnings(), warned);
+        assert!(near(at(&audio, 5.0), 5.0));
+        // Loaded again, and a track with no region: nothing more is said.
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            6.0,
+        );
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "title"), cmd(start, "title")],
+            6.0,
+        );
+        assert_eq!(audio.take_warnings(), [] as [String; 0]);
+    }
+
+    /// Both tracks of a crossfade go round their own regions, and the clock
+    /// follows the newest.
+    #[test]
+    fn both_tracks_of_a_crossfade_go_round_their_regions() {
+        let (mut fake, mut audio) = looping(Some(Looping::Region {
+            start: 0.5,
+            end: 1.5,
+        }));
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(load, "intro"), cmd(start, "intro")],
+            0.0,
+        );
+        assert!(near(at(&audio, 4.5), 1.5));
+        let switch = [cmd(load, "title"), cmd(start, "title"), gain("intro", 0.5)];
+        audio.play(&mut fake, &[], &switch, 5.0);
+        assert_eq!(audio.music_playing(5.0).map(|(cue, _)| cue), Some("title"));
+        assert!(near(at(&audio, 7.0), 1.0));
+        audio.play(&mut fake, &[], &[cmd(stop, "title")], 7.0);
+        // The old one went round on its own all along: 9 s in is 3 s.
+        assert!(near(at(&audio, 9.0), 3.0));
+    }
+
+    /// A pause holds the clock; it goes on round the region from there.
+    #[test]
+    fn a_paused_track_holds_its_place_in_the_region() {
+        let mut backend = Pausing::default();
+        backend.inner.looping = Some(Looping::Whole);
+        backend.inner.ready.push("music/intro.ogg".into());
+        let mut player = loaded(&mut backend);
+        let music = [cmd(load, "intro"), cmd(start, "intro")];
+        player.play(&mut backend, &[], &music, 0.0);
+        player.play(&mut backend, &[], &[], 5.0);
+        player.suspend(&mut backend);
+        let secs = |player: &Player<Pausing>, now| player.music_playing(now).map(|(_, s)| s);
+        // 5 s in is 2 s: once round.
+        assert!(near(secs(&player, 50.0), 2.0));
+        player.resume(&mut backend);
+        player.play(&mut backend, &[], &[], 50.0);
+        // 5 s of it before, 2.5 s after: 7.5 s in is 1.5 s, twice round.
+        assert!(near(secs(&player, 52.5), 1.5));
+        assert_eq!(player.take_warnings(), [] as [String; 0]);
     }
 
     /// A backend that pauses: what a held playback does, by the numbers.
@@ -2313,6 +2747,14 @@ mod tests {
             self.inner.stop_playing(playing);
         }
 
+        fn set_loop_region(
+            &mut self,
+            sound: &String,
+            region: Option<LoopRegion>,
+        ) -> Result<Looping, Unsupported> {
+            self.inner.set_loop_region(sound, region)
+        }
+
         fn pause(&mut self, playing: &u32) -> Result<(), Unsupported> {
             self.paused.push(*playing);
             Ok(())
@@ -2334,7 +2776,7 @@ mod tests {
     #[test]
     fn a_backend_that_pauses_holds_its_playbacks_and_their_clock() {
         let (mut backend, mut player) = pausing();
-        let start_rain = SoundRequest::start(handle(), "rain", 1.0);
+        let start_rain = SoundRequest::start(handle(), "rain", 1.0).with_pick(0, 50);
         let music = [cmd(load, "title"), cmd(start, "title")];
         player.play(&mut backend, &[start_rain], &music, 1.0);
         backend.inner.calls();
@@ -2358,7 +2800,7 @@ mod tests {
     #[test]
     fn a_menus_pause_and_a_suspend_hold_one_playback_once() {
         let (mut backend, mut player) = pausing();
-        let start_rain = SoundRequest::start(handle(), "rain", 1.0);
+        let start_rain = SoundRequest::start(handle(), "rain", 1.0).with_pick(0, 50);
         player.play(&mut backend, &[start_rain], &[], 0.0);
         player.play(&mut backend, &[SoundRequest::PauseSounds], &[], 0.0);
         assert_eq!(backend.paused, [1]);
@@ -2376,20 +2818,5 @@ mod tests {
         assert_eq!(backend.paused, [1], "the menu holds it still");
         player.play(&mut backend, &[SoundRequest::ResumeSounds], &[], 0.0);
         assert_eq!(backend.paused, [] as [u32; 0]);
-    }
-
-    proptest! {
-        /// Every variant gets its chance, whatever the seed.
-        #[test]
-        fn every_variant_gets_picked(seed: u64, n in 1usize..=6) {
-            let mut rng = VariantRng::new(seed);
-            let mut seen = vec![false; n];
-            for _ in 0..200 {
-                let i = rng.below(n);
-                prop_assert!(i < n);
-                seen[i] = true;
-            }
-            prop_assert!(seen.iter().all(|&s| s), "{seen:?}");
-        }
     }
 }

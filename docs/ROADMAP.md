@@ -186,9 +186,9 @@ These tickets, in order:
 | 3218 (done) | Typed label arguments: screen text and tips choose their words by a number, a value, the device and the target |
 | 2405 (done) | Mouse and touch for menus and grid maps |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
-| 2133 | The bots' data made alike: the settings refuse unknown fields |
+| 2133 (done) | The bots' data made alike: the settings refuse unknown fields |
 | 2136 (done) | The motions written by hand moved onto `shuyi_core::ease` |
-| 2239 | Translated dialogue lines get the text box's page check |
+| 2239 (done) | Translated dialogue lines get the text box's page check |
 | 3041 (done) | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
@@ -280,7 +280,7 @@ tickets above and 2267 and 3220 under *Asset memory*:
 | 2268 (done) | A message's walk borrows its values: a select and a fill copy no value into a String |
 | 3221 | A steady frame of Hello, Grid with key caps on allocates no more than a count its test pins |
 | 3222 | On Windows the backend finds miniquad's window once, not by listing the thread's windows every frame |
-| 3320 | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |
+| 3320 (done) | The in-house sound counts each track's underruns, and its music feeder keeps ahead on a busy machine (before 3084) |
 | 2097 | The engine's own matches on its non-exhaustive enums name every variant, checked on nightly |
 | 2099 | The ticket lint fails an open MVP ticket the first release doesn't wait for, and the roadmap lists what is left before the release |
 
@@ -318,7 +318,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Data driven: an ECS, components as structs, systems as functions, queries, resources, change detection, a parallel scheduler | 2904 (research), 2107 (`shuyi-ecs`), 2108 (in a game, parallel with the same hashes, an example). Opt-in; the arena stays the default (ADR-0003 §4) | after MVP |
 | 2D renderer: sprite sheets, dynamic texture atlases, cameras, textures, materials | 1123 and 2231 (sprite sheets and clips), 2222 (atlases), 2335–2338 (rotation, shapes, tints and blends, nine-slice), 1120 (cameras), 2327 (materials and a game's shaders) | 2222 and 2335–2338 after MVP; the rest parked |
 | 3D renderer: lights, shadows, cameras, meshes, materials, glTF | 3101–3109 | parked |
-| Render graph | 3034 (wgpu, not tied to one API), 2331 (the graph) | parked |
+| Render graph | 3325 (`shuyi-gpu` over wgpu, not tied to one API; 3034's research done), 2331 (the graph) | parked |
 | Animation: skeletal rigs, blending, morph targets, glTF | 1123 and 2231 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
 | Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3071 (Linux on Arm), 3015 (mobile) | partial: Windows, Linux, macOS and the web done (3004); 3071 after MVP; 3015 parked |
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
@@ -370,7 +370,10 @@ is done.
 
 | Ticket | What |
 | ------ | ---- |
-| 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, and the player's pick |
+| 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, fit drawn sharp |
+| 3240 | The player's pick of the picture: sharp pixels or fill the screen (after 2333) |
+| 3241 | The capture mode compares a filled frame with the raster, in the render jobs (after 2333) |
+| 3242 | `check --target` compares each target's scale with the game's `DEFAULT_SCALE` (after 2333) |
 | 2335 | Rotated sprites: an angle around a pivot and `flip_y`, with an integer `Angle` in `shuyi-core` |
 | 2336 | Drawn shapes for every game: lines, circles and polygons |
 | 2337 | Tints and blend modes on sprites and overlays |
@@ -392,7 +395,8 @@ is done.
 | 2345 | Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority |
 | 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
-| 2225 | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
+| 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
+| 2277 | `shuyi sfx`, Hello, Grid's sounds as `.sfx.ron` files, and the tutorial's push and win sounds (after 2225) |
 
 **Text and languages:**
 
@@ -458,7 +462,7 @@ is done.
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3086 | A desktop launch's seed differs from launch to launch, kept in its session record |
 | 3041 (done) | Log sinks in shipped builds: a log file, and the browser console on the web |
-| 3324 | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library (after 3041) |
+| 3324 (done) | `SHUYI_LOG`: a filter for the log's sinks, by level, category and library |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
@@ -473,6 +477,8 @@ is done.
 | 2543 | The rules crate's fence proved once in CI, and `lint` takes `check-keys`' and `check-text`'s findings as data |
 | 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |
 | 2524 | An agent eval of the end goal: tasks as data, a grader through the contract, reference solutions in CI |
+| 3421 | The eval's references graded on fresh games: `cargo xtask eval-reference` and an `eval` job in CI |
+| 3422 | The eval's tic-tac-toe reference, graded in CI |
 | 2525 | Scheduled agent runs of the eval, within a budget Nick sets |
 | 2527 | `shuyi soak`: random legal commands, save and reload at every step, and a failure shrunk to a short record |
 | 2528 | `shuyi web --serve`: served on localhost or the LAN, rebuilt and reloaded on change |
@@ -487,7 +493,7 @@ is done.
 | 3044 (done) | The window opens as it was left: its size and mode kept per computer, and a start size in whole multiples |
 | 3314 (done) | The cursor hides when the mouse is still and in fullscreen (split from 3044) |
 | 2405 (done) | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
-| 2413 | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
+| 2413 (done) | `shuyi-app` reads the mouse and touches: the window's pointer in console pixels (split from 2405) |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
@@ -544,7 +550,7 @@ does. The order, after the game's own requests:
    replay, and `TickDriver` with its input latch;
 3. 2739: the arcade template part and snake, on Pages;
 4. 2776: the maze chase, on Pages;
-5. 2572, the maze chase's eval task, once the eval (2524) is done;
+5. 2572, the maze chase's eval task, once the eval (2524, 3421) is done;
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
    what it may spend.
 
@@ -602,7 +608,7 @@ them.
 | 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
 | 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
 | 2541 | `shuyi autobalance`: the search for a game's stage on every core, a time limit, the stage written back (after 2532) | game#1183 |
-| 2133 | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
+| 2133 (done) | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
 | 2544 | One operation plays a game's bots: `bots` folded into `playtest` (after 2532 and 2533) | 2126 |
 | 2540 | `frame-png` scripts wind the crank: a `--crank DEGREES` step beside `--keys`, `--pad` and `--wait` | game#1182 |
 
@@ -835,13 +841,15 @@ The parked ones are under *Parked* below.
 | 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
 | 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
 | 2136 (done) | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
-| 2234 | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
+| 2234 (done) | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
+| 2275 | FLAC and MP3 tracks streamed by the in-house sound backend (after 2234) |
 | 2235 | Nine-slice frames in a data file, baked in the pack and read by `BasicData` (after 2338) |
 | 2236 | Frozen format fixtures: each release's copy read while the version rule covers it |
 | 2374 | Eight-way on square maps: the path arrow, steering and an eight-way choice in the grid template (after 2117) |
 | 2375 | The log on screen in debug builds: a `log` channel and the console's newest lines (after 2315 and 2356) |
 | 2377 | The system's reduced-motion preference as the default of the player's motion setting |
 | 2378 | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
+| 3419 (done) | `run`'s answer lists the plays the cue rules dropped (after 2345) |
 | 2380 | The profiles screen asks the system keyboard for a name (after 2346) |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2552 | `shuyi module new`: an outside module's crate, metadata, README and skill (after 2526) |
@@ -914,6 +922,10 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
 | 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
 | 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
+| 2602 | Host a turn-game preview as bounded actions and pixels, built and tested locally only; no paid hosting until Nick approves its measured cost (unparked 2026-11-23): its worker, a visitor's game in a process of its own (done 2026-11-23) |
+| 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
+| 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609; done 2026-11-23) |
+| 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
 | 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
 
 ## Parked
@@ -1006,10 +1018,19 @@ specifications, never copied. The order, when unparked:
   First the Steam Deck is tried (2414, not parked), then 2402 moves
   desktop pads to SDL3 and removes gilrs, then 2403 starts Switch 2 pads.
 - **The two small ones:** web saves (3033, done: unparked on its own on
-  2026-11-12) and file embedding (2215, which needs nothing else).
-- **macroquad:** the research (3034), which writes the ADR and the tickets
-  for winit and our own 2D renderer over wgpu, which draws on Vulkan,
-  Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU.
+  2026-11-12) and file embedding (2215, done: unparked on its own on 2026-11-22).
+- **macroquad:** the research (3034) is done. Nick unparked it alone on
+  2026-11-22, and it wrote
+  [ADR-0136](adr/0136-replacing-macroquad-winit-wgpu-and-wasm-bindgen.md).
+  It plans winit for the window and our own 2D renderer over wgpu, which
+  draws on Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and
+  WebGPU. Its tickets are parked, and all of them come after 3079:
+  - `shuyi-gpu`, the renderer (3325);
+  - the winit backend on the desktop (3326), its input (3327) and the
+    window facts miniquad lacks (3328);
+  - the web build on `wasm-bindgen` (3330) and its plugins (3331);
+  - the IME everywhere (3329, after 2346);
+  - winit as the default (3332), then macroquad removed (3333).
 - **Repositories of their own** (2008): last, for each piece we wrote, when
   it is a full replacement and Nick says so.
 
@@ -1030,12 +1051,12 @@ same day; Visions of Shuyi never uses Spine). The order, when unparked:
   accessibility tree (2322) and a text size the player picks (2323,
   after 2209) need nothing parked; the colour-vision check (2324) after
   3006; screen reader output (3035) after 2322 and the winit backend
-  that 3034 plans.
+  (3326).
 - **The debug view:** the frame profiler (2325) after 2315, 2316 and
   3063.
-- **2D effects:** screen effects (2326) on the wgpu renderer that 3034
-  plans, then a game's own shaders (2327) and 2D lights (2328, also
-  after 1120).
+- **2D effects:** screen effects (2326) on the wgpu renderer (3325),
+  then a game's own shaders (2327) and 2D lights (2328, also after
+  1120).
 - **Store services:** achievements and stats with no store in them
   (3036), then Steam achievements, stats and cloud saves (3037).
 
@@ -1094,8 +1115,8 @@ rest, when unparked:
 - **Voice chat:** the research (2910), with networking; it ends with a
   question to Nick.
 - **Ray and path tracing:** the research (2911), for PCs and current
-  consoles only, behind a `ray_tracing` capability (3017); best after
-  3034, which plans the renderer it needs.
+  consoles only, behind a `ray_tracing` capability (3017); 3034 (done)
+  planned the renderer it needs (3325, ADR-0136 §7).
 
 Later on 2026-10-22 Nick added first-person dungeon crawlers (a party
 of one first, any size allowed) and Diablo-likes, asked for the
@@ -1144,7 +1165,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2385–2387, 2774–2775 | Local split screen for two to four players: layouts side by side or stacked and the three- and four-player shapes with the player's pick, a view per seat with its camera, HUD rectangle and spare quarter, a check that views fit the target, a listener per view, an example and a template part | Nick asks (2026-10-24: "These will be parked since they're not needed for Visions of Shuyi") |
 | 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
 | 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
-| 2602–2603, 3083 | A hosted action-to-pixels preview, server-held future content, and marked closed previews with supported capture limits | Nick asks; networking stays parked |
+| 2603, 3083 | Server-held future content, and marked closed previews with supported capture limits (2602 and its split, 2609–2611, the hosted preview itself, were unparked on 2026-11-23 to be built and tested locally only) | Nick asks; networking stays parked |
 | 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |
 | 2118–2121, 2735–2738, 2740 | Roguelikes, a gallery of small games, and hex grids | Nick asks, after the game launches (2026-10-20) |
 | 2909 | Research: video playback | with the visual novels |
@@ -1160,19 +1181,20 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2215, 2402–2403, 3034, 2008 | The rest of the platform layer (ADR-0021): the controllers' replacement that 2903 chose (ADR-0146); embedding; winit/wgpu research; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, and web saves (3033) on 2026-11-12 | Nick asks |
+| 2402–2403, 2008 | The rest of the platform layer (ADR-0021): the controllers' replacement that 2903 chose (ADR-0146); separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, web saves (3033) on 2026-11-12, and file embedding (2215) and the macroquad research (3034) alone on 2026-11-22 | Nick asks |
+| 3325–3333 | Replacing macroquad (ADR-0136): `shuyi-gpu`, our 2D renderer over wgpu; the winit backend on the desktop, its input and the window facts miniquad lacks; the web build on `wasm-bindgen` and its plugins; the IME everywhere; winit as the default; macroquad removed | Nick asks, after the MVP; and each waits for 3079 (2026-11-22) |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |
 | 2325 | A frame profiler in the debug view: phase times, spans, a graph, and a trace file | Nick asks |
 | 3036–3037 | Store services: achievements and stats as data with a local backend, an unlock notice and an achievements screen, then Steam achievements, stats and Steam Cloud saves behind the `steam` feature | Nick asks (2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost") |
-| 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3034 is unparked |
+| 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3325 is unparked |
 | 3110 | 3D animation: several clips blended at once, and morph targets from glTF | 3D is unparked |
 | 3111 | 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF | 3D is unparked |
 | 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, and `cargo xtask repo-settings` | Nick asks (2026-11-01: "I would rather park it altogether") |
 | 1132 | Community files and the contribution policy: who may send code, a channel, a code of conduct | the engine gets traction and Nick asks (2026-11-01) |
 | 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
-| 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |
+| 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3325 is unparked |
 | 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |
 | 2910 | Research: voice chat and proximity voice, ending with a question to Nick | with networking |
 | 2911 | Research: ray- and path-traced light and sound, an opt-in module behind a `ray_tracing` capability, for PCs and current consoles | Nick asks (2026-10-22: "would be for diff comp targets like PC, new gen consoles") |

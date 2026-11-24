@@ -172,7 +172,7 @@ pub(crate) mod raised {
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::System::Threading::{
         AvRevertMmThreadCharacteristics, AvSetMmThreadCharacteristicsW, GetCurrentThread,
-        SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
+        SetThreadPriority, THREAD_PRIORITY_HIGHEST, THREAD_PRIORITY_TIME_CRITICAL,
     };
     use windows::core::w;
 
@@ -219,6 +219,25 @@ pub(crate) mod raised {
         }
     }
 
+    /// Raises the calling thread, a worker that keeps a stream ahead of the mix
+    /// (ticket 3320), to the highest priority of its class: above the game's
+    /// thread, which runs at normal, and below the output's, at the time-critical
+    /// priority or in the multimedia scheduler's realtime range, so that its
+    /// decoding never keeps the mix waiting. It lasts as long as the thread, and
+    /// needs no rights a player lacks. Whether it was granted.
+    pub(crate) fn worker() -> bool {
+        // SAFETY: as in `Raised::current`, the pseudo handle of this thread, which
+        // `SetThreadPriority` only reads.
+        unsafe { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST) }.is_ok()
+    }
+
+    /// The calling thread's priority, for the tests.
+    #[cfg(test)]
+    fn priority() -> i32 {
+        // SAFETY: as above; `GetThreadPriority` only reads.
+        unsafe { windows::Win32::System::Threading::GetThreadPriority(GetCurrentThread()) }
+    }
+
     impl Drop for Raised {
         fn drop(&mut self) {
             if let Self::Scheduled(handle) = *self {
@@ -247,6 +266,33 @@ pub(crate) mod raised {
             .join();
             assert_eq!(raised.ok(), Some(true), "neither way was granted");
             assert!(!Raised::Not.is_raised());
+        }
+
+        /// A worker goes above normal, the game's, and stays below the output's
+        /// thread whichever way that one was raised (ticket 3320).
+        #[test]
+        fn a_worker_is_raised_above_normal_and_below_the_output() {
+            use windows::Win32::System::Threading::THREAD_PRIORITY_NORMAL;
+
+            let raised = std::thread::spawn(|| {
+                let before = priority();
+                (before, worker(), priority())
+            })
+            .join();
+            let Ok((before, granted, after)) = raised else {
+                panic!("the worker's thread panicked");
+            };
+            assert_eq!(
+                before, THREAD_PRIORITY_NORMAL.0,
+                "a thread starts at normal"
+            );
+            assert!(granted, "the highest of its class wasn't granted");
+            assert_eq!(after, THREAD_PRIORITY_HIGHEST.0);
+            assert!(after > THREAD_PRIORITY_NORMAL.0);
+            assert!(
+                after < THREAD_PRIORITY_TIME_CRITICAL.0,
+                "below the output's fallback, and so below the scheduler's realtime range"
+            );
         }
     }
 }

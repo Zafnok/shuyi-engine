@@ -26,7 +26,6 @@ pub use shuyi_assets as assets;
 /// Embeds a folder of the game's files in the program: `shuyi-assets`'
 /// [`files!`](shuyi_assets::files), which [`Layer::dir`](shuyi_assets::Layer::dir)
 /// makes a layer of.
-#[cfg(feature = "std")]
 pub use shuyi_assets::files;
 pub use shuyi_core as core;
 pub use shuyi_platform as platform;
@@ -60,6 +59,13 @@ pub fn enabled_modules<G: GameData>() -> Vec<Box<dyn Module<G>>> {
     // `#[cfg(feature = "<name>")] modules.push(Box::new(...));`.
     Vec::new()
 }
+
+/// The top-down grid guide, `docs/guides/top-down-grid.md`, whose code
+/// runs as this crate's doc test (ticket 2004). Only `cargo test --doc`
+/// builds it.
+#[cfg(doctest)]
+#[doc = include_str!("../../../docs/guides/top-down-grid.md")]
+pub struct TopDownGridGuide;
 
 #[cfg(test)]
 mod tests {

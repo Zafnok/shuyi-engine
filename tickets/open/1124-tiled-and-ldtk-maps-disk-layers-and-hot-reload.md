@@ -168,6 +168,15 @@ None.
 - **Either order with 2719:** if 2719 is done, its RTS example's map
   is made in code and stays so: nothing to do. If not, nothing to do
   either: 2719 draws that map in Tiled or LDtk.
+- **Either order with 2274:** if 2274 is done, its `grid_map::import`
+  (`TiledGrid`, `LdtkGrid`, `MapObject`) already reads a tile layer and
+  whole-pixel objects into the grid kit's `GridMap`. Build `TileMap`
+  beside it and reuse its `tiled` feature. Widen its small LDtk serde
+  types to what `TileMap` keeps, or replace them with the vendored types
+  above, so there is one set. Make `TiledGrid` and `LdtkGrid` read
+  through `TileMap`'s readers, so a file is parsed once, and keep 2274's
+  rules (whole pixels, no float in a `GridMap`). If not, nothing to do:
+  2274 reads its tile layers from this ticket's `TileMap` when it lands.
 - **Size.** If the PR passes about 600 changed lines (not counting
   fixtures, snapshots and the vendored LDtk types), the parts for 2122,
   2362 and 2709 are left to those tickets (their clauses then add

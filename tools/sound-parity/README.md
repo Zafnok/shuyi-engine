@@ -95,6 +95,26 @@ add that the output's buffer ran dry so many times, or that it never did, so the
 isn't the output's. A gap the output made delays what follows by its own length,
 and nothing of the sound is lost; one the loopback made loses the sound instead.
 
+The in-house feeder counts each track too (ticket 3320), in each run's `streams`
+line: `{"track", "stalled", "lowest"}` for each music or voice track since the probe
+last asked, and whether the `sound-feed` thread was raised. A **stalled frame** is
+one a mix had nothing of a track to play: the worker that decodes it into its ring
+came round too late, and the track stopped where it was while the effects played on.
+It is delayed, not skipped, so it is late against the music clock for the rest of
+its play, and every frame of a scenario after it differs. A track's **margin**
+(`lowest`) is the fewest frames its ring still held each time the worker came round,
+after the first fill: how close the mix came to catching it up, the measured worst
+wait that sizes the ring (`FEED_FRAMES`, 4,096 frames). A timing's metrics take the
+sum of the stalls as `stalled_frames` and the fewest of the margins as
+`lowest_margin`, and keep the tracks beside them, as `streams`.
+
+A stall is heard as a gap is, but the other sounds playing on hide it from the
+recording. So `perf:underruns` and `old-new:underruns` fail on a stalled frame as
+on a gap, and their detail says whose each is: the output's (its buffer ran dry so
+many times), the feeder's (which track stalled, and by how many frames), or, where
+neither count rose, neither's: the loopback, or what the mix was given. A failed
+scenario's message names the tracks that stalled in that run.
+
 **Re-running a failed Windows cell.** The gate judges what `sound-parity-windows`
 recorded, and GitHub's "Re-run failed jobs" re-runs `sound-parity` alone, with the
 passed `sound-parity-windows` and its artifact carried over: the same recording
@@ -138,7 +158,10 @@ never in CI. A change to the corpus's numbers fails until then.
   it is held to the same expected signals and to old recordings the same way.
 - **What today's backend does wrong is no oracle.** `future_pause`,
   `future_rate` and `future_region` hold what a replacement must do, as their
-  own expected signals; on quad-snd they report `unsupported`. `mute` pins
+  own expected signals; on quad-snd they report `unsupported`. `future_region`
+  plays `intro_loop.ogg` from a cue with no region, so its own `LOOPSTART` and
+  `LOOPLENGTH` tags say where it goes round (2397): the intro once, then the
+  region twice and more, with no intro after the first pass. `mute` pins
   today's fallback and holds on quad-snd alone. `stream_gapless` holds a stream's
   loop to every frame of its join, and `voices_full` holds that a sound with no voice
   free takes none.
@@ -179,7 +202,11 @@ path: expected samples are worked out in `xtask`, by plain arithmetic in floats
 that shares no code with the mixer, and differ by at most a rounding step.
 
 - `mixer:<case>`: `pause`, rates and resampling, `loop`, a region through the mix
-  and through a worker's decoder, `two-streams` at their own gains, `gains`,
+  and through a worker's decoder, `region-from-the-file`, the Ogg file round the
+  region its tags name, through a worker that goes back by an exact seek, into a
+  ring that wraps over and over, fed every other block: the intro and the region
+  twice, each frame the whole decode's, across its pages' edges (2397),
+  `two-streams` at their own gains, `gains`,
   `clamp`, `fade`, `stereo-on-mono`, and `capacity`, a play refused with what plays
   untouched.
 - `mixer:memory`: the most frames decoded and not yet mixed, over a short stream and
@@ -268,7 +295,7 @@ of it mandatory.
 | 3030 mixer | 2210 | Exact mixer samples from independent signals; an offline render budget; bounded decoded PCM over short and long streams |
 | 3031 Windows, web | 3030, and Windows `port-ready` | A selectable backend beside quad-snd; old against new; `future_pause`, `future_rate`, `stream_gapless` and `voices_full` |
 | 3032 Linux, macOS | 3031, and macOS `port-ready` | The same, on both Mac architectures |
-| 2397 regions | 3031 | `future_region`, on the cue's new fields |
+| 2397 regions | 3031 | `future_region` on the in-house backends, from the file's tags; `mixer:region-from-the-file` |
 | 3084 new default | 3032, 2397, 2234, 2378 | The complete matrix on both backends, then one line flipped |
 | 3079 removal | 3084, and the game having run on it | A fresh, complete matrix, the removal, and its revert rehearsed |
 

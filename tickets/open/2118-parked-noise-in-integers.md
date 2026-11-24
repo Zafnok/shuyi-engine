@@ -43,9 +43,10 @@ What Shuyi has today:
 - `shuyi_core::Grid<T>` and `Pos` (`crates/core/src/grid.rs`); `Grid`
   has no `map` method yet;
 - `SimRng`, a PCG32 written in the crate, and the `RandomSource` trait
-  (`crates/core/src/rng.rs`). 2114 adds `mix64` and `mix_at` there, the
-  engine's one SplitMix64, and an ADR that freezes their outputs;
-- `Fx` is planned in 1119 (parked) as an `i32` with 8 fraction bits.
+  (`crates/core/src/rng.rs`). 2114 (done) added `mix64` and `mix_at`
+  there, the engine's one SplitMix64, and ADR-0143, which freezes their
+  outputs;
+- `Fx` is planned in 2139 (parked) as an `i32` with 8 fraction bits.
   This ticket needs none of it.
 
 Why it matters:
@@ -235,7 +236,7 @@ None.
   - why a module and not `shuyi-core`: a game without generated maps
     would pay for it in concepts to learn (ADR-0009 §1);
   - why not `Fx`, though ADR-0009 §4 says a module's simulation part is
-    in `Fx`: `Fx` is 1119's, parked with real time, and a turn game's
+    in `Fx`: `Fx` is 2139's, parked with real time, and a turn game's
     map needs none of it. 16 fraction bits keep a period of up to
     65 535 tiles moving at least one unit per tile, where `Fx`'s 8 bits
     stop at 256. `n >> 8` converts to `Fx`;
@@ -262,9 +263,9 @@ None.
 - simplex, cellular (Worley) and ridged noise, and domain warping: a new
   `NoiseKind` each, when a game asks;
 - 3D noise. A game that wants noise over time passes the time as `y`;
-- `Fx` inputs or outputs. `Fx` (1119) has 8 fraction bits, so `n >> 8`
-  converts. **Either order with 1119:** if 1119 is done, add a one-line
-  `to_fx` with a test; if not, nothing to do (1119 adds it);
+- `Fx` inputs or outputs. `Fx` (2139) has 8 fraction bits, so `n >> 8`
+  converts. **Either order with 2139:** if 2139 is done, add a one-line
+  `to_fx` with a test; if not, nothing to do (2139 adds it);
 - level generators and weighted tables (2119);
 - field of view (2120);
 - the example, the template, the guide and the rest of the README

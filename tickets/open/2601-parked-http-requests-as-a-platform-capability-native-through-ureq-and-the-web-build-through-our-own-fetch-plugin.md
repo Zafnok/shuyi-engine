@@ -224,7 +224,7 @@ from the two sections after **Out**.
 - handing a screen a response while it arrives, and bodies past the
   limits above;
 - remote content: fetched files as a bundle layer (2207) or a game's
-  remote settings. That is a later ticket and Nick's call, since content
+  remote settings: 2608 (parked), on this ticket, and Nick's call (3527), since content
   that changes after release changes what a record replays;
 - the consumers: sending crash reports (3047), high scores on a web
   service (a backend under 3054's `Leaderboards`), a mod-hosting
@@ -394,8 +394,11 @@ the same note and milestone, and `blocked_by` this ticket and follow-up
 - **From 3039 (done):** `http.js` joins `SHELL_NOTICES`
   (`crates/cli/src/web.rs`), the table of the web shell's files, as the
   engine's own, as `gamepad.js` is (its test fails until it does).
-- **Out:** moving the web backend to a crate if 3034 (parked) moves the
-  web build to `wasm-bindgen` (3034's tickets decide); automating the
+- **Either order with 3331:** if 3331 is done (the winit web build's
+  plugins on `wasm-bindgen`), write the web side with `web-sys`'s
+  `fetch` for that build too; if not, nothing to do (3331 moves
+  `http.js` and says whether it becomes a crate of its own).
+- **Out:** moving the web backend to a crate (3331 decides); automating the
   browser check (a follow-up for 2019's checker, `tools/web-check/check.py`,
   written in that PR).
 
@@ -429,7 +432,7 @@ Its acceptance criteria:
    this ticket, replace each section with one line naming its ticket.
    Write the Playdate's follow-up (**Out**) the same way, its scope
    from the SDK's networking docs then. Other open tickets that name
-   this ticket for a follow-up's piece (3010, 3034, 3043) then
+   this ticket for a follow-up's piece (3010, 3331, 3043) then
    name that follow-up's id instead.
 3. Write the ADR and its row in `docs/adr/README.md`.
 4. `shuyi_ui::http` and its unit and property tests; `Ctx::http`.

@@ -51,6 +51,12 @@ machine, with a screen you couldn't test:
 - `keyboard`, `pointer` and `touch` say what the player has.
 - `can_drop_files()` is true where the player can drop a file on the game's window (the desktop) or
   its page (the web): a screen says "drop a file here" only there.
+- `graphics` is the target's graphics tier (`GraphicsTier`): `Full` unless its profile says
+  `graphics: Reduced` (the Playdate) or `Minimal`. A skin draws a moving look (a tile that loops
+  through frames, particles, an effect over the screen) where `graphics.plays(lowest)` for the
+  lowest tier the look plays at, and the look's still below it. A debug build on the desktop
+  shows another tier when `SHUYI_GRAPHICS` names one (`SHUYI_GRAPHICS=reduced`), to see a lesser
+  target's stills without the device.
 
 A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
 `start()` one) as
@@ -587,7 +593,11 @@ offsets into the program, which that version's debug file turns into functions a
 Beside the reports, in the `logs` folder, the game keeps its log: `latest.log` of the last run
 and `previous-1.log` to `previous-3.log` of the three before, a line each for its warnings, its errors
 and a panic's message. A Windows release build has no console, so this is where they go: ask a player
-for the folder along with the report. A log names files, and a file's path may name the player's
+for the folder along with the report. Chasing a bug yourself, set `SHUYI_LOG` before you start the game
+for more detail: `SHUYI_LOG=debug` keeps every line of the engine's, and
+`SHUYI_LOG=warn,audio=debug,gilrs=info` the audio's and the controller library's, and they go to
+the terminal too ([the filter](https://github.com/Zafnok/shuyi-engine/blob/main/docs/platform-backends.md#logs)).
+A log names files, and a file's path may name the player's
 account, so a game asks before it sends one anywhere ([the
 logs](https://github.com/Zafnok/shuyi-engine/blob/main/docs/platform-backends.md#logs)).
 

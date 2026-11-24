@@ -20,8 +20,8 @@ menus:
 
 - pointer events at the platform boundary (`RawInputEvent`'s
   `PointerMoved`, `PointerLeft`, `PointerDown`, `PointerUp` and
-  `Wheel`). No real backend sends them yet: `shuyi-app` reads the mouse
-  in 2413. This ticket needs none, since its tests drive the pointer
+  `Wheel`). `shuyi-app` sends them from the mouse and touches (2413,
+  done). This ticket's tests drive the pointer
   through the Harness;
 - hit areas a painter records in the frame
   (`crates/ui/src/frame/hit.rs`: `WidgetKey`, `Hit`, `Hit::AREA`, and
@@ -299,17 +299,26 @@ None.
     gives `grid_item` of that cell, and its click tests pass unchanged;
     if not, nothing to do (2759 uses `grid_item` and takes the pointer
     itself, as its clause with 2409 says).
-12. **Never required.** Every widget and screen here takes the same keys
+12. **Either order with 3230:** if 3230 is done, `Ask`'s and
+    `NameEntry`'s `Widget::handle` pass `WidgetInput::pointer` to
+    `Ask::point` and `NameEntry::point`, and their `Widget::key`
+    returns the key `keyed` sets, with a test each; if not, nothing to
+    do (3230 routes them when it lands, its clause says so).
+13. **Either order with 3234:** if 3234 is done, put the pointer on its
+    `Toggle`, `Choice` and `Slider` widgets, which the options rows now
+    draw, instead of on the rows; if not, nothing to do (3234 moves this
+    ticket's row pointer handling into the widgets).
+14. **Never required.** Every widget and screen here takes the same keys
     as before. No action is bound to the pointer, so `controls_fit`
     (`crates/ui/src/input/fit.rs`) and every target's fit test don't
     change.
-13. **Public types** (ADR-0039): the new functions and methods are
+15. **Public types** (ADR-0039): the new functions and methods are
     additive. **From 2082 (done):** `AskView` and `GridView` are
     already `#[non_exhaustive]`, built with `AskView::new(text,
     answers)` and `GridView::new(title, spelled, rows, focus)`; their
     new fields start empty in `new`. A painter whose signature changes
     is a new function beside the old one.
-14. No new dependency.
+16. No new dependency.
 
 **For the game:** additive. `AskView` and `GridView` gain a field
 (**from 2082 (done):** both are `#[non_exhaustive]`), and the game's
@@ -321,8 +330,10 @@ screens behave as before with no pointer.
 - The wheel on a list that shows every row: it does nothing. The
   options, profiles and key bindings screens don't scroll, so the
   wheel does nothing there.
-- Scroll bars, a click on a scroll mark (`▲`, `▼`), dragging, and drag
-  and drop: no ticket plans them; write one when a game asks.
+- Scroll bars and a click on a scroll mark (`▲`, `▼`): 3234, whose
+  scroll panel shows the marks and sends a bar the pointer drags to
+  3233. Dragging, and drag and drop (the volume bar among them): 3233,
+  which waits for this ticket.
 - Mouse buttons other than the primary, the pointer as a game action,
   and the pointer in `TickInput`: 1121 (parked).
 - Swipes and several touches at once: 2407 (parked).
@@ -331,7 +342,7 @@ screens behave as before with no pointer.
 - The toy's grid screen (`crates/ui/src/toy/grid.rs`), which 2405 also
   left out: Hello, Grid shows the grid part.
 - `shuyi-app` reading the real mouse and touches, and trying the
-  desktop and web builds by hand: 2413.
+  desktop and web builds by hand: 2413 (done).
 - Moving the focus between widgets of one screen: on each screen here
   one widget takes the input at a time.
 - A new ADR: these are 2405's rules applied to more widgets.
@@ -345,7 +356,7 @@ screens behave as before with no pointer.
    painters and tests, `crates/ui/tests/it/screens.rs`, the grid
    template's `stage.rs` and `tests/it/main.rs`, and Hello, Grid's
    `screens/stage.rs`, `skin.rs` and `tests/it/main.rs`. Check whether
-   2354, 2346 and 2759 are done.
+   2354, 2346, 2759, 3230 and 3234 are done.
 2. Write `grid_item` and `grid_cell`, with their test.
 3. Write `ListCursor::scroll_by` with its unit and property tests, then
    the wheel in `Menu::point`.

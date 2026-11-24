@@ -209,13 +209,13 @@ None.
     builds an unknown one panics, as for `PlaySound`);
   - so the platform, the Harness (`audio_log`, `sounds`) and the
     contract see only `PlaySound`, with its volume and pan.
-- **2345's cue rules. Either order with 2345:** they run in `App`
-  (`shuyi_platform::audio::cues::Cues`) on what `Game::collect_audio`
-  hands out, so a sound dropped here never reaches them and counts
-  toward no gap, cap or priority. If 2345 is done, `Cues::apply` builds
-  `SoundRequest::Sound` itself, so it copies `pan` from `PlaySound`, and
-  a Harness test shows that a sound past `silent` starts no
-  `min_gap_ms` gap. If not, 2345 does both (its own clause says so).
+- **From 2345 (done): the cue rules** run in `App`
+  (`shuyi_platform::audio::cues::Cues`, ADR-0139) on what
+  `Game::collect_audio` hands out, so a sound dropped here never reaches
+  them and counts toward no gap, cap or priority. `Cues::apply` builds
+  `SoundRequest::Sound` itself (`SoundRequest::sound(..).with_pick(..)`),
+  so it copies `pan` from `PlaySound`, and a Harness test shows that a
+  sound past `silent` starts no `min_gap_ms` gap.
 - **The platform boundary:** `SoundRequest::Sound` gains `pan: f32`,
   copied from `PlaySound`. `SoundRequest::from_request` maps a
   `PlaySoundFrom` (which `Game` never lets through) to a centred sound at
@@ -319,8 +319,9 @@ None.
    `crates/assets/src/pack/tests.rs`, `crates/platform/src/audio.rs`,
    the player (`crates/platform/src/audio/player.rs`),
    `crates/ui/tests/it/audio.rs`, 2109's `shuyi_core::ease` and
-   ADR-0039 (2013's). If they are done, read 2345's `Cues`, 2218's
-   `AudioManifestRon` writer and 1120's `Camera`.
+   ADR-0039 (2013's), and 2345's `Cues` (`crates/platform/src/audio/cues.rs`).
+   If they are done, read 2218's `AudioManifestRon` writer and 1120's
+   `Camera`.
 2. Add `Falloff` to the manifest with its checks and tests. Update
    `SoundCue::new` and literals, `docs/formats.md`, the pack tests' cue,
    `pack::VERSION` and its snapshot, and 2218's writer if 2218 is done.
@@ -330,8 +331,7 @@ None.
    the resolution in `Game`. Move the engine's own tests that build
    `PlaySound` to the new field. Add the toy's `door` cue and the
    Harness test.
-5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues` if it is
-   done. Then add it to the player's backend as a provided method with
+5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues`. Then add it to the player's backend as a provided method with
    its warning, to the Playdate backend, to the GBA's if
    3027 is done, to the in-house one (3031's), and `Pan` to
    their profiles if 3017 is done.
@@ -379,7 +379,7 @@ None.
       does and the warning comes once in a run of several such sounds.
 - [ ] `shuyi run`'s answer lists each sound's volume and pan, under the
       raised contract version, and the schemas test passes.
-- [ ] If 2345 is done: `Cues` passes a positioned sound's pan into
+- [ ] `Cues` passes a positioned sound's pan into
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
 - [ ] The Playdate backend's fake SDK gets the left and right volumes
       `pan_gains` gives.

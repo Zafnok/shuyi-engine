@@ -6,12 +6,20 @@
 //! the bundle, and music in a folder shipped next to the game, which the
 //! game itself may not be able to read. [`from_source`] checks what it can
 //! see, including each track's `length_ms` against its file
-//! ([`ogg_length_ms`]).
+//! ([`track_length_ms`]).
 //!
 //! As formats (ADR-0007): a sound file's header is the [`Sound`] kind
 //! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
 //! ([`OggVorbisTrack`]), and the manifest is read by
-//! [`AudioManifestRon`].
+//! [`AudioManifestRon`]. FLAC and MP3 are formats of both kinds too, each
+//! behind its own feature (`flac`, `mp3`; ticket 2203): `Flac` and
+//! `FlacTrack`, `Mp3` and `Mp3Track`. A sound may be a `.ogg`, `.wav`,
+//! `.flac` or `.mp3` file, a track a `.ogg`, `.flac` or `.mp3` one. The
+//! platform plays a FLAC or MP3 sound as the WAV [`decode_to_wav`] makes
+//! of it (ticket 2234). With the `sfx` feature a sound may also be a
+//! `.sfx.ron` file, a sound effect written as a few numbers (`sfx`,
+//! ticket 2225), which the sound hook renders to a WAV once as the game
+//! loads it ([`playable`]).
 //!
 //! Every cue plays in a sound group (ADR-0091): the one its `group` names,
 //! else a sound in `ui` if it is a menu's and in `sfx` if not, and a track
@@ -43,6 +51,7 @@
 //! ```
 use crate::prelude::*;
 
+mod decode;
 mod formats;
 pub mod groups;
 
@@ -53,9 +62,14 @@ use serde::{Deserialize, Serialize};
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron_implicit_some;
 
+pub use decode::{MAX_DECODED_BYTES, decode_to_wav, pcm16_wav, track_length_ms};
 pub use formats::{
     AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
+#[cfg(feature = "flac")]
+pub use formats::{Flac, FlacTrack};
+#[cfg(feature = "mp3")]
+pub use formats::{Mp3, Mp3Track};
 pub use groups::{DuckRule, GroupDef};
 
 /// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
@@ -185,11 +199,16 @@ pub struct SoundCue {
     /// The sound group it plays in: `None` is `ui` for a menu's cue and
     /// `sfx` for the others.
     pub group: Option<String>,
+    /// How each play picks its file and volume, and how soon it may play
+    /// again ([`CueRules`], ADR-0139): [`CueRules::DEFAULT`], a file at
+    /// random at `volume` every time, unless the manifest says otherwise.
+    #[serde(default)]
+    pub rules: CueRules,
 }
 
 impl SoundCue {
     /// The sound of `files` (one picked each time), at `volume` percent,
-    /// made by `credit`, played once.
+    /// made by `credit`, played once, with the default rules.
     #[must_use]
     pub const fn new(files: Vec<String>, volume: u8, credit: CreditRef) -> Self {
         Self {
@@ -198,7 +217,15 @@ impl SoundCue {
             credit,
             looped: false,
             group: None,
+            rules: CueRules::DEFAULT,
         }
+    }
+
+    /// The same cue, played by `rules`.
+    #[must_use]
+    pub const fn with_rules(mut self, rules: CueRules) -> Self {
+        self.rules = rules;
+        self
     }
 
     /// The same cue, looped until it is stopped or not.
@@ -214,6 +241,83 @@ impl SoundCue {
         self.group = Some(group.into());
         self
     }
+}
+
+/// How a sound cue's plays are picked and spaced (ADR-0139): which file
+/// each plays, at what volume, and how soon after the last it may play.
+/// `App` keeps them (`shuyi_platform::audio::cues`), so every backend
+/// plays the same. In the manifest they are written flat on the sound,
+/// each left out for its default:
+///
+/// ```ron
+/// (id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
+///  volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+/// ```
+///
+/// Config (ADR-0039, kind 2): start from [`CueRules::DEFAULT`] and change
+/// it with the `with_` methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct CueRules {
+    /// How each play picks its file ([`Pick::Random`] by default).
+    pub pick: Pick,
+    /// The lowest volume a play picks, in percent: each play picks a whole
+    /// percent from this to the cue's `volume`. `None` (the default) plays
+    /// at `volume` every time.
+    pub volume_min: Option<u8>,
+    /// A play less than this many milliseconds after the cue's last play
+    /// that sounded is dropped (0, the default: none is).
+    pub min_gap_ms: u32,
+}
+
+impl CueRules {
+    /// The rules of a cue that names none: a file at random, at the cue's
+    /// volume, with no gap. Equal to `CueRules::default()`, for a `const`.
+    pub const DEFAULT: Self = Self {
+        pick: Pick::Random,
+        volume_min: None,
+        min_gap_ms: 0,
+    };
+
+    /// The same rules, picking files as `pick` says.
+    #[must_use]
+    pub const fn with_pick(mut self, pick: Pick) -> Self {
+        self.pick = pick;
+        self
+    }
+
+    /// The same rules, each play at a volume from `volume_min` up to the
+    /// cue's (`None`: at the cue's).
+    #[must_use]
+    pub const fn with_volume_min(mut self, volume_min: Option<u8>) -> Self {
+        self.volume_min = volume_min;
+        self
+    }
+
+    /// The same rules, dropping a play less than `min_gap_ms` after the
+    /// last that sounded.
+    #[must_use]
+    pub const fn with_min_gap_ms(mut self, min_gap_ms: u32) -> Self {
+        self.min_gap_ms = min_gap_ms;
+        self
+    }
+}
+
+/// How a sound cue picks the file each play plays. A cue of one file plays
+/// it every time, whatever its pick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum Pick {
+    /// Any file, at random each time: the same one may play twice in a row.
+    #[default]
+    Random,
+    /// At random, but never the file that played last.
+    NoRepeat,
+    /// Each file once, in a random order, then a new order, never starting
+    /// with the file that ended the last.
+    Shuffle,
+    /// The files in the order they are listed, then from the first again.
+    InOrder,
 }
 
 /// A music track. Data read from a file (ADR-0039, kind 5): build it with
@@ -236,11 +340,65 @@ pub struct MusicCue {
     pub credit: CreditRef,
     /// The sound group it plays in: `None` is `music`.
     pub group: Option<String>,
+    /// Where a looped track's region starts, in milliseconds (ticket 2397):
+    /// it plays from its start up to [`loop_end_ms`](Self::loop_end_ms)
+    /// once, then from here to there again and again. With `loop_end_ms`
+    /// or not at all: [`loop_region`](Self::loop_region) gives both.
+    /// `None` loops the whole track, or the region its file names (an Ogg
+    /// file's `LOOPSTART` and `LOOPLENGTH` comments), which these replace.
+    #[serde(default)]
+    pub loop_start_ms: Option<u32>,
+    /// Where a looped track's region ends and it comes round, in
+    /// milliseconds: no later than `length_ms`.
+    #[serde(default)]
+    pub loop_end_ms: Option<u32>,
+}
+
+/// Part of a track, from `start_ms` up to, not including, `end_ms`: a
+/// looped track plays what comes before it once, then goes round it
+/// (ticket 2397). A value (ADR-0039, kind 3): build it with
+/// [`LoopRegion::new`].
+///
+/// **Frames.** A backend plays it in frames of the file: a millisecond `ms`
+/// is frame `ms × rate / 1000`, rounded down ([`frames`](Self::frames)),
+/// so a region's end is never past what the milliseconds say. A region a
+/// file names in frames is played exactly as the file says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct LoopRegion {
+    /// Its first millisecond.
+    pub start_ms: u32,
+    /// The millisecond after its last: where the track comes round.
+    pub end_ms: u32,
+}
+
+impl LoopRegion {
+    /// From `start_ms` up to `end_ms`, if that is any time at all.
+    #[must_use]
+    pub const fn new(start_ms: u32, end_ms: u32) -> Option<Self> {
+        if start_ms < end_ms {
+            Some(Self { start_ms, end_ms })
+        } else {
+            None
+        }
+    }
+
+    /// Its first frame and the frame after its last, in a file of `rate`
+    /// frames a second: each millisecond rounded down onto a frame. `None`
+    /// if they come to the same frame (a region shorter than a frame).
+    #[must_use]
+    pub fn frames(self, rate: u32) -> Option<(u64, u64)> {
+        // u32 × u32 fits a u64.
+        let frame = |ms: u32| u64::from(ms) * u64::from(rate) / 1000;
+        let (start, end) = (frame(self.start_ms), frame(self.end_ms));
+        (start < end).then_some((start, end))
+    }
 }
 
 impl MusicCue {
     /// The track `file`, at `volume` percent, `length_ms` long, made by
-    /// `credit`, looped, in the `music` group.
+    /// `credit`, looped, in the `music` group, round the whole track (or
+    /// the region its file names).
     #[must_use]
     pub const fn new(file: String, volume: u8, length_ms: u32, credit: CreditRef) -> Self {
         Self {
@@ -250,6 +408,27 @@ impl MusicCue {
             length_ms,
             credit,
             group: None,
+            loop_start_ms: None,
+            loop_end_ms: None,
+        }
+    }
+
+    /// The same track, looping round `region` after its intro.
+    #[must_use]
+    pub const fn with_loop(mut self, region: LoopRegion) -> Self {
+        self.loop_start_ms = Some(region.start_ms);
+        self.loop_end_ms = Some(region.end_ms);
+        self
+    }
+
+    /// The region the cue loops round, if it names one: `None` too for a
+    /// cue that names only one end, or an empty region, which the
+    /// manifest's check refuses.
+    #[must_use]
+    pub const fn loop_region(&self) -> Option<LoopRegion> {
+        match (self.loop_start_ms, self.loop_end_ms) {
+            (Some(start), Some(end)) => LoopRegion::new(start, end),
+            _ => None,
         }
     }
 
@@ -341,6 +520,14 @@ struct RawSound {
     looped: bool,
     #[serde(default)]
     group: Option<String>,
+    // The cue rules, flat on the entry: `#[serde(flatten)]` doesn't work
+    // with `deny_unknown_fields`.
+    #[serde(default)]
+    pick: Pick,
+    #[serde(default)]
+    volume_min: Option<u8>,
+    #[serde(default)]
+    min_gap_ms: u32,
 }
 
 #[derive(Deserialize)]
@@ -355,6 +542,10 @@ struct RawMusic {
     credit: CreditRef,
     #[serde(default)]
     group: Option<String>,
+    #[serde(default)]
+    loop_start_ms: Option<u32>,
+    #[serde(default)]
+    loop_end_ms: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -453,20 +644,66 @@ pub fn without_extension(file: &str) -> &str {
 /// 44.1 kHz and resamples anything else crudely (game ADR-0026).
 pub const SAMPLE_RATE: u32 = 44_100;
 
+/// The end of a sound effect's file name (`sfx/coin.sfx.ron`).
+pub const SFX_SUFFIX: &str = ".sfx.ron";
+
+/// Whether `name` is a sound effect's: it ends in [`SFX_SUFFIX`], after a
+/// name.
+pub(crate) fn is_sfx(name: &str) -> bool {
+    let file = name.rsplit_once('/').map_or(name, |(_, file)| file);
+    file.len() > SFX_SUFFIX.len() && file.ends_with(SFX_SUFFIX)
+}
+
 /// Why `bytes` (a file named `name`) isn't something the game can play:
 /// its content must match its extension (OGG Vorbis for `.ogg`, PCM or
-/// float WAV for `.wav`), with one or two channels at [`SAMPLE_RATE`].
-/// quad-snd panics on native, and never finishes loading on the web, on a
-/// file it can't read, so this runs before any file ships.
+/// float WAV for `.wav`, FLAC for `.flac`, MP3 for `.mp3`, a sound
+/// effect's numbers for `.sfx.ron`), with one or two channels at
+/// [`SAMPLE_RATE`]. A `.flac`, `.mp3` or `.sfx.ron` file whose bytes are a
+/// WAV (a game's hook decoded or rendered them) is checked as a WAV, and
+/// one whose format's feature is off (`flac`, `mp3`, `sfx`) is told to
+/// turn it on. A `.sfx.ron` file's first problem is given with its line
+/// (`line 3: hz 30000 is over 12000`). quad-snd panics on native, and
+/// never finishes loading on the web, on a file it can't read, so this
+/// runs before any file ships.
 pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
-    let format = if has_extension(name, &["wav"]) {
-        wav_format(bytes).ok_or("not a PCM WAV file")
-    } else {
-        vorbis_format(bytes).ok_or("not an OGG Vorbis file")
-    };
-    match format {
-        Err(why) => Some(why.to_owned()),
-        Ok((channels, rate)) => playable_problem(channels, rate),
+    if is_sfx(name) {
+        return decode::sfx_problem(bytes, decode::SFX_PROBLEM);
+    }
+    if decode::is_coded(name) {
+        return decode::coded_problem(name, bytes);
+    }
+    if has_extension(name, &["wav"]) {
+        return wav_problem(bytes);
+    }
+    match vorbis_format(bytes) {
+        None => Some("not an OGG Vorbis file".to_owned()),
+        Some((channels, rate)) => playable_problem(channels, rate),
+    }
+}
+
+/// The bytes the platform plays for the sound file `name`, whose bytes are
+/// `bytes`: with the `sfx` feature, a `.sfx.ron` file whose numbers read
+/// is rendered to its WAV ([`sfx::render`](crate::sfx), `sfx::to_wav`).
+/// Any other name, a file that doesn't read, and every file without the
+/// feature give `bytes` unchanged, and the manifest's check
+/// ([`format_problem`]) says why. Every sound hook goes through it, so a
+/// game that turns `sfx` on gets its sound effects rendered as it loads
+/// them.
+pub fn playable(name: &str, bytes: Bytes) -> Bytes {
+    if !is_sfx(name) {
+        return bytes;
+    }
+    match bytes.as_deref().and_then(|b| decode_to_wav(name, b)) {
+        Some(Ok(wav)) => Some(alloc::borrow::Cow::Owned(wav)),
+        _ => bytes,
+    }
+}
+
+/// Why `bytes` aren't a WAV the game can play, if they aren't.
+fn wav_problem(bytes: &[u8]) -> Option<String> {
+    match wav_format(bytes) {
+        None => Some("not a PCM WAV file".to_owned()),
+        Some((channels, rate)) => playable_problem(channels, rate),
     }
 }
 
@@ -531,8 +768,13 @@ fn vorbis_format(bytes: &[u8]) -> Option<(u16, u32)> {
 /// `bytes` isn't a whole OGG Vorbis file.
 pub fn ogg_length_ms(bytes: &[u8]) -> Option<u32> {
     let (_, rate) = vorbis_format(bytes)?;
+    samples_ms(last_granule(bytes)?, rate)
+}
+
+/// How long `samples` samples a channel play at `rate` Hz, in milliseconds
+/// (to the nearest); `None` at 0 Hz or past `u32::MAX` ms.
+fn samples_ms(samples: u64, rate: u32) -> Option<u32> {
     let rate = u64::from(rate);
-    let samples = last_granule(bytes)?;
     let ms = samples
         .checked_mul(1000)?
         .checked_add(rate / 2)?
@@ -682,8 +924,9 @@ impl Check<'_> {
         }
         for f in &s.files {
             let path = (self.files.sound_shown)(f);
-            if !has_extension(f, &["ogg", "wav"]) {
-                self.err(&id, format!("sound \"{id}\": \"{f}\" must be .ogg or .wav"));
+            if !has_extension(f, &SOUND_EXTENSIONS) && !is_sfx(f) {
+                let why = "must be .ogg, .wav, .flac, .mp3 or .sfx.ron";
+                self.err(&id, format!("sound \"{id}\": \"{f}\" {why}"));
             } else if !(self.files.sound_left_out)(f) {
                 match (self.files.sound)(f) {
                     None => self.err(&id, format!("sound \"{id}\": file {path} not found")),
@@ -696,14 +939,25 @@ impl Check<'_> {
             }
         }
         self.volume(&id, s.volume);
+        if let Some(min) = s.volume_min.filter(|&min| min > s.volume) {
+            let volume = s.volume;
+            let why = format!("volume_min {min} is over its volume {volume}");
+            self.err(&id, format!("sound \"{id}\": {why}"));
+        }
         self.credit_ref(&id, &s.credit);
         self.cue_group("sound", &id, s.group.as_deref());
+        let rules = CueRules {
+            pick: s.pick,
+            volume_min: s.volume_min,
+            min_gap_ms: s.min_gap_ms,
+        };
         let entry = SoundCue {
             files: s.files,
             volume: s.volume,
             credit: s.credit,
             looped: s.looped,
             group: s.group,
+            rules,
         };
         self.manifest.sounds.insert(id, entry);
     }
@@ -712,15 +966,16 @@ impl Check<'_> {
         let id = m.id;
         self.new_cue(&id);
         let f = &m.file;
-        if !has_extension(f, &["ogg"]) {
-            self.err(&id, format!("music \"{id}\": \"{f}\" must be .ogg"));
+        if !has_extension(f, &TRACK_EXTENSIONS) {
+            let why = "must be .ogg, .flac or .mp3";
+            self.err(&id, format!("music \"{id}\": \"{f}\" {why}"));
         } else if let Some(read) = self.files.music {
             let dir = self.files.music_dir;
             match read(f) {
                 None => self.err(&id, format!("music \"{id}\": file {dir}/{f} not found")),
                 Some(bytes) => {
                     let problem = format_problem(f, &bytes)
-                        .or_else(|| length_problem(m.length_ms, ogg_length_ms(&bytes)));
+                        .or_else(|| length_problem(f, m.length_ms, track_length_ms(f, &bytes)));
                     if let Some(why) = problem {
                         self.err(&id, format!("music \"{id}\": {dir}/{f}: {why}"));
                     }
@@ -729,6 +984,9 @@ impl Check<'_> {
         }
         if m.length_ms == 0 {
             let why = "length_ms is 0; it is the track's length in milliseconds";
+            self.err(&id, format!("music \"{id}\": {why}"));
+        }
+        if let Some(why) = loop_problem(m.loop_start_ms, m.loop_end_ms, m.length_ms, m.looped) {
             self.err(&id, format!("music \"{id}\": {why}"));
         }
         self.volume(&id, m.volume);
@@ -741,6 +999,8 @@ impl Check<'_> {
             length_ms: m.length_ms,
             credit: m.credit,
             group: m.group,
+            loop_start_ms: m.loop_start_ms,
+            loop_end_ms: m.loop_end_ms,
         };
         self.manifest.music.insert(id, entry);
     }
@@ -765,21 +1025,60 @@ impl Check<'_> {
     }
 }
 
-/// What a track whose length can't be read is told.
-const NO_LENGTH: &str = "its length can't be read (no last Ogg page)";
+/// The extensions a sound file may have, beside a sound effect's
+/// [`SFX_SUFFIX`].
+const SOUND_EXTENSIONS: [&str; 4] = ["ogg", "wav", "flac", "mp3"];
 
-/// Why a music cue's `length_ms` doesn't fit its file, which plays for
-/// `actual` milliseconds ([`ogg_length_ms`]): more than
-/// [`LENGTH_TOLERANCE_MS`] off, or the file's length can't be read. The
-/// message gives the value to write.
-fn length_problem(length_ms: u32, actual: Option<u32>) -> Option<String> {
+/// The extensions a music track may have.
+const TRACK_EXTENSIONS: [&str; 3] = ["ogg", "flac", "mp3"];
+
+/// What an OGG track whose length can't be read is told.
+const NO_LENGTH: &str = "its length can't be read (no last Ogg page)";
+/// What a FLAC track whose length can't be read is told.
+const NO_FLAC_LENGTH: &str = "its length can't be read (its STREAMINFO has no sample count)";
+/// What an MP3 track whose length can't be read is told.
+const NO_MP3_LENGTH: &str = "its length can't be read (no frames)";
+
+/// Why a music cue's `length_ms` doesn't fit its file `file`, which plays
+/// for `actual` milliseconds ([`track_length_ms`]): more than
+/// [`LENGTH_TOLERANCE_MS`] off, or the file's length can't be read (a
+/// message for its format). The message gives the value to write.
+fn length_problem(file: &str, length_ms: u32, actual: Option<u32>) -> Option<String> {
     match actual {
+        None if has_extension(file, &["flac"]) => Some(NO_FLAC_LENGTH.into()),
+        None if has_extension(file, &["mp3"]) => Some(NO_MP3_LENGTH.into()),
         None => Some(NO_LENGTH.into()),
         Some(ms) if ms.abs_diff(length_ms) > LENGTH_TOLERANCE_MS => Some(format!(
             "it plays for {ms} ms, but length_ms is {length_ms}; write length_ms: {ms}"
         )),
         Some(_) => None,
     }
+}
+
+/// Why a music cue's loop region isn't one: one end without the other, an
+/// end not after its start, past the track's `length_ms`, or on a track
+/// played once. Each is refused as written, never clamped.
+fn loop_problem(
+    start: Option<u32>,
+    end: Option<u32>,
+    length_ms: u32,
+    looped: bool,
+) -> Option<String> {
+    let (start, end) = match (start, end) {
+        (None, None) => return None,
+        (Some(_), None) => return Some("loop_start_ms needs loop_end_ms too".into()),
+        (None, Some(_)) => return Some("loop_end_ms needs loop_start_ms too".into()),
+        (Some(start), Some(end)) => (start, end),
+    };
+    Some(if start >= end {
+        format!("loop_end_ms {end} must be after loop_start_ms {start}")
+    } else if end > length_ms {
+        format!("loop_end_ms {end} is past the track's end; length_ms is {length_ms}")
+    } else if !looped {
+        "a loop region needs a looped track; this one has looped: false".into()
+    } else {
+        return None;
+    })
 }
 
 /// What's wrong with a credit: an unknown license, or (for third-party
@@ -812,10 +1111,11 @@ fn has_extension(file: &str, allowed: &[&str]) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use alloc::borrow::Cow;
 
     use super::*;
+    use crate::format::codec_tests::{FLAC, MP3};
 
     #[test]
     fn a_sounds_constructors_build_what_a_literal_built() {
@@ -846,6 +1146,8 @@ mod tests {
                 length_ms: 1000,
                 credit: CreditRef::Own,
                 group: None,
+                loop_start_ms: None,
+                loop_end_ms: None,
             }
         );
         let once = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own)
@@ -855,6 +1157,44 @@ mod tests {
             (once.looped, once.group.as_deref()),
             (false, Some("weather"))
         );
+        let region = LoopRegion::new(250, 750);
+        let looped =
+            region.map(|r| MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own).with_loop(r));
+        assert_eq!(
+            looped.map(|m| (m.loop_start_ms, m.loop_end_ms, m.loop_region())),
+            Some((Some(250), Some(750), region))
+        );
+    }
+
+    #[test]
+    fn a_loop_region_is_half_open_and_its_frames_round_down() {
+        assert_eq!(LoopRegion::new(5, 5), None);
+        assert_eq!(LoopRegion::new(6, 5), None);
+        let region = LoopRegion::new(1000, 2000).unwrap_or_else(|| panic!("a region"));
+        assert_eq!((region.start_ms, region.end_ms), (1000, 2000));
+        assert_eq!(region.frames(44_100), Some((44_100, 88_200)));
+        // 1 ms is 44.1 frames: both ends go down onto a frame.
+        let odd = LoopRegion::new(1, 3).unwrap_or_else(|| panic!("a region"));
+        assert_eq!(odd.frames(44_100), Some((44, 132)));
+        // At 400 frames a second, 1 ms and 2 ms are both frame 0: no region.
+        let short = LoopRegion::new(1, 2).unwrap_or_else(|| panic!("a region"));
+        assert_eq!(short.frames(400), None);
+        assert_eq!(short.frames(500), Some((0, 1)));
+        // The largest of both fits.
+        let wide = LoopRegion::new(0, u32::MAX).unwrap_or_else(|| panic!("a region"));
+        let most = u64::from(u32::MAX) * u64::from(u32::MAX) / 1000;
+        assert_eq!(wide.frames(u32::MAX), Some((0, most)));
+    }
+
+    #[test]
+    fn a_cue_naming_one_end_has_no_region() {
+        let mut m = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own);
+        m.loop_start_ms = Some(10);
+        assert_eq!(m.loop_region(), None);
+        m.loop_end_ms = Some(10);
+        assert_eq!(m.loop_region(), None, "empty");
+        m.loop_end_ms = Some(11);
+        assert_eq!(m.loop_region(), LoopRegion::new(10, 11));
     }
 
     #[test]
@@ -893,7 +1233,7 @@ mod tests {
 
     /// The start of a WAV file: a `LIST` chunk (odd-sized, so padded), then
     /// `fmt `.
-    fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
+    pub(super) fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
         let mut w = b"RIFF\0\0\0\0WAVELIST\x05\0\0\0abcde\0fmt \x10\0\0\0".to_vec();
         w.extend_from_slice(&encoding.to_le_bytes());
         w.extend_from_slice(&channels.to_le_bytes());
@@ -927,7 +1267,7 @@ mod tests {
     /// A whole OGG Vorbis file's framing: the first page of [`ogg`],
     /// filled out to the 30 bytes it declares, then a last page that puts
     /// the stream at `samples`.
-    fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
+    pub(super) fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
         let mut o = ogg(2, rate);
         o.resize(29 + 30, 0);
         o.extend_from_slice(&ogg_page(samples, &[0; 40]));
@@ -939,6 +1279,10 @@ mod tests {
     fn good(name: &str) -> Vec<u8> {
         if has_extension(name, &["wav"]) {
             wav(2, SAMPLE_RATE, 1)
+        } else if has_extension(name, &["flac"]) {
+            FLAC.to_vec()
+        } else if has_extension(name, &["mp3"]) {
+            MP3.to_vec()
         } else {
             ogg_file(SAMPLE_RATE, u64::from(SAMPLE_RATE) * 2)
         }
@@ -1073,6 +1417,75 @@ mod tests {
         assert_eq!(m.sounds.get("rain").map(|s| s.looped), Some(true));
     }
 
+    /// Every cue of a manifest that names no rules has the default ones.
+    #[test]
+    fn a_cue_that_names_no_rules_has_the_default_ones() {
+        let m = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(m.sounds.len(), 2);
+        for (id, cue) in &m.sounds {
+            assert_eq!(cue.rules, CueRules::default(), "{id}");
+        }
+        assert_eq!(CueRules::DEFAULT, CueRules::default());
+    }
+
+    /// The rules are written flat on the sound, `volume_min` bare.
+    #[test]
+    fn a_cues_rules_are_read_from_its_entry() {
+        let rules =
+            "volume: 60, credit: Credit(\"steps\"), pick: NoRepeat, volume_min: 45, min_gap_ms: 60";
+        let source = FULL.replace("volume: 60, credit: Credit(\"steps\")", rules);
+        let m = from_source("a.ron", &source, &all_files());
+        let footfall = m.map(|m| m.sounds.get("footfall").map(|s| s.rules));
+        let want = CueRules::DEFAULT
+            .with_pick(Pick::NoRepeat)
+            .with_volume_min(Some(45))
+            .with_min_gap_ms(60);
+        assert_eq!(footfall, Ok(Some(want)));
+        assert_eq!(
+            (want.pick, want.volume_min, want.min_gap_ms),
+            (Pick::NoRepeat, Some(45), 60)
+        );
+        for (word, pick) in [
+            ("Random", Pick::Random),
+            ("Shuffle", Pick::Shuffle),
+            ("InOrder", Pick::InOrder),
+        ] {
+            let source = FULL.replace("volume: 60,", &format!("volume: 60, pick: {word},"));
+            let m = from_source("a.ron", &source, &all_files());
+            let got = m.map(|m| m.sounds.get("footfall").map(|s| s.rules.pick));
+            assert_eq!(got, Ok(Some(pick)), "{word}");
+        }
+    }
+
+    #[test]
+    fn a_lowest_volume_over_the_cues_volume_is_refused_at_its_line() {
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, volume_min: 60,")),
+            Vec::<String>::new(),
+            "a lowest volume equal to the volume plays at the volume"
+        );
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, volume_min: 61,")),
+            ["a.ron:5: sound \"footfall\": volume_min 61 is over its volume 60"]
+        );
+        assert_eq!(
+            errors(&FULL.replace("volume: 60,", "volume: 60, gap_ms: 61,")).len(),
+            1,
+            "an unknown rule is refused"
+        );
+    }
+
+    /// `new` gives the default rules in a `const` item too.
+    #[test]
+    fn a_cue_built_in_a_const_has_the_default_rules_until_it_names_others() {
+        const PLAIN: SoundCue = SoundCue::new(Vec::new(), 60, CreditRef::Own);
+        const SPACED: SoundCue = SoundCue::new(Vec::new(), 60, CreditRef::Own)
+            .with_rules(CueRules::DEFAULT.with_min_gap_ms(40));
+        assert_eq!(PLAIN.rules, CueRules::default());
+        assert_eq!(SPACED.rules.min_gap_ms, 40);
+        assert_eq!(SPACED.rules.pick, Pick::Random);
+    }
+
     #[test]
     fn duplicate_ids_are_refused() {
         let dup = FULL.replace(r#"(id: "sting""#, r#"(id: "ui_tick""#);
@@ -1123,14 +1536,16 @@ mod tests {
                 .contains(&"sfx/step_2.ogg".to_owned())
         );
         // Its name is still checked.
-        let wrong = FULL.replace("sfx/step_2.ogg", "sfx/step_2.mp3");
+        let wrong = FULL.replace("sfx/step_2.ogg", "sfx/step_2.aiff");
         let files = Files {
-            sound_left_out: &|p: &str| p == "sfx/step_2.mp3",
+            sound_left_out: &|p: &str| p == "sfx/step_2.aiff",
             ..reading(&no_step_2, None)
         };
         assert_eq!(
             errors_with(&wrong, &files),
-            ["a.ron:5: sound \"footfall\": \"sfx/step_2.mp3\" must be .ogg or .wav"]
+            [
+                "a.ron:5: sound \"footfall\": \"sfx/step_2.aiff\" must be .ogg, .wav, .flac, .mp3 or .sfx.ron"
+            ]
         );
     }
 
@@ -1333,24 +1748,170 @@ mod tests {
         assert_eq!(errors(&missing).len(), 1);
     }
 
+    /// `FULL` with `fields` written into the looped track `title`.
+    fn title_with(fields: &str) -> String {
+        FULL.replace(
+            "length_ms: 2000, credit: Credit(\"sunrise\")",
+            &format!("length_ms: 2000, credit: Credit(\"sunrise\"){fields}"),
+        )
+    }
+
+    #[test]
+    fn a_loop_region_is_read_and_kept() {
+        let source = title_with(", loop_start_ms: 500, loop_end_ms: 2000");
+        let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
+        let title = m.music.get("title");
+        assert_eq!(
+            title.and_then(MusicCue::loop_region),
+            LoopRegion::new(500, 2000)
+        );
+        // Left out, there is none: the whole track loops, or the file's region.
+        let plain = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        let title = plain.music.get("title");
+        assert_eq!(
+            title.map(|t| (t.loop_start_ms, t.loop_end_ms)),
+            Some((None, None))
+        );
+    }
+
+    #[test]
+    fn a_loop_region_must_have_both_ends_in_order_inside_a_looped_track() {
+        let cases = [
+            (", loop_start_ms: 0", "loop_start_ms needs loop_end_ms too"),
+            (", loop_end_ms: 10", "loop_end_ms needs loop_start_ms too"),
+            (
+                ", loop_start_ms: 10, loop_end_ms: 10",
+                "loop_end_ms 10 must be after loop_start_ms 10",
+            ),
+            (
+                ", loop_start_ms: 11, loop_end_ms: 10",
+                "loop_end_ms 10 must be after loop_start_ms 11",
+            ),
+            (
+                ", loop_start_ms: 0, loop_end_ms: 2001",
+                "loop_end_ms 2001 is past the track's end; length_ms is 2000",
+            ),
+            (
+                ", loop_start_ms: 0, loop_end_ms: 4294967295",
+                "loop_end_ms 4294967295 is past the track's end; length_ms is 2000",
+            ),
+            (
+                ", looped: false, loop_start_ms: 0, loop_end_ms: 10",
+                "a loop region needs a looped track; this one has looped: false",
+            ),
+        ];
+        for (fields, why) in cases {
+            assert_eq!(
+                errors(&title_with(fields)),
+                [format!("a.ron:8: music \"title\": {why}")],
+                "{fields}"
+            );
+        }
+        // From the very start to the very end is a region; past a u32 isn't a number.
+        assert_eq!(
+            errors(&title_with(", loop_start_ms: 0, loop_end_ms: 2000")),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            errors(&title_with(", loop_start_ms: 0, loop_end_ms: 4294967296")).len(),
+            1
+        );
+    }
+
     #[test]
     fn file_formats_are_checked() {
-        let mp3 = FULL.replace("title.ogg", "title.mp3");
-        assert_eq!(
-            errors(&mp3),
-            ["a.ron:8: music \"title\": \"title.mp3\" must be .ogg"]
-        );
         let wav_music = FULL.replace("title.ogg", "title.wav");
-        assert_eq!(errors(&wav_music).len(), 1);
-        let flac = FULL.replace("ui_tick.wav", "ui_tick.flac");
         assert_eq!(
-            errors(&flac),
-            ["a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.flac\" must be .ogg or .wav"]
+            errors(&wav_music),
+            ["a.ron:8: music \"title\": \"title.wav\" must be .ogg, .flac or .mp3"]
         );
+        let aiff = FULL.replace("ui_tick.wav", "ui_tick.aiff");
+        assert_eq!(
+            errors(&aiff),
+            [
+                "a.ron:4: sound \"ui_tick\": \"sfx/ui_tick.aiff\" must be .ogg, .wav, .flac, .mp3 or .sfx.ron"
+            ]
+        );
+        for sound in ["ui_tick.flac", "ui_tick.mp3"] {
+            let coded = FULL.replace("ui_tick.wav", sound);
+            assert_eq!(errors(&coded), Vec::<String>::new(), "{sound}");
+        }
         assert_eq!(errors(&FULL.replace("sfx/ui_tick.wav", ".wav")).len(), 1);
         assert_eq!(errors(&FULL.replace("sfx/ui_tick.wav", "wav")).len(), 1);
         let none = FULL.replace(r#"["sfx/ui_tick.wav"]"#, "[]");
         assert_eq!(errors(&none), ["a.ron:4: sound \"ui_tick\" has no files"]);
+    }
+
+    /// A manifest of a FLAC and an MP3 sound, and a FLAC and an MP3 track
+    /// `length_ms` long each.
+    fn coded(flac_ms: u32, mp3_ms: u32) -> String {
+        format!(
+            r#"(
+    music_fade_ms: 250,
+    sounds: [
+        (id: "chime", files: ["sfx/chime.flac", "sfx/chime.mp3"], volume: 100, credit: Own),
+    ],
+    music: [
+        (id: "lossless", file: "lossless.flac", volume: 80, length_ms: {flac_ms}, credit: Own),
+        (id: "small", file: "small.mp3", volume: 80, length_ms: {mp3_ms}, credit: Own),
+    ],
+    pools: [],
+    credits: [],
+)"#
+        )
+    }
+
+    #[test]
+    fn flac_and_mp3_sounds_and_tracks_are_checked() {
+        let mp3_ms = track_length_ms("a.mp3", MP3).unwrap();
+        assert_eq!(track_length_ms("a.flac", FLAC), Some(50));
+        assert_eq!(errors(&coded(50, mp3_ms)), Vec::<String>::new());
+        // A wrong length gets the value to write.
+        let wrong = mp3_ms + 100;
+        assert_eq!(
+            errors(&coded(500, wrong)),
+            [
+                "a.ron:7: music \"lossless\": music/lossless.flac: it plays for 50 ms, \
+                 but length_ms is 500; write length_ms: 50"
+                    .to_owned(),
+                format!(
+                    "a.ron:8: music \"small\": music/small.mp3: it plays for {mp3_ms} ms, \
+                     but length_ms is {wrong}; write length_ms: {mp3_ms}"
+                ),
+            ]
+        );
+        // Broken bytes: each format's own message.
+        let junk = reading(
+            &|_: &str| Some(Cow::Borrowed(&b"junk"[..])),
+            Some(&|_: &str| Some(Cow::Borrowed(&b"junk"[..]))),
+        );
+        assert_eq!(
+            errors_with(&coded(50, mp3_ms), &junk),
+            [
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.flac: not a FLAC file",
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.mp3: not an MP3 file",
+                "a.ron:7: music \"lossless\": music/lossless.flac: not a FLAC file",
+                "a.ron:8: music \"small\": music/small.mp3: not an MP3 file",
+            ]
+        );
+        // A sound a game's hook decoded is a WAV, and checked as one.
+        let hooked = reading(&|_: &str| Some(Cow::Owned(wav(1, 22_050, 1))), None);
+        assert_eq!(
+            errors_with(&coded(50, mp3_ms), &hooked),
+            [
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.flac: 22050 Hz; must be 44100 Hz",
+                "a.ron:4: sound \"chime\": base/audio/sfx/chime.mp3: 22050 Hz; must be 44100 Hz",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_track_whose_length_cant_be_read_is_told_for_its_format() {
+        let unread = |file| length_problem(file, 50, None);
+        assert_eq!(unread("a.ogg").as_deref(), Some(NO_LENGTH));
+        assert_eq!(unread("a.flac").as_deref(), Some(NO_FLAC_LENGTH));
+        assert_eq!(unread("a.mp3").as_deref(), Some(NO_MP3_LENGTH));
+        assert_eq!(length_problem("a.flac", 50, Some(70)), None);
     }
 
     #[test]
@@ -1615,6 +2176,7 @@ mod tests {
                 credit: CreditRef::Own,
                 looped: false,
                 group: None,
+                rules: CueRules::default(),
             }
         );
         assert!(

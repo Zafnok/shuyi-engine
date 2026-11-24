@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
-blocked_by: ["2776", "2524"]
+blocked_by: ["2776", "2524", "3421"]
 nick_input: none
 completed:
 ---
@@ -53,7 +53,7 @@ None.
     has (2739): the score goes up when the player eats a pellet, and a
     life goes when a chaser catches it;
   - `reference`: `Project("examples/maze-chase")`.
-- The `eval` job's `cargo xtask eval-reference --all` grades it, and
+- The `eval` job's `cargo xtask eval-reference --all` (3421) grades it, and
   `cargo xtask eval-reference maze-chase` passes.
 
 **Out (do not do):**

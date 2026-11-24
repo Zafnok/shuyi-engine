@@ -37,6 +37,26 @@ in a pull request that carries a device measurement, written on the
 target's page. Raising one to let a slow change pass is weakening a
 gate.
 
+## The graphics tier
+
+Each profile also says how much a game moves and draws there, beyond its
+stills: `graphics` (`shuyi_assets::target::GraphicsTier`, ticket 3347),
+read into `PlatformFacts::graphics`. The tiers are ordered:
+
+| Tier | What a game shows | Targets |
+| ---- | ----------------- | ------- |
+| `Full` (the default) | everything it moves: tiles that loop through frames, particles, effects over the screen | `desktop`, `web`, `steam-deck`, `switch`, `android`, `ios` |
+| `Reduced` | stills, with at most a few cheap moving looks the game picks; no particles, no effects over the screen | `playdate` |
+| `Minimal` | stills only | none yet |
+
+A moving look says the lowest tier it plays at, and a skin draws its
+still below that (`GraphicsTier::plays`). The engine enforces none of it:
+it draws what a skin gives it, and the budgets above are what `bench`
+gates. A debug build of `shuyi-app` shows another tier than its target's
+when `SHUYI_GRAPHICS` names one (`SHUYI_GRAPHICS=minimal`), so a lesser
+target's stills are seen on the desktop; a build that ships never reads
+it.
+
 ## The proxies, and why not wall time
 
 CI runs on shared machines whose speed changes from run to run, so a

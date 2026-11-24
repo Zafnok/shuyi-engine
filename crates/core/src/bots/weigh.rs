@@ -135,6 +135,11 @@ where
 /// One kind of player: how it thinks, what it cares about, and the
 /// game's own extras `X` (a game mode, a difficulty; `()` for none).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "schema",
+    derive(schemars::JsonSchema),
+    schemars(bound = "X: schemars::JsonSchema + Default + Serialize")
+)]
 #[serde(
     deny_unknown_fields,
     bound(

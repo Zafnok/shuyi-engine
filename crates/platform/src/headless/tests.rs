@@ -234,10 +234,7 @@ fn the_speaker_pauses_what_plays_and_mutes_on_suspend_with_its_clock_running() {
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
     assert!(s.gains().is_empty(), "none before a frame");
-    let click = SoundRequest::Sound {
-        cue: "click".into(),
-        volume: 1.0,
-    };
+    let click = SoundRequest::sound("click", 1.0);
     let requests = [click];
     let music = [command("a", start)];
     let Full(groups, full) = Full::new();
@@ -305,11 +302,13 @@ fn the_platform_keeps_the_last_frame_it_was_shown() {
         look: None,
     };
     frame.fullscreen = true;
+    frame.scale = ScaleMode::Fit;
     p.present(&frame);
     let kept = Presented::Game {
         buffer: b,
         background: Rgb::new(1, 2, 3),
         fullscreen: true,
+        scale: ScaleMode::Fit,
     };
     assert_eq!(p.last_frame(), Some(&kept));
     p.present(&Frame::new(Show::Errors("no font")));
@@ -579,6 +578,7 @@ fn the_game_constructor_builds_what_a_literal_built() {
         buffer: glyphs.clone(),
         background: Rgb::new(1, 2, 3),
         fullscreen: true,
+        scale: ScaleMode::Integer,
     };
     assert_eq!(Presented::game(glyphs, Rgb::new(1, 2, 3), true), literal);
 }

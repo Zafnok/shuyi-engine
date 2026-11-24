@@ -30,7 +30,8 @@ database and Windows", our own code; 2903 rewrote it.
 Today `crates/app/src/pads/native.rs` reads pads with gilrs and hands
 `shuyi-ui` a list of `(PadId, PadKind, PadState)`. `shuyi-ui`'s `Pads`
 (`crates/ui/src/input/pad.rs`) holds every rule, so only the source
-changes. The web keeps `crates/cli/web/gamepad.js`.
+changes. The web keeps its own reading (`crates/cli/web/gamepad.js`, or
+`web-sys` once 3331, parked, moves it).
 
 The Switch 2 pads' start-up is 2403, after this. The Steam Deck is tried
 first by 2414, whose findings this ticket reads.
@@ -64,6 +65,12 @@ the Steam Deck. Say if a button does the wrong thing or a pad isn't seen.
     are `PadKind::SteamDeck` as 3012 says, read from what 2414 found.
   - Every `unsafe` call in one module, `crates/app/src/pads/sdl.rs`,
     with a `// SAFETY:` comment each (ADR-0021 §6, ADR-0002 §9).
+- **The toggle** (ADR-0146 §4, Nick's decision of 2026-11-24): a default
+  `pads` feature on `shuyi-app`. Off, the native source is a null one
+  (no pads, one `log::info!(target: "input", …)` line at start), and
+  `sdl3-sys` isn't built. `shuyi doctor` checks CMake only for a game
+  with it on. The book's quick start says how to turn it off and that it
+  saves about 1.8 MB. CI builds `shuyi-app` both ways.
 - **No libusb:** `deny.toml` bans `libusb1-sys`; a test reads SDL's
   CMake cache in the build's output and fails if `SDL_HIDAPI_LIBUSB` is
   on.
@@ -94,8 +101,10 @@ the Steam Deck. Say if a button does the wrong thing or a pad isn't seen.
   the game's next pin bump needs CMake on its machines and CI, and no
   code change.
 
-**Estimated size:** about 900 lines (code 350, tests 250, doctor, setup
-and docs 300).
+**Estimated size:** about 1,000 lines (code 400, tests 280, doctor, setup
+and docs 320).
+**Split:** past 900 lines, split off the `pads` toggle and its doctor
+check into a new ticket.
 
 **Out (do not do):**
 - Switch 2 pads (2403).
@@ -132,6 +141,8 @@ and docs 300).
       `libusb1-sys`.
 - [ ] `shuyi doctor` names CMake when it's missing, with its install
       line.
+- [ ] With `pads` off, a game builds without CMake, runs, and reads no
+      pads on desktop; with it on (the default), it reads them.
 - [ ] The web build still reads pads through `gamepad.js`.
 - [ ] If 2408 is done: the Xbox and PS5 pads rumble for a cue.
 - [ ] Nick signs off.

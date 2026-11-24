@@ -5,9 +5,11 @@
 use std::path::Path;
 
 use game::title::Title;
+use shuyi::assets::audio::{format_problem, playable};
 use shuyi::platform::harness::Harness;
 use shuyi::platform::session::Stamps;
-use shuyi::prelude::{Cell, GlyphBuffer, Rgb, Screen, UiAction};
+use shuyi::prelude::{Cell, GameData, GlyphBuffer, Rgb, Screen, UiAction};
+use shuyi::ui::audio::AudioConfig;
 use shuyi::ui::frame::color::KEY;
 use shuyi::ui::text::{StyledText, TextRole};
 use shuyi_cli::contract::check::{CheckInput, check, targets};
@@ -96,6 +98,31 @@ fn confirm_starts_the_first_stage_if_there_is_one() {
     match game::stages::names().first() {
         Some(_) => assert_eq!(h.screens().len(), 2, "{:?}", h.screens()),
         None => assert_eq!(h.screens(), ["title"]),
+    }
+}
+
+#[test]
+fn every_sound_the_menus_play_is_in_the_manifest_and_plays() {
+    let data = game::game().data().unwrap_or_else(|e| panic!("{e:?}"));
+    let bundle = game::game().bundle();
+    let config = AudioConfig::DEFAULT;
+    let cues = [
+        config.move_cue,
+        config.select_cue,
+        config.cancel_cue,
+        config.denied_cue,
+        config.cursor_cue,
+    ];
+    for cue in cues {
+        let sound = data.audio_manifest().sounds.get(cue);
+        let sound = sound.unwrap_or_else(|| panic!("files/audio.ron has no cue `{cue}`"));
+        assert!(!sound.files.is_empty(), "{cue}");
+        for file in &sound.files {
+            // What the platform plays: a sound effect rendered to a WAV.
+            let bytes = playable(file, bundle.bytes(file));
+            let bytes = bytes.unwrap_or_else(|| panic!("{cue}: no file {file}"));
+            assert_eq!(format_problem(file, &bytes), None, "{cue}: {file}");
+        }
     }
 }
 

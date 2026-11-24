@@ -255,7 +255,7 @@ None.
 - loads by kind on the Playdate backend (no `std`, so no `Mutex`). They
   are the same as on desktop, apart from per-target layers (3007);
 - call stacks per allocation and Tracy's memory view (3063's ADR);
-- GPU and texture memory (after 3034; 2906 measured textures);
+- GPU and texture memory (after 3325; 2906 measured textures);
 - memory in CI (3008, and 3020 for allocations per frame) and on GBA and
   DS devices (3022, 3026). No second CI ticket;
 - new actions or keys. The debug menu is the only way in.

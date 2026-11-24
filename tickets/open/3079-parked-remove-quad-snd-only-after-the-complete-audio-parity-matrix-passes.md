@@ -21,9 +21,12 @@ Those stages retain the old path. This is the sole removal step in
 [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md),
 conditional on Nick's correctness/speed requirement, not just successful builds.
 It is also the one step that is hard to undo, so it comes after 3084 has made the
-new backend the default, and proves itself undoable first. 3034, replacing
-macroquad's loader, waits for this ticket, since it would close the way back
-([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+new backend the default, and proves itself undoable first. The tickets that
+replace macroquad (3325–3333, from 3034's research; 3325 has this one in its
+`blocked_by`) wait for this ticket, since replacing macroquad's loader would
+close the way back
+([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md),
+amended by ADR-0136).
 
 ## Nick input
 
@@ -37,7 +40,7 @@ Missing mandatory automated evidence still blocks removal.
 - Fresh complete 2573 matrix for Windows GNU, Linux, both Mac architectures
   and the actual current browser loader, with all required playback,
   decoder/format, clock, copy/admission, pause/rate, two-stream/fade and
-  region-loop scenarios. 2234 supplies optional-format playback; 2378
+  region-loop scenarios. 2234 and 2275 supply optional-format playback; 2378
   supplies the single App admission policy. No stale, unsupported, noisy
   or missing mandatory case counts as passed. Retain existing stage
   sign-offs and recorded manual-hardware limits.
@@ -75,6 +78,11 @@ Missing mandatory automated evidence still blocks removal.
 - **From 3031 (done):** the root `Cargo.toml`'s `[patch.crates-io]` of `alsa-sys`
   and `tools/sound-parity/alsa-sys-held` go with quad-snd, as nothing needs them then
   ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)).
+- **Either order with 3015:** if 3015 (mobile, parked) is done, its
+  phone builds play through quad-snd's Android and iOS outputs: the
+  parity matrix gains a phone row, and quad-snd stays until the phone
+  sound ticket 3015 writes passes it; if not, nothing to do (3015 waits
+  for this ticket on phones).
 
 **Out (do not do):** weakening parity budgets, silently abandoning a port,
 new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.

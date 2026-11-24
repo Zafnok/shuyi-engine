@@ -154,15 +154,16 @@ None. When it unparks is his call (above).
     with a scene, `Headless::with_scene`, holding `score`, `lives`,
     `bricks_left`, `step` and `outcome`) and `replay` through
     `contract::replay::ticks`. `playtest` stays unsupported (Out).
-  - **sound:** if 2225 is done, a bounce, a break and a lost-life sound
-    from its presets. If not, none, the README says so, and 2225's PR
-    adds them (its item on the gallery examples says so).
+  - **sound:** a bounce, a break and a lost-life sound from 2225's
+    presets (`sfx::preset_source`, as `.sfx.ron` files of its own, with
+    the `sfx` feature of `shuyi-assets` on), played on its `Bounced`,
+    `Broke` and `LifeLost` events.
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and a row for the copy
     in `THIRD_PARTY_ASSETS.md`.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted, and said how, if not).
+    template-lines`'s code count, 2512).
     **From 2514 (done):** an animated picture of its first seconds,
     made with `frame-png --every 0.05 --count 40 --apng`. **From 2811 (done):** that
     picture is the example's preview: `preview.png` in its folder, made
@@ -216,14 +217,13 @@ None. When it unparks is his call (above).
     `site/content/examples/<name>.md`, plays at `/examples/<name>/`, and
     `/bricks/` redirects there (`aliases` in the card's front matter).
     2019's `web-render` job (done) boots it: it loops over the examples.
-- **The eval:** if 2524 is done, add `evals/tasks/bricks.ron`: template
+- **The eval (from 2524, done):** add `evals/tasks/bricks.ron`: template
   `blank`, targets `desktop` and `web`, reference
   `Project("examples/bricks")`, and the checks `Check`, `Targets`,
   `Web`, `Responds` and `Scene` (on the facts its prompt asks the game
   to expose: `/lives` and `/score`). No `Replay` check: it asks
   `playtest`, which this example doesn't offer. `cargo xtask
-  eval-reference bricks` passes. If 2524 isn't done, add the task to
-  2524's first tasks in its ticket, in this PR.
+  eval-grade` passes on it. `cargo xtask eval-reference bricks` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 - **The shooter's ticket** (the `write-ticket` skill, the next free
   `27xx` id): `examples/shooter`, a vertical shoot-'em-up in the
   bricks' form, with the scope below and what the bricks taught. It has
@@ -329,8 +329,7 @@ None. When it unparks is his call (above).
 - [ ] CI builds the example for the web, and Pages publishes it.
 - [ ] The example's README states its own lines, and the engine's
       README names it.
-- [ ] The eval has a bricks task with the example as its reference, or
-      2524's scope has it.
+- [ ] The eval has a bricks task with the example as its reference.
 - [ ] The shooter's ticket is in `tickets/open/`, and 2122, 2124,
       2335 and `docs/ROADMAP.md` name it.
 - [ ] All gates in the `run-gates` skill pass.

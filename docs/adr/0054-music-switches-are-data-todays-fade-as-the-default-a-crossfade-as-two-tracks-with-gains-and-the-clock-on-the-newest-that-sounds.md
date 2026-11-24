@@ -1,6 +1,6 @@
 # ADR-0054: Music switches are data: today's fade as the default, a crossfade as two tracks with gains, and the clock on the newest that sounds
 
-- **Status:** Accepted; extends ADR-0004 §6
+- **Status:** Accepted; extends ADR-0004 §6; extended by ADR-0137 (the clock round a loop region)
 - **Date:** 2026-10-29
 - **Related tickets:** 2341 (this), 2365 (switches on a beat or a bar,
   parked), 2136 (fades on `shuyi_core::ease`), 3029 (the player's rules

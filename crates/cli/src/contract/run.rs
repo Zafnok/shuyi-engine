@@ -23,8 +23,8 @@ use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES};
 
 use super::perf::{self, PerfSummary};
 use super::session::{
-    self, AddedSound, Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed,
-    Sound, from_record, measured_start,
+    self, AddedSound, Dropped, Event, LogEntry, ModuleEntry, Scene, Session, SessionInput,
+    SessionPlayed, Sound, from_record, measured_start,
 };
 use super::{Answer, Op, codes};
 use crate::frame_png::{self, Script, Step};
@@ -87,6 +87,10 @@ pub struct RunOutput {
     pub events: Vec<Event>,
     /// The sound cues asked for, in order.
     pub sounds: Vec<Sound>,
+    /// The plays the cue rules dropped, in order (ADR-0139); each is under
+    /// `sounds` too. Left out when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dropped: Vec<Dropped>,
     /// The sounds the game added at run time and hadn't removed at the
     /// end of the run, in cue order; left out when none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -333,6 +337,7 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         frame: session.snapshot(),
         events: session.events(),
         sounds: session.sounds(),
+        dropped: session.dropped_sounds(),
         sounds_added: session.sounds_added(),
         log: session.log(),
         modules: session.modules(),
@@ -748,6 +753,14 @@ pub fn text(output: &RunOutput) -> String {
             .map(|s| format!("{} (frame {})", s.cue, s.frame))
             .collect();
         let _ = writeln!(out, "sounds: {}", sounds.join(", "));
+    }
+    if !output.dropped.is_empty() {
+        let dropped: Vec<String> = output
+            .dropped
+            .iter()
+            .map(|d| format!("{} (frame {}, {})", d.cue, d.frame, d.why))
+            .collect();
+        let _ = writeln!(out, "dropped: {}", dropped.join(", "));
     }
     if !output.sounds_added.is_empty() {
         let added: Vec<String> = output

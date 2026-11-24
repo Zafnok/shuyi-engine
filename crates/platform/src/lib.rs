@@ -102,14 +102,21 @@ pub const WATCH_VAR: &str = "SHUYI_WATCH";
 /// layer (`BasicGame::private`) and watches.
 pub const WATCH_PRIVATE_VAR: &str = "SHUYI_WATCH_PRIVATE";
 
+/// The variable a debug build reads for the graphics tier to show in
+/// place of its target's (`SHUYI_GRAPHICS=reduced`): a lesser target's
+/// stills, previewed on the desktop
+/// ([`PlatformFacts::with_graphics`](shuyi_ui::PlatformFacts::with_graphics)).
+/// A build that ships never reads it.
+pub const GRAPHICS_VAR: &str = "SHUYI_GRAPHICS";
+
 /// What a game on the short path names (ADR-0036), and the start types a
 /// game names when it leaves it. Anything else is named by its module's
 /// path.
 pub mod prelude {
-    #[cfg(feature = "std")]
     pub use shuyi_assets::bundle::Embedded;
     pub use shuyi_assets::keymap::{ActionSet, UiAction};
     pub use shuyi_assets::{Bundle, ContentError, Layer};
+    pub use shuyi_core::{Bag, RandomSource};
     pub use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
     pub use shuyi_ui::frame::{ConsoleSpec, EngineColor, Rgb};
     pub use shuyi_ui::module::{Hook, Install, Module};

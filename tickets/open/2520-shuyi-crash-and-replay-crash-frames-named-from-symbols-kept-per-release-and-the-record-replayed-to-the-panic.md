@@ -251,6 +251,10 @@ None.
     "its session plays the whole game: `shuyi run --session <file>`".
     `docs/crash-reports.md`'s paragraph on `shuyi crash` names the
     field. If not, nothing to do (3060 adds them, its clause says so).
+  - **Either order with 3337:** if 3337 is done, `CrashOutput` also
+    carries the report's `fault` (`NativeFault`: kind, code, address)
+    and `dump` (the minidump's file name), and `crash::text` shows
+    them; if not, nothing to do (3337 adds them, its clause says so).
   - **From 2077 (done):** dev and test programs are built without
     debug info (`strip = "debuginfo"`), but shuyi-cli's: the DWARF
     test relies on the root `Cargo.toml`'s

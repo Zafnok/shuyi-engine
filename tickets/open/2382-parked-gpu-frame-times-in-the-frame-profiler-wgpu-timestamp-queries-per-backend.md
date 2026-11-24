@@ -6,7 +6,7 @@ milestone: "Engine: debug view"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2325", "3034", "2018"]
+blocked_by: ["2325", "3034", "2018", "3325", "3326"]
 nick_input: none
 completed:
 ---
@@ -35,15 +35,15 @@ reads GPU times through wgpu's timestamp queries.
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
 §1: graphics go through wgpu, and our own 2D renderer sits on it. 3034
-is the research that plans that renderer and writes its tickets. Its
-scope asks it to leave room for GPU times in the renderer's ADR, and
-to record whether wgpu's timestamp queries give them on each backend.
-When it writes the renderer's ticket, it adds that id to this
-ticket's `blocked_by`, and the ticket whose backend first runs the
-renderer in a window, if that is another one.
+planned that renderer, `shuyi-gpu` (3325), and its first window
+(3326), both in this ticket's `blocked_by`. ADR-0136 §9 leaves room for
+GPU times: with `Wants::timestamps`, the renderer writes each pass's
+start and end and reads them a frame late; and 3034's report has a row
+per backend on what wgpu's timestamp queries give.
 
 **What wgpu gives** (its documentation; check each name against the
-version 3034's ADR pins, since wgpu renames things between releases):
+version ADR-0136 pins, 30 on 2026-11-22, since wgpu renames things
+between releases):
 
 - `Features::TIMESTAMP_QUERY`, an optional feature. An adapter that
   has it lists it in `Adapter::features()`. A device asks for it in
@@ -140,7 +140,7 @@ None.
   × (n mod 8) }`. A second form, for tests, gives `Unsupported { api:
   "WebGL 2" }`. 2325's committed `profile` snapshot is redrawn with
   the ticks and the label, reviewed and committed.
-- **The timer, in the wgpu renderer** (the crate 3034's tickets build;
+- **The timer, in the wgpu renderer** (`shuyi-gpu`, 3325;
   "the renderer" here), in a module of its own:
   - an option the backend sets when it makes the renderer,
     `gpu_times: bool`, true only when `shuyi_ui::DEBUG_TOOLS` is on.

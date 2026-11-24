@@ -154,6 +154,11 @@ None.
   clamped to the map. It is worked out once per frame, where 1120 sorts
   the items, and kept in the item's `visible`. Every painter and the
   snapshot read it; none walks the whole map.
+- **Either order with 3343:** if 3343 is done, `view` is 3343's
+  `WorldLayer::world_view` (1120's placement run backwards, in one
+  place), and `visible_tiles` takes it; if not, write the backwards
+  placement here, and 3343 moves it into `world_view` with these tests
+  unchanged.
 - **Animated tiles.** A tile with a clip in its sheet's `anims` shows
   the tile id that 2231's `frame_at(clip, clock_ms)` gives (the tile
   itself if the clip has no frame). The clips come from Tiled's

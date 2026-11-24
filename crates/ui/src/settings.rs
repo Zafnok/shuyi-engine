@@ -17,6 +17,7 @@ use core::fmt::Debug;
 use shuyi_assets::keymap::Layout;
 
 use crate::audio::groups::{MUSIC, SFX, VOICE};
+use crate::frame::console::ScaleMode;
 use crate::frame_cap::{self, FrameCap};
 
 /// [`Storage`](crate::storage::Storage) key under which the settings are
@@ -223,6 +224,12 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// 30, 60, 120, 144, 165 and 240 frames a second, then none, unless the
     /// game says otherwise ([`frame_cap::CHOICES`]).
     const FRAME_CAP_CHOICES: &'static [FrameCap] = &frame_cap::CHOICES;
+
+    /// How the game's frame fills a window ([`ScaleMode`], ADR-0140): by
+    /// the largest whole scale, letterboxed ([`ScaleMode::Integer`]),
+    /// unless the game says otherwise. A backend that shows its display
+    /// 1:1 ignores it.
+    const DEFAULT_SCALE: ScaleMode = ScaleMode::Integer;
 
     /// What the game does while its window has no focus (ADR-0077): it
     /// keeps running with its sound ([`Background::KEEP_RUNNING`]) unless

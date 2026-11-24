@@ -1284,7 +1284,8 @@ the cost of its agent runs, he chose **"After the maze chase"**.
 - **Not Pac-Man** (2026-10-26): the maze chase takes no name,
   character, maze, sound or art from it.
 - **The end goal's snake is measured again**: the agent eval's snake
-  task gets its reference (2739) and is graded in CI once 2524 lands.
+  task gets its reference (2739) and is graded in CI (2524's grader, CI's
+  job in 3421).
 
 ## 2026-10-29: a ticket is one PR of about 1,500 changed lines or fewer
 
@@ -1986,6 +1987,45 @@ delete them".
   deleted the two repositories himself, keeping `delete_repo` from the
   session.
 
+## 2026-11-22: in-house file embedding unparked
+
+Source: Nick, asking a session to do ticket 2215 (our own build-script
+file table in `shuyi-embed`, replacing `include_dir`), parked with the
+in-house platform layer on 2026-10-19. Asked whether to unpark it now or
+keep it parked until the MVP, he chose **"Unpark 2215 now"**.
+
+**Rules:**
+
+- **2215 is unparked** and worked now.
+- **The rest of the in-house platform layer stays parked** until the
+  MVP, as decided on 2026-10-19: unparking 2215 unparks no other ticket.
+
+## 2026-11-22: the research of replacing macroquad unparked, not the build
+
+Source: Nick, in a Claude Code session, after asking whether 3034 (the
+research of replacing macroquad with winit and wgpu) was unblocked. Told
+that its three blockers were done, but that it was parked until the MVP
+(2026-10-19) and that ADR-0068 kept it until the sound chain ends (3079),
+because replacing macroquad's web loader ends the way back to quad-snd,
+he chose **"Unpark research now"**, then:
+
+> "I only want to unpark the research not the implementation. So I don't
+> think 3034 needs to be parked until 3079. We can just have the rest be
+> blocked by 3079, whatever comes of this."
+
+**Rules:**
+
+- **3034 is unparked** and worked now. It writes the report, the ADR and
+  the tickets, and builds nothing that ships, so it closes no door on
+  sound.
+- **Every ticket it writes is `Parked:`,** as the rest of the in-house
+  platform layer is until the MVP (2026-10-19), and each has 3079 in its
+  `blocked_by`, directly or through the chain: nothing of the build
+  starts before quad-snd is removed (or the sound chain is given up).
+- The rest of the platform layer's order stands: controllers (2903) stay
+  parked, and unparking 3034 unparks nothing else. File embedding (2215)
+  was unparked on its own the same day (above).
+
 ## 2026-11-22: the controller research unparked
 
 Source: Nick, asking a session to do ticket 2903 (the research on
@@ -2002,6 +2042,55 @@ the Steam Deck.
   to go.
 - **The build it picks stays parked** until the MVP, as decided on
   2026-10-19: 2402, 2403, 2408 and any ticket the research writes.
+
+## 2026-11-23: the hosted preview (2602) unparked, built and tested locally only
+
+Source: Nick, in a Claude Code session, asking what was left before the
+reverse-engineering research scripts could be removed (2093, after 3083,
+after 2602). Told that 2602 builds the preview server but that building
+and testing it costs nothing, that only running it publicly for real
+invitees costs a machine and its traffic, and that it could be unparked
+with the line "runs locally and in CI only; no paid hosting until Nick
+approves its measured cost", he said:
+
+> "ok sure do that"
+
+**Rules:**
+
+- **2602 is unparked** and may be worked now.
+- **2602 runs on Nick's machine and in CI only.** No server is rented,
+  no hosting account is opened, and nothing is deployed where the
+  public can reach it. Its measured CPU, memory, traffic and session
+  limits are the cost estimate Nick decides a real deployment from.
+- **Paid hosting waits for Nick's go-ahead** on that measured cost, as
+  any server does (2026-10-14, *Networking, if it doesn't cost the
+  game*).
+- Unparking 2602 unparks nothing else: 2603, 3083 and 2093 stay parked,
+  and the rest of networking stays parked.
+
+## 2026-11-24: the last five engine crate names are held
+
+Asked which crate names still needed holding, Claude checked crates.io:
+the nine placeholders were live, and five real engine crates that the
+release must publish were free (`shuyi-embed`, `shuyi-embed-macros`,
+`shuyi-script`, `shuyi-sound`, `shuyi-sound-out`; ticket 3510 lists who
+needs each). Nick:
+
+> "ok lets reserve these names now"
+
+**Rules:**
+
+- **All five are held** as empty 0.0.0 placeholders like the nine (a
+  library with no code, both license files, a README that points here),
+  owned by `Zafnok`, published by Nick on 2026-11-24. Each is a real
+  crate in this repository, which fits the 2026-10-21 rule.
+- **The token.** Nick made one for this run: the `publish-new` scope,
+  the crates `shuyi-*`, a 7-day expiry. Its value is recorded nowhere.
+- **This answers 3528's question 3 and is 3510's setup.** All fourteen
+  engine crates now have a name on crates.io, so 3510's
+  `cargo xtask check-publish --index` can join CI as soon as it exists.
+- **Still no defensive names.** `shuyi-contract` (planned, not yet a
+  crate) and `shuyi-engine` stay unheld.
 
 ## 2026-11-24: controllers through SDL3, with our own start-up for Switch 2 pads
 
@@ -2051,3 +2140,43 @@ and the first branch of his answer holds.
 - **The Steam Deck is a follow-up:** 2414 tries both on the Deck.
 - **The build stays parked** until the MVP, as decided on 2026-10-19:
   2402 and 2403 are still `Parked:`.
+
+Asked nothing more, Nick added, on hearing SDL3 adds about 1.8 MB to a
+game:
+
+> "so since it costs more storage we should make that a toggle (default
+> ON) to include controller support on game build for non-console
+> targets like PC/mac/linux
+>
+> and ppl using the engine can decide to toggle off to save space for
+> whatever weird desire they want"
+
+- **Controller support on desktop is a toggle, on by default.** A game
+  for Windows, macOS or Linux includes SDL3's pads unless its developer
+  turns them off; turned off, the game reads no controllers there and
+  is about 1.8 MB smaller. 2402 builds the toggle (ADR-0146 §5).
+- The web (whose pad reading costs nothing to speak of) and the consoles
+  (their own backends) are not part of the toggle.
+
+## 2026-11-24: an optional dependency that makes games bigger is a toggle
+
+Source: Nick, in the session working 2903, right after making controller
+support a toggle because SDL3 adds about 1.8 MB to a game:
+
+> "this should be a rule going forward, if its not strictly required and
+> we introduce a new dep that adds final build storeage req, make it a
+> toggle"
+
+**Rules:**
+
+- **A new dependency that a game doesn't strictly need, and that makes
+  a shipped game bigger, comes behind a toggle**: a cargo feature a game
+  can turn off.
+- **On or off by default is decided per case** and said in the ticket
+  or ADR that adds it; controllers are on by default (the entry above).
+- "Strictly required" means the engine can't build or run a game
+  without it (the window, drawing, the run loop). A dependency only
+  build tools or tests use doesn't count: it never reaches a game.
+- The ticket that adds such a dependency says how much bigger a game
+  gets, measured on a stripped release build, and what turning it off
+  costs the game.

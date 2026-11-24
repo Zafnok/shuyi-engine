@@ -20,6 +20,7 @@ use alloc::{format, vec};
 use shuyi_assets::bundle::Layer;
 use shuyi_ui::audio::{Gain, MusicCommand, SharedSamples, SoundId};
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{
@@ -53,18 +54,21 @@ pub enum Presented {
         background: Rgb,
         /// Whether it asked to fill the screen.
         fullscreen: bool,
+        /// How it asked to fill a window ([`Frame::scale`](crate::Frame::scale)).
+        scale: ScaleMode,
     },
 }
 
 impl Presented {
     /// The game's console `buffer` on `background`, filling the screen if
-    /// `fullscreen`.
+    /// `fullscreen`, at a whole scale ([`ScaleMode::Integer`]).
     #[must_use]
     pub const fn game(buffer: GlyphBuffer, background: Rgb, fullscreen: bool) -> Self {
         Self::Game {
             buffer,
             background,
             fullscreen,
+            scale: ScaleMode::Integer,
         }
     }
 
@@ -85,6 +89,7 @@ impl Presented {
                     buffer,
                     background,
                     fullscreen,
+                    scale,
                 }),
                 Show::Game {
                     buffer: new,
@@ -97,6 +102,7 @@ impl Presented {
                 }
                 *background = new_background;
                 *fullscreen = frame.fullscreen;
+                *scale = frame.scale;
             }
             (
                 _,
@@ -108,6 +114,7 @@ impl Presented {
                     buffer: buffer.clone(),
                     background,
                     fullscreen: frame.fullscreen,
+                    scale: frame.scale,
                 });
             }
             (_, Show::Card(card)) => *old = Some(Self::Card(card.clone())),
@@ -296,7 +303,7 @@ impl Speaker {
         match request {
             SoundRequest::Voice { clip } => self.voice = Some((clip.clone(), now)),
             SoundRequest::StopVoice => self.voice = None,
-            SoundRequest::Sound { cue, volume } => self.hear_added(cue, *volume, None),
+            SoundRequest::Sound { cue, volume, .. } => self.hear_added(cue, *volume, None),
             SoundRequest::Start {
                 id, cue, volume, ..
             } => {

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from capture import PREFIX, LoopbackRecorder, LostFrames, Native, whole
+from capture import PREFIX, LoopbackRecorder, LostFrames, Native, read_probe, stalls_said, whole
 
 
 def plays(*outcomes: object):
@@ -119,6 +119,41 @@ class Stop(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as said:
             self.recorder([], ((0, 441), (441, 441), (9000, 441))).stop()
         self.assertIn("loop.pcm: the loopback flagged silent 882 frames at 0, 441 frames at 9000", said.getvalue())
+
+
+class Streams(unittest.TestCase):
+    """What the in-house feeder said of its tracks becomes a timing's metrics (ticket 3320)."""
+
+    LINES = [
+        '{"event":"step","at":0,"wall":12.5,"cue":"","secs":0}',
+        '{"event":"perf","metric":"cpu_ms","value":40.0}',
+        '{"event":"output","rebuilds":0,"silent_callbacks":0,"dry_callbacks":0,"raised":true}',
+        '{"event":"streams","raised":true,"tracks":[{"track":"music_a.ogg","stalled":0,"lowest":2816},'
+        '{"track":"music_b.ogg","stalled":512,"lowest":0},{"track":"short.wav","stalled":0,"lowest":null}]}',
+    ]
+
+    def test_the_stalls_are_summed_and_the_lowest_margin_kept(self):
+        metrics, wall, tracks = read_probe(self.LINES)
+        self.assertEqual(wall, 12.5)
+        self.assertEqual(
+            metrics,
+            {"cpu_ms": 40.0, "dry_callbacks": 0.0, "stalled_frames": 512.0, "lowest_margin": 0.0},
+        )
+        self.assertEqual([track["track"] for track in tracks], ["music_a.ogg", "music_b.ogg", "short.wav"])
+        self.assertEqual(stalls_said(tracks), "the feeder fell behind: music_b.ogg stalled 512 frames")
+
+    def test_a_backend_that_doesnt_count_says_nothing_of_streams(self):
+        metrics, _, tracks = read_probe(self.LINES[:3])
+        self.assertIsNone(tracks)
+        self.assertNotIn("stalled_frames", metrics)
+        self.assertEqual(stalls_said(tracks), "")
+        metrics, _, tracks = read_probe(['{"event":"streams","raised":false,"tracks":[]}'])
+        self.assertEqual(metrics, {"stalled_frames": 0.0}, "no margin to say, and no stall")
+        self.assertEqual(stalls_said(tracks), "")
+
+    def test_a_failed_run_is_an_error(self):
+        with self.assertRaises(ValueError):
+            read_probe(['{"event":"failed","text":"no scenario"}'])
 
 
 if __name__ == "__main__":

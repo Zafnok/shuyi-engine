@@ -96,9 +96,9 @@ a game turns them on in its own `Cargo.toml`.
 | Format | Serves | Status | Tickets |
 | ------ | ------ | ------ | ------- |
 | `shuyi-assets` dialogue formats | Yarn Spinner and Ink, beside `.dlg` | planned | 2202 |
-| `shuyi-assets` image and audio formats | JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature | planned | 2203 |
+| `shuyi-assets` image and audio formats | JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature: read by the registry, drawn by `shuyi-app` and `frame-png`, played (a FLAC or MP3 sound as a WAV in memory); the in-house backend's streamed tracks with 2275 | ready | 2203, 2234, 2275 |
 | `shuyi-assets` pack | `.shuyipak`, one indexed file of baked assets (always in) | ready | 2204 |
-| `shuyi-assets` `sfx` | `.sfx.ron` sound effects from a few numbers | planned | 2225 |
+| `shuyi-assets` `sfx` | `.sfx.ron` sound effects from a few numbers, rendered in integers as the game loads them, ten presets; the templates turn it on for their menu sounds | ready | 2225 |
 
 ## Platform backends
 

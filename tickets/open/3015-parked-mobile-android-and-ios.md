@@ -24,7 +24,7 @@ backend can reach phones. The `android` and `ios` profiles exist as
 
 - **Touch controls.** A turn-based grid game plays well by touch.
   2405 (done) takes taps as pointer presses on menus and grid maps (2413
-  reads them in `shuyi-app`),
+  (done) reads them in `shuyi-app`),
   and 2407 (parked) plans on-screen controls for phones' browsers. This
   ticket reuses them. Nothing yet turns those controls on in the
   `android` and `ios` profiles, or lets the player move them.
@@ -65,7 +65,20 @@ splits it.
   pointer (a tap is its primary press); 2407's on-screen controls for
   everything else.
 - **Safe areas.** They come from the platform, and the frame is laid out
-  inside them.
+  inside them. The platform's safe area fills `WindowFacts::safe` (3231,
+  `shuyi_ui::frame::window`), which 3231 sets to the whole window;
+  screens anchor to it with `anchor`.
+- **Sound.** On a phone, sound plays through quad-snd today (its
+  Android and iOS outputs). The in-house output that replaces it
+  (ADR-0075, 2902, 3032) covers Windows, Linux, macOS and the browser,
+  not phones, and 3079 removes quad-snd. So removing quad-snd would
+  leave a phone build silent. The split writes a phone sound ticket:
+  CPAL's Android and iOS hosts beside the desktop outputs, passing
+  2573's playback scenarios on a device, and pausing with `Suspend`
+  (3003) when the app goes to the background or a call takes the
+  audio. **Either order with 3079:** if 3079 is done, quad-snd is gone,
+  so the phone builds wait for that phone sound ticket; if not, phones
+  may ship on quad-snd first, and 3079 keeps them in its matrix.
 - **The lifecycle.** Going to the background sends `Suspend` (3003). The
   game saves, and resumes where it was.
 - **Vibration.** Native phones' vibration is this ticket's (2408's
@@ -112,7 +125,8 @@ splits it.
 2. Split it into tickets: touch controls (what 2407's split hasn't
    done: the player moving and resizing them, the `android` and `ios`
    profiles, and 2407's items 1 and 2 while 2407 is open), lifecycle
-   and safe areas (with vibration, as its bullet says), the Android
+   and safe areas (with vibration, as its bullet says), phone sound,
+   the Android
    exporter, the iOS exporter, and measuring on a device.
 3. Work them in that order.
 

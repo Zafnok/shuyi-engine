@@ -919,6 +919,87 @@ jobs:
       - name: Run the worked examples
         run: cargo xtask skill-examples --shard "$SHARD"
 
+  # The agent eval's references (tickets 2524 and 3421, evals/README.md):
+  # every task with a reference graded on fresh games, so a change that
+  # breaks one shows, and box-pushing's and tic-tac-toe's plain templates
+  # graded to show their checks can fail (`Check` passes, every `Scene`
+  # fails; ticket 3422). It runs in the image the `export` job's `linux`
+  # leg builds in (`shuyi_cli::export::SNIPER`), so the `Export("linux")`
+  # checks build, with that image's glibc floor. git and jq are installed
+  # before the checkout: with git there, it clones (the line count diffs
+  # with git, and the grader reads the commit with `git rev-parse`). In a
+  # container job the `github.workspace` context is the host's path, so
+  # the steps use `$GITHUB_WORKSPACE`.
+  eval:
+    name: eval
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install git and jq
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git jq ca-certificates
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: eval
+      - name: Grade every reference
+        run: cargo xtask eval-reference --all --out eval-results
+      - name: Box-pushing's plain template fails its scenes
+        run: |
+          set +e
+          cargo xtask eval-reference box-pushing --template-only --out eval-template
+          code=$?
+          set -e
+          if [ "$code" != 1 ]; then
+            echo "::error::The plain template's grade exited $code, not 1 (a check failed)"
+            exit 1
+          fi
+          jq -e '[.checks[] | select(.check == "Check") | .passed] == [true]' eval-template/box-pushing.json
+          jq -e '[.checks[] | select(.check | startswith("Scene")) | .passed] | length > 0 and all(. == false)' eval-template/box-pushing.json
+      - name: Tic-tac-toe's plain template fails its scenes
+        run: |
+          set +e
+          cargo xtask eval-reference tic-tac-toe --template-only --out eval-template
+          code=$?
+          set -e
+          if [ "$code" != 1 ]; then
+            echo "::error::The plain template's grade exited $code, not 1 (a check failed)"
+            exit 1
+          fi
+          jq -e '[.checks[] | select(.check == "Check") | .passed] == [true]' eval-template/tic-tac-toe.json
+          jq -e '[.checks[] | select(.check | startswith("Scene")) | .passed] | length > 0 and all(. == false)' eval-template/tic-tac-toe.json
+      - name: The results in the summary
+        if: always()
+        run: |
+          {
+            echo "| Task | Checks passed | Lines added | Seconds |"
+            echo "| --- | --- | --- | --- |"
+            for file in eval-results/*.json; do
+              [ -f "$file" ] || continue
+              jq -r '"| \(.task) | \(.passed) of \(.total) | \(.lines_added // "not counted") | \(.seconds) |"' "$file"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: eval-results
+          path: |
+            eval-results/
+            eval-template/
+          if-no-files-found: warn
+          retention-days: 14
+
   # What a game's developer waits for (ticket 2009, ADR-0049): a new `grid`
   # game's rebuild after a one-line change, held to tools/compile-budget.ron
   # beside a fixed reference build on the same runner, and a new game's
@@ -950,6 +1031,8 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
+      # The sound effects' renderer, in integers without `std` (ticket 2225).
+      - run: cargo build -p shuyi-assets --no-default-features --features sfx --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
       # The Playdate backend as the device links it, and a game on it. The SDK
@@ -1356,6 +1439,11 @@ jobs:
           cargo xtask pr-size --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
       - name: Check Markdown links
         run: cargo xtask check-links
+      # The lines a game's author owns (ticket 2512): the table in the run's
+      # summary, and a failure when a new `blank` game's code is over
+      # tools/line-budget.ron's cap, or 10 or more under it.
+      - name: Count the templates' lines
+        run: cargo xtask template-lines --check --summary "$GITHUB_STEP_SUMMARY"
       # A `migration` block that doesn't parse fails here, not when the
       # site is built (ticket 2804), and so does one the PR moves to done/
       # whose `since` is not the workspace version (ticket 2058).
@@ -1447,7 +1535,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, exercises, playtest, skills, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, exercises, playtest, skills, eval, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     # `actions: read` reads the attempt before a re-run (ticket 2064).
     permissions:

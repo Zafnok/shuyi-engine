@@ -113,6 +113,26 @@ The standard ones, in `Formats::standard()`:
 | target profile | `target::TargetProfile` | `target::TargetRon` | `target-ron` | `ron` | none | 4 MiB |
 | dialogue | `dialogue::DialogueFile` (a file's scenes) | `dialogue::Dlg` | `dlg` | `dlg` | none | 4 MiB |
 
+With a feature of `shuyi-assets` on, `Formats::standard()` has its
+formats too ([below](#formats-behind-a-feature)):
+
+| Kind | Type of the kind | Format | Id | Extensions | Magic bytes | Limit | Feature |
+| ---- | ---------------- | ------ | -- | ---------- | ----------- | ----- | ------- |
+| image | `image::ImageInfo` | `image::JpegInfo` | `jpeg` | `jpg`, `jpeg` | `FF D8 FF` | 64 MiB | `jpeg` |
+| image pixels | `image::Image` | `image::Jpeg` | `jpeg` | `jpg`, `jpeg` | `FF D8 FF` | 64 MiB | `jpeg` |
+| image | `image::ImageInfo` | `image::WebPInfo` | `webp` | `webp` | `RIFF`, then `WEBP` | 64 MiB | `webp` |
+| image pixels | `image::Image` | `image::WebP` | `webp` | `webp` | `RIFF`, then `WEBP` | 64 MiB | `webp` |
+| image | `image::ImageInfo` | `image::QoiInfo` | `qoi` | `qoi` | `qoif` | 64 MiB | `qoi` |
+| image pixels | `image::Image` | `image::Qoi` | `qoi` | `qoi` | `qoif` | 64 MiB | `qoi` |
+| image | `image::ImageInfo` | `image::JpegXlInfo` | `jpeg-xl` | `jxl` | `FF 0A`, or the container's `JXL ` box | 64 MiB | `jpeg-xl` |
+| image pixels | `image::Image` | `image::JpegXl` | `jpeg-xl` | `jxl` | `FF 0A`, or the container's `JXL ` box | 64 MiB | `jpeg-xl` |
+| sound | `audio::Sound` | `audio::Flac` | `flac` | `flac` | `fLaC` | 64 MiB | `flac` |
+| music track | `audio::MusicTrack` | `audio::FlacTrack` | `flac` | `flac` | `fLaC` | 64 MiB | `flac` |
+| sound | `audio::Sound` | `audio::Mp3` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
+| music track | `audio::MusicTrack` | `audio::Mp3Track` | `mp3` | `mp3` | `ID3`, or a frame's sync | 64 MiB | `mp3` |
+| sound | `audio::Sound`: what a `.sfx.ron` renders to, mono at 44.1 kHz | `sfx::SfxRon` | `sfx` | `ron`, a name that ends in `.sfx.ron` | none | 4 MiB | `sfx` |
+| sound effect | `sfx::SfxDef`: a `.sfx.ron`'s numbers | `sfx::SfxDefRon` (and `Encode`) | `sfx` | `ron` | none | 4 MiB | `sfx` |
+
 The ones a game registers with its own types or rules:
 
 | Kind | Type of the kind | Format | Id | Extensions | What the game gives |
@@ -174,7 +194,11 @@ What each one reads:
 - **WAV and OGG Vorbis** read the header: one or two channels at
   44.1 kHz. A music track must be a whole file, whose last Ogg page gives
   its length. `audio::format_problem`, which the manifest check uses,
-  still requires a sound's content to match its extension.
+  still requires a sound's content to match its extension: WAV for
+  `.wav`, OGG Vorbis for `.ogg`, FLAC for `.flac`, MP3 for `.mp3` and a
+  sound effect's numbers for `.sfx.ron` (with their features, below). A
+  `.flac`, `.mp3` or `.sfx.ron` file whose bytes are a WAV (a game's hook
+  decoded or rendered them) is checked as a WAV.
 - **The audio manifest** reads its sound files beside it (`audio/audio.ron`
   names `sfx/a.wav`, the bundle's `audio/sfx/a.wav`). The music folder
   isn't in the bundle, so its tracks are checked by a tool that can see
@@ -182,6 +206,45 @@ What each one reads:
   until the game stops it, and is started with a handle
   (`AudioQueue::start_sound`, ADR-0055). Left out, it is `false`, and
   the sound plays once.
+  **The cue rules** (ticket 2345, ADR-0139), each optional and flat on the
+  sound: `pick` says which file each play plays (`Random`, the default,
+  any file; `NoRepeat`, never the last again; `Shuffle`, each file once in
+  a random order, then a new order, never the same file twice in a row
+  across the seam; `InOrder`, the files in turn), and a cue of one file
+  plays it every time; `volume_min` makes each play pick a whole percent
+  from it to `volume` (left out, it plays at `volume`; written bare,
+  `volume_min: 45`), and one over `volume` is an error at the cue's line;
+  `min_gap_ms` drops a play less than that after the cue's last play that
+  sounded (0, the default: none is). `App` applies them for every
+  backend, in whole milliseconds, with a picker of its own, apart from the
+  simulation's RNG:
+
+  ```ron
+  (id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
+   volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+  ```
+
+  A play dropped is still asked for (the Harness's `sounds()`, `run`'s
+  `sounds`), and listed with why (`Harness::dropped_sounds`). A sound started with a handle is picked the same way, and is
+  never dropped. In Rust a cue takes them with `SoundCue::with_rules`
+  (`CueRules::DEFAULT.with_min_gap_ms(40)`).
+  **A loop region** (ticket 2397): a looped track may say `loop_start_ms`
+  and `loop_end_ms`, both or neither, with `0 <= start < end <=
+  length_ms`. It plays from its start up to `loop_end_ms` once, then
+  from `loop_start_ms` to `loop_end_ms` again and again, half-open: the
+  end is where it comes round. Left out, a track goes round the region
+  its file names, an Ogg file's `LOOPSTART` and `LOOPLENGTH` comments
+  (in samples of one channel), and round the whole track if it names
+  none; the manifest's fields win over the file's. The check refuses a
+  region with one end, an end not after its start, one past `length_ms`
+  and one on a track that has `looped: false`, as written, never
+  clamped; tags that don't read are refused as the track loads, naming
+  the tag and the file, and it loops whole. A backend plays a
+  millisecond `ms` at frame `ms × rate / 1000`, rounded down
+  (`LoopRegion::frames`), and a file's own region at its exact frames.
+  A backend that can only loop whole files (quad-snd) plays the whole
+  track, and the log says so once. The pack holds the two fields since
+  version 20.
 - **The font atlas** reads the PNG beside its glyph map with the same
   name (`fonts/atlas.ron` and `fonts/atlas.png`). Whether it draws the
   game's text is a check across assets, once both load
@@ -340,6 +403,204 @@ What each one reads:
   `KeymapDef::from_source`, `cinematic::parse`, each module's
   `from_source`), with the file named as the bundle shows it.
 
+### Formats behind a feature
+
+JPEG, WebP, QOI and JPEG XL pictures, and FLAC and MP3 sounds, are
+formats of `shuyi-assets` behind a cargo feature each (ticket 2203,
+ADR-0007 §3), so a game pays only for what it uses. A game turns one on
+in its own `Cargo.toml`, with a line for `shuyi-assets` from the same
+source as its `shuyi` line (cargo then turns the feature on for every
+crate of the build):
+
+```toml
+shuyi-assets = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<its pin>", features = ["jpeg", "flac"] }
+```
+
+With it on, `Formats::standard()` registers its formats, so
+`ImageTable::load_with` sizes the files, `Formats::load::<Image>` gives
+their pixels and `Formats::load::<MusicTrack>` a track's length.
+
+**What draws and plays them** (ticket 2234), with no feature of
+`shuyi-app` or `shuyi-cli`, since the game's feature of `shuyi-assets`
+reaches them:
+
+- **Pictures.** `shuyi-app` decodes a PNG with macroquad, as it always
+  has, and any other picture with the formats of `Formats::standard()`;
+  `frame-png` (`frame_png::decode_image`) does the same beside its own
+  PNG decoder, so it still paints what players see. A file no format
+  reads is drawn as a magenta rectangle, and its error names the formats
+  the build has. The font atlas stays a PNG.
+- **Sounds.** The audio manifest takes `.flac` and `.mp3` sound files
+  beside `.ogg` and `.wav`, and `.flac` and `.mp3` tracks beside `.ogg`,
+  checking a track's `length_ms` against `audio::track_length_ms`. Every
+  backend gets a FLAC or MP3 sound as a 16-bit WAV in memory:
+  `audio::decode_to_wav`, which the shared player's
+  `Backend::load_sound_file` calls on every target. A file that doesn't
+  decode is a warning and never reaches the backend, and a WAV is never
+  over `audio::MAX_DECODED_BYTES` (256 MiB, about 25 minutes of stereo).
+- **Music.** On native, a FLAC or MP3 track is decoded to that WAV on
+  the music's worker thread; on the web, the browser decodes the file as
+  it is (Web Audio's `decodeAudioData`), off the page's thread. The
+  in-house backend plays them as sounds; its streamed tracks get them
+  with ticket 2275.
+
+An MP3 starts and ends with silence its encoder added, and the
+decoders cut it only when a LAME tag says how much; the browser may
+not. A looped MP3 track can then have a gap at its loop: loop an OGG or
+a FLAC.
+
+What each one reads:
+
+- **A picture** is two formats, as PNG is: one reads its size from its
+  headers (`JpegInfo`, …), the other its pixels (`Jpeg`, …) as RGBA, and
+  checks that size first, so a picture too big is refused before its
+  pixels are decoded. A picture is 1 to 4096 pixels a side, as a PNG is.
+  - **JPEG**: baseline and progressive, gray, RGB and CMYK, made opaque.
+  - **WebP**: lossy or lossless, with or without alpha; an animation
+    gives its first frame.
+  - **QOI**: RGB or RGBA; its colour-space tag is ignored.
+  - **JPEG XL**: a bare codestream or a container, lossless or lossy;
+    its first frame, in sRGB. A CMYK picture, or one whose ICC profile
+    needs converting, is refused.
+- **A sound** reads only its header, as WAV and OGG do: one or two
+  channels at 44.1 kHz.
+  - **FLAC**: its `STREAMINFO`; a track's length is its sample count, so
+    a file that doesn't say it (a count of 0) is a sound but no track.
+  - **MP3**: its first frame's header, past an ID3 tag; a track's
+    length counts every frame, without the silence its encoder added at
+    both ends when its LAME tag says how much.
+
+**The same pixels everywhere** (ADR-0007 §5). The JPEG, WebP and QOI
+decoders work in integers, with no SIMD, so a picture decodes to the
+same pixels on every target. `jxl-oxide` renders a lossy JPEG XL in
+floats with SIMD it picks at run time (AVX2 and FMA on x64, NEON on
+ARM64): the fixture's pixels are pinned on x64, ARM64 and wasm32, but
+another lossy picture could round a pixel apart on another machine. A
+lossless JPEG XL is exact everywhere. Each format's row in
+`tests/golden/formats.ron` pins what it decodes from its fixture
+(`crates/assets/tests/fixtures/formats/`, our own files, CC0): the
+pixels of the lossy JPEG, WebP and JPEG XL, and of the QOI; the header
+of the sounds, and the length of the tracks. Its tests also check the
+lossless fixtures against their source, and the lossy ones against what
+libjpeg-turbo (within 4 a channel), libwebp (exactly) and libjxl (within
+1) decode.
+
+**The decoders**, checked on 2026-11-22: each one's licence from its
+`Cargo.toml` and the files in its package, and `cargo deny check` with
+every feature on (ADR-0002 §8). Each is pure Rust, builds for
+`wasm32-unknown-unknown` without `wasm-bindgen`, and is used with
+`default-features = false`.
+
+| Feature | Crate | Licence | Last release | Features used | Without `std` |
+| ------- | ----- | ------- | ------------ | ------------- | ------------- |
+| `jpeg` | `zune-jpeg` 0.5.15 (`zune-core`) | MIT OR Apache-2.0 OR Zlib | 2026-03-26 | none: no `x86` or `neon` SIMD | yes |
+| `webp` | `image-webp` 0.2.4 (`byteorder-lite`, `quick-error`) | MIT OR Apache-2.0 | 2025-08-27 | none | no |
+| `qoi` | `qoi` 0.4.1 (`bytemuck`) | MIT OR Apache-2.0 | 2022-10-16 | `alloc` | yes |
+| `jpeg-xl` | `jxl-oxide` 0.12.6 (eleven `jxl-*` crates, `brotli-decompressor`, `tracing`) | MIT OR Apache-2.0 (`brotli-decompressor`: BSD-3-Clause OR MIT) | 2026-05-29 | none: no `rayon` | no |
+| `flac` | `claxon` 0.4.3 | Apache-2.0 | 2020-08-09 | none | no |
+| `mp3` | `nanomp3` 0.2.0 (`nanomp3-core`) | MIT OR Apache-2.0 | 2026-09-30 | `alloc`: no layers I and II | yes |
+
+`symphonia`, the common Rust audio decoder, is MPL-2.0 and denied
+(ADR-0004 §7). `qoi` and `claxon` have had no release in years; each
+is small, its format is frozen, and `cargo deny` reports an advisory
+the week one is filed. A feature whose crate needs `std` turns on
+`shuyi-assets`' own `std`; the `jpeg`, `qoi` and `mp3` ones also build
+without it (`thumbv7em-none-eabihf`). Pure Rust or `no_std` alone
+doesn't prove a compressed track fits a handheld's time to decode it.
+
+**What each feature adds to a web build:** the bytes of a
+`wasm32-unknown-unknown` release build (the workspace's profile: thin
+LTO, one codegen unit, stripped; before `wasm-opt`) of a library that
+decodes every kind through `Formats::standard()`, beside the same
+library with no feature on (674,911 bytes), measured on 2026-11-22.
+
+| Feature | Bytes added | KiB |
+| ------- | ----------: | --: |
+| `jpeg` | 144,767 | 141 |
+| `webp` | 191,661 | 187 |
+| `qoi` | 10,347 | 10 |
+| `jpeg-xl` | 1,668,481 | 1,629 |
+| `flac` | 17,124 | 17 |
+| `mp3` | 55,639 | 54 |
+| all six | 2,073,029 | 2,024 |
+
+JPEG XL costs the most by far: its decoder renders every coding tool
+the format has. A game that ships to the web and has few JPEG XL files
+saves more by converting them to WebP or PNG than they save it. FLAC
+and MP3 read only headers here: decoding their samples
+(`audio::decode_to_wav`, ticket 2234) adds to these numbers, unmeasured.
+
+### Sound effects (`.sfx.ron`)
+
+A sound effect is a few numbers in a text file (ticket 2225, ADR-0144),
+behind the `sfx` feature of `shuyi-assets`: no dependency, and it builds
+without `std`. The game renders it once, as it loads it, to a 16-bit
+mono WAV at 44.1 kHz, so a new game has sounds with no audio file. A
+manifest names it like any sound file:
+
+```ron
+(id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
+```
+
+```ron
+// select: a note that jumps up a fifth, for a choice made.
+(
+    wave: Square(duty: 50),
+    hz: 660,
+    hold_ms: 70,
+    fade_ms: 60,
+    volume: 35,
+    step: (at_ms: 40, percent: 150),
+)
+```
+
+| Field | What it is | Range | Left out |
+| ----- | ---------- | ----- | -------- |
+| `wave` | `Square(duty: N)` (high `N` percent of each cycle), `Triangle`, `Saw`, `Sine` or `Noise` (a new random level every half cycle) | duty 1 to 99 | needed |
+| `hz` | the pitch at the start, in hertz | 20 to 12 000 | needed |
+| `to_hz` | the pitch at the end: it slides in a straight line | 20 to 12 000 | `hz` |
+| `attack_ms` | the loudness rises from nothing for this long | | 0 |
+| `hold_ms` | then holds | | needed |
+| `fade_ms` | then falls to nothing | | needed |
+| | the three together, the sound's length | 1 to 5 000 ms | |
+| `volume` | how loud, in percent, as a cue's volume | 0 to 100 | needed |
+| `vibrato` | `(hz: N, percent: P)`: the pitch wobbles `N` times a second by `P` percent of itself | 1 to 50 each | none |
+| `step` | `(at_ms: T, percent: P)`: from `T` on, the pitch is times `P` / 100 (a coin's jump up is 133) | `T` inside the length, `P` 10 to 400, the pitch it reaches 12 000 at most | none |
+| `seed` | the noise's luck | any | 0 |
+
+- **Checked.** A field the format doesn't know, or a number out of its
+  range, is an error on its field's line: `cargo shuyi check` reports
+  it in the manifest's problem for the sound, as `sound "ui_select":
+  files/sfx/select.sfx.ron: line 3: hz 30000 is over 12000`.
+- **Two kinds**, as a picture is two: `sfx::SfxDefRon` reads the numbers
+  (`SfxDef`) and writes them back (`sfx::to_text`); `sfx::SfxRon` reads
+  the `Sound` it renders to. Only a name that ends in `.sfx.ron` is a
+  sound, so another RON file among the sounds is an error that says so.
+  `shuyi import x.sfx.ron --kind "sound effect" --print` prints its text;
+  without `--kind` it reads as both kinds, and says so.
+- **Rendered through the sound hook.** `audio::playable(name, bytes)`
+  gives a `.sfx.ron`'s WAV, and every other file as it is: `run_game`'s
+  sound files go through it, and a game's own hook should too.
+  `audio::decode_to_wav` renders one as well, beside FLAC and MP3, so the
+  shared player plays one a hook passed raw, and the Playdate's export
+  bakes it to ADPCM like any WAV.
+- **The same bytes everywhere.** The render is integers only
+  (`sfx::render`), so a file gives the same samples on every platform;
+  the presets' WAV hashes are golden rows (`tests/golden/sfx.ron`). A
+  number out of range is clamped before rendering, so nothing overflows.
+- **Presets**: `sfx::PRESETS` are `blip`, `tick`, `select`, `cancel`,
+  `coin`, `jump`, `hit`, `explosion`, `power_up` and `laser`, as files
+  (`sfx::preset_source`). `sfx::preset(name, seed)` reads one; a seed
+  other than 0 moves its pitches by up to 10 % and its `hold_ms` by up to
+  20 %, so a cue's variants can be a few seeds of one preset.
+- **The feature is the game's.** A game turns `sfx` on in its own
+  `Cargo.toml`, as the templates do (`shuyi-assets = { workspace = true,
+  features = ["sfx"] }`). `shuyi-cli` turns it on for itself, so `cargo
+  shuyi check` passes without it; only the game's own load then fails,
+  with `a .sfx.ron sound needs the sfx feature of shuyi-assets`.
+- **The pack** keeps a `.sfx.ron` as its own bytes, as any sound
+  ([The pack](#the-pack)): it is rendered after it is read.
+
 ### The kinds of ADR-0007 §1
 
 | Kind | Type |
@@ -349,7 +610,7 @@ What each one reads:
 | `TileMap` | `grid_map::GridMap<T, F>` for the grid kit's `.map`; Tiled's and LDtk's layered map is ticket 1124's, with both as formats |
 | `Tileset` | `tileset::TerrainTiles`; how a game writes its tiles is its own format |
 | `Font` | `font::FontAtlasDef` |
-| `Sound`, `MusicTrack` | `audio::Sound`, `audio::MusicTrack` |
+| `Sound`, `MusicTrack` | `audio::Sound`, `audio::MusicTrack`; a sound effect's numbers are `sfx::SfxDef` |
 | `DialogueScene` | `dialogue::DialogueFile<D>`: the scenes of one file |
 | `LanguagePack` | `lang::LangPack` |
 | `Cinematic` | `cinematic::CinematicFile<S, P>`: a file as written |

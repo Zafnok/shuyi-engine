@@ -41,7 +41,7 @@ use crate::dialogue::text_box::{
 };
 use crate::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use crate::frame::color::EngineColor;
-use crate::frame::console::ConsoleSpec;
+use crate::frame::console::{ConsoleSpec, ScaleMode};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
 use crate::frame_cap::FrameCap;
 use crate::game::{Game, GameHooks, ScreenHook};
@@ -144,6 +144,9 @@ impl Default for File {
 
 impl GameSettings for Prefs {
     type Theme = Theme;
+
+    /// Not the engine's default, so a test tells the two apart.
+    const DEFAULT_SCALE: ScaleMode = ScaleMode::Fit;
 
     fn to_ron(s: &Settings<Self>) -> String {
         let file = File {
