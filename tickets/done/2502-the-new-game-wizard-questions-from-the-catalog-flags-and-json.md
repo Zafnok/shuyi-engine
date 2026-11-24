@@ -116,8 +116,10 @@ signs off on.
 - **The skill pack:** its `shuyi-new-game` skill calls `--questions
   --json`, so it is 3424's.
 - **Docs:** `docs/templates.md` (2501) gets a section on the wizard and
-  its flags. If 2004 is done, each direction guide names the answers
-  that start it.
+  its flags. **From 2004 (done):** each ready direction guide's *What
+  starts it* (`docs/guides/`, today `top-down-grid.md` alone) names the
+  wizard's answers and the `shuyi new … --no-input` command, in place of
+  `--template grid` alone.
 - **Either order with 2206** (parked: MIDI playback and its
   `music-midi` part): if 2206 is done, a test makes `shuyi new demo
   --no-input --music midi` and checks that the game builds and plays the

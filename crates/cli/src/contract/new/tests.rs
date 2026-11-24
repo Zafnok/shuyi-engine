@@ -108,13 +108,17 @@ fn the_engines_docs_are_those_of_the_engine_the_game_builds_with() {
         engine_docs(&at("abc1234"), None),
         "- its rules: [`AGENTS.md`](https://github.com/Zafnok/shuyi-engine/blob/abc1234/AGENTS.md)\n\
          - its book, in Markdown: [`site/content/learn`](https://github.com/Zafnok/shuyi-engine/tree/abc1234/site/content/learn), \
-         whose code is in `site/snippets/` at the same commit"
+         whose code is in `site/snippets/` at the same commit\n\
+         - its guides, which kits and modules go with each kind of game: \
+         [`docs/guides`](https://github.com/Zafnok/shuyi-engine/tree/abc1234/docs/guides)"
     );
     assert_eq!(
         engine_docs(&checkout, Some("D:/e")),
         "- its rules: `D:/e/AGENTS.md`\n\
          - its book, in Markdown: `D:/e/site/content/learn/`, whose code is in \
-         `D:/e/site/snippets/`"
+         `D:/e/site/snippets/`\n\
+         - its guides, which kits and modules go with each kind of game: \
+         `D:/e/docs/guides/`"
     );
 }
 

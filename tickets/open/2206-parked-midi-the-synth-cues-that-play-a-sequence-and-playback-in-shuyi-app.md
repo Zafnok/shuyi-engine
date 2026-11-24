@@ -82,9 +82,9 @@ whether it is what you meant by MIDI sound.
   and lets the player change its tempo and mute a track through actions
   (never keys: the `input-actions` skill). It has a Harness test, a
   replay test, and a `frame-png` picture (ADR-0009 §4).
-- **The guides.** **Either order with 2004:** if 2004 is done, each
-  direction guide's "modules" list gains MIDI as an option for music;
-  if not, nothing to do (2004 adds it when it writes the guides).
+- **The guides.** **From 2004 (done):** each ready direction guide's
+  *What it uses* (`docs/guides/`, today `top-down-grid.md` alone) gains
+  MIDI (`shuyi-midi`) as an option for music.
 
 **From 2343 (done):** a rule that lowers `music` lowers a sequence cue
 in `music` too, through the gains it already plays at (2343 multiplies

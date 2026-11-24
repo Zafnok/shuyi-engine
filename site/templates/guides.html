@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "book-macros.html" as book %}
+
+{#- The guides' landing page (ADR-0090 §1, ticket 2004): `cargo xtask
+    site-data` copies it from docs/guides/README.md, which lists the guides
+    in its text, then the pages before and after it in the book's order,
+    under the reader's filter (`book::filter`), with the book's contents and
+    its headings beside it, as a project's landing page has. -#}
+{% block head %}{{ book::script() }}{% endblock head %}
+
+{% block main_class %} book-wide{% endblock main_class %}
+
+{% block content %}
+{{ book::book_open(current=section.relative_path, toc=section.toc) }}
+<article class="prose" id="book-text">
+  {{ book::where(p=section) }}
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+</article>
+{{ book::pager(current=section.relative_path) }}
+{{ book::book_close(toc=section.toc) }}
+{% endblock content %}

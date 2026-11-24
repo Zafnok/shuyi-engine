@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2003", "2802", "2810"]
 nick_input: sign-off
-completed:
+completed: 2026-11-24
 ---
 
 # 2004 — Guides: one per direction, one per move
@@ -161,13 +161,13 @@ to do (2503 links the guides).
 
 ## Acceptance criteria
 
-- [ ] Every answer the check covers in `docs/modules.ron` has a guide,
+- [x] Every answer the check covers in `docs/modules.ron` has a guide,
       and the check fails on a fixture without one.
-- [ ] The top-down grid guide's code runs (it is a doc test, or taken
+- [x] The top-down grid guide's code runs (it is a doc test, or taken
       from `hello-grid`'s tests).
-- [ ] The guides are on the docs site.
-- [ ] Nick's sign-off is recorded in the Completion notes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The guides are on the docs site.
+- [x] Nick's sign-off is recorded in the Completion notes.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -175,3 +175,79 @@ to do (2503 links the guides).
 - Doc test: the top-down grid guide's code.
 
 ## Completion notes
+
+**Done.**
+
+- `docs/guides/`: the README (how to choose a direction, the concerns in
+  plain words, what each guide holds, the list), `top-down-grid.md` in
+  full with its *In real time (planned)* section, and 17 planned pages:
+  `top-down-free`, `isometric`, `side-view`, `hex-grid`,
+  `dungeon-crawler`, `first-person`, `third-person`, `top-down-3d`,
+  `hd-2d`, `rts`, `visual-novel`, `mystery`, `roguelike`, `party-rpg`,
+  `action-rpg`, and the move guide `top-down-free-to-top-down-grid`.
+  None of 1125, 1126, 1127, 2117, 2502, 2503, 2206 and 2739 was done, so
+  each took the *if not* branch.
+- Each guide starts with its facts, `- **Covers:**` (or `- **Move:**`),
+  `- **Status:**` and `- **Tickets:**`, which the check reads
+  (`crates/xtask/src/guides.rs`).
+- The check, in `cargo xtask check-modules`: a guide for every answer of
+  `perspective` and `kind`, and of `world-drawing` but `flat`; every
+  answer a guide names in `docs/modules.ron`; every relative link there;
+  every ticket named open or done, a planned guide naming an open one;
+  each guide linked from the README; and a guide with Rust included as a
+  doc test. 20 unit tests on fixtures, and one over the repository's own.
+- The doc test: `crates/shuyi/src/lib.rs` includes `top-down-grid.md`
+  under `#[cfg(doctest)]` (`TopDownGridGuide`), so `cargo test -p shuyi
+  --doc` runs its Rust.
+- The book: `cargo xtask site-data`, which `pages.yml`, CI's `site` job,
+  the local `site` gate and `book-pad` already run before Zola, copies
+  the guides into `site/content/learn/book/guides/` (never committed):
+  the README as `_index.md` (new template `guides.html`), each guide a
+  page weighted in the README's order, links between guides made `@/`
+  links and the others links to GitHub. `{ section = "guides" }` follows
+  the chapters in the book's `parts`, and Learn has a *Guides* heading.
+  `llms` passes: `llms-full.txt` is 343,164 bytes of its 400,000.
+- `skills/shuyi-new-game` sends an agent to the direction guide before it
+  picks a template; a new game's `AGENTS.md`, at a commit or in a
+  checkout, now lists the engine's `docs/guides/` (at `main` it already
+  had `llms.txt`, which holds them).
+- `docs/README.md`: a row for the guides under *People making games*,
+  and the `27xx` block reads them. `tickets/TEMPLATE.md` has the guides'
+  acceptance line. `changes.yml` counts `docs/guides/**` as code (the
+  `modules` and `test` jobs read them).
+
+**Deviations.**
+
+- Ticket 39 days old: re-checked. `docs/modules.ron` gives `top-down`
+  the tickets 1120 and 1122, `rts` 2707, `visual-novel` 2721, `mystery`
+  2727, `roguelike` 2118 and 2119, `dungeon-crawler` 2741, `party-rpg`
+  2745 and `action-rpg` 2756: each planned page names those and the
+  ticket that writes it in full. No module README exists for the default
+  crates, so the guides link their folders.
+- Learn's heading went in `site/content/learn/_index.md`, Learn's text,
+  not `learn.html`, which only adds the API list after it.
+- `site/check-build.sh` bars fenced Rust in the book (its code comes from
+  `site/snippets/`). The guides are excepted: they are read on GitHub
+  too, where no shortcode runs, and their Rust is a doc test instead.
+- The docs map's rule 4 keeps tickets out of what people making games
+  read. The guides name tickets because this ticket asks for it, as the
+  catalog (`docs/modules.md`) does; the README says what a ticket is.
+- No ticket writes `party-rpg.md` in full: its page says so, and names
+  2745–2752.
+
+Behaviour: shuyi-cli: `shuyi new` with `--engine-rev` or
+`--engine-path` writes a line more in the game's `AGENTS.md`, its
+engine's guides (`docs/guides/`). Searched the game: `gh search code
+--repo Zafnok/visions-of-shuyi 'its book, in Markdown'` and
+`'engine_docs'`, no hits.
+
+No break: `TopDownGridGuide` is built only under `cfg(doctest)`.
+
+Game: nothing to adopt, the game names none of this.
+
+Size: 1,580 counted lines, not split: the check fails until every guide
+it wants exists, so the 18 guides (about 580 lines of docs) and the check
+land together, and the copy into the book (about 130 lines) reads them
+with the check's own parser and is this ticket's "on the docs site".
+
+Nick's sign-off, 2026-11-24: he read `top-down-grid.md` and `side-view.md` and answered "Yes, signed off": a new developer would know where to start.
