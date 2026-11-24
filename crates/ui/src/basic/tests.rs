@@ -148,11 +148,7 @@ fn an_audio_manifest_in_the_bundle_is_read_with_its_sounds() {
         ("palette.ron", PALETTE),
         ("sfx/beep.wav", BEEP),
     ];
-    let data = Data::load(bundle(WITH_AUDIO), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
-    let sounds = &data.audio_manifest().sounds;
-    assert_eq!(sounds["ui_move"].files, ["sfx/beep.wav"]);
-    assert_eq!(data.audio_manifest().music_fade_ms, 500);
-    // Its sound file missing is an error of the manifest, among the rest.
+    // The same, with no keymap and no sound file.
     static NO_SOUND: &[(&str, &[u8])] = &[
         ("audio.ron", AUDIO),
         ("en.ron", EN),
@@ -160,6 +156,11 @@ fn an_audio_manifest_in_the_bundle_is_read_with_its_sounds() {
         ("font/atlas.ron", ATLAS_RON),
         ("palette.ron", PALETTE),
     ];
+    let data = Data::load(bundle(WITH_AUDIO), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
+    let sounds = &data.audio_manifest().sounds;
+    assert_eq!(sounds["ui_move"].files, ["sfx/beep.wav"]);
+    assert_eq!(data.audio_manifest().music_fade_ms, 500);
+    // Its sound file missing is an error of the manifest, among the rest.
     let errors = Data::load(bundle(NO_SOUND), CONSOLE, NO_OWN).unwrap_err();
     assert_eq!(
         files_named(&errors),

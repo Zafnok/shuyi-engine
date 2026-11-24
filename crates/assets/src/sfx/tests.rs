@@ -316,10 +316,12 @@ fn a_definition_out_of_range_renders_bounded() {
         at_ms: u32::MAX,
         percent: u16::MAX,
     });
-    assert!(!problems(&wild).is_empty());
+    let found = problems(&wild);
+    assert!(!found.is_empty(), "{found:?}");
     assert_eq!(render(&wild).len(), 220_500);
     let silent = SfxDef::new(Wave::Sine, 440, 0, 0, 100);
-    assert!(render(&silent).is_empty());
+    let none = render(&silent);
+    assert!(none.is_empty(), "{none:?}");
 }
 
 #[test]

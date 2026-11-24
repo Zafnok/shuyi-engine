@@ -519,7 +519,7 @@ fn one_line(error: &ContentError) -> String {
 /// in one line.
 fn read(bytes: &[u8]) -> Result<SfxDef, String> {
     let source = core::str::from_utf8(bytes).map_err(|_| "not valid UTF-8".to_owned())?;
-    from_source("", source).map_err(|errors| errors.first().map(one_line).unwrap_or_default())
+    from_source("", source).map_err(|errors| errors.first().map_or_default(one_line))
 }
 
 /// A `.sfx.ron` file's `bytes` rendered to a WAV ([`render`], [`to_wav`]),
