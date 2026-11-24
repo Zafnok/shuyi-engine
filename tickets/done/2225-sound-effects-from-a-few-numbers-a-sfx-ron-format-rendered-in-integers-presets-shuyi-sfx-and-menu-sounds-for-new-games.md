@@ -507,7 +507,7 @@ number, which adds them.
 
 **What was done.** Steps 1 to 6 and 9, split at the ticket's own point:
 
-- ADR-0143. `shuyi_assets::sfx` behind the new `sfx` feature (no
+- ADR-0144. `shuyi_assets::sfx` behind the new `sfx` feature (no
   dependency, builds without `std`): `SfxDef` (kind `"sound effect"`,
   ADR-0039 kind 2: `#[non_exhaustive]`, `SfxDef::new`), `Wave`
   (`#[non_exhaustive]`), `Vibrato`, `Step`, `problems`, `from_source`

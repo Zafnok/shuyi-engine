@@ -1,4 +1,4 @@
-//! Sound effects from a few numbers (ticket 2225, ADR-0143): a `.sfx.ron`
+//! Sound effects from a few numbers (ticket 2225, ADR-0144): a `.sfx.ron`
 //! file is a wave, a pitch that may slide, step or wobble, and how the
 //! loudness rises, holds and fades. The game's sound hook renders it once,
 //! when it loads, to a 16-bit mono WAV at [`SAMPLE_RATE`]

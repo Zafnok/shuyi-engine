@@ -41,7 +41,7 @@ jpeg-xl = ["std", "dep:jxl-oxide"]
 flac = ["std", "dep:claxon"]
 mp3 = ["dep:nanomp3"]
 # `sfx`: sound effects written as a few numbers, `.sfx.ron` files rendered
-# to a WAV in integers as the game loads them (ticket 2225, ADR-0143):
+# to a WAV in integers as the game loads them (ticket 2225, ADR-0144):
 # `sfx::SfxDef`, the formats `SfxDefRon` and `SfxRon`, and ten presets.
 # No dependency and no `std`. A game turns it on in its own `Cargo.toml`.
 sfx = []

@@ -19,7 +19,7 @@ Split from 2225 at its own split point (its steps 7 and 8), with the
 two pieces of its step 9 that were written around `shuyi sfx`.
 
 - **From 2225 (done):** `.sfx.ron` sound effects are a format of
-  `shuyi-assets` behind the `sfx` feature (ADR-0143):
+  `shuyi-assets` behind the `sfx` feature (ADR-0144):
   `shuyi_assets::sfx` (`SfxDef`, `from_source`, `render`, `to_wav`,
   `to_text`, `problems`, the presets `PRESETS`, `preset(name, seed)` and
   `preset_source(name)`), the formats `SfxDefRon` (with `Encode`) and
@@ -122,7 +122,7 @@ chapter into a new ticket blocked by this one.
 
 ## Implementation steps
 
-1. Read ADR-0143, `crates/assets/src/sfx.rs`, `docs/formats.md`'s
+1. Read ADR-0144, `crates/assets/src/sfx.rs`, `docs/formats.md`'s
    *Sound effects*, `crates/cli/src/contract/doctor.rs` (an op without a
    project) and `docs/contract.md`, *The schemas*.
 2. Move Hello, Grid onto `.sfx.ron` files: its files, `src/sound.rs`,
