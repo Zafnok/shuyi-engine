@@ -920,8 +920,8 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
 | 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
 | 2602 | Host a turn-game preview as bounded actions and pixels, built and tested locally only; no paid hosting until Nick approves its measured cost (unparked 2026-11-23): its worker, a visitor's game in a process of its own (done 2026-11-23) |
-| 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, deadlines and expiry (after 2602) |
-| 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent (after 2609) |
+| 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
+| 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609) |
 | 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
 | 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
 
