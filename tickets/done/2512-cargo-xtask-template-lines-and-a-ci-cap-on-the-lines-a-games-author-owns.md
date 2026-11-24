@@ -329,13 +329,13 @@ Done 2026-11-23.
   | Folder | Code | Tests | Data | Setup |
   | ------ | ---- | ----- | ---- | ----- |
   | `blank` | 211 | 219 | 55 | 592 |
-  | `grid` | 889 | 659 | 86 | 673 |
+  | `grid` | 887 | 659 | 86 | 673 |
   | `examples/hello-grid` | 3570 | 4036 | 285 | 136 |
 
   - `blank`: 211, as *Context* counted (about 210): `title.rs` 73,
     `lib.rs` 61, `build.rs` 45, `stages.rs` 22, `main.rs` 5,
     `examples/tools.rs` 5. The cap is 220, 211 rounded up.
-  - `grid`: 889 against 916 for the old `templates/grid` (2026-10-20).
+  - `grid`: 887 against 916 for the old `templates/grid` (2026-10-20).
     2501's 521 was by 2511's rule, over fewer files.
   - `examples/hello-grid`: 3570 code and 4036 tests against 1871 and
     1799 on 2026-10-20. It grew over 48 commits since. Its biggest code
