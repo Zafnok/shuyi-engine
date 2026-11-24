@@ -72,9 +72,7 @@ None.
   - two parts declaring the same pair is `ComposeError::SameMove`.
 - **The new game's README** lists the stages and each move, and says
   for each door "this move has no guide yet" with a link.
-  **Either order with 2004:** if 2004 is done, the link goes to
-  `docs/guides/README.md`; if not, to ADR-0009 §5, and 2004 points it
-  at `docs/guides/README.md`.
+  **From 2004 (done):** the link goes to `docs/guides/README.md`.
 - **The new game's test**, `tests/moves.rs`, generated: a Harness test
   that starts the game, crosses every move in order with the actions the
   move needs (for a door, `travel`), and checks the top screen after

@@ -257,11 +257,11 @@ None.
     (this example; 2771 adds a template part); the kits it uses (the
     grid kit with `Topology::Hex`, the glyph skin with `with_hex_rows`);
     what looks related but isn't for it (isometric, 1126; square maps
-    drawn in bricks); the example to read first. **Either order with
-    2004:** if 2004 is done, replace its planned page and its check
-    passes. If not, write the file, and change 2004's scope in this PR
-    so it lists `hex-grid.md` as written by 2740, not as a planned
-    page;
+    drawn in bricks); the example to read first. **From 2004 (done):**
+    replace its planned page, with its facts under the title
+    (`docs/guides/README.md`, *Each guide*) set to `- **Status:**
+    ready`, and move it under *Built* in the README; `cargo xtask
+    check-modules` checks it;
   - **the catalog:** set the `hex-grid` answer in `docs/modules.ron`
     to ready (2003 wrote it parked).
 - **What changes for the game:** additive. `Projection` gains a
@@ -327,8 +327,8 @@ None.
 - [ ] The example's playthrough, bot, replay and `frame-png` pictures
       pass in CI, and CI's `wasm` job builds its web build and runs its
       `check --target all`.
-- [ ] `docs/guides/hex-grid.md` exists, and 2004's guide check passes
-      if 2004 is done.
+- [ ] `docs/guides/hex-grid.md` is written in full, and `cargo xtask
+      check-modules` (2004's guide check) passes.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.
 

@@ -309,8 +309,8 @@ None.
   `docs/guides/top-down-grid.md` (2004): which part starts it, `TickSim`
   and `Every` against `TurnRules`, what not to use (`dt` in rules, a turn
   per tick), and `examples/snake` to read first. It replaces the planned
-  *In real time* section 2004 writes there. If 2004 isn't done, create
-  the file with this section, and 2004 writes the rest.
+  *In real time (planned)* section 2004 wrote there (**from 2004,
+  done**), and drops `2739` from the guide's `Tickets:` line.
 - **The skill** `shuyi-stage-arcade`, in ADR-0005 §2's form: a grid
   stage that steps in real time, with a worked example of contract
   operations that makes a game with `--template arcade`, runs it, and
