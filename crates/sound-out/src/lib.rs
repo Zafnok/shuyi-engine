@@ -33,6 +33,19 @@ pub mod convert {
 
 pub use sys::{HandOut, HandTo, handover};
 
+/// Raises the calling thread, a worker that keeps a stream ahead of the mix, above
+/// the game's thread and below the output's own: a worker of normal priority can
+/// wait for a core on a busy machine past what its ring holds, and the track stalls.
+/// Its decoding never keeps the mix waiting. Call it once, at the thread's start; it
+/// lasts as long as the thread. Whether it was raised: on Windows, to the highest
+/// priority of its class; elsewhere it isn't yet (ticket 3032), and says false.
+pub fn raise_worker() -> bool {
+    #[cfg(windows)]
+    return sys::raised::worker();
+    #[cfg(not(windows))]
+    false
+}
+
 /// The callback, shared with whichever stream is running now. Only one stream runs
 /// at a time, so its `try_lock` always gets it: it never waits.
 type Callback = Arc<Mutex<dyn FnMut(&mut [i16]) + Send>>;
@@ -308,6 +321,14 @@ mod tests {
         assert!(matches!(problem, Some(OutputError::Unavailable(_))));
         assert_eq!(output.rate(), 48_000);
         wait_for(&count, 0);
+    }
+
+    /// Off Windows a worker isn't raised yet (ticket 3032), and says so; on Windows
+    /// `sys.rs`'s tests say what it is raised to.
+    #[cfg(not(windows))]
+    #[test]
+    fn a_worker_off_windows_says_it_wasnt_raised() {
+        assert!(!raise_worker());
     }
 
     #[test]

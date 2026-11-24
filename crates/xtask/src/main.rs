@@ -17,7 +17,10 @@
 //! - `cargo xtask book-pad [--out <dir>] [--no-build]`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
+//! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
+//! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
+//! - `cargo xtask template-lines [<folder>...] [--json] [--check] [--summary <file>]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
@@ -44,10 +47,12 @@ mod compress;
 mod contract;
 mod devcontainers;
 mod docs;
+mod eval;
 mod exercises;
 mod flaky;
 mod gates;
 mod golden;
+mod guides;
 mod ids;
 mod layers;
 mod links;
@@ -63,6 +68,7 @@ mod site_data;
 mod skills;
 mod sound_parity;
 mod targets;
+mod template_lines;
 mod tickets;
 mod toolchain;
 mod tries;
@@ -120,7 +126,11 @@ usage:
       Check the modules against docs/modules.md and docs/modules.ron (ADR-0009):
       no default crate depends on one, each has a README, its metadata and a
       row, answers the concerns list, alternatives name each other, and each
-      feature of the shuyi crate names a row.
+      feature of the shuyi crate names a row. And the guides, docs/guides/
+      (ticket 2004): each answer of perspective, kind and world-drawing (but
+      flat) has one, each answer they name is in docs/modules.ron, their
+      links and tickets exist, a planned one names an open ticket, and the
+      README lists each.
   cargo xtask check-pins
       Check that every workflow's actions are pinned by commit SHA, one SHA per
       action, every template's workflows in .github/dependabot.yml, and the
@@ -158,6 +168,22 @@ usage:
       named, or of every <n>th from the <i>th: a verdict per step. The games
       build in target/skill-examples-build with no incremental cache, `shuyi
       new` in this repository's target folder, unless CARGO_TARGET_DIR is set.
+  cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]
+      Grade the game in <project> against an eval task (evals/tasks/, ticket
+      2524): each check through the tool contract or cargo, run in its folder,
+      and with --base (a fresh `shuyi new` of the task's template and name)
+      its lines over it, by `git diff --no-index`. Writes <file> (by default
+      eval-result.json). Exits 0 when every check passed, 1 when one failed,
+      2 when it couldn't grade.
+  cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]
+      Grade a task's reference solution, or with --all every task's that has
+      one (and list the ones that wait), with eval-grade, over a base: two
+      games `shuyi new` makes in target/eval/, one the reference is laid over
+      (a whole project is graded where it is), the other the base. Writes
+      <dir>/<id>.json (by default eval-results/). With --template-only, grade
+      the plain template instead, to show the checks can fail. The games build
+      in target/eval-build with no incremental cache unless CARGO_TARGET_DIR
+      is set. Exits as eval-grade, its worst over the tasks.
   cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, a fixed reference build, and
@@ -167,6 +193,14 @@ usage:
       --summary, append the table's Markdown to <file>; with --out, write the
       JSON to <file>. With --count-only, only count the crates
       (and hold the count to the budget): seconds, not minutes.
+  cargo xtask template-lines [<folder>...] [--json] [--check] [--summary <file>]
+      Count the lines a game's author owns (ticket 2512): code, tests, data and
+      setup, in the game the template makes for each short name (`blank`,
+      `grid`, composed, none written) and each folder under examples/, or the
+      short names or game folders given. With --json, every file's path, kind
+      and lines too; with --summary, append the table's Markdown to <file>.
+      With --check, fail when the capped template's code is over
+      tools/line-budget.ron's cap, or 10 or more under it.
   cargo xtask gates [--base <rev>] [--fast] [--list]
       Run the local gates the diff from <rev> (by default origin/main's merge
       base) needs, fast to slow, stopping at the first failure (ticket 2054).
@@ -233,6 +267,9 @@ usage:
       are in tickets/done/, In progress when some are, Planned when none is,
       and its link text when it has none. Fails on a card with both `tickets`
       and `status`, or naming a ticket in neither tickets/open/ nor done/.
+      Then copy docs/guides/ into <dir>/content/learn/book/guides/ (ticket
+      2004), the README as its _index.md, with front matter and the links
+      made the site's.
   cargo xtask tutorial-tries [--check] [<name>...]
       Render the tutorial's and the book's pictures from
       site/tutorial/tries.toml (tickets 2818, 2819), or those named: each game
@@ -297,7 +334,11 @@ fn main() -> ExitCode {
             report("check-targets", &targets::run(&root), &[])
         }
         Some("check-modules") if args.len() == 1 => {
-            report("check-modules", &modules::run(&root), &[])
+            // The modules, then the guides against the same concerns
+            // (ticket 2004).
+            let mut errors = modules::run(&root);
+            errors.extend(guides::run_repo(&root));
+            report("check-modules", &errors, &[])
         }
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         Some("check-toolchain") if args.len() == 1 => {
@@ -311,7 +352,18 @@ fn main() -> ExitCode {
         Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
+        Some("eval-grade") => ExitCode::from(eval::grade::command(
+            &root,
+            &args[1..],
+            &script::System::default(),
+        )),
+        Some("eval-reference") => {
+            let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
+            let (maker, runner) = skills::runners(&root, eval::reference::BUILD, env_target);
+            ExitCode::from(eval::reference::command(&root, &args[1..], &maker, &runner))
+        }
         Some("compile-times") => compile_times(&root, &args[1..]),
+        Some("template-lines") => template_lines(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),
         Some("trim-targets") => trim_targets(&root, &args[1..]),
@@ -481,7 +533,8 @@ fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let (maker, game) = skills::runners(root, std::env::var_os("CARGO_TARGET_DIR").is_some());
+    let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
+    let (maker, game) = skills::runners(root, skills::BUILD, env_target);
     let outcome = skills::run(root, &skills::games_dir(root), &options, &maker, &game);
     eprint!("{}", outcome.report);
     report("skill-examples", &outcome.errors, &[])
@@ -559,6 +612,71 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         verdict.warnings.extend(found.warnings);
     }
     report("compile-times", &verdict.errors, &verdict.warnings)
+}
+
+fn template_lines(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = template_lines::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let mut all = match template_lines::run(root, &options) {
+        Ok(all) => all,
+        Err(e) => return report("template-lines", &[e], &[]),
+    };
+    let mut errors = Vec::new();
+    if options.check {
+        let file = root.join(template_lines::BUDGET);
+        let budget = match std::fs::read_to_string(&file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| template_lines::parse_budget(&text))
+        {
+            Ok(budget) => budget,
+            Err(e) => return report("template-lines", &[format!("{}: {e}", file.display())], &[]),
+        };
+        let capped = template_lines::Options {
+            folders: vec![budget.template.clone()],
+            ..template_lines::Options::default()
+        };
+        match template_lines::run(root, &capped) {
+            Ok(counts) => {
+                for counts in &counts {
+                    errors.extend(template_lines::check(counts, &budget));
+                }
+                // The capped template is in the table, whatever was given.
+                if !all.iter().any(|c| c.folder == budget.template) {
+                    all.splice(0..0, counts);
+                }
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    let shown = if options.json {
+        template_lines::json(&all)
+    } else {
+        template_lines::table(&all)
+    };
+    // The verdict stands even if the table can't be printed.
+    let _ = writeln!(std::io::stdout().lock(), "{}", shown.trim_end());
+    if let Some(file) = &options.summary {
+        let written = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file)
+            .and_then(|mut f| {
+                f.write_all(
+                    format!(
+                        "{}
+",
+                        template_lines::markdown(&all)
+                    )
+                    .as_bytes(),
+                )
+            });
+        if let Err(e) = written {
+            errors.push(format!("{}: {e}", file.display()));
+        }
+    }
+    report("template-lines", &errors, &[])
 }
 
 fn gates(root: &Path, args: &[String]) -> ExitCode {
@@ -663,7 +781,9 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    let errors = site_data::run(root, &options).err().unwrap_or_default();
+    // The feature cards' statuses, then the book's guides (ticket 2004).
+    let mut errors = site_data::run(root, &options).err().unwrap_or_default();
+    errors.extend(guides::write_site(root, &options.site).err());
     report("site-data", &errors, &[])
 }
 

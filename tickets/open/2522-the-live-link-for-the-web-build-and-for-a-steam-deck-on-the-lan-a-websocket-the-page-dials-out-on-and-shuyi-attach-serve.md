@@ -150,6 +150,11 @@ None.
     `SHELL_NOTICES` (`crates/cli/src/web.rs`), the table of the shell's
     files, as the engine's own, beside `gamepad.js` (its test fails
     until it does).
+  - **Either order with 3346:** if 3346 is done, `net.js` gets a row in
+    `crates/app/WORKAROUNDS.md`'s plugin table (`cargo xtask
+    check-pins` fails without one), and it passes strings and bytes at
+    a pointer and a length, never as `sapp_jsutils` objects; if not,
+    nothing to do (3346 lists the plugins that exist then).
   - **`crates/app/src/web_socket.rs`** (wasm32 only): the `extern "C"`
     declarations, the second file with `#[allow(unsafe_code)]` after
     `pads/web.rs`. The functions that take a pointer are `unsafe fn`,

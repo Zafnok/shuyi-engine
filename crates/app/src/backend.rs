@@ -1,6 +1,7 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
-//! controllers, the window's focus ([`focus`](crate::focus)), its own
+//! controllers, the mouse and touches ([`pointer`](crate::pointer)), the
+//! window's focus ([`focus`](crate::focus)), its own
 //! shortcut and close button, the files dropped on it
 //! ([`drops`](crate::drops)), the OS's data
 //! folder or the browser's `localStorage`, the files the game hands the
@@ -25,7 +26,7 @@ use std::borrow::Cow;
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
-use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_assets::format::{DecodeWatch, Decoded, Formats, watch_decodes};
 #[cfg(target_arch = "wasm32")]
 use shuyi_platform::ChosenFile;
 use shuyi_platform::audio::player::{Player, PlayerDevice};
@@ -34,6 +35,7 @@ use shuyi_platform::{
     DisplayInfo, Frame, Look, Offered, Platform, Show, Storage, SystemEvent, TextInput,
 };
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame::console::{ConsoleSpec, ScaleMode, place};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
@@ -47,7 +49,8 @@ use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
 use crate::player_files::{self, PlayerFiles};
-use crate::render::{Renderer, color, decode, upload};
+use crate::pointer::{self, PointerReader};
+use crate::render::{Renderer, Stretch, color, decode, physical, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
 #[cfg(windows)]
@@ -77,6 +80,8 @@ pub(crate) struct Macroquad {
     /// The loading card's picture and its path, once decoded (`None` if it
     /// doesn't decode).
     card_picture: Option<(String, Option<Texture2D>)>,
+    /// What a card picture shown at a fraction is drawn into first.
+    card_stretch: Stretch,
     /// Whether the window fills the screen: it starts as it opened.
     fullscreen: bool,
     /// Whether the next frame tells miniquad again that the window fills
@@ -93,6 +98,9 @@ pub(crate) struct Macroquad {
     pads: Option<PadInput>,
     /// Whether the window has focus, from miniquad's events.
     focus: WindowFocus,
+    /// The mouse and touches, and the console of the last game frame
+    /// drawn, whose pixels they come in (none before the first).
+    pointer: (PointerReader, Option<(ConsoleSpec, ScaleMode)>),
     /// Whether the cursor shows over the window.
     cursor: IdleCursor,
     sound: Sound,
@@ -145,6 +153,7 @@ impl Macroquad {
             renderer: None,
             broken: None,
             card_picture: None,
+            card_stretch: Stretch::default(),
             fullscreen: opened.fullscreen,
             refresh_fullscreen: cfg!(windows) && opened.fullscreen,
             memory: WindowMemory::new(opened),
@@ -152,6 +161,7 @@ impl Macroquad {
             place: Place::default(),
             pads: None,
             focus: WindowFocus::default(),
+            pointer: (PointerReader::default(), None),
             cursor: IdleCursor::default(),
             sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
@@ -213,7 +223,6 @@ impl Macroquad {
             sounds,
             audio::platform_folder(sounds.music_dir),
             voice_dir,
-            miniquad::date::now().to_bits(),
         )
         .await;
         self.sound.set_player(player);
@@ -295,11 +304,12 @@ impl Macroquad {
         let files = self.files;
         let wanted = remakes(&self.changed, self.font_png, look.images);
         self.changed.clear();
+        let formats = renderer.formats();
         let fresh = decode_each(
             &wanted,
             self.font_png,
             |path| pictures::read(files, path),
-            decode,
+            |path, bytes| decode(formats, path, bytes),
             &mut self.picture_errors,
         );
         renderer.remake(fresh, look.font);
@@ -308,7 +318,13 @@ impl Macroquad {
     /// Draws a game frame with its look: the renderer is made the first
     /// time; if that fails the reason shows instead, until the font's
     /// picture changes.
-    fn draw_game(&mut self, buffer: &GlyphBuffer, background: Rgb, look: Option<Look<'_>>) {
+    fn draw_game(
+        &mut self,
+        frame: &Frame<'_>,
+        buffer: &GlyphBuffer,
+        background: Rgb,
+        look: Option<Look<'_>>,
+    ) {
         if self.broken.is_some() {
             if self.changed.iter().any(|path| path == self.font_png) {
                 self.broken = None;
@@ -340,7 +356,9 @@ impl Macroquad {
             Self::draw_errors(broken);
         } else if let Some(renderer) = &mut self.renderer {
             renderer.set_clear(background);
+            renderer.set_scale(frame.scale);
             renderer.draw(buffer);
+            self.pointer.1 = Some((buffer.spec(), frame.scale));
         }
     }
 
@@ -379,11 +397,16 @@ impl Macroquad {
     }
 
     /// Draws the loading card: its line in macroquad's built-in font, or its
-    /// picture at the largest whole scale that fits, centred; and under it
-    /// the load's `count` as a bar, in the card's ink ([`card_bar`]).
-    fn draw_card(&mut self, card: &shuyi_platform::Card, count: Option<(u32, u32)>) {
+    /// picture placed as the game's frame is (`scale`), centred; and under
+    /// it the load's `count` as a bar, in the card's ink ([`card_bar`]).
+    fn draw_card(
+        &mut self,
+        card: &shuyi_platform::Card,
+        count: Option<(u32, u32)>,
+        scale: ScaleMode,
+    ) {
         clear_background(color(card.background()));
-        let below = self.draw_card_face(card);
+        let below = self.draw_card_face(card, scale);
         if let Some(count) = count {
             let bar = card_bar((screen_width(), screen_height()), below, count);
             let ink = color(card.ink());
@@ -394,7 +417,7 @@ impl Macroquad {
     }
 
     /// Draws the card's line or picture: the window's row just under it.
-    fn draw_card_face(&mut self, card: &shuyi_platform::Card) -> f32 {
+    fn draw_card_face(&mut self, card: &shuyi_platform::Card, scale: ScaleMode) -> f32 {
         let middle = screen_height() / 2.0;
         match card {
             shuyi_platform::Card::Text { line, ink, .. } => {
@@ -409,14 +432,16 @@ impl Macroquad {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
                     let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
-                        .and_then(|png| upload(&png));
+                        .and_then(|bytes| upload(&Formats::standard(), path, &bytes));
                     if let Err(e) = &texture {
                         log::warn!(target: "assets", "loading card: {path}: {e}");
                     }
                     self.card_picture = Some((path.clone(), texture.ok()));
                 }
                 match &self.card_picture {
-                    Some((_, Some(texture))) => draw_centred(texture),
+                    Some((_, Some(texture))) => {
+                        draw_centred(texture, scale, &mut self.card_stretch)
+                    }
                     _ => middle,
                 }
             }
@@ -468,22 +493,48 @@ fn text_size() -> u16 {
     size
 }
 
-/// Draws `texture` centred at the largest whole scale that fits the window
-/// (at least 1): the window's row just under it.
-fn draw_centred(texture: &Texture2D) -> f32 {
-    let (w, h) = (texture.width(), texture.height());
-    let fit = (screen_width() / w)
-        .min(screen_height() / h)
-        .floor()
-        .max(1.0);
-    let (dw, dh) = (w * fit, h * fit);
-    let params = DrawTextureParams {
-        dest_size: Some(vec2(dw, dh)),
-        ..Default::default()
-    };
-    let (x, y) = ((screen_width() - dw) / 2.0, (screen_height() - dh) / 2.0);
-    draw_texture_ex(texture, x.floor(), y.floor(), WHITE, params);
-    y.floor() + dh
+/// Draws `texture` centred, placed as `scale` places a frame of its size
+/// in the window's physical pixels ([`place`]): at a whole scale straight
+/// in, at a fraction through `stretch`, as the game's frame is drawn. The
+/// window's row just under it, in logical pixels.
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+fn draw_centred(texture: &Texture2D, scale: ScaleMode, stretch: &mut Stretch) -> f32 {
+    let dpi = screen_dpi_scale();
+    // A texture's sides are whole pixels.
+    let picture = (texture.width() as u32, texture.height() as u32);
+    let placed = place(
+        scale,
+        picture,
+        physical((screen_width(), screen_height()), dpi),
+    );
+    let size = |px: u32| px as f32 / dpi;
+    if placed.is_whole(picture) {
+        let params = DrawTextureParams {
+            dest_size: Some(vec2(size(placed.w), size(placed.h))),
+            ..Default::default()
+        };
+        draw_texture_ex(
+            texture,
+            placed.x as f32 / dpi,
+            placed.y as f32 / dpi,
+            WHITE,
+            params,
+        );
+    } else {
+        stretch.draw(picture, placed, dpi, |_| {
+            let s = placed.draw_scale as f32;
+            let params = DrawTextureParams {
+                dest_size: Some(vec2(texture.width() * s, texture.height() * s)),
+                ..Default::default()
+            };
+            draw_texture_ex(texture, 0.0, 0.0, WHITE, params);
+        });
+    }
+    (placed.y as f32 + placed.h as f32) / dpi
 }
 
 /// `x` window pixels as a whole number.
@@ -542,14 +593,14 @@ impl Platform for Macroquad {
             self.switch_fullscreen(wanted);
         }
         match frame.show {
-            Show::Card(card) => self.draw_card(card, frame.loading),
+            Show::Card(card) => self.draw_card(card, frame.loading, frame.scale),
             Show::Errors(text) => Self::draw_errors(text),
             Show::Game {
                 buffer,
                 background,
                 look,
                 ..
-            } => self.draw_game(buffer, background, look),
+            } => self.draw_game(frame, buffer, background, look),
             _ => clear_background(BLACK),
         }
         if !self.picture_errors.is_empty() {
@@ -567,6 +618,8 @@ impl Platform for Macroquad {
         if let Some(pads) = &mut self.pads {
             out.extend(pads.poll(self.focus.is_focused()));
         }
+        let (reader, drawn) = &mut self.pointer;
+        out.extend(reader.events(*drawn, &pointer::read()));
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         out.append(&mut self.link_input);
     }

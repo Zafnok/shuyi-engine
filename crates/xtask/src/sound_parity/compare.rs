@@ -105,6 +105,9 @@ pub(crate) struct Log {
     pub(crate) warnings: Vec<String>,
     pub(crate) failed: Option<String>,
     pub(crate) done: bool,
+    /// The tracks the in-house feeder let stall, and by how many frames (ticket
+    /// 3320): beside a failure, whose it may be.
+    pub(crate) stalls: Vec<(String, u64)>,
 }
 
 /// A recording's two channels.

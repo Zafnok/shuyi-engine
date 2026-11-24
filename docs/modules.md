@@ -17,6 +17,9 @@ modules a game has on. A module turned on joins the game through
 - A **concern** is a question every game answers one way or another. A
   **direction** is the answers a stage picks, one per concern. The
   concerns and their answers are data, in [`modules.ron`](modules.ron).
+  `shuyi new` asks each concern but *Time* with its `question`, taking
+  one answer or many (its `pick`), and offers only its ready answers
+  ([`templates.md`](templates.md#the-wizards-questions)).
 - Two modules that answer the same concern are **alternatives**: they
   never drive the same thing in one stage. They can still share a game,
   in different stages, or on different things when their READMEs say
@@ -32,8 +35,9 @@ A row's name is its crate. A module's crate also says what it answers in
 its `Cargo.toml`, under `[package.metadata.shuyi]`. `cargo xtask
 check-modules` checks the two against each other: every crate outside
 the default engine has a row here, a README and its metadata; every
-answer it names is in `modules.ron`; alternatives name each other; and
-every feature of `shuyi` names a row.
+answer it names is in `modules.ron`; alternatives name each other;
+every feature of `shuyi` names a row; and every concern but *Time* has
+its `pick` and its `question`.
 
 ## Bodies and motion
 
@@ -96,9 +100,9 @@ a game turns them on in its own `Cargo.toml`.
 | Format | Serves | Status | Tickets |
 | ------ | ------ | ------ | ------- |
 | `shuyi-assets` dialogue formats | Yarn Spinner and Ink, beside `.dlg` | planned | 2202 |
-| `shuyi-assets` image and audio formats | JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature | planned | 2203 |
+| `shuyi-assets` image and audio formats | JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature: read by the registry, drawn by `shuyi-app` and `frame-png`, played (a FLAC or MP3 sound as a WAV in memory); the in-house backend's streamed tracks with 2275 | ready | 2203, 2234, 2275 |
 | `shuyi-assets` pack | `.shuyipak`, one indexed file of baked assets (always in) | ready | 2204 |
-| `shuyi-assets` `sfx` | `.sfx.ron` sound effects from a few numbers | planned | 2225 |
+| `shuyi-assets` `sfx` | `.sfx.ron` sound effects from a few numbers, rendered in integers as the game loads them, ten presets; the templates turn it on for their menu sounds | ready | 2225 |
 
 ## Platform backends
 

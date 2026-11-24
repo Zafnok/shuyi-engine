@@ -69,11 +69,12 @@ still mandatory on every required port; a CI build alone does not supply it.
 - **Either order with 3071:** if 3071 is done, update its actual CPAL
   library audit/package tests in `crates/cli/export/libraries.ron` and
   `docs/targets/desktop.md`; if not, nothing to do (3071 audits this path).
-- **Either order with 3320:** if 3320 is done, hold Linux and macOS to its
-  per-track stalled-frame counts: no stalled frame in their calibration runs, and
-  the `sound-feed` thread raised there where the system allows it without rights a
-  player lacks, or its ring sized to their measured margin; if not, nothing to do
-  (3320 covers the platforms that exist when it lands).
+- **From 3320 (done):** hold Linux and macOS to its per-track stalled-frame
+  counts (the probe's `streams` line, `stalled_frames` in a timing's metrics,
+  which fail both `underruns` cells): no stalled frame in their calibration runs,
+  and the `sound-feed` thread raised there where the system allows it without
+  rights a player lacks (`shuyi_sound_out::raise_worker`, which says false off
+  Windows today), or its ring sized to their measured margin (`lowest_margin`).
 - macOS default output on Apple silicon and Intel. CPAL's researched
   docs list macOS 14.2; Shuyi has no explicit OS floor. Verify deployment
   rather than declaring a regression or silently raising the minimum.

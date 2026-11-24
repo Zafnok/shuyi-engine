@@ -366,7 +366,7 @@ fn a_forbidden_path_fails_as_a_file_as_a_pack_entry_and_as_a_programs_text() {
         r#"(forbidden_paths: ["maps/future.ron"], allowed_files: ["maps/first.ron"],
             allowed_pack_entries: ["maps/first.ron"])"#,
     );
-    // As the text `include_dir!` keeps in a program, with either slash.
+    // As a path's text a program keeps, with either slash.
     for (name, text) in [
         ("disclosure-path-text", &b"maps/future.ron"[..]),
         ("disclosure-path-back", b"maps\\future.ron"),

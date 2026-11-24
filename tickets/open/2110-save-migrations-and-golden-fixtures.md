@@ -256,7 +256,7 @@ players keep after a patch.
   them. That is in version 1 of each form here, and in the `()` form's
   version 0; a fixture of an old save (`music_volume: 35, sound_volume:
   80`) reads as `music` at 85 and `sfx` at 97.
-- **Either order with the settings fields of 2333, 2340, 2349 and 3043,
+- **Either order with the settings fields of 3240, 2340, 2349 and 3043,
   and of the parked 2323, 2404 and 2408:** one that
   lands first is in version 1 of each form here, and in the `()`
   form's version 0. One that lands after raises the `VERSION` of each
@@ -311,6 +311,13 @@ players keep after a patch.
   `SaveHeader` doesn't read it).
 - Keeping the last good copy on every write, and flushed writes (3045).
 - Binary saves; cloud sync (3037).
+- **Either order with 2786:** if 2786 is done, add a section on the
+  migration chain and golden fixtures to `skills/shuyi-save/SKILL.md`
+  and its worked example, and a `save_migrate` recipe
+  (`examples/cookbook/examples/save_migrate.rs`, declared in its
+  `Cargo.toml`, with its row in `examples/cookbook/README.md`) that
+  shows one step; if not, nothing to do (2786 writes them from this
+  ticket's work).
 
 ## Implementation steps
 

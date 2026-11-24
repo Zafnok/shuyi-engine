@@ -81,6 +81,12 @@ None.
 - `docs/platform-backends.md`'s Harness paragraph (it says the
   `Speaker` stands in for the music player) says it plays two tracks in
   a crossfade.
+- **Either order with 3239:** if 3239 is done, each track the `Speaker`
+  keeps carries its own `from_ms` (from `MusicCommand::Start`),
+  `music_playing` adds it to that track's clock, and the crossfade test
+  gains a case where the new track starts at 2,000 ms; if not, nothing
+  to do (3239 adds `from_ms` to the `Speaker`'s one `started` track, and
+  this ticket keeps it on each track).
 
 **Out (do not do):**
 - any change to `MusicState`, `MusicSwitch` or `shuyi-app`'s player

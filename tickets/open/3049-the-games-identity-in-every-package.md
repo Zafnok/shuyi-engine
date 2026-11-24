@@ -262,7 +262,8 @@ None.
 - the Steam Deck (3012), since Steam shows its own art; store and
   library art;
 - mobile manifests (3015, parked);
-- a web app manifest, an install script, Flatpak and AppImage;
+- a web app manifest and an install script; Flatpak and AppImage are
+  3339, which reuses this ticket's `.desktop` file and hicolor icons;
 - the web shell's progress bar and error panel (3052), and its notices
   (3039);
 - an icon for hello-grid: an icon is art, and the engine's examples ship

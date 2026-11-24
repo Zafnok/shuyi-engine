@@ -98,6 +98,8 @@ fn audio() -> AudioManifest {
         length_ms: 10_000,
         credit: CreditRef::Own,
         group: None,
+        loop_start_ms: None,
+        loop_end_ms: None,
     };
     audio.music.insert("theme".to_owned(), theme);
     audio

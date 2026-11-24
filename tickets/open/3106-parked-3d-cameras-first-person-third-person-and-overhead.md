@@ -70,10 +70,12 @@ None.
     `shuyi-ui::input` here, quantized to `i16` per step in `TickInput`,
     with pointer lock in `shuyi-app` (macroquad's cursor grab, on
     desktop and the web);
-    **Either order with 3034:** if 3034 is done, lock the pointer the
-    way its ADR says a game asks for the grab (macroquad's
-    `set_cursor_grab` until the winit backend replaces macroquad); if
-    not, use macroquad's cursor grab, and 3034 plans keeping it.
+    **From 3034 (done):** a game asks for the grab through its frame,
+    as it asks for fullscreen (ADR-0136 §12): add a `cursor_grab: bool`
+    to the context, carried on `Frame`, and map it to macroquad's
+    `set_cursor_grab`. **Either order with 3327:** if 3327 is done, map
+    it on the winit backend too (`CursorGrabMode::Locked`, else
+    `Confined`); if not, nothing to do (3327 moves it to winit).
   - **From 3314 (done)** (the idle cursor): a locked pointer is never
     shown. Give its `CursorSeen` (`crates/app/src/window.rs`) a
     `locked: bool` (a fourth bool there: clippy's

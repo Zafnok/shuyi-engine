@@ -80,11 +80,11 @@ None.
   sprite draws it (`ImageTextures`, `crates/app/src/image_textures.rs`):
   a page is uploaded when it is first drawn, as a picture is, and again
   when it changes.
-  **Either order with 2234** (pictures in 2203's formats): if 2234 is
-  done, `crates/app/src/render.rs` has `upload_rgba(width, height,
-  rgba)`, which uploads pixels as a texture with the nearest filter:
-  upload a page with it. If not, write it there and upload pages with
-  it, and 2234 uploads its pictures with it.
+  **From 2234 (done):** `crates/app/src/render.rs` has
+  `upload_rgba(width, height, rgba)`, which uploads pixels as a texture
+  with the nearest filter, and every picture is uploaded through it
+  (from `render::pixels`, which reads 2203's formats too): upload a page
+  with it.
 - **In the raster** (`shuyi_ui::frame::raster`): atlas pages and inserted
   sprites are drawn as the window draws them, so `frame-png` keeps
   showing what players see. Add an atlas sprite and an inserted one to
@@ -95,10 +95,18 @@ None.
   gives `Atlas` and `AnimationSet` to 1123: `Atlas` is `atlas::Atlas`
   (2222), with Aseprite and TexturePacker as its formats in 1123, and
   `AnimationSet` is 2231's, whose Docs item names its type.
+- **Either order with 3229:** if 3229 is done, add the atlas pages to
+  `Renderer::forget_textures` (`crates/app/src/render.rs`), so a lost GPU
+  context drops them and they are packed again from the kept sources on
+  the next frame; if not, nothing to do (3229 adds the pages to its
+  forget path when it lands after this one).
 
 **Out (do not do):**
 - rotation or trimming of sprites in the packer;
-- the wgpu renderer (3034, parked).
+- the wgpu renderer (3325, parked). It refuses a texture past the
+  device's `max_texture_dimension_2d`, 2048 on WebGL 2 (ADR-0136 §3), so
+  the web's target profile gives a texture limit of 2048, not the
+  default 4096.
 
 ## Implementation steps
 

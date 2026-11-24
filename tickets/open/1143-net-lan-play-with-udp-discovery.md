@@ -46,7 +46,8 @@ None.
   - discovery is tested on loopback.
 
 **Out (do not do):**
-- NAT traversal (not needed on a LAN);
+- NAT traversal and encryption over the internet (2605 builds them on
+  this ticket's reliable layer; on a LAN they are not needed);
 - encryption on the LAN (documented as unencrypted).
 
 ## Implementation steps

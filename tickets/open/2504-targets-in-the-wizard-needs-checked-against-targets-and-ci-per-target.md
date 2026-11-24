@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
-blocked_by: ["2502", "3001", "3004"]
+blocked_by: ["2502", "3001", "3004", "3424"]
 nick_input: none
 completed:
 ---
@@ -46,6 +46,13 @@ None.
 
 ## Scope
 
+**From 2524 (done):** the eval's tasks (`evals/tasks/*.ron`) keep an
+`unmeasured` entry, `("a Playdate build", ["2504"])`, because the grid
+and blank templates list no `playdate` target. Once a new game can pick
+`playdate`, give a task's reference the target, add `playdate` to the
+task's `targets` if `cargo shuyi check --target playdate` passes on it,
+and drop the entry.
+
 **In:**
 - **A planned target's ticket.** 2502's targets question shows a
   `planned` profile with its ticket and refuses it by flag (ADR-0013
@@ -55,6 +62,11 @@ None.
   `dsi` profiles' too if 3017 is done (if not, 3017 writes them, its
   clause says so). A bare `Planned` still reads, so a game's own
   profile keeps loading.
+- **Either order with 3338:** if 3338 is done, `Status::Preview` gets
+  the same `tickets` field as `Planned` (`Preview(tickets: ["3011"])`
+  for `playdate`, `["3013"]` for `steam-deck`), and a bare `Preview`
+  still reads; if not, nothing to do (3338 gives `Preview` the field
+  when it adds the variant).
 - **The check**, in the composer, if 3017 is done: for each picked
   target, `capabilities_fit(profile, needs)` over the picked modules'
   `needs` (and the template parts' stage needs, if a part declares any).
@@ -116,7 +128,7 @@ None.
     the map when the game's files hold one);
   - `target-steam-deck`, when `steam-deck` is picked: if 3012 is done,
     its export in the matrix; if not, 3012 adds it (its scope says so).
-- **The JSON** of `--questions` (2502) gives each module's `needs` and
+- **The JSON** of `--questions` (3424) gives each module's `needs` and
   each target's capabilities, if 3017 is done, so an agent can explain a
   refusal before it happens. If not, 3017 adds them (its clause says
   so).

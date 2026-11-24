@@ -1,0 +1,3 @@
+# What `shuyi bench` and `bench --long` write here, as a game's dist/.
+/dist/
+/out.txt

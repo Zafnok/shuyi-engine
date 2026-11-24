@@ -113,6 +113,69 @@ fn a_deps_file_of_another_length_or_time_is_left() {
     fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
 
+/// A program at `debug/<file>` and its hard-linked twin at
+/// `debug/build/<package>/<hash>/out/<twin>`, cargo's build-dir layout
+/// (Rust 1.100), with no `deps/`.
+fn built_in_build_dir(dir: &Path, exe: &str, package: &str, twin: &str) -> (PathBuf, PathBuf) {
+    let _ = fs::remove_dir_all(dir.join("deps"));
+    let out = dir.join("build").join(package).join("9f110cbb8b53d455/out");
+    fs::create_dir_all(&out).unwrap();
+    let twin = out.join(twin);
+    fs::write(&twin, b"program").unwrap();
+    let exe = dir.join(exe);
+    fs::create_dir_all(exe.parent().unwrap()).unwrap();
+    fs::hard_link(&twin, &exe).unwrap();
+    (exe, twin)
+}
+
+#[test]
+fn a_twin_in_the_build_dir_layout_is_moved_too() {
+    let dir = scratch("build-dir");
+    let (exe, twin) = built_in_build_dir(&dir, "trpg-tools.exe", "trpg-tools", "trpg_tools.exe");
+    // Another package's program of the same length and time is no twin.
+    let other = dir.join("build/other/0123abcd/out/other.exe");
+    fs::create_dir_all(other.parent().unwrap()).unwrap();
+    fs::hard_link(&twin, &other).unwrap();
+    assert_eq!(twins(&exe, "trpg-tools"), std::slice::from_ref(&twin));
+    let running = dir.join(RUNNING);
+    assert_eq!(
+        move_aside(&exe, 7).unwrap(),
+        [
+            running.join("trpg-tools-7-0.exe"),
+            running.join("trpg-tools-7-1.exe")
+        ]
+    );
+    // A copy at both names, one file, as cargo links them.
+    fs::write(&exe, b"fresh").unwrap();
+    assert_eq!(fs::read(&twin).unwrap(), b"fresh");
+    assert!(other.exists());
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+#[test]
+fn an_examples_twin_in_the_build_dir_layout_is_moved_too() {
+    let dir = scratch("build-dir-example");
+    let (exe, twin) = built_in_build_dir(&dir, "examples/tools.exe", "my-game", "tools.exe");
+    assert_eq!(twins(&exe, "tools"), [twin]);
+    assert_eq!(move_aside(&exe, 7).unwrap().len(), 2);
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+#[test]
+fn a_build_dir_file_of_another_length_is_left() {
+    let dir = scratch("build-dir-other");
+    let exe = dir.join("shuyi.exe");
+    fs::write(&exe, b"program").unwrap();
+    let out = dir.join("build/shuyi-cli/0123abcd/out");
+    fs::create_dir_all(&out).unwrap();
+    fs::write(out.join("shuyi.exe"), b"an older build").unwrap();
+    fs::write(dir.join("shuyi.d"), b"deps").unwrap();
+    assert_eq!(move_aside(&exe, 7).unwrap(), Vec::<PathBuf>::new());
+    assert!(exe.exists());
+    assert!(!dir.join(RUNNING).exists());
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
 #[test]
 fn a_program_with_no_twin_is_never_moved() {
     let dir = scratch("installed");

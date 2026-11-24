@@ -17,7 +17,10 @@
 //! 4. two modules answering one concern where one's `alternatives` doesn't
 //!    name the other, unless the concern is `alternatives: false`;
 //! 5. a feature of the `shuyi` crate that names no catalog row (feature
-//!    `physics` is the row of `shuyi-physics`).
+//!    `physics` is the row of `shuyi-physics`);
+//! 6. a concern but `time` without the `pick` and the `question` `shuyi
+//!    new` asks it with (ADR-0013 §1), or whose `serves` names no answer
+//!    of `perspective`.
 //!
 //! [`check`] is a pure function over plain data; [`run`] feeds it the
 //! repository.
@@ -40,7 +43,7 @@ pub const CATALOG: &str = "docs/modules.md";
 const ADR: &str = "ADR-0009";
 
 /// The default engine's crates: no module, and none depends on one.
-pub const DEFAULT_CRATES: [&str; 7] = [
+pub const DEFAULT_CRATES: [&str; 9] = [
     "shuyi-core",
     "shuyi-assets",
     "shuyi-ui",
@@ -49,6 +52,10 @@ pub const DEFAULT_CRATES: [&str; 7] = [
     "shuyi-cli",
     // The heap counter, under both backends (ADR-0046 §9).
     "shuyi-alloc-count",
+    // A game's files embedded as a table (ADR-0138): under `shuyi-assets`'
+    // `files!` and `shuyi-cli`'s build script.
+    "shuyi-embed",
+    "shuyi-embed-macros",
 ];
 
 /// The members under `crates/` that are neither default crates nor
@@ -71,6 +78,12 @@ pub struct Concerns {
     pub concerns: Vec<Concern>,
 }
 
+/// The concern `shuyi new` doesn't ask: it follows from the perspectives.
+const NOT_ASKED: &str = "time";
+
+/// The concern whose answers a concern's `serves` names.
+const PERSPECTIVE: &str = "perspective";
+
 /// A concern, as the check reads it.
 #[derive(Debug, Deserialize)]
 pub struct Concern {
@@ -78,8 +91,26 @@ pub struct Concern {
     pub id: String,
     /// Whether two modules answering it must name each other.
     pub alternatives: bool,
+    /// How many answers a game picks.
+    #[serde(default)]
+    pub pick: Option<Pick>,
+    /// The words `shuyi new` asks it with.
+    #[serde(default)]
+    pub question: Option<String>,
+    /// The perspectives its answers are for.
+    #[serde(default)]
+    pub serves: Vec<String>,
     /// Its answers.
     pub answers: Vec<Choice>,
+}
+
+/// How many answers a concern takes.
+#[derive(Debug, Deserialize)]
+pub enum Pick {
+    /// One at most.
+    One,
+    /// Any number.
+    Many,
 }
 
 /// An answer, as the check reads it.
@@ -154,7 +185,10 @@ pub fn run(repo_root: &Path) -> Vec<String> {
 
 /// `docs/modules.ron`'s text, read.
 pub fn parse_concerns(text: &str) -> Result<Concerns, String> {
-    ron::from_str(text).map_err(|e| format!("{CONCERNS}: {e}"))
+    ron::Options::default()
+        .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME)
+        .from_str(text)
+        .map_err(|e| format!("{CONCERNS}: {e}"))
 }
 
 /// The names the catalog has rows for: the first `` `name` `` of the first
@@ -340,7 +374,54 @@ pub fn check(
             }
         }
     }
+    check_questions(concerns, &mut errors);
     errors
+}
+
+/// Rule 6: every concern but [`NOT_ASKED`] says how `shuyi new` asks it,
+/// and its `serves` names perspectives.
+fn check_questions(concerns: &Concerns, errors: &mut Vec<String>) {
+    let perspectives: Vec<&str> = concerns
+        .concerns
+        .iter()
+        .find(|c| c.id == PERSPECTIVE)
+        .map_or_default(|c| c.answers.iter().map(|a| a.id.as_str()).collect());
+    for concern in &concerns.concerns {
+        let missing: Vec<&str> = [
+            ("pick", concern.pick.is_none()),
+            (
+                "question",
+                concern
+                    .question
+                    .as_deref()
+                    .is_none_or(|q| q.trim().is_empty()),
+            ),
+        ]
+        .iter()
+        .filter(|(_, missing)| *missing)
+        .map(|(field, _)| *field)
+        .collect();
+        if concern.id != NOT_ASKED && !missing.is_empty() {
+            errors.push(format!(
+                "the concern `{}` in {CONCERNS} has no {}: `shuyi new` asks every concern but \
+                 `{NOT_ASKED}` (ADR-0013 §1), so give it `pick: One` or `pick: Many` and the \
+                 `question` it asks",
+                concern.id,
+                missing.join(" and no ")
+            ));
+        }
+        for perspective in concern
+            .serves
+            .iter()
+            .filter(|p| !perspectives.contains(&p.as_str()))
+        {
+            errors.push(format!(
+                "the concern `{}` in {CONCERNS} serves `{perspective}`, which is no answer of \
+                 `{PERSPECTIVE}`: fix the name",
+                concern.id
+            ));
+        }
+    }
 }
 
 /// Rule 3: every answer of module `name` is in `concerns`.

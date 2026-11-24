@@ -104,6 +104,7 @@ fn filled() -> Fill {
     Fill {
         name: "Moon Garden".to_owned(),
         crate_name: "moon-garden".to_owned(),
+        id: "com.example.moon-garden".to_owned(),
         engine: BTreeMap::from([("shuyi".to_owned(), "{ path = 'e' }".to_owned())]),
         engine_ref: "main".to_owned(),
         engine_docs: "- the docs".to_owned(),
@@ -211,7 +212,8 @@ fn each_load_check_names_the_file_and_the_field() {
         ),
         (
             broken("\"plain\": {}", "\"plain\": { \"size\": [\"big\"] }"),
-            "fixtures/t/template.ron: short_names[plain]: no question `size`: the template asks \
+            "fixtures/t/template.ron: short_names[plain]: no question `size`: `shuyi new` asks \
+             `perspective`, `bodies`, `online`, `world-drawing`, `kind`, `scripting`, `targets`, \
              `look`, `one`, `spare`, `extra`",
         ),
         (
@@ -240,8 +242,8 @@ fn each_load_check_names_the_file_and_the_field() {
                 "Picked(\"look\", \"a\"), files: \"pa\"",
                 "Picked(\"size\", \"a\"), files: \"pa\"",
             ),
-            "fixtures/t/template.ron: parts[pa].when: `Picked` names no question of the \
-             template: `size`",
+            "fixtures/t/template.ron: parts[pa].when: `Picked` names neither a question of the \
+             template nor a concern of the engine's: `size`",
         ),
         (
             broken("Picked(\"one\", \"x\")", "Picked(\"one\", \"z\")"),
@@ -302,7 +304,7 @@ fn a_manifest_is_read_from_its_tmpl_under_the_name_the_game_gets() {
 fn the_built_in_templates_manifests_are_all_tmpl() {
     // Cargo reads every `Cargo.toml` of the engine's repository when a
     // game depends on it by git (ticket 2067).
-    let plain: Vec<_> = embedded_files(&BUILT_IN)
+    let plain: Vec<_> = embedded_files(BUILT_IN)
         .into_keys()
         .filter(|path| path == "Cargo.toml" || path.ends_with("/Cargo.toml"))
         .collect();
@@ -442,7 +444,7 @@ fn an_answer_the_template_doesnt_take_is_refused() {
     let cases = [
         (
             answers(&[("size", &["big"])]),
-            "no question `size`: the template asks `look`, `one`, `spare`, `extra`",
+            "no question `size`: `shuyi new` asks `targets`, `look`, `one`, `spare`, `extra`",
         ),
         (
             answers(&[("look", &["c"])]),
@@ -1188,4 +1190,64 @@ fn a_grid_game_without_examples_has_every_skill_and_passes_check_skills() {
     }
     let problems = skills::check(&pack, &Against::this_shuyi(None).unwrap());
     assert!(problems.is_empty(), "{problems:#?}");
+}
+
+/// The fixture's catalog with an asked concern, `script`: `none` by the
+/// default engine and ready, `alpha` by the module `shuyi-alpha` and ready,
+/// and `gamma`, parked.
+fn asked_catalog() -> Catalog {
+    let mut catalog = catalog();
+    catalog.concerns = Concerns::parse(
+        r#"(concerns: [(id: "script", name: "Scripts", alternatives: true, pick: One,
+            question: "Scripts?", answers: [
+            (id: "none", name: "none", by: "default", status: ready, tickets: []),
+            (id: "alpha", name: "alpha scripts", by: "shuyi-alpha", status: ready, tickets: []),
+            (id: "gamma", name: "gamma scripts", by: "shuyi-gamma", status: parked, tickets: ["9"]),
+        ])])"#,
+    )
+    .unwrap();
+    catalog
+}
+
+#[test]
+fn a_concerns_answer_takes_its_default_and_a_modules_answer_turns_it_on_with_no_part() {
+    let template = fixture(MANIFEST_OK).unwrap();
+    let catalog = asked_catalog();
+    let by_default = compose(&template, &Answers::default(), &catalog, &filled()).unwrap();
+    assert_eq!(by_default.answers.0["script"], ["none"]);
+    assert!(by_default.modules.is_empty() && by_default.limits.is_empty());
+    let alpha = answers(&[("script", &["alpha"])]);
+    let plan = compose(&template, &alpha, &catalog, &filled()).unwrap();
+    assert_eq!(plan.modules, ["shuyi-alpha"]);
+    assert!(text_of(&plan, "Cargo.toml").contains("features = [\"alpha\"]"));
+    // Its module serves it: no limit.
+    assert!(plan.limits.is_empty(), "{:?}", plan.limits);
+    let gamma = answers(&[("script", &["gamma"])]);
+    let error = compose(&template, &gamma, &catalog, &filled()).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "`gamma` (gamma scripts), an answer of `script`, is parked: ticket 9 builds it, so no \
+         game picks it yet"
+    );
+    let both = answers(&[("script", &["none", "alpha"])]);
+    let error = compose(&template, &both, &catalog, &filled()).unwrap_err();
+    assert_eq!(error.to_string(), "`script` takes one answer, not 2");
+}
+
+#[test]
+fn tickets_build_reads_as_a_sentence() {
+    assert_eq!(super::tickets_build(&[]), "no ticket builds");
+    assert_eq!(super::tickets_build(&["1".to_owned()]), "ticket 1 builds");
+    let three = ["1".to_owned(), "2".to_owned(), "3".to_owned()];
+    assert_eq!(super::tickets_build(&three), "tickets 1, 2 and 3 build");
+}
+
+#[test]
+fn a_template_question_may_not_be_the_engines() {
+    let manifest = MANIFEST_OK.replacen("id: \"look\"", "id: \"targets\"", 1);
+    let error = fixture(&manifest).unwrap_err().to_string();
+    assert!(
+        error.starts_with("fixtures/t/template.ron: questions[targets]: `targets` is the engine's"),
+        "{error}"
+    );
 }

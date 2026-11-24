@@ -138,6 +138,36 @@ fn a_persona_refuses_unknown_fields_and_features() {
     assert_eq!(persona.weights(&NAMES).unwrap_err().name, "hp");
 }
 
+#[test]
+fn a_persona_refuses_an_unknown_field_inside_its_settings() {
+    let error = ron::from_str::<Persona<()>>(
+        "(settings: (width: 1, candidates: 1, depth: 1, samples: 1, temperature: 0, breadth: 2))",
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(error.contains("breadth"), "{error}");
+}
+
+#[cfg(feature = "schema")]
+#[test]
+fn a_persona_and_the_bots_settings_have_schemas() {
+    use super::super::RolloutSettings;
+    let persona = schemars::schema_for!(Persona<()>).as_value().to_string();
+    assert!(
+        persona.contains("PlanSettings") && persona.contains("weights"),
+        "{persona}"
+    );
+    let rollout = schemars::schema_for!(RolloutSettings)
+        .as_value()
+        .to_string();
+    assert!(
+        rollout.contains("horizon") && rollout.contains("Turns"),
+        "{rollout}"
+    );
+    let plan = schemars::schema_for!(PlanSettings).as_value().to_string();
+    assert!(plan.contains("width"), "{plan}");
+}
+
 proptest! {
     #[test]
     fn score_is_the_wide_sum_clamped(

@@ -1,6 +1,6 @@
 # ADR-0002: Inherited rules: layers, determinism, skins, actions, tests, licenses
 
-- **Status:** Accepted
+- **Status:** Accepted; §2 extended by ADR-0143 (the RNG's outputs are frozen)
 - **Date:** 2026-10-14
 - **Related tickets:** 2001; the game's 1101–1118, 1131
 

@@ -13,7 +13,8 @@
 //! ([`dialogue`]), voice clips by line ([`voice`]), tips ([`tip`]) and
 //! word wrap for text boxes ([`text`]); and
 //! cinematics, timed shots of a game's own kinds ([`cinematic`]); and
-//! export targets' profiles ([`target`]). Each
+//! export targets' profiles ([`target`]). With the `sfx` feature, sound
+//! effects written as a few numbers (`sfx`). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
 //!
@@ -69,6 +70,8 @@ pub mod palette;
 #[doc(hidden)]
 pub mod recipient;
 pub mod ron;
+#[cfg(feature = "sfx")]
+pub mod sfx;
 pub mod target;
 pub mod text;
 pub mod tileset;
@@ -79,10 +82,9 @@ pub use bundle::{Bundle, Files, Layer};
 
 /// What [`files!`] expands to names: not part of the API, which semver
 /// doesn't cover (ADR-0119).
-#[cfg(feature = "std")]
 #[doc(hidden)]
 pub mod __embed {
-    pub use include_dir;
+    pub use shuyi_embed_macros::table;
 }
 pub use error::{ContentError, ContentErrors, line_of};
 pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits};

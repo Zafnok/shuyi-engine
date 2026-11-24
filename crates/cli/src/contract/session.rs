@@ -30,6 +30,8 @@ use schemars::{JsonSchema, Schema};
 use serde::{Deserialize, Serialize};
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_assets::keymap::ActionSet;
+use shuyi_core::StateHash;
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::heap;
@@ -217,6 +219,22 @@ pub struct Sound {
     pub frame: u32,
     /// The cue.
     pub cue: String,
+}
+
+/// A play the cue rules dropped (ADR-0139): it is under the answer's
+/// sounds too, as the game asked for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct Dropped {
+    /// The frame it was asked for in.
+    pub frame: u32,
+    /// The cue.
+    pub cue: String,
+    /// Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`
+    /// after its last play that sounded.
+    pub why: String,
 }
 
 /// A sound the game made at run time
@@ -425,6 +443,15 @@ pub trait Session {
         Vec::new()
     }
 
+    /// Makes this a session a visitor plays (`shuyi preview`): the
+    /// developer's debug tools off from now on, and the actions a visitor
+    /// may press, those of [`actions`](Self::actions) a player can rebind
+    /// (an action no player can rebind is a developer's key). `None`, the
+    /// default: the game offers no preview.
+    fn for_visitor(&mut self) -> Option<Vec<String>> {
+        None
+    }
+
     /// Plays the session record it was made ready for
     /// ([`GameTools::session_from`]) to
     /// its end, or its first frame that plays differently, and says how far
@@ -453,6 +480,12 @@ pub trait Session {
 
     /// The sound cues asked for, in order.
     fn sounds(&self) -> Vec<Sound>;
+
+    /// The plays the cue rules dropped, in order (none by default). Each
+    /// is under [`sounds`](Self::sounds) too.
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        Vec::new()
+    }
 
     /// The sounds the game added at run time and hasn't removed, in cue
     /// order (none by default).
@@ -505,6 +538,23 @@ pub trait Session {
     /// none.
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         None
+    }
+
+    /// Readies the session for a long run (`bench --long`, ADR-0081): its
+    /// driver keeps no log of every frame, so what it holds stays the same
+    /// however long it runs, and each frame is hashed
+    /// ([`frame_hash`](Self::frame_hash)). By default it does nothing.
+    fn set_long(&mut self) {}
+
+    /// The last frame's hash, of what happened in it, once frames are
+    /// hashed ([`set_long`](Self::set_long)). By default none.
+    fn frame_hash(&self) -> Option<StateHash> {
+        None
+    }
+
+    /// How many sounds started with a handle are alive now. By default 0.
+    fn sounds_alive(&self) -> u32 {
+        0
     }
 
     /// The current frame as the game paints it, each console pixel
@@ -735,6 +785,16 @@ impl<G: GameData> Session for Headless<G> {
         game.map_or_default(|game| pressable(game.input().keymap()))
     }
 
+    fn for_visitor(&mut self) -> Option<Vec<String>> {
+        if !self.loaded() {
+            return None;
+        }
+        self.harness.ctx_mut().debug_tools = false;
+        let rebindable =
+            |name: &String| G::Action::from_name(name).is_some_and(ActionSet::is_rebindable);
+        Some(self.actions().into_iter().filter(rebindable).collect())
+    }
+
     fn play_record(&mut self) -> Option<Played> {
         let mut played = self.harness.play_all().clone();
         if let Some(errors) = self.harness.app().errors() {
@@ -842,6 +902,18 @@ impl<G: GameData> Session for Headless<G> {
             .collect()
     }
 
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        self.harness
+            .dropped_sounds()
+            .into_iter()
+            .map(|(frame, dropped)| Dropped {
+                frame,
+                cue: dropped.cue.clone(),
+                why: dropped.why.word().to_owned(),
+            })
+            .collect()
+    }
+
     fn sounds_added(&self) -> Vec<AddedSound> {
         let speaker = self.harness.platform().speaker();
         speaker
@@ -933,6 +1005,19 @@ impl<G: GameData> Session for Headless<G> {
 
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         self.harness.heap_snapshot()
+    }
+
+    fn set_long(&mut self) {
+        self.harness.keep_logs(false);
+        self.harness.app_mut().hash_frames(true);
+    }
+
+    fn frame_hash(&self) -> Option<StateHash> {
+        self.harness.app().frame_hash()
+    }
+
+    fn sounds_alive(&self) -> u32 {
+        u32::try_from(self.harness.sounds_playing().len()).unwrap_or(u32::MAX)
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {

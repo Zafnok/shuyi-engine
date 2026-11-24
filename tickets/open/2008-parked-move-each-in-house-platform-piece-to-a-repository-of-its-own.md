@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2902", "2903", "2215", "3034", "3079"]
+blocked_by: ["2902", "2903", "2215", "3034", "3079", "3333"]
 nick_input: setup
 completed:
 ---
@@ -28,6 +28,10 @@ mechanical:
   with the permitted library decoder adapters and CPAL output selected
   by 2902. Their full replacement and removal gate is 3079 (a blocker);
   no independent codec implementation from 2211–2214 is being carved;
+- `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
+  own code;
+- `shuyi-embed` and `shuyi-embed-macros` (2215, done; ADR-0138);
+- `shuyi-gpu`, the 2D renderer crate (3325, ADR-0136). If those are
 - `shuyi-pads` (2403): the Switch 2 pads' start-up the controller
   research (2903) kept as our own code, beside SDL3 (ADR-0146);
 - `shuyi-embed` (2215);

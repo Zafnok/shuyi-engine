@@ -6,7 +6,7 @@ milestone: "Engine: dungeon crawlers"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
-blocked_by: ["2745"]
+blocked_by: ["2745", "2142"]
 nick_input: none
 completed:
 ---
@@ -26,6 +26,14 @@ use the same parts, and ADR-0034's loot adds rolled modifiers to an item
 
 It builds on 2745 (`Sheet`, tags, `PartyConfig`'s inventory setting).
 The engine names no item, slot or tag (`AGENTS.md` rule 4).
+
+**From 2142:** an item kind's id, stack size, weight and tags are
+`shuyi_core::items::ItemKinds`; `Item` is a `shuyi_core::items::Stack<X>`
+whose `extra` holds `known`, `uses_left` and `rolled`; `Inventory` is a
+`shuyi_core::items::Container` (its `limit` a `Capacity`). This ticket
+adds slots, needs, unknown names, curses and the commands on top. If
+2142 was split, its items half is the ticket it split off: name that one
+too.
 
 **Either order with 2747:** if 2747 is done, give `make.ron`'s
 options their starting items (kind ids from here, resolved when the

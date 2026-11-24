@@ -309,7 +309,7 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
 #[test]
 fn the_games_build_in_their_own_folder_and_the_maker_in_the_root_target() {
     let root = Path::new("repo");
-    let (maker, game) = runners(root, false);
+    let (maker, game) = runners(root, BUILD, false);
     assert_eq!(
         maker,
         script::System {
@@ -324,7 +324,7 @@ fn the_games_build_in_their_own_folder_and_the_maker_in_the_root_target() {
             no_incremental: true,
         }
     );
-    let (maker, game) = runners(root, true);
+    let (maker, game) = runners(root, BUILD, true);
     assert_eq!(maker, script::System::default());
     assert_eq!(game, script::System::default());
 }

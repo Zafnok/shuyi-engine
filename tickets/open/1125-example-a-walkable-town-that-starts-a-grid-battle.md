@@ -63,8 +63,11 @@ for him, not a sign-off.
 - Web build on Pages beside `hello-grid`.
 - Guides (ADR-0009 §5): write `docs/guides/top-down-free.md` in full,
   and the move guide `docs/guides/top-down-free-to-top-down-grid.md`
-  from this example. If 2004 is done, replace its planned pages. If not,
-  create the files, and 2004 adds them to its list.
+  from this example. **From 2004 (done):** both are planned pages
+  now: replace them, with their facts under the title
+  (`docs/guides/README.md`, *Each guide*) set to `- **Status:** ready`,
+  and move them under *Built* in `docs/guides/README.md`;
+  `cargo xtask check-modules` checks them.
 - The new-game wizard (ADR-0013 §4): if 2503 is done, add the move
   `top-down → top-down-grid` to the built-in template, as a small
   version of this example's touch-to-battle, with its steps in

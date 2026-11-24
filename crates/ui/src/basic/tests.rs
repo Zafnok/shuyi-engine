@@ -127,6 +127,49 @@ fn the_games_own_part_is_read_and_its_problems_join_the_rest() {
     );
 }
 
+/// A 16-bit mono WAV at the engine's rate: two silent samples.
+const BEEP: &[u8] = &[
+    b'R', b'I', b'F', b'F', 40, 0, 0, 0, b'W', b'A', b'V', b'E', b'f', b'm', b't', b' ', 16, 0, 0,
+    0, 1, 0, 1, 0, 0x44, 0xac, 0, 0, 0x88, 0x58, 1, 0, 2, 0, 16, 0, b'd', b'a', b't', b'a', 4, 0,
+    0, 0, 0, 0, 0, 0,
+];
+
+/// A manifest of one sound, `sfx/beep.wav`.
+const AUDIO: &[u8] = b"(music_fade_ms: 500, sounds: [(id: \"ui_move\", files: [\"sfx/beep.wav\"],     volume: 50, credit: Own)], music: [], pools: [], credits: [])";
+
+#[test]
+fn an_audio_manifest_in_the_bundle_is_read_with_its_sounds() {
+    static WITH_AUDIO: &[(&str, &[u8])] = &[
+        ("audio.ron", AUDIO),
+        ("en.ron", EN),
+        ("font/atlas.png", ATLAS_PNG),
+        ("font/atlas.ron", ATLAS_RON),
+        ("keymap.ron", KEYMAP),
+        ("palette.ron", PALETTE),
+        ("sfx/beep.wav", BEEP),
+    ];
+    // The same, with no keymap and no sound file.
+    static NO_SOUND: &[(&str, &[u8])] = &[
+        ("audio.ron", AUDIO),
+        ("en.ron", EN),
+        ("font/atlas.png", ATLAS_PNG),
+        ("font/atlas.ron", ATLAS_RON),
+        ("palette.ron", PALETTE),
+    ];
+    let data = Data::load(bundle(WITH_AUDIO), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
+    let sounds = &data.audio_manifest().sounds;
+    assert_eq!(sounds["ui_move"].files, ["sfx/beep.wav"]);
+    assert_eq!(data.audio_manifest().music_fade_ms, 500);
+    // Its sound file missing is an error of the manifest, among the rest.
+    let errors = Data::load(bundle(NO_SOUND), CONSOLE, NO_OWN).unwrap_err();
+    assert_eq!(
+        files_named(&errors),
+        ["files/keymap.ron", "files/audio.ron"]
+    );
+    let missing = errors.iter().find(|e| e.file == "files/audio.ron").unwrap();
+    assert!(missing.message.contains("sfx/beep.wav"), "{missing}");
+}
+
 #[test]
 fn a_pack_of_the_files_loads_the_same_data_with_no_text_parsed() {
     let formats = Data::formats();

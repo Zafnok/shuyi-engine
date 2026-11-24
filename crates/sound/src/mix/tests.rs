@@ -625,6 +625,56 @@ fn an_empty_feed_is_an_underrun_that_delays_and_loses_nothing() {
     assert_eq!(mixer.underrun_frames(), 4);
 }
 
+/// Each stream counts its own stalls, for its worker to read, and the mixer's count
+/// stays the sum of them (ticket 3320).
+#[test]
+fn each_stream_counts_its_own_stalls_and_the_mixer_their_sum() {
+    let (mut fed, fed_end) = feed(format(RATE, Channels::Mono), 16);
+    let (starved, starved_end) = feed(format(RATE, Channels::Mono), 16);
+    fed.write(&[1; 8]);
+    let mut mixer = stereo_mixer(2);
+    for end in [fed_end, starved_end] {
+        mixer
+            .stream(end, Params::new())
+            .unwrap_or_else(|e| panic!("{e}"));
+    }
+    assert_eq!(left(&render(&mut mixer, 6)), [1; 6], "the fed one plays on");
+    assert_eq!(fed.underrun_frames(), 0);
+    assert_eq!(starved.underrun_frames(), 6);
+    assert_eq!(mixer.underrun_frames(), 6);
+    // Now both: the fed one runs out two frames in.
+    assert_eq!(left(&render(&mut mixer, 4)), [1, 1, 0, 0]);
+    assert_eq!(fed.underrun_frames(), 2);
+    assert_eq!(starved.underrun_frames(), 10);
+    assert_eq!(
+        mixer.underrun_frames(),
+        fed.underrun_frames() + starved.underrun_frames(),
+        "the mixer's is the sum"
+    );
+}
+
+/// A source that keeps no count is told and does nothing, through a box as well.
+#[test]
+fn a_source_without_a_count_is_told_of_a_stall_and_does_nothing() {
+    let pcm = pcm(RATE, Channels::Mono, alloc::vec![1, 2]);
+    let mut source: Box<dyn Source> = Box::new(SharedSource::new(pcm));
+    source.stalled(5);
+    let mut out = [0; 2];
+    assert_eq!(source.read(&mut out), Ok(2), "it plays as before");
+    assert_eq!(out, [1, 2]);
+    let (feeder, feed) = feed(format(RATE, Channels::Mono), 4);
+    let mut boxed: Box<dyn Source> = Box::new(feed);
+    boxed.stalled(3);
+    boxed.stalled(4);
+    assert_eq!(feeder.underrun_frames(), 7, "a box passes it on");
+    boxed.stalled(u64::MAX);
+    assert_eq!(
+        feeder.underrun_frames(),
+        u64::from(u32::MAX),
+        "it stops at the most"
+    );
+}
+
 #[test]
 fn an_underrun_in_the_middle_of_a_step_loses_nothing_either() {
     let (mut feeder, feed) = feed(format(RATE, Channels::Mono), 16);
@@ -801,6 +851,34 @@ fn a_mono_regions_pre_roll_stops_exactly_at_the_regions_start() {
         seen.extend_from_slice(&out[..frames]);
     }
     assert_eq!(seen[..9], [1, 2, 3, 4, 5, 4, 5, 4, 5]);
+}
+
+/// Ticket 2397: a restart that lands on the region's start gives the same frames
+/// as one read from the first frame, and nothing before the region is read again.
+#[test]
+fn a_looped_region_that_lands_on_its_start_reads_nothing_before_it_again() {
+    let region = Region::new(3, 5).unwrap_or_else(|| panic!("frames"));
+    let sound = ramp(9);
+    let first = SharedSource::new(SharedPcm::clone(&sound));
+    let restarts = Shared::new(core::sync::atomic::AtomicU32::new(0));
+    let counted = Shared::clone(&restarts);
+    let mut source = LoopedRegion::landing(first, region, move || {
+        counted.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        let mut at = SharedSource::new(SharedPcm::clone(&sound));
+        at.rewind_to(3)?;
+        Ok(at)
+    });
+    let mut out = [0; 16];
+    let mut seen = Vec::new();
+    while seen.len() < 11 {
+        let frames = source.read(&mut out).unwrap_or_else(|e| panic!("{e}"));
+        assert!(frames > 0, "it comes round, it doesn't end");
+        seen.extend_from_slice(&out[..frames]);
+    }
+    assert_eq!(seen[..11], [1, 2, 3, 4, 5, 4, 5, 4, 5, 4, 5]);
+    // Once each way round: a source read from its first frame would have had
+    // three frames dropped from where it landed, and two of each pass lost.
+    assert_eq!(restarts.load(core::sync::atomic::Ordering::Relaxed), 3);
 }
 
 #[test]

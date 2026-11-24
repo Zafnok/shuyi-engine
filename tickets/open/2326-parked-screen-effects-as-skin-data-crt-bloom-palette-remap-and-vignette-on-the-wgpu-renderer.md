@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["3034", "2018", "2340"]
+blocked_by: ["3034", "2018", "2340", "3325"]
 nick_input: none
 completed:
 ---
@@ -36,9 +36,9 @@ a look do.
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
 §1: graphics go through wgpu, and our own 2D renderer sits on it. 3034
-is the research that plans that renderer and writes its tickets. This
-ticket runs on that renderer, so when 3034 writes the renderer's
-ticket, it adds it to this one's `blocked_by`.
+planned it: `shuyi-gpu` (3325, ADR-0136), in this one's `blocked_by`.
+A screen pass is a full-screen quad drawn from one target into the
+next with the effect's WGSL fragment shader (ADR-0136 §8).
 
 ## Nick input
 
@@ -80,7 +80,7 @@ None.
 - **GPU against CPU:** a test renders a test frame through both and
   compares, within the plan's `Tolerance` (the worker picks it on the
   test frames and writes why). It runs through 2018's capture mode, on
-  the wgpu backend that 3034's tickets build, with
+  the winit backend (3326) over `shuyi-gpu` (3325), with
   `shuyi_platform::capture` plans and `raster::compare` (2332). Use
   2018's `render` CI job, with lavapipe as the software adapter. Each
   effect gets a test frame in a plan.

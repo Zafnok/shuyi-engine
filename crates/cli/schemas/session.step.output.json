@@ -110,6 +110,32 @@
         "millis"
       ]
     },
+    "Dropped": {
+      "description": "A play the cue rules dropped (ADR-0139): it is under the answer's\nsounds too, as the game asked for it.",
+      "type": "object",
+      "properties": {
+        "cue": {
+          "description": "The cue.",
+          "type": "string"
+        },
+        "frame": {
+          "description": "The frame it was asked for in.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "why": {
+          "description": "Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`\nafter its last play that sounded.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "cue",
+        "why"
+      ]
+    },
     "Event": {
       "description": "Something that happened while a session ran, with its frame (frames\ncount from 1).",
       "oneOf": [
@@ -495,6 +521,13 @@
       "description": "What `run` saw.",
       "type": "object",
       "properties": {
+        "dropped": {
+          "description": "The plays the cue rules dropped, in order (ADR-0139); each is under\n`sounds` too. Left out when none.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dropped"
+          }
+        },
         "events": {
           "description": "What happened, in frame order, then the game's own events.",
           "type": "array",

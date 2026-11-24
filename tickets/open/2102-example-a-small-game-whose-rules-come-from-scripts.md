@@ -54,6 +54,21 @@ None.
 - **From 2101 (done):** a game that runs `cargo deny` needs the
   `smartstring` exception `crates/script/README.md` shows; the example's
   own `deny.toml`, if it has one, carries it.
+- **Either order with 2145:** if 2145 is done, `examples/scripted-rule`
+  loads its rule script through `shuyi_script::RhaiFormat` into a
+  `HotScript` kept by a small module of the example (like Hello, Grid's
+  `hot_palette.rs`). Its integration test edits the script with
+  `Bundle::replace`, tells the game the file changed, and checks the
+  next move follows the new rule. It also checks that a broken edit
+  keeps the old rule, with its error in `Ctx::reload_errors`. If not,
+  nothing to do here (2145 adds that to the example).
+- **Either order with 2144:** if 2144 is done, the skill
+  `skills/shuyi-script` gets a *When it fails* section: turning the
+  trace on (`Runtime::set_tracing`, `take_trace`, lines handed to
+  `Ctx::log`), `shuyi_script::check::bundle` in the game's
+  `GameTools::check`, and the codes SH2011 to SH2013. The example's
+  `check` calls `check::bundle`. If not, nothing to do here (2144 adds
+  them to the skill).
 
 **Out (do not do):**
 - Changing `shuyi-script`'s API, unless the example can't be written

@@ -106,8 +106,8 @@ pub struct Played {
     pub name: String,
     /// Its label in the game's plan (a mode), if any.
     pub label: Option<String>,
-    /// The wall time of a try, on average, in seconds: the one number
-    /// that changes with the machine and the thread count.
+    /// The wall time of a try, on average, in seconds to the microsecond:
+    /// the one number that changes with the machine and the thread count.
     pub seconds_per_try: f64,
     /// The plan's summary items over its tries, in order: `won 83/100`.
     #[serde(default)]
@@ -590,7 +590,7 @@ pub(crate) fn played(
             let mut played = Played {
                 name: entrants[e].0.clone(),
                 label: entrants[e].1.clone(),
-                seconds_per_try: took.as_secs_f64() / f64::from(tries.count),
+                seconds_per_try: rounded(took.as_secs_f64() / f64::from(tries.count), 6),
                 summary: Vec::new(),
                 was: None,
                 outcomes: BTreeMap::new(),
@@ -777,6 +777,15 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<PlaytestArg
         }
     }
     Ok(out)
+}
+
+/// `s` seconds rounded to `decimals` decimals: 3 is whole milliseconds, 6
+/// whole microseconds. A wall time is noise past its precision, and a
+/// number this short reads back from JSON as itself, where all of a
+/// measured `f64`'s 17 digits may not (3411).
+pub(crate) fn rounded(s: f64, decimals: i32) -> f64 {
+    let scale = 10_f64.powi(decimals);
+    (s * scale).round() / scale
 }
 
 /// A try's wall time for people: two decimals, or under a hundredth.

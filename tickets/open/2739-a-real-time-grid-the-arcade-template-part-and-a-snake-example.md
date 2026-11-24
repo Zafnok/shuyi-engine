@@ -76,8 +76,8 @@ What is planned:
   a small game is written on;
 - 3004 and 3010 (After MVP): `shuyi export` for the desktop and the web,
   and the Playdate backend with `shuyi export playdate`;
-- 2524 (After MVP): the agent eval. It writes `evals/tasks/snake.ron`
-  with `waits_for: ["2739"]` and no reference; this ticket gives it one;
+- 2524 (done): the agent eval. It wrote `evals/tasks/snake.ron` with
+  `waits_for: ["2739"]` and no reference; this ticket gives it one;
 - 1127 (parked): the platformer, the end goal's other named game.
 
 Why it matters:
@@ -158,10 +158,10 @@ None.
       `TickInput`. Up to two turns wait for the next moves, so two quick
       presses both count. A turn back into the neck is ignored;
     - food goes on a free tile drawn from the `SimRng` kept in the
-      state: `roll_below` over the free tiles, or `pick` if 2114 is
-      done. Eating grows the snake by one at its next move and scores a
-      point. Every 5 points the period drops by one step, down to 4 (a
-      new `Every` with the shorter period);
+      state: `pick` over the free tiles (2114, done). Eating grows the
+      snake by one at its next move and scores a point. Every 5 points
+      the period drops by one step, down to 4 (a new `Every` with the
+      shorter period);
     - hitting a wall or its own body ends the run
       (`Outcome::Died { step, length }`); filling the board ends it as
       `Outcome::Filled`;
@@ -198,8 +198,10 @@ None.
     `session` (a scene with the body, the food, the score, the step and
     the outcome), `replay` through `ticks` above, and `controls`.
     `playtest` stays unsupported (Out).
-  - **sound:** if 2225 is done, an eat and a death sound from its
-    presets. If not, none, the README says so, and 2225's PR adds them.
+  - **sound:** an eat and a death sound from 2225's presets
+    (`sfx::preset_source`, as `.sfx.ron` files of its own, with the
+    `sfx` feature of `shuyi-assets` on), played on its `Ate` and `Died`
+    events.
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and the copy added to
     `THIRD_PARTY_ASSETS.md` (to the row that lists the templates'
@@ -209,7 +211,7 @@ None.
     links the example's `NOTICES.txt`.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted and said how if not).
+    template-lines`'s code count, 2512).
     **From 2514 (done):** an animated picture of its first seconds,
     made with `frame-png --every 0.05 --count 40 --apng`. **From 2811 (done):** that
     picture is the example's preview: `preview.png` in its folder, made
@@ -275,6 +277,12 @@ None.
     The example does that, `shuyi export playdate` builds it, and the PR
     says whether it runs in the Playdate Simulator (`--run`, if the SDK
     is installed where the PR is made).
+- **From 3509 (done):** add a long scenario for `examples/snake`
+  (`examples/snake/long/*.long.ron`: a seeded play that loses, restarts
+  and loses again, looped by `repeat`; `docs/targets/README.md`, *Long
+  runs*) and run it in `.github/workflows/long-run.yml` beside Hello,
+  Grid: a second `cargo shuyi bench --long --twice` step in
+  `examples/snake`, and its `long-report.md` in the job's summary.
 - **The template part `stage-arcade-grid`** in `templates/shuyi-default/`
   (2501):
   - the built-in template gets its own question `time` ("On a grid:
@@ -291,8 +299,11 @@ None.
     task. Its `GameSettings::BACKGROUND` is
     `Background::KEEP_RUNNING.paused()` (built by 3093);
   - `--template arcade` is a short name for those answers, as `grid`
-    and `blank` are, and `--set time=ticks` picks it. If 2502 is done,
-    its prompts show the question;
+    and `blank` are, and `--set time=ticks` picks it. **Either
+    order with 3424** (the questions as data): if 3424 is done, a test
+    checks that `shuyi new --questions --json` lists the template's own
+    `time` question among the template's; if not, nothing to do (3424
+    checks it, its clause says so). 3423's prompts ask it;
   - its test: with `Right` held for one second, the hero moves the same
     number of tiles in frames of 1/30 s (`Harness::frame`) as in frames
     of 1/60 s;
@@ -302,8 +313,8 @@ None.
   `docs/guides/top-down-grid.md` (2004): which part starts it, `TickSim`
   and `Every` against `TurnRules`, what not to use (`dt` in rules, a turn
   per tick), and `examples/snake` to read first. It replaces the planned
-  *In real time* section 2004 writes there. If 2004 isn't done, create
-  the file with this section, and 2004 writes the rest.
+  *In real time (planned)* section 2004 wrote there (**from 2004,
+  done**), and drops `2739` from the guide's `Tickets:` line.
 - **The skill** `shuyi-stage-arcade`, in ADR-0005 §2's form: a grid
   stage that steps in real time, with a worked example of contract
   operations that makes a game with `--template arcade`, runs it, and
@@ -311,23 +322,22 @@ None.
   (done):** it goes in `skills/shuyi-stage-arcade/`, passes
   `check-skills`, and CI's `skills` job runs its worked example
   (`example.ron`, with `template: "arcade"`).
-- **The eval:** 2524 writes `evals/tasks/snake.ron` with
-  `waits_for: ["2739"]` and no reference. If 2524 is done:
+- **The eval (from 2524, done):** `evals/tasks/snake.ron` has its
+  prompt and checks, `waits_for: ["2739"]` and no reference:
   - set its `reference` to `Project("examples/snake")`, its `template`
     to `arcade`, and empty its `waits_for`;
-  - make its `Scene` checks show that the snake grows when it eats and
-    dies on a wall, through scene data its prompt names;
+  - its `Scene` checks read `/length`, `/score` and `/over`, which its
+    prompt names: make the example's scene data answer them (the snake
+    grows when it eats, and dies on a wall), or change the prompt and
+    the checks together;
   - leave `Replay` out of its checks: a tick game has no `playtest` here
     (Out), so the grader gets no record. This ticket's replay test
     covers the example;
   - **From 3010 (done):** 3010 left `evals/tasks` alone, so add
     `playdate` to its targets and drop its `unmeasured` Playdate entry,
     if its reference passes `cargo shuyi check --target playdate`;
-  - the `eval` job's `cargo xtask eval-reference --all` grades it, and
-    `cargo xtask eval-reference snake` passes.
-
-  If 2524 isn't done, write the task file yourself with that reference,
-  in the fields 2524's scope lists (2524 keeps it).
+  - `cargo xtask eval-grade evals/tasks/snake.ron examples/snake`
+    passes. `cargo xtask eval-reference snake` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 - **The engine's README:** its *Game styles* paragraph claims a grid in
   real time, linking the example (ADR-0003 §1).
 - **What changes for the game:** nothing. `ticks` is new, and `turns`
@@ -353,9 +363,8 @@ None.
   `write-ticket` skill), and say so in the PR. The same PR changes
   2004's and 3093's mentions of 2739 for those pieces to the new
   ticket's id.
-  The eval's snake task then keeps the `template` 2524 gave it (or
-  `blank`, if this ticket writes the file), and the follow-up sets it
-  to `arcade`.
+  The eval's snake task then keeps the `blank` template 2524 gave it,
+  and the follow-up sets it to `arcade`.
 
 ## Implementation steps
 
@@ -364,7 +373,7 @@ None.
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
    tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3010 and 3093.
+   2524, 2801, 3004, 3010, 3093 and 3509.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.

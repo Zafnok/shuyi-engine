@@ -52,7 +52,7 @@ What Shuyi has today (checked 2026-10-20):
   shader ticket's materials (2327).
 
 The parked 2D effects (2326 screen passes, 2327 a game's shaders and
-materials, 2328 lights) all wait for the wgpu renderer (3034). This
+materials, 2328 lights) all wait for the wgpu renderer (3325). This
 ticket doesn't: macroquad already multiplies a texture by a draw colour,
 and `load_material` takes a pipeline with its own blend state
 (macroquad 0.4.16, miniquad 0.4.11's `PipelineParams::color_blend`).
@@ -223,8 +223,9 @@ None.
     takes its `Paint::Tinted` colour as an input; and that
     `palette_swap` stays the tool for team colours. Check that those
     lines still match what this PR builds;
-  - 3034 (parked): the renderer it plans draws `Paint::Tinted`, `blend`
-    and an overlay's opacity to `frame::blend`'s rules;
+  - 3325 (parked; ADR-0136 §10 planned it): the renderer draws
+    `Paint::Tinted`, `blend` and an overlay's opacity to `frame::blend`'s
+    rules. Check that its lines still match what this PR builds;
   - 3017 (parked): per-sprite tint and blend are optional capabilities
     (one-bit draws them by the one-bit rule; the GBA blends per layer).
 - **The reference changes** go in `shuyi_ui::frame::raster` (2332), not
@@ -257,6 +258,10 @@ None.
 - **For the game:** its frames don't change. `Overlay` and `Sprite`
   gain fields that `new` sets, and `Paint` a variant: all additive,
   since 2082 made the three `#[non_exhaustive]`. No `Breaking:` line.
+- **Either order with 3229:** if 3229 is done, nothing to do: its web
+  plugin replays these materials' programs after a lost WebGL context,
+  like macroquad's own, and its canvas check covers the blended items;
+  if not, nothing to do (3229 covers them when it lands).
 
 **Out (do not do):**
 - **Screen**, subtract, min and max blending: a follow-up if a game
@@ -270,11 +275,10 @@ None.
 - screen passes and bloom (2326); full-screen flashes and fades (2340
   and 2339, on the frame's veil); lights (2328); emissive maps (a
   follow-up if a game asks, as 2328's **Out** says);
-- building the wgpu renderer (3034) or target capabilities (3017): this
+- building the wgpu renderer (3325) or target capabilities (3017): this
   PR only adds a line to each;
 - freeing or bounding `render.rs`'s recoloured-texture cache for
-  `Shaded` (`Tinted` makes no copy; a follow-up if a game animates
-  lights);
+  `Shaded` (`Tinted` makes no copy): 3228, which waits on this ticket;
 - changing `Light::apply`, `Rgb::dimmed` or `Rgb::scale`.
 
 ## Implementation steps
@@ -322,7 +326,7 @@ None.
       recoloured texture (a unit test of the pure choice).
 - [ ] The one-bit fast renderer still draws as the reference does, with
       random tints, blends and overlay opacities.
-- [ ] 2103, 2327, 3017 and 3034 each have their line, and 1120 and 2335
+- [ ] 2103, 2327, 3017 and 3325 each have their line, and 1120 and 2335
       theirs unless they are done.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.

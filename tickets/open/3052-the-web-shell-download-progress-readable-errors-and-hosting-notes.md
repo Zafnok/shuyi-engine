@@ -111,9 +111,14 @@ What is planned:
   to `SHELL`.
 - 3046 (After MVP) leaves "the web page showing an error over a stopped
   canvas" to this ticket.
-- 3034 (parked) would move the web build to `wasm-bindgen` and drop
-  the bundle. So this ticket works around the bundle from outside and
-  patches nothing in it.
+- 3330 (parked, from 3034's research) moves the web build to
+  `wasm-bindgen` and drops the bundle (ADR-0136 §13). So this ticket
+  works around the bundle from outside and patches nothing in it.
+  **Either order with 3330:** if 3330 is done, wrap its page's start
+  too: fetch the `.wasm`, counting it, and pass the `Response` to
+  wasm-bindgen's `init({ module_or_path })`, with the same states on
+  both pages; if not, nothing to do (3330 starts its page through
+  `shell.js`).
 
 Why it matters:
 
@@ -188,7 +193,7 @@ None.
     animation frame, so a hidden tab, or a headless page that drives
     frames itself with `wasm_exports.frame()`, still gets there. These
     are the browser's own functions, so the hooks work with any loader,
-    `wasm-bindgen`'s too (3034).
+    `wasm-bindgen`'s too (3330).
   - **Errors; the first one wins,** and later ones only reach the
     console. `start` adds the listeners and wraps `console.error`; the
     wrapper always calls the original:
@@ -248,7 +253,7 @@ None.
   - *Files* lists `shell.js` and `%WASM_BYTES%`;
   - a section "Loading and errors": the states and `data-shuyi`, the
     table above, why `fetch` and `WebAssembly.instantiate` are wrapped
-    from outside (the bundle stays upstream's, and 3034 carries
+    from outside (the bundle stays upstream's, and 3330 carries
     `shell.js` over), the forced `application/wasm`, and the count
     against `%WASM_BYTES%` (none when a copy leaves it unfilled);
   - a section "Putting a web build online", each point checked on the
@@ -340,6 +345,12 @@ None.
   so).
 - **For the game:** its web build gets `shell.js` from `cargo shuyi
   web` at its next pin bump. No API changes.
+- **Either order with 3346:** if 3346 is done, a workaround moved from
+  `index.html` into `shell.js` (the `register_plugin` global, the audio
+  resume on each gesture, the frame's focus, the key backstop) moves its
+  row in `crates/app/WORKAROUNDS.md` to the new file and marker (`cargo
+  xtask check-pins` fails otherwise); if not, nothing to do (3346 writes
+  the rows where the code is then).
 
 **Out (do not do):**
 - a fullscreen button on the page: the game's setting and shortcut
@@ -361,7 +372,7 @@ None.
 - counting the music and voice files, which the game fetches later;
 - portal SDKs and ads: each needs a JS plugin of our own, so a ticket
   only if Nick names one; threaded wasm: no game asks for it; WebGPU:
-  3034 plans it, with WebGL 2 as the fallback;
+  3330 builds it, with WebGL 2 as the fallback (ADR-0136 §3);
 - the panel's words in other languages: the game's text isn't loaded
   yet;
 - phones' browsers (2407, parked);

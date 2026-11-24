@@ -657,6 +657,44 @@ impl Formats {
         self.register(audio::Wav)?;
         self.register(audio::OggVorbis)?;
         self.register(audio::OggVorbisTrack)?;
+        // The picture and sound formats whose feature is on (ticket 2203).
+        #[cfg(feature = "jpeg")]
+        {
+            self.register(crate::image::JpegInfo)?;
+            self.register(crate::image::Jpeg)?;
+        }
+        #[cfg(feature = "webp")]
+        {
+            self.register(crate::image::WebPInfo)?;
+            self.register(crate::image::WebP)?;
+        }
+        #[cfg(feature = "qoi")]
+        {
+            self.register(crate::image::QoiInfo)?;
+            self.register(crate::image::Qoi)?;
+        }
+        #[cfg(feature = "jpeg-xl")]
+        {
+            self.register(crate::image::JpegXlInfo)?;
+            self.register(crate::image::JpegXl)?;
+        }
+        #[cfg(feature = "flac")]
+        {
+            self.register(crate::audio::Flac)?;
+            self.register(crate::audio::FlacTrack)?;
+        }
+        #[cfg(feature = "mp3")]
+        {
+            self.register(crate::audio::Mp3)?;
+            self.register(crate::audio::Mp3Track)?;
+        }
+        // Sound effects, as numbers and as the sound they render to (ticket
+        // 2225).
+        #[cfg(feature = "sfx")]
+        {
+            self.register(crate::sfx::SfxRon)?;
+            self.register(crate::sfx::SfxDefRon)?;
+        }
         self.register(audio::AudioManifestRon)?;
         self.register(credits::CreditsRon::default())?;
         self.register(font::FontAtlasRon::default())?;
@@ -1015,3 +1053,6 @@ pub(crate) mod builtin_tests;
 
 #[cfg(test)]
 mod golden_tests;
+
+#[cfg(test)]
+pub(crate) mod codec_tests;

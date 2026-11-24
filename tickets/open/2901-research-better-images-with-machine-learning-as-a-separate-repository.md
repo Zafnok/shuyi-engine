@@ -40,9 +40,11 @@ Starting points to check on the day, from memory and not verified:
   lossless included. A pure-Rust decoder exists. Decoding it is
   2203's, in the engine behind a feature, so here it is the baseline,
   and the separate repository holds only what 2203 doesn't ship
-  (encoding JPEG XL at bake, say). **Either order with 2203:** if 2203
-  is done, measure its JPEG XL `Format`; if not, measure the decoder
-  2203 names, and 2203 still adds it to the engine.
+  (encoding JPEG XL at bake, say). **From 2203 (done):** measure its
+  JPEG XL `Format`, `image::JpegXl` behind the feature `jpeg-xl`
+  (`jxl-oxide` 0.12.6). `docs/formats.md`, *Formats behind a feature*,
+  has what it adds to a web build (1,629 KiB) and why a lossy picture
+  could round a pixel apart between machines.
 - **GPU texture compression and "supercompressed" textures.** These
   reduce memory, not only file size.
 - **Upscaling.** Neural upscalers for painted art. For pixel art, the

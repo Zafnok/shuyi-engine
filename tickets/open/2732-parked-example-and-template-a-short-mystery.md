@@ -105,9 +105,8 @@ None.
     two clues, one links deduction and `mystery.ron`;
   - a game made with it builds, and its test plays the case to its end
     and runs `shuyi check`;
-  - if 2502 is done, `shuyi new demo --kind mystery --no-input` makes
-    it; if not, `shuyi new demo --set kind=mystery` does, and 2502 adds
-    the flag (as 2726 does for `visual-novel`). CI makes it in a
+  - **from 2502 (done):** `shuyi new demo --kind mystery --no-input`
+    makes it, and the guide and CI name `--kind`. CI makes it in a
     temporary folder, builds it and runs its tests.
 - **The direction guide** `docs/guides/mystery.md`, in the fixed order
   of ADR-0009 §5 (as 2004 writes them): which template starts it (the

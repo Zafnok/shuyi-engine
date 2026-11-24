@@ -1,0 +1,29 @@
+// The end goal's own game, on record: real time waits for Visions of
+// Shuyi's launch. 2739 gives it its reference (examples/snake). A tick
+// game has no `playtest`, so no Replay check.
+(
+    id: "snake",
+    prompt: "Make me a snake game with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template blank`. The snake moves one cell a step on its own, turned with the actions `Up`, `Down`, `Left` and `Right`; it grows by one cell when it eats the food, and the game ends when it hits a wall or itself. `Confirm` starts a game from the title, and again once it has ended. `cargo shuyi scene --json` shows the board, and the scene's data has `length` (the snake's cells), `score` (the food eaten) and `over` (`true` once it has crashed). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, and `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one).",
+    template: "blank",
+    name: "Snake",
+    time_box_minutes: 60,
+    targets: ["desktop", "web"],
+    checks: [
+        Gates,
+        Check,
+        Targets,
+        Web,
+        Export("linux"),
+        Responds(steps: [Act("Confirm"), Wait(0.5)]),
+        // A game just started: three cells long, nothing eaten.
+        Scene(steps: [Act("Confirm")], has: [("/length", Some("3")), ("/score", Some("0")), ("/over", Some("false"))]),
+        // Left alone, it runs into a wall.
+        Scene(steps: [Act("Confirm"), Wait(30.0)], has: [("/over", Some("true"))]),
+    ],
+    reference: None,
+    waits_for: ["2739"],
+    unmeasured: [
+        ("a Playdate build", ["2739"]),
+        ("an agent's own time against the hour", ["2525"]),
+    ],
+)

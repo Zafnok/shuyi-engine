@@ -61,7 +61,7 @@ None.
     - optional `order`: a number that overrides reading order;
     - `when`: conditions that must all hold for the hotspot to be there:
       `Found(clue)`, `NotFound(clue)`, `Met(person)`, `Made(deduction)`,
-      `NotMade(deduction)`, `Var(name, value)` (a dialogue variable);
+      `NotMade(deduction)`, `Var(name, value)` (a story variable, `shuyi_core::story`, 2140);
     - `action`: `Examine { node }` (run a dialogue node),
       `Talk { person, node }` (run a node and meet the person), or
       `Go { place }`;

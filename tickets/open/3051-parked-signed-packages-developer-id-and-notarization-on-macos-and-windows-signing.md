@@ -6,14 +6,14 @@ milestone: "Parked: export targets"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["3004", "3049"]
+blocked_by: ["3004", "3049", "3527"]
 nick_input: decision
 completed:
 ---
 
 # 3051 — Signed packages: Developer ID and notarization on macOS, and Windows signing
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; on 2026-10-20 he kept parked the gaps the game doesn't need): the game doesn't ask for it, so this waits until after the MVP (`docs/ROADMAP.md`). Like the other export work that costs money (3014–3016, 2026-10-15), it also waits for Nick's decision below. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; on 2026-10-20 he kept parked the gaps the game doesn't need): the game doesn't ask for it, so this waits until after the MVP (`docs/ROADMAP.md`). Like the other export work that costs money (3014–3016, 2026-10-15), it also waits for Nick's decision below. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. Decision ticket 3527 asks Nick whether to unpark it (question 1), and if he says yes, asks this ticket's own questions in the same session.
 
 ## Context
 
@@ -131,7 +131,7 @@ later: the free part (the ad-hoc signature and the player note) is in
     the engine qualifies (a follow-up ticket);
   - or are signed with Nick's paid accounts (a follow-up ticket with
     `nick_input: setup`); each secret the engine's own workflow then
-    holds gets a row in `docs/continuity.md` (2016).
+    holds gets a row in `docs/continuity.md` (2849, or 2016).
 
 If he picks paying, the session gives him the exact setup steps then
 (the Apple membership, a Developer ID Application certificate, an App
@@ -396,9 +396,12 @@ account, its identity check and a certificate profile).
 - installers (MSI, MSIX, `.pkg`), the Mac App Store and the Microsoft
   Store;
 - signing macOS apps off a Mac with `rcodesign` (MPL-2.0) or Windows
-  exes off Windows with `osslsigncode` (GPL-3.0). As outside tools that
-  never ship they would be allowed, but 3004 builds each on its own
-  runner, so neither is needed;
+  exes off Windows with `osslsigncode` (GPL-3.0). Rule 7 (`AGENTS.md`)
+  denies both licenses as a dependency: neither is ever a crate in the
+  workspace. A later ticket may only run one as a separate tool that
+  never ships, or replace it. 3004 builds each target on its own
+  runner, so neither is needed; whether paid signing happens at all is
+  decision 3527's question 1;
 - OV or EV certificates on a token or another cloud HSM, and SignPath:
   a follow-up when a game or Nick picks one;
 - notarizing with an Apple ID and an app-specific password: one path,
@@ -410,7 +413,7 @@ account, its identity check and a certificate profile).
 - signing the engine's own example packages, and any secret of the
   engine's own repository: SignPath or Nick's accounts are each a
   follow-up ticket if Nick picks them, and its secrets get rows in
-  `docs/continuity.md` (2016).
+  `docs/continuity.md` (2849, or 2016).
 
 ## Implementation steps
 

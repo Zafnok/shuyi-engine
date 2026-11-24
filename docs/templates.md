@@ -20,6 +20,8 @@ embedded in the `shuyi` binary. It is the example on this page.
 ```
 shuyi new moon-garden --template grid
 shuyi new moon-garden --answers answers.ron
+shuyi new moon-garden --no-input --perspective top-down-grid --targets desktop,web \
+    --id io.github.you.moon-garden
 shuyi new moon-garden --set perspective=top-down-grid
 shuyi new moon-garden --template blank --set private-files=yes \
     --private-url https://github.com/you/moon-garden-assets.git
@@ -31,9 +33,13 @@ the questions it answers:
 1. `--template <name>`, a short name of the template's for a set of
    answers (`grid`, `blank`);
 2. `--answers <file.ron>`, an answers file;
-3. each `--set <question>=<answer[,answer]>`.
+3. each `--set <question>=<answer[,answer]>`, and each of the wizard's
+   flags (below: `--perspective top-down-grid`, `--targets desktop,web`),
+   in the order given.
 
-A question none of them answers takes its default. `new` refuses a
+A question none of them answers takes its default: the template's
+`default`, or a concern's first ready answer, so `shuyi new demo
+--no-input` makes the same game as `--template grid`. `new` refuses a
 folder that isn't empty; `--force` writes into it, and its answer lists
 the files it wrote over. Its answer (`--json`, the `new` schema) lists
 the files made, the parts, the modules turned on, the stages, the skills
@@ -61,6 +67,49 @@ MCP server's `new` tool, nothing is asked and no repository is made
 only with `--private-url`, and the examples are in unless `examples` is
 `no`.
 
+## The wizard's questions
+
+`shuyi new` asks its questions from three places (ADR-0013 §1), in this
+order:
+
+1. the engine's: the game's folder, its name (`--name`, the folder's
+   name without) and its reverse-DNS id (`--id`, checked as `app-info`
+   checks it; `com.example.<crate name>` without), which `{{id}}` fills;
+2. the perspectives, the catalog's `perspective` concern;
+3. one question per concern of the catalog, [`modules.ron`](modules.ron),
+   in its order: each concern's `question`, taking one answer or many
+   (its `pick`). `time` isn't asked: it follows from the perspectives,
+   and a template that needs both asks its own;
+4. the template's own `questions`;
+5. the targets, from the engine's target profiles (`targets/`), the
+   template's always-on parts' targets by default.
+
+Every question has a flag: `--perspective`, `--bodies`, `--online`,
+`--world-drawing`, `--kind`, `--scripting` (one per concern, named by
+its id, several answers with commas), `--targets`, and `--set
+<question>=<answers>` for the template's (`--examples`/`--no-examples`
+for `examples`). An answer whose status in the catalog is `planned` or
+`parked`, or a planned target, is shown with its tickets and never
+picked: by flag it fails, naming its status and its tickets
+(ADR-0013 §6).
+
+A concern's `serves` names the perspectives its answers are for: bodies
+and motion is for the free ones, since the grid kit moves its pieces
+itself. `private-files` is answered by the GitHub questions, or by
+`--set private-files=yes` with `--private-url`.
+
+With `--no-input`, as off a terminal, nothing is asked: each question
+the flags leave takes its default, and no repository is made.
+
+A picked answer that is a module (its `by` is a crate) turns the module
+on as `shuyi add` does, through a part that names it or, with none, by
+the composer itself. `shuyi.ron`'s `targets` are the template's parts'
+until 2504: a target picked beside them is a limit. Listing the
+questions for an agent (`--questions --json`), the command that makes a
+game again and the answers kept in `shuyi.ron` are ticket 3424; asking
+them in a terminal, as lists to pick from, is 3423. Today a terminal
+gets the examples and GitHub questions below.
+
 An answers file maps each question to the ids of its answers:
 
 ```ron
@@ -81,17 +130,15 @@ Template(
     format_version: 1,
     questions: [
         Question(
-            id: "perspective",
-            text: "Which perspectives?",
-            pick: Many,
-            answers: [
-                Answer(id: "top-down-grid", text: "a top-down grid, turn by turn"),
-            ],
-            default: [],
+            id: "examples",
+            text: "Include the engine skills' worked examples?",
+            pick: One,
+            answers: [Answer(id: "yes", text: "yes"), Answer(id: "no", text: "no")],
+            default: ["yes"],
         ),
     ],
     short_names: {
-        "blank": {},
+        "blank": { "perspective": [] },
         "grid": { "perspective": ["top-down-grid"] },
     },
     parts: [
@@ -125,7 +172,7 @@ file, not a game asset, so it isn't in the asset registry.
 
 | Field | What it is |
 | ----- | ---------- |
-| `id` | What `Picked`, the answers file and `--set` name |
+| `id` | What `Picked`, the answers file and `--set` name: never a concern's of the catalog, nor `targets`, which the engine asks |
 | `text` | The words that ask it |
 | `pick` | `One` (one answer at most) or `Many` |
 | `answers` | Each `Answer(id, text)` |
@@ -164,10 +211,12 @@ field of each problem:
 - each part's `files` is a folder inside the template that holds a
   file;
 - each `requires` and `conflicts` names a part, and each `Picked` names
-  a question and one of its answers;
+  a question of the template's, or a concern of the engine's catalog,
+  and one of its answers;
 - each `stage` is lowercase words joined by `-`.
 
-Composing, for the answers picked: the answers are the template's, each
+Composing, for the answers picked: the answers are the template's or
+the catalog's (a concern's must be `ready`), each
 picked part's `requires` is picked and no `conflicts` is, each module is
 one the engine builds, and the files merge (below).
 
@@ -180,6 +229,7 @@ other `{{`:
 | ----------- | ------- |
 | `{{name}}` | The game's name, as given (`Moon Garden`) |
 | `{{crate_name}}` | Its crate's name (`moon-garden`) |
+| `{{id}}` | Its reverse-DNS id, `--id` (`com.example.<crate name>` without), as `shuyi.ron`'s `app` and `app_info.rs` hold it |
 | `"{{engine.<crate>}}"` | With its quotes: the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`), a TOML inline table: the engine's repository at `main` or a commit, or a checkout |
 | `{{engine_ref}}` | The engine's commit the game builds with, as a workflow's `uses: Zafnok/shuyi-engine/…@` names it: the 40-digit `--engine-rev`, else `main` |
 | `{{engine.docs}}` | A Markdown list of the engine's rules and docs for the game's agent. At `main`: `AGENTS.md` and the site's `llms.txt` and `llms-full.txt`. At a commit: `AGENTS.md` and the book's Markdown at that commit. In a checkout: the same two, as paths |
@@ -286,20 +336,20 @@ either way.
 
 | Part | When | What it writes |
 | ---- | ---- | -------------- |
-| `base` | always | The game crate on the short path (`BasicGame`, `BasicData`, `run_game`, `BasicTools`), its title, its files, `shuyi.ron`, `AGENTS.md`, CI with the gates, and its web build (`shuyi.ron`'s `web`, `crates/game/build.rs` and the web target in `rust-toolchain.toml`) |
+| `base` | always | The game crate on the short path (`BasicGame`, `BasicData`, `run_game`, `BasicTools`), its title, its files (with its menu sounds: `files/audio.ron` and four `.sfx.ron` sound effects in `files/sfx/`, the `sfx` feature of `shuyi-assets` turned on, ticket 2225), `shuyi.ron`, `AGENTS.md`, CI with the gates, and its web build (`shuyi.ron`'s `web`, `crates/game/build.rs` and the web target in `rust-toolchain.toml`) |
 | `stage-top-down-grid` | `perspective` is `top-down-grid` | A top-down grid stage: a rules crate over `TurnRules`, the stage's map, lights and seed as `BasicData`'s own part, and its tools (`--seed`, its scene, records, bots, its map's importer) |
 | `private-files` | `private-files` is `yes` | The game's private files ([ADR-0111](adr/0111-a-games-private-files-a-second-repository-laid-over-its-files-whenever-checked-out.md)): `shuyi.ron`'s `private_assets` (the repository `{{private_url}}`, checked out into `private/` at the commit `private.rev` names), an empty `private.rev` (no pin yet), `/private/` in `.gitignore`, the CI step's action `.github/actions/private-files`, and a section of `AGENTS.md` and `README.md` |
 
-Its questions:
+Its questions, after the catalog's (the perspectives among them):
 
 | Question | Pick | Answers | Default |
 | -------- | ---- | ------- | ------- |
-| `perspective` | many | `top-down-grid` | none |
 | `private-files` | one | `yes`: the game's writing, art and sounds in a second, private repository; `no` | `no` |
 | `examples` | one | `yes`: each skill's worked example; `no`: the skills alone (above) | `yes` |
 
-`--template blank` is `base` alone, and `--template grid` is `base` and
-the grid stage; neither has private files. CI makes a game with each
+`--template blank` is `base` alone (no perspective), and `--template
+grid` is `base` and the grid stage, as no answer at all is; neither has
+private files. CI makes a game with each
 short name, the grid one with private files and without the worked
 examples, runs its gates (`check-skills` among them) and builds it for
 the web.

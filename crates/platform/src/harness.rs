@@ -38,6 +38,7 @@ use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::{AudioRequest, Gain, MusicClock, MusicCommand};
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::input::pad::PadKind;
@@ -48,6 +49,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, Start, SystemHook};
+use crate::audio::cues::DroppedSound;
 use crate::dropped::DroppedFile;
 use crate::headless::{AddedPlay, HeadlessPlatform, PlayingSound, PresentHook, Presented};
 use crate::platform::{Millis, SystemEvent};
@@ -114,6 +116,8 @@ pub struct Harness<G: GameData> {
     played: Played,
     /// Every frame's audio requests, oldest first.
     audio: Vec<Vec<AudioRequest<G::Voice>>>,
+    /// The plays the cue rules dropped, each with its frame, oldest first.
+    dropped: Vec<(u32, DroppedSound)>,
     /// Every music command of the run, in order.
     music: Vec<MusicCommand>,
     /// The kind of controller [`pad`](Self::pad) presses buttons on.
@@ -133,6 +137,9 @@ pub struct Harness<G: GameData> {
     quit_frame: Option<u32>,
     /// Where [`point`](Self::point) put the pointer, until it left.
     pointer: Option<(i32, i32)>,
+    /// Whether it keeps every frame's audio, music and screens
+    /// ([`keep_logs`](Self::keep_logs)).
+    keep_logs: bool,
 }
 
 impl<G: GameData> Harness<G> {
@@ -277,6 +284,7 @@ impl<G: GameData> Harness<G> {
             playback: None,
             played: Played::default(),
             audio: Vec::new(),
+            dropped: Vec::new(),
             music: Vec::new(),
             pad_kind: PadKind::default(),
             crank: Crank::new(CrankDef::default()),
@@ -285,7 +293,20 @@ impl<G: GameData> Harness<G> {
             music_frames: Vec::new(),
             quit_frame: None,
             pointer: None,
+            keep_logs: true,
         }
+    }
+
+    /// Keeps every frame's audio requests, music commands, dropped plays
+    /// and screens (`true`, the default), or only the last frame's
+    /// (`false`): a long run's driver then holds the same amount however
+    /// many frames it runs. With it off, [`audio_log`](Self::audio_log),
+    /// [`music_log`](Self::music_log), [`dropped_sounds`](Self::dropped_sounds)
+    /// and the checks over them read the last frame only, and
+    /// [`screen_log`](Self::screen_log) holds the screens open now.
+    pub fn keep_logs(&mut self, on: bool) -> &mut Self {
+        self.keep_logs = on;
+        self
     }
 
     /// Gives the game `hook` for the system's events
@@ -663,7 +684,16 @@ impl<G: GameData> Harness<G> {
     /// it left, none while the game hasn't loaded.
     fn note_frame(&mut self) {
         self.frames += 1;
+        if !self.keep_logs {
+            self.audio.clear();
+            self.dropped.clear();
+            self.music.clear();
+            self.music_frames.clear();
+        }
         self.audio.push(self.app.audio().to_vec());
+        let frame = self.frames;
+        let dropped = self.app.dropped_sounds().iter();
+        self.dropped.extend(dropped.map(|d| (frame, d.clone())));
         let music = self.app.music();
         self.music.extend_from_slice(music);
         self.music_frames
@@ -673,6 +703,9 @@ impl<G: GameData> Harness<G> {
         }
         let screens = self.screens();
         if self.stacks.last().is_none_or(|(_, last)| *last != screens) {
+            if !self.keep_logs {
+                self.stacks.clear();
+            }
             self.stacks.push((self.frames, screens));
         }
     }
@@ -729,6 +762,14 @@ impl<G: GameData> Harness<G> {
                 _ => None,
             })
             .collect()
+    }
+
+    /// The plays the cue rules dropped since the last
+    /// [`clear_audio`](Self::clear_audio) (ADR-0139), in order, each with
+    /// its frame. [`sounds`](Self::sounds) still lists them: the game asked
+    /// for them.
+    pub fn dropped_sounds(&self) -> Vec<(u32, &DroppedSound)> {
+        self.dropped.iter().map(|(frame, d)| (*frame, d)).collect()
     }
 
     /// The sounds started with a handle that are still playing, as the
@@ -791,6 +832,16 @@ impl<G: GameData> Harness<G> {
         )
     }
 
+    /// How the last game frame asked to fill a window ([`Frame::scale`](crate::Frame::scale)):
+    /// the game's [`DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE);
+    /// `None` before one.
+    pub fn scale(&self) -> Option<ScaleMode> {
+        match self.platform.last_frame() {
+            Some(Presented::Game { scale, .. }) => Some(*scale),
+            _ => None,
+        }
+    }
+
     /// Every music command of the run so far, in order.
     pub fn music_commands(&self) -> &[MusicCommand] {
         &self.music
@@ -800,6 +851,7 @@ impl<G: GameData> Harness<G> {
     /// what comes after.
     pub fn clear_audio(&mut self) -> &mut Self {
         self.audio.clear();
+        self.dropped.clear();
         self.music.clear();
         self.music_frames.clear();
         self

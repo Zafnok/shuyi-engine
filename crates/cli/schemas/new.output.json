@@ -100,6 +100,10 @@
             "type": "string"
           }
         },
+        "id": {
+          "description": "Its reverse-DNS id, as `shuyi.ron`'s `app` holds it.",
+          "type": "string"
+        },
         "modules": {
           "description": "The engine's modules turned on, by crate.",
           "type": "array",
@@ -156,6 +160,7 @@
         "dir",
         "name",
         "crate_name",
+        "id",
         "template",
         "answers",
         "parts",

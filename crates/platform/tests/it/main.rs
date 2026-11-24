@@ -20,6 +20,7 @@ use shuyi_platform::headless::{HeadlessPlatform, Presented};
 use shuyi_ui::audio::Gain;
 use shuyi_ui::audio::groups::{MASTER, MUSIC, SFX, VOICE};
 use shuyi_ui::audio::loudness::loudness;
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::input::{PadKind, state::Device};
@@ -27,7 +28,7 @@ use shuyi_ui::log::{LogCategory, LogLevel};
 use shuyi_ui::perf::HeapSnapshot;
 use shuyi_ui::profiles::ProfileId;
 use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
-use shuyi_ui::settings::{MAX_VOLUME, SETTINGS_KEY};
+use shuyi_ui::settings::{GameSettings, MAX_VOLUME, SETTINGS_KEY};
 use shuyi_ui::storage::{MemoryStorage, Storage};
 use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
 use shuyi_ui::{Game, GameData, GameHooks, RawInputEvent};
@@ -57,8 +58,21 @@ fn a_game_frame_built_by_its_constructor_is_the_one_presented() {
     h.keys("f");
     let ctx = h.ctx();
     let blank = ctx.game.blank_cell(&ctx.palette).bg;
-    let expected = Presented::game(h.game().buffer().clone(), blank, false);
+    let mut expected = Presented::game(h.game().buffer().clone(), blank, false);
+    // The constructor starts at a whole scale; the toy fills the window.
+    if let Presented::Game { scale, .. } = &mut expected {
+        *scale = ScaleMode::Fit;
+    }
     assert_eq!(h.platform().last_frame(), Some(&expected));
+}
+
+#[test]
+fn a_game_frame_asks_for_the_games_scale() {
+    let mut h = Harness::new(toy::game());
+    h.wait(FRAME_DT);
+    // The toy's, not the engine's default (`Integer`).
+    assert_eq!(h.scale(), Some(ScaleMode::Fit));
+    assert_eq!(<() as GameSettings>::DEFAULT_SCALE, ScaleMode::Integer);
 }
 
 #[test]

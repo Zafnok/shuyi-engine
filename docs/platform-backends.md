@@ -11,7 +11,7 @@ do. The decisions behind it are
 
 | Backend | Crate | Where |
 | ------- | ----- | ----- |
-| macroquad: Windows, Linux, macOS, the web, the Steam Deck | `shuyi-app` | here, `crates/app` |
+| macroquad: Windows, Linux, macOS, the web, the Steam Deck; keys, pads, the mouse and touches | `shuyi-app` | here, `crates/app` |
 | headless: tests, tools, benchmarks | `shuyi_platform::headless` | here, `crates/platform` |
 | Playdate | `shuyi-playdate` | here, `crates/playdate` ([`targets/playdate.md`](targets/playdate.md)) |
 | a closed console | its own crate | **a private repository**, never here |
@@ -232,6 +232,13 @@ switches when a game frame's changes, and a card's or the errors' frames
 leave the window as it is (they carry `Frame::new`'s windowed); a device
 that is always full screen ignores it. *The window and the cursor (desktop)*, below,
 says how a desktop window opens and leaves fullscreen.
+`frame.scale` is how the frame fills a window, the game's
+`GameSettings::DEFAULT_SCALE` (ADR-0140): a windowed backend places the
+frame, and a card's picture, with `shuyi_ui::frame::console::place`, draws
+a whole-scale placement straight in and a fraction at the placement's
+`draw_scale` into a texture stretched with linear filtering ("sharp
+bilinear"), and maps the pointer back with `Placement::frame_px`; a
+backend that shows its display 1:1 ignores it.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
@@ -270,7 +277,9 @@ Add the input since the last call, in the order it happened:
   delta kept for the next poll. In one poll: the place, the press, the
   release, then the wheel. A finger has no hover: after a touch's
   release, send `PointerLeft`, last. A device without a pointer sends
-  none, and loses nothing: no action needs it.
+  none, and loses nothing: no action needs it. `shuyi-app` does this in
+  `crates/app/src/pointer.rs`, from macroquad's mouse, which a touch
+  drives too, and with a wheel notch in each platform's own unit.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home
@@ -369,8 +378,9 @@ The sound device:
   `gains.voice()`, each a `Gain` in units of 1/4096), and a change reaches what
   is already playing. The sound groups behind them are worked out before
   the backend; it never sees the tree. Then play the `SoundRequest`s in
-  order (a sound cue at its manifest volume times its own and its gain; a sound
-  started with a handle, looped if its cue says so, kept by its id as
+  order (a sound cue's file `variant`, an index into its `files`, at
+  `volume` times `cue_volume` percent times its gain; a sound
+  started with a handle the same way, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the
   clips coming, to load ahead; the clips kept, loaded whichever is asked
@@ -396,16 +406,38 @@ keeps the volume it is given and sounds at it when it is released, and
 holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes on it (its
 `in-house-sound` backend pauses), and the headless `Speaker` does as it does.
 
-**Don't write the rules of playing yourself.** Variants, a cue's volume,
-handled sounds, fades and the music clock are
-`shuyi_platform::audio::player::Player`'s (ADR-0063). A backend writes its
+**Play what you are told.** Which file of a cue plays, at what volume, and
+which plays are dropped are the cue rules', which `App` applies before the
+device (`shuyi_platform::audio::cues`, ADR-0139), so every backend plays the
+same: a `SoundRequest::Sound` or `Start` already names its file (`variant`)
+and its volume (`cue_volume`), and a backend never picks. A sound the game
+added (`SoundRequest::Add`) plays at its own volume, full.
+
+**Don't write the rules of playing yourself.** A cue's files, handled
+sounds, fades and the music clock are
+`shuyi_platform::audio::player::Player`'s (ADR-0063). It keeps a slot for
+each file of a cue's `files`, so `variant` names the same file when one
+failed to load, which then plays nothing. A backend writes its
 `Backend` trait and returns a `PlayerDevice` from `audio()`:
 
 - **required:** `load_sound`, `load_music`, `poll_music`, `length`, `play`,
   `set_volume`, `stop`, `set_playing_volume`, `stop_playing`;
 - **provided, for what a device may lack**, each `Err(Unsupported)` by default:
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
-  as recorded). The first `Unsupported` of each is one warning;
+  as recorded), and `set_loop_region` (ticket 2397, else a track loops whole).
+  The first `Unsupported` of each is one warning, and of `set_loop_region` only
+  for a cue that names a region;
+- **a loop region**: once a looped track has loaded, the player calls
+  `set_loop_region(track, region)` with the cue's `LoopRegion`, or `None` for a
+  cue without one, and the backend says the `Looping` it will play: the cue's,
+  else the region the file's tags name (an Ogg file's `LOOPSTART` and
+  `LOOPLENGTH`), else the whole track, or `Unread` with why the file's tags
+  don't read, which the player warns of naming the file. The way round is the
+  backend's to make exact (a worker's decoder, a device's own loop range), never
+  a seek at the moment it is heard. `music_playing` then says where in the track
+  it is: past the region's end, back by its length each time round, so
+  `MusicClock` reads what is heard. quad-snd and the headless `Speaker` loop whole
+  tracks, and the new sound backend that replaces quad-snd (ADR-0066) plays regions;
 - **provided, for sounds a game makes at run time** (`SoundRequest::Add`, ADR-0087):
   `add_sound`, which readies the samples as a sound, says the backend can't by
   default, and the cue then plays nothing, with a warning; `remove_sound` stops
@@ -440,7 +472,9 @@ the window reaches the game (`file_drops`: the backend's to say with
 `desktop` and `web`), where the game's storage is (`storage_place`, with
 `with_storage_place`: its folder, or the browser's site storage under its
 prefix) and whether a file picker opens (`file_picker`, with
-`with_file_picker`: `Opens` on the web alone). Read them from the target's
+`with_file_picker`: `Opens` on the web alone), and how much motion it shows
+(`graphics`, the profile's `GraphicsTier`; `shuyi-app` shows another in a
+debug build when `SHUYI_GRAPHICS` names one, with `with_graphics`). Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
@@ -586,7 +620,7 @@ computer's `profiles`), one RON value,
 - The web keeps no record (the page sizes the canvas), and neither does a
   capture run (ADR-0052).
 
-A new desktop backend (the winit one, 3034) keeps the same record under
+A new desktop backend (the winit one, 3326) keeps the same record under
 the same key, so a player's window survives the move.
 
 The system's cursor hides over the picture when the mouse isn't in use,
@@ -610,7 +644,7 @@ whether a mouse button was pressed, the window's mode and its focus:
 
 The web does the same, through the canvas's CSS `cursor`. A capture run
 never reaches it. Both times are *tunable* (`CURSOR_IDLE`, `MODE_SETTLE`).
-A new desktop backend (3034) keeps the same rule.
+A new desktop backend (the winit one, 3327) keeps the same rule.
 
 ## Files handed in at run time (optional)
 
@@ -771,8 +805,9 @@ the level, the target and the text. It goes to:
   alone, 256 KiB more. Each line is written whole as it comes, so a crash
   loses nothing before it. Without a folder, or one it can't write, a
   game runs with no file;
-- **stderr on a desktop**, in a debug build: a Windows release build has
-  no console;
+- **stderr on a desktop**, in a debug build, or in a release build when
+  `SHUYI_LOG` is set (a developer at a terminal): a Windows release build
+  has no console;
 - **the browser's console on the web**, by level: `console.error`,
   `console.warn`, `console.info` and `console.debug`;
 - **a crash report's last lines** ([Panics](#panics)).
@@ -785,14 +820,36 @@ The files are where the saves are:
 | macOS | `~/Library/Application Support/<storage name>/logs/` |
 | Linux | `$XDG_DATA_HOME/<storage name>/logs/`, or `~/.local/share/<storage name>/logs/` |
 
-Which lines pass: `info` and more serious for the engine's categories,
-`warn` and more serious for any other target
-(`shuyi_ui::log::LogFilter::allows_target`), the levels `App` keeps too. A
+Which lines pass is the `SHUYI_LOG` variable's filter on a desktop
+(`shuyi_ui::log::LogFilter::parse`; nothing reads one on the web), and
+`run_app` gives `App` the same (`app.set_log_filter`), so its 500 lines
+are the ones the sinks got. Its items are split by commas, each one of:
+
+- a level, `error`, `warn`, `info` or `debug`: the engine's categories
+  at that level and more serious;
+- a category's name (`assets`, `audio`, `input`, `screens`, `storage`,
+  `platform`, `game`), `=` and a level: that category;
+- any other name, `=` and a level: every other target that starts with
+  it (`gilrs` covers `gilrs_core::…` too); of two such names, the longer
+  wins.
+
+A later item wins over an earlier one. The rest is the default: `info`
+and more serious for the engine's categories, `warn` and more serious
+for any other target (`LogFilter::allows_target`). For example:
+
+```text
+SHUYI_LOG=warn,audio=debug,macroquad=info
+```
+
+keeps warnings and errors, the audio's lines down to `debug`, and
+macroquad's down to `info`. A value that isn't a filter (`loud`,
+`audio=loud`, `=debug`) is ignored: the default is used, and one `WARN`
+line of the target `platform` says why. Whatever the filter says, a
 build without debug tools passes warnings and errors alone (ADR-0094).
 
 Two kinds of line never reach these sinks: miniquad's own messages, plain
 `eprintln!` and `println!` calls that stay on stderr (until macroquad
-goes, ticket 3034); and a game's lines if the game installed a `log`
+goes, ticket 3333); and a game's lines if the game installed a `log`
 logger of its own before `run_app`, which keeps it (a line on stderr says
 so).
 

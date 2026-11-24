@@ -745,20 +745,140 @@ fn status_of<'a>(cells: &'a [Value], check: &str) -> &'a str {
 /// The output's own count says whose a gap is, and changes no verdict.
 #[test]
 fn a_gap_says_whether_the_outputs_buffer_ran_dry() {
-    assert_eq!(gaps_detail(0.0, &[]), "0 gaps while everything played");
-    assert_eq!(gaps_detail(1.0, &[]), "1 gaps while everything played");
     assert_eq!(
-        gaps_detail(1.0, &[0.0, 2.0, 0.0]),
+        gaps_detail(0.0, &[], None),
+        "0 gaps while everything played"
+    );
+    assert_eq!(
+        gaps_detail(1.0, &[], None),
+        "1 gaps while everything played"
+    );
+    assert_eq!(
+        gaps_detail(1.0, &[0.0, 2.0, 0.0], None),
         "1 gaps while everything played; the output's buffer ran dry 2 times"
     );
     assert_eq!(
-        gaps_detail(1.0, &[0.0, 0.0]),
+        gaps_detail(1.0, &[0.0, 0.0], None),
         "1 gaps while everything played; the output's buffer never ran dry, so not the output's"
     );
     assert_eq!(
-        gaps_detail(0.0, &[0.0, 0.0]),
+        gaps_detail(0.0, &[0.0, 0.0], None),
         "0 gaps while everything played; the output's buffer ran dry 0 times"
     );
+}
+
+/// The feeder's count says whether a gap, or a stall that made none, is the
+/// feeder's; with neither count up, a gap is neither's (ticket 3320).
+#[test]
+fn a_gap_or_a_stall_says_whether_the_feeder_fell_behind() {
+    let stalls = |pairs: &[(&str, f64)]| -> BTreeMap<String, f64> {
+        pairs
+            .iter()
+            .map(|(track, frames)| ((*track).to_owned(), *frames))
+            .collect()
+    };
+    let behind = stalls(&[("music_a.ogg", 0.0), ("music_b.ogg", 512.0)]);
+    assert_eq!(
+        gaps_detail(1.0, &[0.0, 0.0], Some(&behind)),
+        "1 gaps while everything played; the output's buffer never ran dry; \
+         the feeder fell behind: music_b.ogg stalled 512 frames"
+    );
+    assert_eq!(
+        gaps_detail(0.0, &[0.0], Some(&behind)),
+        "0 gaps while everything played; the output's buffer ran dry 0 times; \
+         the feeder fell behind: music_b.ogg stalled 512 frames",
+        "a stall with no gap is the feeder's too"
+    );
+    let kept_up = stalls(&[("music_a.ogg", 0.0)]);
+    assert_eq!(
+        gaps_detail(1.0, &[0.0, 0.0], Some(&kept_up)),
+        "1 gaps while everything played; the output's buffer never ran dry; \
+         no stream stalled, so neither the output's nor the feeder's: the loopback, or the mix"
+    );
+    assert_eq!(
+        gaps_detail(1.0, &[3.0], Some(&kept_up)),
+        "1 gaps while everything played; the output's buffer ran dry 3 times; no stream stalled"
+    );
+}
+
+/// `perf.jsonl` in a new folder: nine pairs of both sides, with no gap, and the
+/// in-house feeder's tracks, `music_b.ogg` stalling `stalled` frames in pair 4.
+fn perf_rows(name: &str, stalled: u32) -> PathBuf {
+    let dir = empty_folder(name);
+    let mut text = String::new();
+    for pair in 0..9 {
+        for side in ["a", "b"] {
+            let frames = if pair == 4 && side == "b" { stalled } else { 0 };
+            let row = json!({
+                "side": side,
+                "pair": pair,
+                "metrics": {"underruns": 0.0, "dry_callbacks": 0.0, "stalled_frames": f64::from(frames)},
+                "streams": [
+                    {"track": "music_a.ogg", "stalled": 0, "lowest": 2816},
+                    {"track": "music_b.ogg", "stalled": frames, "lowest": 0},
+                ],
+            });
+            text.push_str(&row.to_string());
+            text.push('\n');
+        }
+    }
+    fs::write(dir.join("perf.jsonl"), &text).unwrap_or_else(|e| panic!("{e}"));
+    let old_new = text
+        .replace(r#""side":"a""#, r#""side":"old""#)
+        .replace(r#""side":"b""#, r#""side":"new""#);
+    fs::write(dir.join("old-new.jsonl"), old_new).unwrap_or_else(|e| panic!("{e}"));
+    dir
+}
+
+/// A stalled stream frame fails both `underruns` cells with no gap in the
+/// recording, and their detail names the track (ticket 3320).
+#[test]
+fn a_stalled_stream_fails_the_underruns_cells_and_names_its_track() {
+    let mut budget = new_backend_budget();
+    budget.performance.insert("new".to_owned(), BTreeMap::new());
+    let kept_up = perf_rows("kept-up", 0);
+    let perf = performance_cells("new", &kept_up, &budget);
+    assert_eq!(status_of(&perf, "perf:underruns"), "passed");
+    let old_new = old_new_cells("new", &kept_up, &budget);
+    assert_eq!(status_of(&old_new, "old-new:underruns"), "passed");
+    let stalled = perf_rows("stalled", 700);
+    for (cells, check) in [
+        (
+            performance_cells("new", &stalled, &budget),
+            "perf:underruns",
+        ),
+        (old_new_cells("new", &stalled, &budget), "old-new:underruns"),
+    ] {
+        assert_eq!(status_of(&cells, check), "failed", "{check}");
+        let detail = cells
+            .iter()
+            .find(|cell| cell["check"] == check)
+            .and_then(|cell| cell["detail"].as_str())
+            .unwrap_or_default();
+        assert!(
+            detail.ends_with("the feeder fell behind: music_b.ogg stalled 700 frames"),
+            "{check}: {detail}"
+        );
+    }
+}
+
+/// A scenario's log says which tracks stalled, and a failed scenario's message says
+/// so beside what failed; one with no stall adds nothing (ticket 3320).
+#[test]
+fn a_failed_scenario_says_which_stream_stalled_in_it() {
+    let lines = [
+        r#"{"event":"output","rebuilds":0,"silent_callbacks":0,"dry_callbacks":0,"raised":true}"#,
+        r#"{"event":"streams","raised":true,"tracks":[{"track":"loop.wav","stalled":0,"lowest":2816},{"track":"music_a.ogg","stalled":96,"lowest":0}]}"#,
+        r#"{"event":"done"}"#,
+    ];
+    let log = parse_log(&lines.join("\n")).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(log.stalls, vec![("music_a.ogg".to_owned(), 96)]);
+    assert_eq!(
+        stalls_note(Path::new("evidence/windows-in-house/run-2"), &log).as_deref(),
+        Some("in run-2 the feeder fell behind: music_a.ogg stalled 96 frames")
+    );
+    let quiet = parse_log(lines[2]).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(stalls_note(Path::new("run-0"), &quiet), None);
 }
 
 #[test]
@@ -988,4 +1108,47 @@ fn an_edit_reads_a_dependency_by_its_name_whatever_its_version() {
         edit.apply("\nsha2 = { version = \"0.11\", default-features = true }\n")
             .is_err()
     );
+}
+
+/// Ticket 2397: `future_region` passes the intro once and the region after it, and
+/// fails quad-snd's whole-file loop, which plays the intro again at its join.
+#[test]
+fn the_regions_scenario_holds_the_intro_once_and_catches_a_whole_file_loop() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let plan: Plan =
+        read_ron(&root.join(TOOL).join("scenarios.ron")).unwrap_or_else(|e| panic!("{e}"));
+    let scenario = plan
+        .scenarios
+        .into_iter()
+        .find(|s| s.name == "future_region")
+        .unwrap_or_else(|| panic!("no future_region"));
+    let (marker, music) = (signal("marker.wav"), signal("intro_loop.wav"));
+    let region = &music[music.len() / 2..];
+    // The marker at 0, the track from 500 ms, stopped at 3700 ms.
+    let heard = |passes: &[&[i16]]| {
+        let mut all = marker.clone();
+        all.resize(frame_index(500), 0);
+        for pass in passes {
+            all.extend_from_slice(pass);
+        }
+        all.truncate(frame_index(3700));
+        all.resize(frame_index(scenario.end as usize), 0);
+        recording(10, &all)
+    };
+    let check = |recording: &Recording| {
+        check(
+            &scenario.expect,
+            scenario.end,
+            recording,
+            &done(),
+            &oracle,
+            &tolerance(),
+        )
+    };
+    let right = heard(&[&music, region, region, region]);
+    assert_eq!(check(&right), Vec::<String>::new());
+    let whole = heard(&[&music, &music]);
+    assert_ne!(check(&whole), Vec::<String>::new(), "the intro came back");
+    let late = heard(&[&music, &music[..music.len() / 4], region, region]);
+    assert_ne!(check(&late), Vec::<String>::new(), "an intro played twice");
 }

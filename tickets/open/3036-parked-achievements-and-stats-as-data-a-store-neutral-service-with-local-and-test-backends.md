@@ -6,14 +6,14 @@ milestone: "Engine: store services"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
-blocked_by: ["2367", "3040"]
+blocked_by: ["2367", "3040", "3527"]
 nick_input: decision
 completed:
 ---
 
 # 3036 — Achievements and stats as data
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; and 2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost"): the game doesn't need it before parity, so this waits until after the MVP in `docs/ROADMAP.md`. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; and 2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost"): the game doesn't need it before parity, so this waits until after the MVP in `docs/ROADMAP.md`. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. Decision ticket 3527 asks Nick whether to unpark it with 3037 for the first Steam release (question 2), and if he says yes, asks this ticket's question on stores beyond Steam in the same session.
 
 ## Context
 
@@ -179,6 +179,10 @@ picks, and each becomes a ticket of its own when a game ships there.
   2322 describes it.
 - **The toy game** has two achievements, one with progress, and its
   tests unlock both.
+- **Either order with 2920:** if 2920 is done, keep `StoreServices`
+  able to take the EOS backend its report describes (its parked ticket
+  implements it); if not, nothing to do (2920 names what an EOS backend
+  needs and adds a line here).
 
 **Out (do not do):**
 - Steam (3037), and any other store;

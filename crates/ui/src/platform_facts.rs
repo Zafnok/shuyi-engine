@@ -10,8 +10,8 @@
 
 use crate::prelude::*;
 
-pub use shuyi_assets::target::Quit;
 use shuyi_assets::target::{Color, TargetProfile};
+pub use shuyi_assets::target::{GraphicsTier, Quit};
 
 use crate::ctx::Keyboard;
 use crate::input::state::Device;
@@ -77,6 +77,14 @@ pub struct PlatformFacts {
     /// [`KeyCapStyle::one_bit`]: crate::frame::key_cap::KeyCapStyle::one_bit
     #[serde(default, skip_serializing_if = "ScreenColor::is_color")]
     pub screen: ScreenColor,
+    /// How much motion the game shows there: its profile's
+    /// [`graphics`](TargetProfile::graphics). A skin asks it before it
+    /// draws a moving look, and draws the look's still where the tier is
+    /// too low ([`GraphicsTier::plays`]). A debug build may preview a
+    /// lower tier ([`with_graphics`](Self::with_graphics)). A session
+    /// record made before it reads as [`GraphicsTier::Full`].
+    #[serde(default, skip_serializing_if = "GraphicsTier::is_full")]
+    pub graphics: GraphicsTier,
 }
 
 /// The colours a screen shows ([`PlatformFacts::screen`]).
@@ -179,7 +187,17 @@ impl PlatformFacts {
             } else {
                 ScreenColor::Color
             },
+            graphics: profile.graphics,
         }
+    }
+
+    /// The same facts at the graphics tier `tier`
+    /// ([`graphics`](Self::graphics)): a debug build's preview of a
+    /// lesser target's look on the desktop.
+    #[must_use]
+    pub fn with_graphics(mut self, tier: GraphicsTier) -> Self {
+        self.graphics = tier;
+        self
     }
 
     /// The same facts with the game's storage at `place`
@@ -240,7 +258,8 @@ impl Default for PlatformFacts {
     /// The engine's `desktop` target's facts: a window that can go full
     /// screen, the game's own Quit, a keyboard and a pointer, no touch.
     /// Files dropped are unheard, the storage's place unknown and no file
-    /// picker there, until a backend says.
+    /// picker there, until a backend says. Every moving look plays
+    /// ([`GraphicsTier::Full`]).
     fn default() -> Self {
         Self {
             target: "desktop".to_owned(),
@@ -254,6 +273,7 @@ impl Default for PlatformFacts {
             storage_place: StoragePlace::Unknown,
             file_picker: FilePicker::Absent,
             screen: ScreenColor::Color,
+            graphics: GraphicsTier::Full,
         }
     }
 }
@@ -312,6 +332,11 @@ mod tests {
         assert_eq!(playdate.screen, ScreenColor::OneBit);
         assert!(web.screen.is_color() && deck.screen.is_color());
         assert!(!playdate.screen.is_color());
+        // The Playdate shows stills; the others every moving look.
+        assert_eq!(playdate.graphics, GraphicsTier::Reduced);
+        for facts in [&web, &deck] {
+            assert_eq!(facts.graphics, GraphicsTier::Full, "{}", facts.target);
+        }
         let desktop = PlatformFacts::from_profile(&desktop());
         assert!(desktop.can_quit() && !desktop.can_drop_files());
         let heard = desktop.with_file_drops(FileDrops::Heard);
@@ -354,5 +379,21 @@ mod tests {
         let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, picker);
         assert!(!FilePicker::Opens.is_absent() && FilePicker::Absent.is_absent());
+        // Every moving look plays, unless said: then it is written.
+        assert_eq!(back.graphics, GraphicsTier::Full);
+        assert!(!text.contains("graphics"), "{text}");
+        let reduced = picker.with_graphics(GraphicsTier::Reduced);
+        let text = ron::to_string(&reduced).unwrap_or_else(|e| panic!("{e}"));
+        assert!(text.contains("graphics:Reduced"), "{text}");
+        let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, reduced);
+    }
+
+    #[test]
+    fn a_debug_preview_lowers_the_graphics_tier_alone() {
+        let desktop = PlatformFacts::default();
+        let minimal = desktop.clone().with_graphics(GraphicsTier::Minimal);
+        assert_eq!(minimal.graphics, GraphicsTier::Minimal);
+        assert_eq!(minimal.with_graphics(GraphicsTier::Full), desktop);
     }
 }

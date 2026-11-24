@@ -24,10 +24,11 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use include_dir::{Dir, DirEntry, include_dir};
 use schemars::JsonSchema;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
+
+use crate::catalog::{Concern, Concerns, Status};
 
 pub use compose::{
     Applied, ComposeError, EXAMPLES, Fill, GENERATED_STAGES, Plan, apply, compose, fill, stages_rs,
@@ -49,7 +50,8 @@ pub const FORMAT_VERSION: u32 = 1;
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The engine's own template, embedded.
-static BUILT_IN: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../templates/shuyi-default");
+/// `build.rs` writes its table.
+static BUILT_IN: &[(&str, &[u8])] = shuyi_embed::files!("templates");
 
 /// Where the engine's own template is, in the engine's repository.
 pub const BUILT_IN_ORIGIN: &str = "templates/shuyi-default";
@@ -154,7 +156,7 @@ pub struct Question {
 }
 
 /// How many answers a question takes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum Pick {
     /// One at most.
     One,
@@ -391,22 +393,36 @@ impl Template {
                 ),
             ));
         }
-        self.check_questions()?;
+        // The engine's own concerns, as this `shuyi` embeds them: a game
+        // made on a checkout of the engine is checked against that
+        // checkout's when it is composed.
+        let concerns = Concerns::embedded().map_err(|message| (String::new(), message))?;
+        self.check_questions(&concerns)?;
         for (name, answers) in &self.short_names {
-            self.check_answers(answers)
+            self.check_answers(answers, &concerns)
                 .map_err(|message| (format!("short_names[{name}]"), message))?;
         }
-        self.check_parts()
+        self.check_parts(&concerns)
     }
 
-    /// Its questions: each id once, each answer id once, the defaults
-    /// among the answers.
-    fn check_questions(&self) -> Result<(), (String, String)> {
+    /// Its questions: each id once and none a concern's or the engine's,
+    /// each answer id once, the defaults among the answers.
+    fn check_questions(&self, concerns: &Concerns) -> Result<(), (String, String)> {
         let mut seen = Vec::new();
         for question in &self.questions {
             let field = format!("questions[{}]", question.id);
             if seen.contains(&question.id.as_str()) {
                 return Err((field, "a second question with this id".to_owned()));
+            }
+            if question.id == TARGETS || asked(concerns, &question.id).is_some() {
+                return Err((
+                    field,
+                    format!(
+                        "`{}` is the engine's question: a template asks only what neither the \
+                         catalog's concerns nor the targets ask",
+                        question.id
+                    ),
+                ));
             }
             seen.push(&question.id);
             let mut ids = Vec::new();
@@ -447,14 +463,31 @@ impl Template {
         Ok(())
     }
 
-    /// Whether `answers` name its questions and their answers, as many as
-    /// each takes.
-    pub fn check_answers(&self, answers: &Answers) -> Result<(), String> {
+    /// Whether `answers` name its questions, the concerns `shuyi new` asks
+    /// ([`asked`]) or the targets, and their answers, as many as each
+    /// takes; a concern's answer must be ready (ADR-0013 §6). The targets
+    /// are checked against the engine's profiles by `new`.
+    pub fn check_answers(&self, answers: &Answers, concerns: &Concerns) -> Result<(), String> {
         for (question, picked) in &answers.0 {
+            if question == TARGETS {
+                continue;
+            }
+            if let Some(concern) = asked(concerns, question) {
+                check_concern(concern, picked)?;
+                continue;
+            }
             let question = self.question(question).ok_or_else(|| {
+                let asked: Vec<&str> = concerns
+                    .concerns
+                    .iter()
+                    .filter(|c| c.pick.is_some())
+                    .map(|c| c.id.as_str())
+                    .chain([TARGETS])
+                    .chain(self.questions.iter().map(|q| q.id.as_str()))
+                    .collect();
                 format!(
-                    "no question `{question}`: the template asks {}",
-                    ids(self.questions.iter().map(|q| q.id.as_str()))
+                    "no question `{question}`: `shuyi new` asks {}",
+                    ids(asked.into_iter())
                 )
             })?;
             Self::check_picks(question, picked)?;
@@ -464,7 +497,7 @@ impl Template {
 
     /// Its parts: each id once, a folder of files each, the parts and
     /// answers they name there.
-    fn check_parts(&self) -> Result<(), (String, String)> {
+    fn check_parts(&self, concerns: &Concerns) -> Result<(), (String, String)> {
         let mut seen = Vec::new();
         for part in &self.parts {
             let field = |name: &str| format!("parts[{}].{name}", part.id);
@@ -491,13 +524,21 @@ impl Template {
                 }
             }
             for (question, answer) in part.when.picks() {
-                let q = self.question(question).ok_or_else(|| {
-                    (
-                        field("when"),
-                        format!("`Picked` names no question of the template: `{question}`"),
-                    )
-                })?;
-                if !q.answers.iter().any(|a| a.id == answer) {
+                let answers: Vec<&str> = match (self.question(question), asked(concerns, question))
+                {
+                    (Some(q), _) => q.answers.iter().map(|a| a.id.as_str()).collect(),
+                    (None, Some(c)) => c.answers.iter().map(|a| a.id.as_str()).collect(),
+                    (None, None) => {
+                        return Err((
+                            field("when"),
+                            format!(
+                                "`Picked` names neither a question of the template nor a \
+                                 concern of the engine's: `{question}`"
+                            ),
+                        ));
+                    }
+                };
+                if !answers.contains(&answer) {
                     return Err((
                         field("when"),
                         format!("`Picked` names no answer of `{question}`: `{answer}`"),
@@ -539,6 +580,64 @@ impl Template {
                 .or_insert_with(|| question.default.clone());
         }
         all
+    }
+}
+
+/// The engine's question of the targets a game ships on (ADR-0013 §1),
+/// answered by the ids of the engine's target profiles.
+pub const TARGETS: &str = "targets";
+
+/// The concern `id` of `concerns`, if `shuyi new` asks it (it has a
+/// `pick`): every concern but `time`.
+pub fn asked<'a>(concerns: &'a Concerns, id: &str) -> Option<&'a Concern> {
+    concerns
+        .concerns
+        .iter()
+        .find(|c| c.id == id && c.pick.is_some())
+}
+
+/// Whether `picked` are ready answers of `concern`, as many as it takes:
+/// a planned or parked answer is shown, never picked (ADR-0013 §6).
+fn check_concern(concern: &Concern, picked: &[String]) -> Result<(), String> {
+    for id in picked {
+        let answer = concern
+            .answers
+            .iter()
+            .find(|a| &a.id == id)
+            .ok_or_else(|| {
+                format!(
+                    "`{id}` is no answer of `{}`: its answers are {}",
+                    concern.id,
+                    ids(concern.answers.iter().map(|a| a.id.as_str()))
+                )
+            })?;
+        if answer.status != Status::Ready {
+            return Err(format!(
+                "`{id}` ({}), an answer of `{}`, is {}: {} it, so no game picks it yet",
+                answer.name,
+                concern.id,
+                answer.status.name(),
+                tickets_build(&answer.tickets)
+            ));
+        }
+    }
+    if concern.pick == Some(Pick::One) && picked.len() > 1 {
+        return Err(format!(
+            "`{}` takes one answer, not {}",
+            concern.id,
+            picked.len()
+        ));
+    }
+    Ok(())
+}
+
+/// "ticket 2701 builds", or "tickets 2701 and 2702 build"; "no ticket
+/// builds" for none.
+pub fn tickets_build(tickets: &[String]) -> String {
+    match tickets {
+        [] => "no ticket builds".to_owned(),
+        [one] => format!("ticket {one} builds"),
+        [rest @ .., last] => format!("tickets {} and {last} build", rest.join(", ")),
     }
 }
 
@@ -603,32 +702,18 @@ fn read_dir(root: &Path, dir: &Path, files: &mut Files) -> Result<(), String> {
     Ok(())
 }
 
-/// The files of an embedded folder, at any depth, by their path from it.
-fn embedded_files(dir: &'static Dir<'static>) -> Files {
-    let mut files = Files::new();
-    let mut pending = vec![dir];
-    while let Some(dir) = pending.pop() {
-        for entry in dir.entries() {
-            match entry {
-                DirEntry::Dir(d) => pending.push(d),
-                DirEntry::File(f) => {
-                    let name = f.path().to_string_lossy().replace('\\', "/");
-                    files.insert(name, f.contents().to_vec());
-                }
-            }
-        }
-    }
-    files
+/// The files of an embedded folder's table, by their path from it.
+fn embedded_files(table: &[(&str, &[u8])]) -> Files {
+    table
+        .iter()
+        .map(|(path, bytes)| ((*path).to_owned(), bytes.to_vec()))
+        .collect()
 }
 
 /// The engine's own template, `templates/shuyi-default`, as the `shuyi`
 /// binary embeds it.
 pub fn built_in() -> Result<Template, LoadError> {
-    Template::read(
-        BUILT_IN_ORIGIN,
-        embedded_files(&BUILT_IN),
-        &engine_version(),
-    )
+    Template::read(BUILT_IN_ORIGIN, embedded_files(BUILT_IN), &engine_version())
 }
 
 #[cfg(test)]

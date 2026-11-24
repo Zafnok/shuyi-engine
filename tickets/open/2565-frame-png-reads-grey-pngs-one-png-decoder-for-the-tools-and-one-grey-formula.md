@@ -74,11 +74,10 @@ None.
 
   No template calls it. `decode_png` goes; `encode_png` stays, and
   `codec.rs`'s docs say it only encodes.
-- **Either order with 2234:** if 2234 is done, `decode_image` sends a
-  PNG to `codec::decode_png` and any other picture to the registry
+- **From 2234 (done):** `decode_image` (through `decode_with`) sends
+  a PNG to `codec::decode_png` and any other picture to the registry
   (`Formats::decode::<image::Image>`): replace only the PNG branch's
-  call with `png_pixels` and keep the registry branch; if not, nothing
-  to do (2234 decodes the other formats beside `png_pixels`).
+  call with `png_pixels` and keep the registry branch.
 - **From 2811 (done):** `codec.rs` also holds `decode_apng` (and its
   `Animation`), which reads back only the RGBA8 APNGs `encode_apng`
   writes, for `frame_png::preview::check`: it stays, and `codec.rs`'s
@@ -142,8 +141,8 @@ None.
       only `palette::grey`.
 - [ ] Every existing test of lights, dimmed colours, one-bit conversion
       and `frame-png` passes unchanged.
-- [ ] The clause with 2234 is settled, and `codec.rs`'s docs say what
-      2811's `decode_apng` reads.
+- [ ] `decode_image` keeps 2234's registry branch, and `codec.rs`'s
+      docs say what 2811's `decode_apng` reads.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

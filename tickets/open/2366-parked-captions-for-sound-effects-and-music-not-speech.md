@@ -215,7 +215,7 @@ None.
   `// check-text: not player text`, as the engine's other checks do.
 - **hello-grid** (`examples/hello-grid/`):
   - one gameplay cue, `foe_step`, added to `sound::manifest()`: if
-    Hello, Grid's sounds are already `.sfx.ron` files (2225), a new
+    Hello, Grid's sounds are already `.sfx.ron` files (2277), a new
     `files/sfx/foe_step.sfx.ron` made with `shuyi sfx` from a preset;
     if not, a new blip in `BLIPS` (`src/sound.rs`). It plays when the
     foe steps (`foe_moves`, `src/screens/stage.rs:214`; it and
@@ -245,8 +245,8 @@ None.
     voice busy) still shows its caption: the thing happened. Done or
     not, nothing more to do here.
   - **From 2258 (done):** `SoundCue` and `MusicCue` have `group`, and
-    `pack::VERSION` is 11. **2345** adds a field to `SoundCue`, and
-    2365 one to `MusicCue`. The later to land rebases onto
+    `pack::VERSION` is 11. **From 2345 (done):** `SoundCue` has
+    `rules`, and `pack::VERSION` is 21. 2365 adds a field to `MusicCue`. The later to land rebases onto
     the other's cue and bumps `pack::VERSION` again. **From 2344
     (done):** `SoundCue` has `looped`, and `pack::VERSION` is 5.
   - **From 2344 (done):** `AudioRequest::StartSound` starts a sound

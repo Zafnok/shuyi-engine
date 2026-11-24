@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 use crate::prelude::*;
 
-use shuyi::assets::audio::{AudioManifest, CreditRef, SoundCue};
+use shuyi::assets::audio::{AudioManifest, CreditRef, CueRules, SoundCue};
 #[cfg(feature = "std")]
 use shuyi::assets::audio::{Bytes, Files, SAMPLE_RATE};
 use shuyi::ui::audio::AudioConfig;
@@ -20,8 +20,13 @@ pub const BLIPS: [(&str, f32, u32); 4] = [
     ("cursor.wav", 990.0, 30),
 ];
 
+/// How soon the cursor's tick and the move's blip may play again, in
+/// milliseconds: a cursor that moves several cells in one frame ticks once.
+pub const STEP_GAP_MS: u32 = 40;
+
 /// The audio manifest: the engine's four sound cues ([`AudioConfig`]),
-/// each a blip of [`BLIPS`]; no music.
+/// each a blip of [`BLIPS`], the cursor's and the move's with a gap of
+/// [`STEP_GAP_MS`]; no music.
 pub fn manifest() -> AudioManifest {
     let config = AudioConfig::DEFAULT;
     let cues = [
@@ -32,7 +37,10 @@ pub fn manifest() -> AudioManifest {
     ];
     let mut audio = AudioManifest::default();
     for (cue, file) in cues {
-        let sound = SoundCue::new(vec![file.to_owned()], 60, CreditRef::Own);
+        let mut sound = SoundCue::new(vec![file.to_owned()], 60, CreditRef::Own);
+        if cue == config.cursor_cue || cue == config.move_cue {
+            sound = sound.with_rules(CueRules::DEFAULT.with_min_gap_ms(STEP_GAP_MS));
+        }
         audio.sounds.insert(cue.to_owned(), sound);
     }
     audio
@@ -109,6 +117,27 @@ pub fn wav(pitch: f32, ms: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The cursor's tick and the move's blip have a gap, so a cursor that
+    /// moves several cells in one frame ticks once; the others have none.
+    #[test]
+    fn the_cursor_and_the_move_have_a_gap_and_the_others_none() {
+        let config = AudioConfig::DEFAULT;
+        let audio = manifest();
+        let gaps: Vec<(&str, u32)> = audio
+            .sounds
+            .iter()
+            .map(|(cue, sound)| (cue.as_str(), sound.rules.min_gap_ms))
+            .collect();
+        let mut want = vec![
+            (config.move_cue, STEP_GAP_MS),
+            (config.select_cue, 0),
+            (config.cancel_cue, 0),
+            (config.cursor_cue, STEP_GAP_MS),
+        ];
+        want.sort_unstable();
+        assert_eq!(gaps, want);
+    }
 
     #[test]
     fn every_cue_the_engine_plays_has_a_blip_the_audio_check_accepts() {

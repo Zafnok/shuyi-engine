@@ -368,6 +368,48 @@ fn an_entrants_time_is_the_mean_of_its_tries() {
     let seconds = answer.result.unwrap()[0].entrants[0].seconds_per_try;
     assert!(seconds >= 0.01, "{seconds}");
     assert!(seconds * 4.0 <= wall, "{seconds} a try, {wall} in all");
+    // To the microsecond.
+    let micros = seconds * 1e6;
+    assert!((micros - micros.round()).abs() < 1e-6, "{seconds}");
+}
+
+#[test]
+fn a_time_rounds_to_its_decimals_half_away_from_zero() {
+    assert!(rounded(0.0, 3).abs() < f64::EPSILON);
+    assert!((rounded(2.279_912_099_999_999_8, 3) - 2.28).abs() < f64::EPSILON);
+    assert!((rounded(1.000_499, 3) - 1.0).abs() < f64::EPSILON);
+    assert!((rounded(1.000_501, 3) - 1.001).abs() < f64::EPSILON);
+    assert!((rounded(0.000_000_4, 6)).abs() < f64::EPSILON);
+    assert!((rounded(0.000_000_6, 6) - 0.000_001).abs() < f64::EPSILON);
+}
+
+/// Every whole number of thousandths (`decimals` 3) or millionths (6) up
+/// to `count`, each measured with noise under half a unit, rounds to a
+/// time that reads back from JSON as itself (3411: the autobalance
+/// answer's round trip failed on `2.2799120999999998`).
+fn round_trips(decimals: i32, count: u32) {
+    let unit = 10_f64.powi(-decimals);
+    for n in 0..=count {
+        // -0.4 to 0.4 of a unit.
+        let noise = (f64::from(n % 9) - 4.0) / 10.0 * unit;
+        let time = rounded(f64::from(n) * unit + noise, decimals);
+        let json = serde_json::to_string(&time).unwrap();
+        let back: f64 = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.to_bits(), time.to_bits(), "{n}: {json}");
+    }
+}
+
+#[test]
+fn rounded_times_read_back_from_json_as_themselves() {
+    // Every millisecond to 1,000 s, every microsecond to 1 s.
+    round_trips(3, 1_000_000);
+    round_trips(6, 1_000_000);
+    // And a day and more, to the millisecond.
+    for time in [86_400.123, 100_000.999, 2.279_912_099_999_999_8] {
+        let time = rounded(time, 3);
+        let back: f64 = serde_json::from_str(&serde_json::to_string(&time).unwrap()).unwrap();
+        assert_eq!(back.to_bits(), time.to_bits(), "{time}");
+    }
 }
 
 #[test]

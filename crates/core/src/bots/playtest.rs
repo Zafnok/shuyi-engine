@@ -18,8 +18,11 @@
 //! The checks are a flat list, or come from [`Targets`]: what each
 //! entrant should achieve on a stage of each of the game's tiers, said
 //! once. Given a stage's tier and the entrants that play,
-//! [`Targets::checks`] gives that stage's checks. A game reads the file
-//! itself (the core does no I/O), over its own tier type:
+//! [`Targets::checks`] gives that stage's checks, and
+//! [`Targets::checks_of`] those of a stage of kinds the game names too:
+//! each kind's bands lie over the tier's, and a kind can leave the medians
+//! out (a hold lasts its turns however it is played). A game reads the
+//! file itself (the core does no I/O), over its own tier type:
 //!
 //! ```ron
 //! (
@@ -33,6 +36,9 @@
 //!     },
 //!     floors: {"casual": 20},
 //!     medians: [(entrant: "expert", measure: "turns", want: Lower, than: "casual")],
+//!     kinds: {
+//!         "hold": (bands: {Hard: {"casual": (min: 40, max: 60)}}, medians: false),
+//!     },
 //! )
 //! ```
 
@@ -47,10 +53,11 @@ use core::ops::Range;
 use serde::{Deserialize, Serialize};
 
 use super::{Bot, PlayError, Report, Sides, play_observed};
+use crate::rng::SimRng;
 
 mod targets;
 
-pub use targets::{MedianTarget, Targets};
+pub use targets::{KindTargets, MedianTarget, Targets};
 
 /// The game's measures of one try, by name. A success or a loss is a
 /// measure too (`"won"` 1 or 0), so every check reads measures only.
@@ -76,7 +83,9 @@ pub trait Entrant<S, R: Sides> {
     /// entrant's), its luck from `seed`.
     fn start(&self, stage: &S, seed: u64) -> R;
 
-    /// One bot per side for the try of `seed`.
+    /// One bot per side for the try of `seed`: the try's seed, the same
+    /// one [`start`](Entrant::start) gets. A bot seeded from it uses
+    /// [`bot_seed`]`(seed)`, so its picks don't read the stage's luck.
     fn bots(&self, seed: u64) -> Vec<(R::Side, Box<dyn Bot<R>>)>;
 
     /// A fresh measure for a try.
@@ -89,6 +98,17 @@ pub trait Entrant<S, R: Sides> {
         let _ = (seed, commands);
         None
     }
+}
+
+/// The seed a try's bots draw from, for the try of `seed`: two
+/// `next_u32` of `SimRng::new(seed)`, the high half first (ADR-0027 §6's
+/// way), so the bots' stream is not the one the stage's luck is drawn
+/// from.
+pub fn bot_seed(seed: u64) -> u64 {
+    let mut rng = SimRng::new(seed);
+    let high = u64::from(rng.next_u32());
+    let low = u64::from(rng.next_u32());
+    (high << 32) + low
 }
 
 /// How a try the turn limit stopped is written where an outcome would
@@ -245,15 +265,39 @@ pub enum RateVerdict {
 impl Band {
     /// Where `successes` of `count` tries fall, compared in integers.
     pub fn verdict(self, successes: u32, count: u32) -> RateVerdict {
-        let share = u64::from(successes) * 100;
-        if share < u64::from(self.min) * u64::from(count) {
+        if below(successes, count, self.min) {
             RateVerdict::Below
-        } else if share > u64::from(self.max) * u64::from(count) {
+        } else if self.distance(successes, count) > 0 {
             RateVerdict::Above
         } else {
             RateVerdict::Within
         }
     }
+
+    /// How far `successes` of `count` tries lie outside the band, 0
+    /// inside: `max(0, min × count − successes × 100, successes × 100 −
+    /// max × count)`, in integers. Distances of different counts don't
+    /// compare.
+    pub fn distance(self, successes: u32, count: u32) -> u64 {
+        let (share, min) = scaled(successes, count, self.min);
+        let (_, max) = scaled(successes, count, self.max);
+        min.saturating_sub(share).max(share.saturating_sub(max))
+    }
+}
+
+/// `successes × 100` and `bound × count`: the two sides of every
+/// comparison of a share of tries with a bound in percent, in integers.
+fn scaled(successes: u32, count: u32, bound: u32) -> (u64, u64) {
+    (
+        u64::from(successes) * 100,
+        u64::from(bound) * u64::from(count),
+    )
+}
+
+/// Whether `successes` of `count` tries are under `floor` percent.
+fn below(successes: u32, count: u32, floor: u32) -> bool {
+    let (share, floor) = scaled(successes, count, floor);
+    share < floor
 }
 
 /// Which way a median should lean.
@@ -470,6 +514,8 @@ impl fmt::Display for UnknownEntrant {
     }
 }
 
+impl core::error::Error for UnknownEntrant {}
+
 /// Why a playtest stopped. More reasons may come (ADR-0039).
 #[non_exhaustive]
 pub enum PlaytestError<R: Sides> {
@@ -674,9 +720,7 @@ pub fn judge(
                     let count = u32::try_from(tries.len()).unwrap_or(u32::MAX);
                     let successes = tries.iter().filter(|t| meets(success, &t.measures)).count();
                     let successes = u32::try_from(successes).unwrap_or(u32::MAX);
-                    let blocked = floor.is_some_and(|floor| {
-                        u64::from(successes) * 100 < u64::from(floor) * u64::from(count)
-                    });
+                    let blocked = floor.is_some_and(|floor| below(successes, count, floor));
                     Found::Rate {
                         successes,
                         count,

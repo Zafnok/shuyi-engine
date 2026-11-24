@@ -164,7 +164,7 @@ None.
   - **A README** in hello-grid's form: how to run it, its layout, its
     targets, what each engine part does in it, four-way or eight-way,
     and the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted, and said how, if not). The
+    template-lines`'s code count, 2512). The
     engine's `README.md` names the example beside hello-grid.
 - **Tests of the example** (`tests/it/`, as hello-grid's):
   - a Harness playthrough through actions only, from the title to
@@ -217,8 +217,8 @@ None.
   - a game made with it builds, and its test walks to the stairs. Add
     it to the `templates` job of `.github/workflows/ci.yml`, which makes
     a game and runs its gates;
-  - if 2502 is done, `shuyi new demo --kind roguelike` makes it. If not,
-    `shuyi new demo --set kind=roguelike` does, and 2502 adds the flag.
+  - **from 2502 (done):** `shuyi new demo --kind roguelike --no-input`
+    makes it; the guide and CI name `--kind`.
 - **The direction guide** `docs/guides/roguelike.md`, in full and in
   2004's order, linked from `docs/guides/README.md`:
   - which template starts it (the part above);
@@ -243,9 +243,10 @@ None.
   `skills` job runs the example.
 - **The catalog:** set `shuyi-procgen`'s row in `docs/modules.md` and the
   `roguelike` answer in `docs/modules.ron` to ready.
-- **The eval:** if 2524 is done, add a roguelike task whose reference
-  solution is this example, graded through the contract. If not, add the
-  task to 2524's scope in this PR.
+- **The eval (from 2524, done):** add `evals/tasks/roguelike.ron` in
+  2524's format (`evals/README.md`), its reference
+  `Project("examples/roguelike")`, graded through the contract with
+  `cargo xtask eval-grade`. `cargo xtask eval-reference roguelike` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - saving a run halfway: 2768's run save (parked), removed when the run

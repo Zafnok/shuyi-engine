@@ -283,7 +283,10 @@ fn what_run_and_scene_saw_reads_for_people() {
         said.contains("events:\n  frame 1: opened stage\n"),
         "{said}"
     );
-    assert!(said.contains("sounds: click (frame 1)\n"), "{said}");
+    assert!(
+        said.contains("sounds: click (frame 1), click (frame 1)\ndropped: click (frame 1, gap)\n"),
+        "{said}"
+    );
     assert!(
         said.contains("scene (grid map, on stage):\nmap\n{\"turn\":1}\n"),
         "{said}"
@@ -301,6 +304,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         frame: "XY".into(),
         events: Vec::new(),
         sounds: Vec::new(),
+        dropped: Vec::new(),
         sounds_added: Vec::new(),
         log: Vec::new(),
         modules: Vec::new(),

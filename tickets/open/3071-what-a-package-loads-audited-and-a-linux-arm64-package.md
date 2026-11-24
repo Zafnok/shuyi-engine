@@ -51,7 +51,7 @@ None.
     `include_str!` and read with `ron`. It is the tool's own table, not
     an asset kind, so it isn't registered in `Formats`. The lists are
     data so that 3032's CPAL integration, 3079's final quad-snd removal
-    and 3034's macroquad replacement update one file.
+    and 3333's removal of macroquad update one file.
   - `windows`: the PE import table (`PeFile::import_table`) names only
     Windows' own DLLs and its API sets (`api-ms-win-*`). No
     `libgcc_s_seh-1.dll`, `libwinpthread-1.dll` or `libstdc++-6.dll`.
@@ -89,11 +89,10 @@ None.
   - **Either order with 3012:** if 3012 is done, its `steam-deck`
     exporter runs the audit against the `linux` list too; if not,
     nothing to do (3012 runs it).
-  - **Either order with 3034** (parked): if 3034 is done, find the
-    ticket it wrote that removes macroquad, and write there a clause
-    with 3071 (its PR checks `libraries.ron` against what winit and
-    wgpu load), named back here; if not, nothing to do (3034's tickets
-    carry that clause).
+  - **Either order with 3333** (parked, from 3034): if 3333 is done,
+    the audit reads what winit and wgpu load (ADR-0136 §14); if not,
+    nothing to do (3333 checks `libraries.ron` against them when it
+    removes macroquad).
   - CI's `tools/export-check/check.sh` drops its DLL and `GLIBC_` checks,
     which the audit then makes in every export.
 - **`linux-arm64`**, an exporter like `linux`

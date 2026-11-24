@@ -97,7 +97,7 @@
           "type": "boolean"
         },
         "seconds": {
-          "description": "The search's wall time, in seconds: the one number that changes\nwith the machine and the thread count.",
+          "description": "The search's wall time, in seconds to the millisecond: the one\nnumber that changes with the machine and the thread count.",
           "type": "number",
           "format": "double"
         },

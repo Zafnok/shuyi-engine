@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["1125", "1145"]
+blocked_by: ["1125", "1140", "2604"]
 nick_input: none
 completed:
 ---
@@ -44,7 +44,11 @@ None.
 
 **In:**
 1. **Rollback.** Spike GGRS with `shuyi-net`'s `Transport` and a
-   `TickSim` (save and load as clone, which the arena makes cheap). Spike
+   `TickSim` (save and load as clone; **from 2604:**
+   `shuyi_core::tick::check_rollback` and the measured costs in
+   `docs/research/2604-rollback-cost.md`, so each spike runs
+   `check_rollback` on the field stage and starts from those numbers).
+   Spike
    a small rollback of our own, about 600 lines: an input queue,
    prediction by repeating the last input, a resimulate window, and
    desync hashes every N steps. Compare them on licenses, the WASM build
@@ -74,6 +78,13 @@ None.
    path. If 2910 is done, the ADR weighs each option for a voice stream
    too, as the line 2910 added here says. If not, nothing to do: 2910
    builds on this ticket's ADR.
+
+   **Either order with 2605:** if 2605 is done, compare the browser
+   options against its row for `RelayTransport` (the toy game at 100 ms
+   of delay and 5% loss), and name `RelayTransport` as the native
+   transport in the rollback implementation ticket. If not, nothing to
+   do (2605 measures its transport under this ticket's setup and adds
+   the row to its ADR).
 4. Write an ADR with the three choices and why. The ADR also says how a
    rollback session treats 2123's game speed (`Ctx::game_speed`), done
    or not: ignored while the session drives the steps, or one speed

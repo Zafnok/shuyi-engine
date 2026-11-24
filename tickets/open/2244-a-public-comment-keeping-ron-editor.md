@@ -85,8 +85,12 @@ None.
   follows this one (game#1220).
 
 **Out (do not do):**
-- Removing an item or a field, or editing a map entry by key: no game
-  needs it yet.
+- Editing a map entry by key: 2273 adds `ron_text::set_entry` and
+  `remove_entry` for `.map` write-back. Removing an item or a field,
+  JSON Pointer paths (`/units/3/hp`) and undo: 3417 adds one `Edit` list
+  over this module. Both are blocked by this ticket, so the paths of
+  field names and the two edits here stay as they are for them to build
+  on.
 - Writing RON through `Encode`/`PrettyConfig` (2218), and 2517's
   `Format::changes`, `find`, `apply` and `shuyi upgrade`.
 - The game's use of it (game#1220).

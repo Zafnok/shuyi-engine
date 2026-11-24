@@ -36,10 +36,12 @@ The 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6 and
 Unreal 5.8 (and Defold) adds a question for this ADR. Bevy, Godot and
 Defold each keep one world model. Unity's GameObjects beside its
 Entities, and Unreal's Actors beside Mass, are two models whose tools
-each had to cover. Here the default store, `Arena<T>`, is 1119's, which
-Nick keeps parked until Visions of Shuyi launches (2026-10-20,
-`docs/decisions.md`). `shuyi-ecs` (2107, 2108) and its scenes (2221)
-come after the MVP. So the opt-in store is built first.
+each had to cover. Here the default store, `Arena<T>`
+(`shuyi_core::arena`), is 2139's, parked until Nick answers decision
+ticket 3525. 1119, the real-time stage that uses it, Nick keeps parked
+until Visions of Shuyi launches (2026-10-20, `docs/decisions.md`).
+`shuyi-ecs` (2107, 2108) and its scenes (2221) come after the MVP. So
+the opt-in store is likely built first.
 
 Most tools already name no store:
 
@@ -126,19 +128,45 @@ None. This is technical.
       clause says).
     - **Scenes for the arena.** With the line counts of both ways:
       whether 2221's scene file and its id remapping are written over a
-      small trait that 1119's `Arena<T>` can implement later, or stay
+      small trait that 2139's `Arena<T>` can implement later, or stay
       ECS-only while the arena keeps its serde dump. A shared store
       trait (one trait over `Arena<T>` and `World`) comes in only if the
       ADR finds a second real consumer for it. Building it is then a
-      follow-up ticket blocked by 1119 and parked with it.
+      follow-up ticket blocked by 2139 and parked with it.
+    - **What a world needs beyond a store.** Bevy, Godot and Unity each
+      give a game more than storage. For the arena and for `shuyi-ecs`,
+      the ADR answers each of these, with a sketch of each way and its
+      line count:
+      - parent and child transforms: how a moved parent's children
+        follow, in what order, and where that runs in a step;
+      - a typed event queue: who writes, who reads, when it clears, and
+        how it stays in the hash and the save;
+      - enter and exit hooks when a state changes (a stage's or an
+        entity's);
+      - one entity model or several: whether `Arena<T>` (2139),
+        `shuyi-ecs`'s `World` (2107) and the real-time strategy
+        module's columns (2705) share one id and one way to list
+        entities, or each keeps its own and the tools read only the
+        dump;
+      - whether scenes and prefabs (2221) can describe an arena world,
+        beside the scenes for the arena above.
+
+      Building any of them is a follow-up ticket (the `write-ticket`
+      skill), blocked by the ticket it builds on. 2107's **Out** says
+      no ticket plans relations or events beyond `Commands`; the update
+      to 2107 below points that line at the ADR's answer.
     - **The order with 1119.** Nick keeps 1119 parked until Visions of
       Shuyi launches (2026-10-20), so `shuyi-ecs` is the first general
       store the engine builds. The ADR says why that is acceptable: it
       is opt-in; a turn game keeps its state as a plain struct behind
       `TurnRules` (`crates/core/src/turn.rs`); tick games get no store
-      until 1119; and since kits name no store, nothing built before
-      1119 is rewritten for it. It also says what 2108's tick adapter,
+      until 2139; and since kits name no store, nothing built before
+      2139 is rewritten for it. It also says what 2108's tick adapter,
       `EcsTickSim`, does over 2137's `TickSim` (done).
+      **Either order with 2139:** if 2139 is done, its `Arena<T>`
+      (`shuyi_core::arena`) exists: the ADR describes it as built and
+      says what it shares with `shuyi-ecs`; if not, nothing to do (2139
+      reads this ADR before writing the arena).
   - the measurements in `docs/research/ecs.md`. The benchmark code lives
     in `research/ecs/`, a crate listed under `exclude` in the root
     `Cargo.toml` (as 2705 plans for its own), so no candidate enters the
@@ -156,7 +184,10 @@ None. This is technical.
 - moving any existing code onto an ECS;
 - a shared store trait over `Arena<T>` and `World` built ahead of this
   ADR (the ADR decides whether one is needed; building it waits for
-  1119);
+  2139);
+- building parent and child transforms, an event queue, state hooks or
+  a shared entity model (the ADR answers them; follow-up tickets build
+  them);
 - the real-time strategy module's columns (ADR-0015 §3, 2705, 2707),
   which stay inside that module;
 - whether 1119 is unparked: Nick answered on 2026-10-20
@@ -170,7 +201,8 @@ None. This is technical.
    time checks.
 3. Write `docs/research/ecs.md` and the ADR, with its parts on the kit
    rule, what the tools read, scenes for the arena (count the lines of
-   both ways) and the order with 1119.
+   both ways), what a world needs beyond a store, and the order with
+   1119 and 2139.
 4. Update 2107, 2108, 2221 and 1119, and the kit tickets' store line
    if the ADR changes it.
 
@@ -181,7 +213,11 @@ None. This is technical.
 - [ ] The ADR names the choice and amends ADR-0003 §4.
 - [ ] The ADR states the kit rule, what the tools read, its answer for
       scenes of the arena with the line counts behind it, and the order
-      with 1119.
+      with 1119 and 2139.
+- [ ] The ADR answers each question of *What a world needs beyond a
+      store* (transforms, events, state hooks, one entity model,
+      scenes and prefabs of an arena world) for the arena and for
+      `shuyi-ecs`.
 - [ ] 2107, 2108, 2221 and 1119 match the ADR.
 - [ ] All gates in the `run-gates` skill pass.
 

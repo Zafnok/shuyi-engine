@@ -256,6 +256,13 @@ None.
     `"error":<code>` from `data-shuyi-error` under `error`), and 3052's
     `file` message names `shuyi web --serve`, as its table says. If not,
     3052 does both (its own clause says so);
+  - **with 3346:** if 3346 is done, and `dev.js` calls
+    `miniquad_add_plugin`, it gets a row in `crates/app/WORKAROUNDS.md`'s
+    plugin table (`cargo xtask check-pins` fails without one), and it
+    passes strings and bytes at a pointer and a length, never as
+    `sapp_jsutils` objects. As planned here, `dev.js` is a page script
+    that sends with `fetch` and is no plugin, so it needs no row. If
+    not, nothing to do (3346 lists the plugins that exist then);
   - **From 2840 (done):** the book's Codespace
     (`.devcontainer/book/devcontainer.json`) serves the whole book with
     `cargo xtask book-pad` (`crates/xtask/src/book_pad.rs`), which

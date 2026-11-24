@@ -114,6 +114,8 @@ fn bench_reads_its_arguments() {
             scenario: None,
             out: "dist/bench".to_owned(),
             instructions: true,
+            long: false,
+            twice: false,
         }
     );
     let given = args(&[
@@ -138,10 +140,18 @@ fn bench_reads_its_arguments() {
         "unknown argument: --fast"
     );
     assert!(usage("cargo shuyi").starts_with("usage: cargo shuyi bench"));
-    let (file, target, out) = parse_play(&args(&["a.bench.ron", "--out", "p.json"])).unwrap();
+    let parsed = parse_play(&args(&["a.bench.ron", "--out", "p.json"])).unwrap();
     assert_eq!(
-        (file.as_str(), target, out),
-        ("a.bench.ron", None, "p.json".into())
+        (parsed.file.as_str(), parsed.target, parsed.out, parsed.long),
+        ("a.bench.ron", None, "p.json".into(), false)
+    );
+    let parsed = parse_play(&args(&["--long", "a.long.ron", "--out", "p"])).unwrap();
+    assert!(parsed.long);
+    assert!(
+        parse_play(&args(&[
+            "--long", "a", "--target", "playdate", "--out", "p"
+        ]))
+        .is_err()
     );
     assert!(parse_play(&args(&["a.bench.ron"])).is_err());
     assert!(parse_play(&args(&["a", "b", "--out", "p"])).is_err());
@@ -456,6 +466,8 @@ fn toy_plan(scenario: &str, targets: &[&str]) -> Plan {
             scenario: Some(scenario.to_owned()),
             out: OUT.to_owned(),
             instructions: false,
+            long: false,
+            twice: false,
         };
         let one = super::plan(&project, &options).unwrap();
         plan.targets.extend(one.targets);

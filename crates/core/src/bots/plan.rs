@@ -45,6 +45,8 @@ use crate::rng::SimRng;
 /// How a [`TurnPlan`] bot thinks: data, so a persona's settings can be a
 /// file. Build it with [`PlanSettings::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct PlanSettings {
     /// How many partial turns are kept at each depth, to be extended at

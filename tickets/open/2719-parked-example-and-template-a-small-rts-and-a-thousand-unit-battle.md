@@ -79,8 +79,9 @@ None.
   `kind-rts`, when the `kind` answer `rts` is picked. It turns on the
   `rts` module, adds a stage with one base, a worker and one unit kind,
   and its keymap file. `shuyi new demo --set kind=rts` makes a game that
-  builds and passes its tests in CI. If 2502 is done, `--kind rts` does
-  the same through the wizard; if not, 2502 picks it up.
+  builds and passes its tests in CI. **From 2502 (done):** `--kind rts`
+  is the same as `--set kind=rts`; a test checks that `shuyi new demo
+  --kind rts --no-input` makes the game the `kind-rts` part makes.
 - **The guide**, `docs/guides/rts.md`, in 2004's fixed order: which
   template starts it, what it uses, what looks related but isn't for it
   (the tactics kit, 1122's movers), which example to read first. Link it

@@ -52,6 +52,10 @@ them without asking questions.
      table (`shuyi_assets::golden`, ticket 2116: the `state_hash` of what
      it decodes, named `<kind>: <format id>`), which CI's `determinism`
      job checks on wasm32 too.
+   - A ticket that would add code to the minimal template (a new
+     `blank` game) puts the part in the engine instead, where every game
+     gets it: `cargo xtask template-lines --check` caps that code
+     (`tools/line-budget.ron`, ticket 2512).
    - A new public type follows ADR-0039 (2013): one that may grow is
      `#[non_exhaustive]` with a constructor, and a new field on such a
      type is additive. Say which in the Scope.

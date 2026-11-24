@@ -1,0 +1,9 @@
+// coin: a short high note that jumps up a fourth.
+(
+    wave: Square(duty: 50),
+    hz: 988,
+    hold_ms: 120,
+    fade_ms: 200,
+    volume: 40,
+    step: (at_ms: 60, percent: 133),
+)

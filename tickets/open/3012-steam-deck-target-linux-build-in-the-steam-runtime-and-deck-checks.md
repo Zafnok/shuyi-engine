@@ -70,8 +70,8 @@ None. Running it on a real Deck is 3013.
   - the frame is placed by the game's scale mode through
     `shuyi_ui::frame::console::place` (2333): `integer` by default, the
     largest whole number that fits, with letterboxing in the skin's
-    backdrop colour. Either order with 2333: if it isn't done, integer
-    scaling goes through today's `console::layout`, and 2333 moves it;
+    backdrop colour (**from 2333, done:** `place` and `render::placement`
+    are there, and `shuyi-app` draws a `Fit` frame sharp);
   - the game's `targets.steam-deck` frame (3001) decides the layout. An
     example uses 640 × 400 at scale 2.
 - **The pad:**

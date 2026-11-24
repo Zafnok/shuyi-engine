@@ -360,9 +360,14 @@ fn a_registered_format_reads_an_image_with_no_change_to_the_code_that_asks_for_i
         .iter()
         .map(ToString::to_string)
         .collect();
+    // With the formats of 2203, which this crate's tests turn on.
+    let tried = ["png", "jpg", "jpeg", "webp", "qoi", "jxl"].map(|e| format!("images/card.{e}"));
     assert_eq!(
         missing,
-        ["base/images/card: file not found in asset bundle, nor images/card.png"]
+        [format!(
+            "base/images/card: file not found in asset bundle, nor {}",
+            tried.join(" nor ")
+        )]
     );
     assert_eq!(sizes(&standard, &texts), []);
     // With the toy registered, the same code reads either.
@@ -392,7 +397,8 @@ fn a_second_text_image_format_is_refused_unless_it_replaces_the_first() {
         )
     );
     assert_eq!(formats.replace(TxtImg), Ok(vec!["txtimg"]));
-    assert_eq!(formats.ids::<Image>(), ["png", "txtimg"]);
+    let ids = ["png", "jpeg", "webp", "qoi", "jpeg-xl", "txtimg"];
+    assert_eq!(formats.ids::<Image>(), ids);
 }
 
 /// What the toy reads `source` as, or its errors as text.

@@ -303,7 +303,8 @@ pub const GATES: &[Gate] = &[
     ]),
     gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
     // CI runs it on every pull request; it reads the site, the problem
-    // codes, Hello, Grid's files and the tickets (the feature cards).
+    // codes, Hello, Grid's files, the tickets (the feature cards) and the
+    // guides (the book's, copied by `site-data`).
     // As CI: the codes' pages and the playground's files are written
     // before `zola check` reads them.
     gate("site", "site", Filter::Always)
@@ -312,6 +313,7 @@ pub const GATES: &[Gate] = &[
             "crates/cli/errors/",
             "examples/hello-grid/",
             "tickets/",
+            "docs/guides/",
         ]))
         .steps(&[
             "bash site/errors.sh",
@@ -361,6 +363,7 @@ pub const GATES: &[Gate] = &[
     gate("no-std", "no-std", CODE).steps(&[
         "cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked",
+        "cargo build -p shuyi-assets --no-default-features --features sfx --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked",
         "RUSTFLAGS=\"--cfg shuyi_playdate_sdk\" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked",
@@ -455,6 +458,9 @@ pub const GATES: &[Gate] = &[
         .ci_only("the tests on wasm32 under wasmtime; natively, `test` runs the golden tables"),
     gate("export", "export", CODE)
         .ci_only("exports on each OS's runner and the Steam runtime"),
+    gate("eval", "eval", CODE).ci_only(
+        "grades the eval's references in the Steam runtime's image, where `Export(\"linux\")` builds; `cargo xtask eval-reference <id>` grades one here",
+    ),
     gate("render", "render", CODE).ci_only("needs Xvfb and Mesa"),
     gate("web-render", "web-render", CODE)
         .ci_only("needs headless Chromium and Playwright"),

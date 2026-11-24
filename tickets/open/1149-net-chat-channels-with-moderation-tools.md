@@ -56,8 +56,11 @@ None to build it. Turning chat on in our game comes with 0053.
 - A text-input widget that respects `check-text`, built on the name
   box's typing (2346: the letters of any language the font draws, the
   IME on only while the box is open through `Ctx::takes_text`).
-  - The IME's composing text comes from 3034's tickets; miniquad 0.4.11
-    has none.
+  - The IME's composing text comes from 3329 on the winit backend;
+    miniquad 0.4.11 has none. **Either order with 3329:** if 3329 is
+    done, the chat box gets the composing text from the name box's
+    typing, with a test that it shows; if not, nothing to do (3329 draws
+    it in this box).
   - Paste from the clipboard, on an action the player binds, never a key
     (the `input-actions` skill). miniquad 0.4.11 has
     `window::clipboard_get` and `clipboard_set` on desktop. On the web,
@@ -65,7 +68,12 @@ None to build it. Turning chat on in our game comes with 0053.
     browser's last paste event for `clipboard_get`, and writes
     `clipboard_set`'s text on the browser's next copy or cut. So no JS
     plugin of our own is needed; the PR says how paste behaves there.
-    3034's replacement may change this.
+    winit has no clipboard. **Either order with 3332:** if 3332 is done
+    (winit is the default backend), paste and copy go through it: add
+    them there, with `arboard` on the desktop (check its license with
+    `cargo deny`) and the browser's `paste` and `copy` events through
+    `web-sys` on the web; if not, use miniquad's as above (3332 carries
+    them to winit).
 - A chat panel in `shuyi-ui` (logic, view and skin) that games can place.
 - **Either order with 2367** (overlays that let the screen below run):
   if 2367 is done and the panel opens as a screen over a running match,

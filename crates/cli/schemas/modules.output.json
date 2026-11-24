@@ -145,6 +145,34 @@
         "name": {
           "description": "How the catalog says it (`Bodies and motion`).",
           "type": "string"
+        },
+        "pick": {
+          "description": "How many answers a game picks, as `shuyi new` asks it (ADR-0013\n§1); none for a concern it doesn't ask (`time`, which follows from\nthe perspectives).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pick"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "question": {
+          "description": "The words `shuyi new` asks it with (`How do bodies move?`).",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "serves": {
+          "description": "The perspectives its answers are for: `shuyi new` doesn't ask it of\na game with none of them. Empty for every one.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false,
@@ -269,6 +297,21 @@
         "concerns",
         "modules",
         "on"
+      ]
+    },
+    "Pick": {
+      "description": "How many answers a question takes.",
+      "oneOf": [
+        {
+          "description": "One at most.",
+          "type": "string",
+          "const": "One"
+        },
+        {
+          "description": "Any number.",
+          "type": "string",
+          "const": "Many"
+        }
       ]
     },
     "Status": {

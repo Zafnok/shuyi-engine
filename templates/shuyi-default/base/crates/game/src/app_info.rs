@@ -7,4 +7,4 @@ use shuyi::platform::AppInfo;
 /// Who the game is: the window's title, the loading card and the storage read it.
 // check-text: not player text, who the game is (`shuyi.ron`'s `app`)
 #[rustfmt::skip]
-pub const APP: AppInfo = AppInfo::new("{{name}}", "com.example.{{crate_name}}", env!("CARGO_PKG_VERSION"));
+pub const APP: AppInfo = AppInfo::new("{{name}}", "{{id}}", env!("CARGO_PKG_VERSION"));

@@ -159,12 +159,11 @@ None.
   - Re-exports in `crates/core/src/lib.rs`: `Minimax`,
     `MinimaxSettings`, `MinimaxSearch`, `Mcts`, `MctsSettings` and
     `MctsSearch`, and the crate docs' line on `search` names the bots.
-  - **Either order with 2133:** `MinimaxSettings` and `MctsSettings`
-    are `#[serde(deny_unknown_fields)]` and derive
-    `schemars::JsonSchema` behind the `schema` feature, as `Targets`
-    does. If 2133 is done, its ADR says every settings type does this;
-    if not, nothing more to do (2133 gives `RolloutSettings` and
-    `PlanSettings` the same, and its ADR then covers all four).
+  - `MinimaxSettings` and `MctsSettings` are
+    `#[serde(deny_unknown_fields)]` and derive `schemars::JsonSchema`
+    behind the `schema` feature, as `Targets`, `RolloutSettings` and
+    `PlanSettings` do. **From 2133 (done):** ADR-0135 §3–4 says every
+    settings type does this, these two included.
 - **An ADR** (the next free number in `docs/adr/`, with the `write-adr`
   skill), extending 2125's (copies from `Determinize`, integers, work
   units): the UCB in integers; slice independence through 3009's
@@ -195,6 +194,12 @@ None.
   Completion notes), and two states that differ only in the draw
   pile's order get the same first command from the same `Mcts`. If
   not, nothing to do (2737 does it).
+- **Either order with 3344:** if 3344 is done, give the minimax and
+  MCTS searches an owned form (the bot moves into the search and comes
+  back with the decision, as 3344 did for `RolloutSearch` and
+  `PlanSearch`) and run each fixture through the worker pool in 3344's
+  equivalence test; if not, nothing to do (3344 does it when this lands
+  first).
 - **The float ban:** `search` passes 2015's float ban in `shuyi-core`
   (`deny(clippy::float_arithmetic)` outside tests).
 
@@ -207,7 +212,8 @@ None.
 - transposition tables, move ordering beyond `legal_commands`, opening
   books;
 - behaviour trees, utility AI, fog of war, and anything real-time
-  (parked 2710, 2713, 2714, 2715; ADR-0015 §8);
+  (parked 2710, 2713, 2714, 2715; ADR-0015 §8). A state machine and a
+  utility selector for NPCs are 2143's;
 - learned agents;
 - the soak bot (2527), which plays random commands on purpose;
 - one description of a game's types and how a view differs from the

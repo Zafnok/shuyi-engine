@@ -12,7 +12,8 @@
 //!   thread, and a play sent after its sound always finds it (`Inbox::apply_with`).
 //! - **Music and voices** stream. A [`Feeding`] on a worker decodes ahead into a ring
 //!   a track's length doesn't change. It loops by starting its decoder again, so a
-//!   loop's way back is in the ring before the mix gets there. In the browser there
+//!   loop's way back is in the ring before the mix gets there; round a loop region
+//!   (ticket 2397), the decoder of an Ogg file seeks to the region's exact frame. In the browser there
 //!   are no threads, and the feeding is done as the page asks for frames.
 //!
 //! **What the web hands the adapters.** A library's panic stops the program there, as
@@ -26,13 +27,14 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use shuyi_platform::audio::player::Backend;
+use shuyi_assets::audio::LoopRegion;
+use shuyi_platform::audio::player::{Backend, Looping};
 use shuyi_sound::mix::queue::{Inbox, Remote};
 use shuyi_sound::mix::stream::{self, Feeder, LoopedRegion};
 use shuyi_sound::mix::{
     Config, Mixer, Params, Region, SharedPcm, SoundId, StreamId, UNITY, VoiceId,
 };
-use shuyi_sound::vorbis::VorbisSource;
+use shuyi_sound::vorbis::{SEEK_LEAD, VorbisSource};
 use shuyi_sound::wav::WavSource;
 use shuyi_sound::{Channels, Error, Limits, Pcm, PcmFormat, Source, read_all};
 use shuyi_sound_out::{HandOut, HandTo, Output, OutputConfig, handover};
@@ -99,23 +101,30 @@ fn pcm_of(samples: &Samples) -> Result<SharedPcm, String> {
     pcm.map(SharedPcm::new).map_err(|e| e.to_string())
 }
 
-/// `first`, and when `looped` every next pass from `open`, gapless and in the ring
-/// before the mix gets there.
-fn looping<S, F>(first: S, open: F, looped: bool) -> Box<dyn Source + Send>
+/// `first`, and when it has a `region` every next pass round it from `open`, gapless
+/// and in the ring before the mix gets there.
+fn looping<S, F>(first: S, open: F, region: Option<Region>) -> Box<dyn Source + Send>
 where
     S: Source + Send + 'static,
     F: FnMut() -> Result<S, Error> + Send + 'static,
 {
-    match Region::new(0, u64::MAX).filter(|_| looped) {
-        Some(whole) => Box::new(LoopedRegion::new(first, whole, open)),
+    match region {
+        Some(region) => Box::new(LoopedRegion::new(first, region, open)),
         None => Box::new(first),
     }
 }
 
-/// A source of a track's bytes, decoding as it is asked.
-fn track_source(track: &Track, looped: bool) -> Result<Box<dyn Source + Send>, String> {
-    // A long track's length is no limit here: it is never all in memory.
-    let limits = Limits::new(Limits::DEFAULT_MAX_RATE, u64::MAX);
+/// A long track's length is no limit here: it is never all in memory.
+fn track_limits() -> Limits {
+    Limits::new(Limits::DEFAULT_MAX_RATE, u64::MAX)
+}
+
+/// A source of a track's bytes, decoding as it is asked, going round `region` if it
+/// has one. An Ogg file's way round a region that starts far in is an exact seek
+/// (ticket 2397), so the intro isn't decoded again on the worker each time round:
+/// decoding a long one would hold the ring up past what it holds.
+fn track_source(track: &Track, region: Option<Region>) -> Result<Box<dyn Source + Send>, String> {
+    let limits = track_limits();
     let bytes = Arc::clone(&track.bytes);
     let failed = |e: Error| e.to_string();
     Ok(match track.kind {
@@ -124,40 +133,78 @@ fn track_source(track: &Track, looped: bool) -> Result<Box<dyn Source + Send>, S
             looping(
                 first,
                 move || WavSource::new(Arc::clone(&bytes), &limits),
-                looped,
+                region,
             )
         }
         Kind::Ogg => {
             let first = VorbisSource::new(Arc::clone(&bytes), &limits).map_err(failed)?;
-            looping(
-                first,
-                move || VorbisSource::new(Arc::clone(&bytes), &limits),
-                looped,
-            )
+            match region.filter(|region| region.start() > SEEK_LEAD) {
+                Some(far) => Box::new(LoopedRegion::landing(first, far, move || {
+                    VorbisSource::new_at(Arc::clone(&bytes), &limits, far.start())
+                })),
+                None => looping(
+                    first,
+                    move || VorbisSource::new(Arc::clone(&bytes), &limits),
+                    region,
+                ),
+            }
         }
     })
 }
 
 /// A track read from its file, not playing. Its bytes are what it holds.
 pub struct Track {
+    /// Its file's name, which the probe says its stalls by.
+    name: Arc<str>,
     bytes: Arc<[u8]>,
     kind: Kind,
     /// How long it plays, if it is an OGG file.
     length_ms: Option<u32>,
+    /// Its frames a second.
+    rate: u32,
+    /// The loop region its file names (an Ogg file's `LOOPSTART` and `LOOPLENGTH`),
+    /// or why that doesn't read.
+    file_region: Result<Option<Region>, String>,
 }
 
 impl Track {
-    /// `bytes` as a track: a file whose headers don't read is an error now.
-    fn new(bytes: Vec<u8>) -> Result<Self, String> {
+    /// `bytes`, of the file at `path`, as a track: a file whose headers don't read is
+    /// an error now. Loop tags that don't read aren't: the track loops whole, and the
+    /// player says why.
+    fn new(path: &str, bytes: Vec<u8>) -> Result<Self, String> {
         let kind = Kind::of(&bytes)?;
         let length_ms = shuyi_assets::audio::ogg_length_ms(&bytes);
-        let track = Self {
+        let limits = track_limits();
+        let failed = |e: Error| e.to_string();
+        let (rate, file_region) = match kind {
+            Kind::Wav => {
+                let source = WavSource::new(&bytes[..], &limits).map_err(failed)?;
+                (source.format().rate, Ok(None))
+            }
+            Kind::Ogg => {
+                let source = VorbisSource::new(&bytes[..], &limits).map_err(failed)?;
+                (source.format().rate, source.loop_region().map_err(failed))
+            }
+        };
+        Ok(Self {
+            name: path.rsplit(['/', '\\']).next().unwrap_or(path).into(),
             bytes: bytes.into(),
             kind,
             length_ms,
-        };
-        track_source(&track, false)?;
-        Ok(track)
+            rate,
+            file_region,
+        })
+    }
+
+    /// Where `region`, in its frames, is in seconds.
+    fn seconds(&self, region: Region) -> Looping {
+        // Frames of a track, far below where a float stops counting them.
+        #[allow(clippy::cast_precision_loss)]
+        let secs = |frame: u64| frame as f64 / f64::from(self.rate);
+        Looping::Region {
+            start: secs(region.start()),
+            end: secs(region.end()),
+        }
     }
 }
 
@@ -174,6 +221,8 @@ pub enum Clip {
         track: Track,
         rate: Cell<u32>,
         voice: Cell<Option<VoiceId>>,
+        /// The region a looped play goes round: `None` for the whole track.
+        region: Cell<Option<Region>>,
     },
 }
 
@@ -280,20 +329,65 @@ impl AudioSide {
     }
 }
 
+/// What a track's feeding went through (ticket 3320): its file's name, the frames a
+/// mix waited on its ring, and the fewest frames the ring held when the worker came
+/// round, its margin, if it came round after the first fill.
+#[cfg_attr(
+    not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+    allow(dead_code)
+)]
+type TrackStats = (String, u64, Option<usize>);
+
 /// A worker's decoding of one track into its ring.
 struct Feeding {
     feeder: Feeder,
     source: Box<dyn Source + Send>,
     stop: Arc<AtomicBool>,
+    /// The track's file's name.
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
+    track: Arc<str>,
+    /// The frames the ring holds when it is full.
+    capacity: usize,
+    /// Whether the ring has been filled once: until then, it is empty because
+    /// nothing was written yet, not because the mix caught up.
+    filled: bool,
+    /// The fewest frames the ring held when the worker came round to it.
+    lowest: Option<usize>,
 }
 
 impl Feeding {
+    fn new(
+        feeder: Feeder,
+        source: Box<dyn Source + Send>,
+        stop: Arc<AtomicBool>,
+        track: Arc<str>,
+    ) -> Self {
+        Self {
+            capacity: feeder.room(),
+            feeder,
+            source,
+            stop,
+            track,
+            filled: false,
+            lowest: None,
+        }
+    }
+
     /// Tops the ring up: whether there is more to do, later. A file that goes wrong
-    /// partway ends there, and says so.
+    /// partway ends there, and says so. What the ring still held before is the
+    /// margin the worker kept.
     fn step(&mut self, problems: &Mutex<Vec<String>>) -> bool {
         if self.stop.load(Ordering::Acquire) {
             return false;
         }
+        if self.filled {
+            let held = self.capacity.saturating_sub(self.feeder.room());
+            self.lowest = Some(self.lowest.map_or(held, |lowest| lowest.min(held)));
+        }
+        self.filled = true;
         match self.feeder.fill_from(&mut self.source) {
             Ok(_) => !self.feeder.is_closed(),
             Err(error) => {
@@ -306,6 +400,15 @@ impl Feeding {
             }
         }
     }
+
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
+    fn stats(&self) -> TrackStats {
+        let track = self.track.to_string();
+        (track, self.feeder.underrun_frames(), self.lowest)
+    }
 }
 
 /// Every track being decoded, on the worker's side.
@@ -313,6 +416,16 @@ impl Feeding {
 struct Feedings {
     list: Arc<Mutex<Vec<Feeding>>>,
     problems: Arc<Mutex<Vec<String>>>,
+    /// Whether the worker's thread runs above the game's (ticket 3320): only the
+    /// probe asks.
+    #[cfg_attr(
+        not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
+        allow(dead_code)
+    )]
+    raised: Arc<AtomicBool>,
+    /// What the feedings done with went through, until the probe asks.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    ended: Arc<Mutex<Vec<TrackStats>>>,
 }
 
 impl Feedings {
@@ -327,8 +440,40 @@ impl Feedings {
     fn step(&self) {
         // Only the game's thread adds, and only briefly; a turn missed comes round.
         if let Ok(mut list) = self.list.try_lock() {
-            list.retain_mut(|feeding| feeding.step(&self.problems));
+            list.retain_mut(|feeding| {
+                let more = feeding.step(&self.problems);
+                if !more {
+                    self.retire(feeding);
+                }
+                more
+            });
         }
+    }
+
+    /// Keeps what `feeding` went through for the probe, as it goes: natively only,
+    /// where this is the worker's thread, never the audio thread's.
+    #[cfg_attr(
+        not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
+        allow(clippy::unused_self)
+    )]
+    fn retire(&self, feeding: &Feeding) {
+        #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+        self.ended
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(feeding.stats());
+        #[cfg(not(all(feature = "sound-probe", not(target_arch = "wasm32"))))]
+        let _ = feeding;
+    }
+
+    /// Each track since the last ask: those done with, then those being fed.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    fn stats(&self) -> Vec<TrackStats> {
+        let list = self.list.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut all =
+            std::mem::take(&mut *self.ended.lock().unwrap_or_else(PoisonError::into_inner));
+        all.extend(list.iter().map(Feeding::stats));
+        all
     }
 
     fn take_problems(&self) -> Vec<String> {
@@ -353,6 +498,11 @@ impl Worker {
         let thread = std::thread::Builder::new()
             .name("sound-feed".to_owned())
             .spawn(move || {
+                // Above the game's thread and below the output's (ticket 3320): a
+                // turn that waits for a core past what the ring holds stalls the
+                // track, and its decoding never keeps the mix waiting.
+                let raised = shuyi_sound_out::raise_worker();
+                feedings.raised.store(raised, Ordering::Release);
                 while !stopping.load(Ordering::Acquire) {
                     feedings.step();
                     std::thread::sleep(period);
@@ -584,9 +734,9 @@ impl InHouse {
         &mut self,
         track: &Track,
         params: Params,
-        looped: bool,
+        region: Option<Region>,
     ) -> Result<VoiceId, String> {
-        let source = track_source(track, looped)?;
+        let source = track_source(track, region)?;
         let engine = self.engine();
         engine.seat();
         let (feeder, feed) = stream::feed(source.format(), FEED_FRAMES);
@@ -599,14 +749,12 @@ impl InHouse {
             return Err("the sound queue is full".to_owned());
         }
         let stop = Arc::new(AtomicBool::new(false));
-        let mut feeding = Feeding {
-            feeder,
-            source,
-            stop: Arc::clone(&stop),
-        };
+        let mut feeding = Feeding::new(feeder, source, Arc::clone(&stop), Arc::clone(&track.name));
         // Its first frames now, and the worker takes it from there.
         if feeding.step(&engine.feedings.problems) {
             engine.feedings.add(feeding);
+        } else {
+            engine.feedings.retire(&feeding);
         }
         let Ok(voice) = engine.remote.play_stream(stream, params) else {
             stop.store(true, Ordering::Release);
@@ -657,6 +805,25 @@ impl InHouse {
             })
     }
 
+    /// Each track since the last ask, those done with included: its file's name, the
+    /// frames a mix waited on its ring, and the fewest frames its ring held when the
+    /// worker came round, its margin (ticket 3320). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn stream_stats(&self) -> Vec<(String, u64, Option<usize>)> {
+        self.engine
+            .as_ref()
+            .map_or_else(Vec::new, |engine| engine.feedings.stats())
+    }
+
+    /// Whether the worker that feeds the tracks runs above the game's thread
+    /// (ticket 3320). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn feeder_raised(&self) -> bool {
+        self.engine
+            .as_ref()
+            .is_some_and(|engine| engine.feedings.raised.load(Ordering::Acquire))
+    }
+
     /// How long a play takes to reach the mix going to the device's buffer, in
     /// milliseconds: the time to the callback that has it, at no volume so that
     /// nothing is heard. For the probe's `latency` order.
@@ -699,7 +866,7 @@ impl Backend for InHouse {
     fn load_music(&mut self, path: &str) -> Self::Loading {
         let path = path.to_owned();
         Pending::spawn("music-load", move || {
-            Track::new(std::fs::read(&path).map_err(|e| e.to_string())?)
+            Track::new(&path, std::fs::read(&path).map_err(|e| e.to_string())?)
         })
     }
 
@@ -711,7 +878,7 @@ impl Backend for InHouse {
                 .await
                 .map_err(|e| e.to_string())?;
             web::vetted(&bytes).await?;
-            Track::new(bytes)
+            Track::new(&path, bytes)
         })
     }
 
@@ -756,11 +923,18 @@ impl Backend for InHouse {
                 }
                 played
             }
-            Clip::Stream { track, voice, .. } => {
+            Clip::Stream {
+                track,
+                voice,
+                region,
+                ..
+            } => {
                 if let Some(old) = voice.take() {
                     self.stop_playing(Some(old));
                 }
-                let played = self.start_stream(track, params, looped);
+                let whole = Region::new(0, u64::MAX);
+                let region = region.get().or(whole).filter(|_| looped);
+                let played = self.start_stream(track, params, region);
                 voice.set(played.as_ref().ok().copied());
                 played
             }
@@ -840,6 +1014,34 @@ impl Backend for InHouse {
         Ok(())
     }
 
+    fn set_loop_region(
+        &mut self,
+        sound: &Clip,
+        region: Option<LoopRegion>,
+    ) -> Result<Looping, shuyi_platform::audio::player::Unsupported> {
+        let Clip::Stream {
+            track, region: at, ..
+        } = sound
+        else {
+            return Ok(Looping::Whole);
+        };
+        // The cue's, in the file's frames, wins over the file's own.
+        let found = match region {
+            Some(asked) => asked
+                .frames(track.rate)
+                .and_then(|(start, end)| Region::new(start, end)),
+            None => match &track.file_region {
+                Ok(found) => *found,
+                Err(why) => {
+                    at.set(None);
+                    return Ok(Looping::Unread(why.clone()));
+                }
+            },
+        };
+        at.set(found);
+        Ok(found.map_or(Looping::Whole, |found| track.seconds(found)))
+    }
+
     fn hold_output(&mut self, on: bool) {
         if let Some(output) = self.engine.as_ref().and_then(|e| e.output.as_ref()) {
             if on {
@@ -885,6 +1087,7 @@ fn clip_of(track: Track) -> Clip {
         track,
         rate: Cell::new(shuyi_sound::mix::RATE_ONE),
         voice: Cell::new(None),
+        region: Cell::new(None),
     }
 }
 

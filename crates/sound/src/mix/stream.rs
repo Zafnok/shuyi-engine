@@ -10,7 +10,9 @@
 //!   [`Feeder::close`]s it after the last frame.
 //! - A read of an empty ring that isn't closed is [`Error::Underrun`]. The voice
 //!   stays where it is and sounds nothing until frames come: an underrun delays a
-//!   stream, and loses and repeats nothing. [`Mixer::underrun_frames`] counts it.
+//!   stream, and loses and repeats nothing. [`Mixer::underrun_frames`] counts it
+//!   over every stream, and [`Feeder::underrun_frames`] this one's, for its worker
+//!   to read without a lock.
 //! - The worker supplies a loop's frames too, as [`LoopedRegion`] does, so that the
 //!   way back to the start of a region is worked out and in the ring before the
 //!   mix reaches the end of it.
@@ -18,7 +20,7 @@
 //! [`Mixer::underrun_frames`]: super::Mixer::underrun_frames
 
 use alloc::boxed::Box;
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use super::queue::Ring;
 use super::{Region, Shared};
@@ -48,15 +50,18 @@ fn word_frame(word: u32) -> [i16; 2] {
 pub fn feed(format: PcmFormat, capacity: usize) -> (Feeder, Feed) {
     let ring = Shared::new(Ring::new(capacity, 1));
     let closed = Shared::new(AtomicBool::new(false));
+    let stalled = Shared::new(AtomicU32::new(0));
     (
         Feeder {
             ring: Shared::clone(&ring),
             closed: Shared::clone(&closed),
+            stalled: Shared::clone(&stalled),
             format,
         },
         Feed {
             ring,
             closed,
+            stalled,
             format,
         },
     )
@@ -67,6 +72,8 @@ pub fn feed(format: PcmFormat, capacity: usize) -> (Feeder, Feed) {
 pub struct Feeder {
     ring: Shared<Ring>,
     closed: Shared<AtomicBool>,
+    /// The frames a mix waited on this ring, which only the [`Feed`] stores.
+    stalled: Shared<AtomicU32>,
     format: PcmFormat,
 }
 
@@ -74,6 +81,13 @@ impl Feeder {
     /// How many frames the ring has room for now.
     pub fn room(&self) -> usize {
         self.ring.room()
+    }
+
+    /// How many frames a mix had nothing of this stream to play so far, and waited
+    /// where it was: the worker didn't keep ahead. Read here without a lock, as the
+    /// mix counts them. It stops at `u32::MAX`, a day of waiting at 48 kHz.
+    pub fn underrun_frames(&self) -> u64 {
+        u64::from(self.stalled.load(Ordering::Acquire))
     }
 
     /// Writes as many whole frames of `samples` as there is room for, interleaved,
@@ -129,6 +143,7 @@ impl Feeder {
 pub struct Feed {
     ring: Shared<Ring>,
     closed: Shared<AtomicBool>,
+    stalled: Shared<AtomicU32>,
     format: PcmFormat,
 }
 
@@ -162,6 +177,15 @@ impl Source for Feed {
     fn rewind_to(&mut self, _frame: u64) -> Result<(), Error> {
         Ok(())
     }
+
+    /// Adds them where the [`Feeder`] reads them. Only this end stores the count,
+    /// so a load and a store make the sum: no wait, on a target with no
+    /// compare-and-swap too.
+    fn stalled(&mut self, frames: u64) {
+        let so_far = u64::from(self.stalled.load(Ordering::Relaxed));
+        let total = u32::try_from(so_far.saturating_add(frames)).unwrap_or(u32::MAX);
+        self.stalled.store(total, Ordering::Release);
+    }
 }
 
 /// A source that plays up to the end of a region, then from its start, for ever,
@@ -176,6 +200,9 @@ pub struct LoopedRegion<S, F> {
     region: Region,
     /// The next frame `source` gives.
     at: u64,
+    /// Whether `restart` gives the source at the region's start, not its first
+    /// frame.
+    lands: bool,
 }
 
 impl<S: Source, F: FnMut() -> Result<S, Error>> LoopedRegion<S, F> {
@@ -186,12 +213,31 @@ impl<S: Source, F: FnMut() -> Result<S, Error>> LoopedRegion<S, F> {
             restart,
             region,
             at: 0,
+            lands: false,
+        }
+    }
+
+    /// `source`, from its first frame, looping `region`, where `restart` gives the
+    /// source at the region's first frame exactly (an exact seek, as
+    /// `VorbisSource::seek_exact` makes): nothing before the region is read again,
+    /// so a long intro costs nothing on the way round.
+    pub const fn landing(source: S, region: Region, restart: F) -> Self {
+        Self {
+            source,
+            restart,
+            region,
+            at: 0,
+            lands: true,
         }
     }
 
     /// Goes back to the start of the region.
     fn back(&mut self) -> Result<(), Error> {
         self.source = (self.restart)()?;
+        if self.lands {
+            self.at = self.region.start();
+            return Ok(());
+        }
         self.at = 0;
         let channels = usize::from(self.source.format().channels.count());
         let mut chunk = [0; CHUNK_SAMPLES];
@@ -308,6 +354,14 @@ impl Slot {
         self.start = 0;
         self.end = 0;
         self.read_at = 0;
+    }
+
+    /// A voice waited `frames` frames on it: its source is told
+    /// ([`Source::stalled`]).
+    pub(super) fn stalled(&mut self, frames: u64) {
+        if let Some(source) = self.source.as_mut() {
+            source.stalled(frames);
+        }
     }
 
     /// The source's next frame, with a loop's way back. No decoding: a source a
