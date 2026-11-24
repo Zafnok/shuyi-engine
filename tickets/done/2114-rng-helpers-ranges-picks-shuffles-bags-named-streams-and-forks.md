@@ -327,8 +327,8 @@ Done as scoped, on 2026-11-23:
 
 - `mix64` and `mix_at` (`const fn`) in `shuyi_core::rng`, and
   `pub(crate) fnv1a` in `hash.rs` over its `Hasher`;
-  `shuyi_ui::audio::splitmix64` is now `pub use shuyi_core::rng::mix64
-  as splitmix64`, and its reference test passes unchanged.
+  `shuyi_ui::audio::splitmix64` now calls `shuyi_core::rng::mix64`, and
+  its reference test passes unchanged.
 - `SimRng::stream` and `SimRng::fork`, exactly as the scope says.
 - `range`, `chance`, `index`, `pick`, `shuffle`, `weighted_index` and
   `pick_weighted` as default methods of `RandomSource`; the generic ones
@@ -376,6 +376,11 @@ Deviations (the ticket was a month old):
   changed too: `crates/cli/src/template/plans.golden` (the rules file's
   hash, re-blessed) and `skills/shuyi-balance-bots/example.ron` (its
   edit finds that line).
+- `splitmix64` stays a function whose body is a call to `mix64`, not
+  the scope's `pub use … as splitmix64`. CI's `api` job (cargo
+  semver-checks) reads the re-export as `function_missing`, a break,
+  though the path still resolves. A one-line wrapper keeps one body of
+  the algorithm and needs no `Breaking:` line.
 
 No break: only additions, and `splitmix64` keeps its path and
 signature. Searched the game with `gh search code --repo

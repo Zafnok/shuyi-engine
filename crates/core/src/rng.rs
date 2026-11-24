@@ -245,7 +245,7 @@ impl SimRng {
     pub fn fork(&mut self, name: &str) -> Self {
         let high = u64::from(self.next_u32());
         let low = u64::from(self.next_u32());
-        Self::stream((high << 32) | low, name)
+        Self::stream((high << 32).wrapping_add(low), name)
     }
 
     /// PCG32's reference seeding (`pcg32_srandom_r`) with stream `stream`.
