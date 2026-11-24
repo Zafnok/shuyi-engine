@@ -302,8 +302,8 @@ None.
     2019's `web-render` job (done) runs `check.py boot` on this build
     too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form, with the lines of its own code
-  without tests and data (`cargo xtask template-lines` if 2512 is done;
-  counted, and said how, if not). The engine's `README.md` names the
+  without tests and data (`cargo xtask template-lines`'s code count,
+  2512). The engine's `README.md` names the
   example beside hello-grid.
 - **The eval, either order with 2524:** if it is done, write
   `evals/tasks/card-battle.ron`: template `blank`, name `Card Battle`,

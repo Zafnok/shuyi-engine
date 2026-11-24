@@ -1356,6 +1356,11 @@ jobs:
           cargo xtask pr-size --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
       - name: Check Markdown links
         run: cargo xtask check-links
+      # The lines a game's author owns (ticket 2512): the table in the run's
+      # summary, and a failure when a new `blank` game's code is over
+      # tools/line-budget.ron's cap, or 10 or more under it.
+      - name: Count the templates' lines
+        run: cargo xtask template-lines --check --summary "$GITHUB_STEP_SUMMARY"
       # A `migration` block that doesn't parse fails here, not when the
       # site is built (ticket 2804), and so does one the PR moves to done/
       # whose `since` is not the workspace version (ticket 2058).
