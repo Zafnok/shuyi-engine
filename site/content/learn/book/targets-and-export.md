@@ -379,6 +379,25 @@ lists, and fails naming the scenario, the frame and the target when one is over:
 Write one for each of your game's heaviest moments: its biggest battle, its fullest menu, its longest
 dialogue.
 
+A leak shows only over hours: a cache that grows with each map, a sound never stopped. A long scenario,
+a file named `<name>.long.ron`, plays its script many times, and `cargo shuyi bench --long` checks that
+the memory your game holds and the sounds it keeps playing stay flat from the first quarter of the run to
+the last, naming what grew. With `--twice` it plays the run again in a second process and checks that
+every sampled frame came out the same:
+
+```ron
+(
+    format_version: 1,
+    about: "the whole loop: title, play, back",
+    script: (steps: [keys("Enter"), wait(1.0), keys("Escape"), wait(0.3)]),
+    repeat: 2000,
+    warm_up: 20000,
+    sample_every: 5000,
+)
+```
+
+Make its script a loop that ends where it began, through as much of the game as you can.
+
 On the web, the package's size is what a player waits for before the game starts: the page and the
 program, not the `web.music` and `web.voice` folders, which the game fetches when it first plays a track
 or a line. The table shows the whole zip beside it, the size of your upload.

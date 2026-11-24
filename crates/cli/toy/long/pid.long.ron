@@ -1,0 +1,12 @@
+// A fixture of `bench --long --twice`: the toy opens a screen named
+// after its process's id, so a second run hashes its frames differently
+// from the first. CI's `bench` job checks that `--twice` fails at the
+// first sample, naming its frame, and that without `--twice` it passes.
+(
+    format_version: 1,
+    about: "the toy opens a screen named after its process's id",
+    start: [(flag: "--pid-screen")],
+    repeat: 20,
+    idle: 100,
+    sample_every: 100,
+)

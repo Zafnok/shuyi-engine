@@ -182,9 +182,9 @@ commands:
                                      GIF; --preview: the game's preview.png from its
                                      {file}'s `preview` (frame-png --help)
   bench [--target <id>] [--scenario <name>] [--out <dir>] [--no-instructions]
-                                     play the game's *.bench.ron scenarios headless and gate
-                                     instructions per frame (Valgrind), the heap's peak and
-                                     the package's size against its targets' budgets
+                                     gate each *.bench.ron scenario's instructions (Valgrind),
+                                     heap peak and package size against its targets' budgets;
+                                     --long [--twice]: *.long.ron runs stay flat (bench --help)
   web [--release] [--<feature>...]   build and package the web (WASM) build
   preview [--port N] [...]           serve the game to visitors as pictures from this
                                      machine, never its program or files (preview --help)

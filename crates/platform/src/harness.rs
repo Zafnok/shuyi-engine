@@ -137,6 +137,9 @@ pub struct Harness<G: GameData> {
     quit_frame: Option<u32>,
     /// Where [`point`](Self::point) put the pointer, until it left.
     pointer: Option<(i32, i32)>,
+    /// Whether it keeps every frame's audio, music and screens
+    /// ([`keep_logs`](Self::keep_logs)).
+    keep_logs: bool,
 }
 
 impl<G: GameData> Harness<G> {
@@ -290,7 +293,20 @@ impl<G: GameData> Harness<G> {
             music_frames: Vec::new(),
             quit_frame: None,
             pointer: None,
+            keep_logs: true,
         }
+    }
+
+    /// Keeps every frame's audio requests, music commands, dropped plays
+    /// and screens (`true`, the default), or only the last frame's
+    /// (`false`): a long run's driver then holds the same amount however
+    /// many frames it runs. With it off, [`audio_log`](Self::audio_log),
+    /// [`music_log`](Self::music_log), [`dropped_sounds`](Self::dropped_sounds)
+    /// and the checks over them read the last frame only, and
+    /// [`screen_log`](Self::screen_log) holds the screens open now.
+    pub fn keep_logs(&mut self, on: bool) -> &mut Self {
+        self.keep_logs = on;
+        self
     }
 
     /// Gives the game `hook` for the system's events
@@ -668,6 +684,12 @@ impl<G: GameData> Harness<G> {
     /// it left, none while the game hasn't loaded.
     fn note_frame(&mut self) {
         self.frames += 1;
+        if !self.keep_logs {
+            self.audio.clear();
+            self.dropped.clear();
+            self.music.clear();
+            self.music_frames.clear();
+        }
         self.audio.push(self.app.audio().to_vec());
         let frame = self.frames;
         let dropped = self.app.dropped_sounds().iter();
@@ -681,6 +703,9 @@ impl<G: GameData> Harness<G> {
         }
         let screens = self.screens();
         if self.stacks.last().is_none_or(|(_, last)| *last != screens) {
+            if !self.keep_logs {
+                self.stacks.clear();
+            }
             self.stacks.push((self.frames, screens));
         }
     }

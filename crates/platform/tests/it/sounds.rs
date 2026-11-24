@@ -228,3 +228,38 @@ fn a_click_inside_its_cues_gap_is_asked_for_and_dropped() {
     assert_eq!(h.sounds(), ["click", "click"]);
     assert_eq!(h.dropped_sounds().len(), 0);
 }
+
+#[test]
+fn a_harness_without_logs_keeps_the_last_frames_audio_and_screens_only() {
+    let mut h = looper();
+    h.keep_logs(false);
+    h.act(Action::Confirm);
+    h.act(Action::Select);
+    assert_eq!(h.screens(), ["home", "looper", "looper"]);
+    let log = h.screen_log();
+    assert_eq!(log.len(), 1, "only the screens open now: {log:?}");
+    assert_eq!(log[0].1, ["home", "looper", "looper"]);
+    assert!(h.sounds().is_empty(), "the start of `hum` was frames ago");
+    h.act(Action::Confirm);
+    let frame = h.frame_count();
+    let log: Vec<u32> = h.audio_log().iter().map(|(f, _)| *f).collect();
+    assert!(
+        !log.is_empty() && log.iter().all(|&f| f == frame),
+        "{log:?}"
+    );
+    assert_eq!(h.sounds(), ["hum"]);
+    // The sounds playing are the speaker's, which the logs don't change.
+    assert_eq!(playing(&h), [1, 2]);
+    h.frame(&[], shuyi_platform::harness::FRAME_DT);
+    assert_eq!(h.audio_log().len(), 0, "the frame before is gone");
+}
+
+#[test]
+fn a_harness_keeps_every_frames_audio_by_default() {
+    let mut h = looper();
+    h.act(Action::Confirm);
+    h.act(Action::Select);
+    h.act(Action::Confirm);
+    assert_eq!(h.sounds(), ["hum", "hum"]);
+    assert!(h.screen_log().len() > 1);
+}

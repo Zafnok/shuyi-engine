@@ -19,6 +19,13 @@
 //! and heap a measured session reads; its session on the Playdate
 //! converts each frame as the device does ([`GameTools::session_on`]).
 //!
+//! `bench --long`'s fixtures (`toy/long/*.long.ron`) start it with
+//! `--leak-bytes N`, which keeps N bytes more each frame under the memory
+//! tag `toy-leak` (and gives it the real heap, as the bench fixtures do,
+//! even with N 0); `--hum-every N`, which starts one more loop of `hum`
+//! every N frames and never stops one; or `--pid-screen`, which opens a
+//! screen named after the process's id, so two runs hash differently.
+//!
 //! [`link`] runs the toy behind the live link's server, a test host for
 //! what attaches to a running build.
 
@@ -32,8 +39,10 @@ use shuyi_platform::headless::HeadlessPlatform;
 use shuyi_platform::script::FRAME_DT;
 use shuyi_platform::{Frame, Show};
 use shuyi_ui::frame::ConsoleSpec;
+use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::onebit::{self, FRAME_BYTES, Font, PatternMap};
-use shuyi_ui::perf::PerfClock;
+use shuyi_ui::perf::{PerfClock, TagClass};
+use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
 use shuyi_ui::toy::{self, Toy, ToyCtx};
 use shuyi_ui::{Game, GameData};
 
@@ -44,7 +53,7 @@ use crate::frame_png::{Capture, Painter, Script, Shot, one_bit_picture};
 use crate::game::{GameArg, GameLang, GameOption, GameTools};
 
 /// The toy's own `frame-png` options.
-const OPTIONS: [GameOption; 5] = [
+const OPTIONS: [GameOption; 8] = [
     GameOption {
         flag: "--lobby",
         value: None,
@@ -70,7 +79,25 @@ const OPTIONS: [GameOption; 5] = [
         value: Some("N"),
         help: "hold N MB of heap from the first frame on (a bench fixture)",
     },
+    GameOption {
+        flag: "--leak-bytes",
+        value: Some("N"),
+        help: "keep N bytes more every frame, tagged toy-leak (a long-run fixture)",
+    },
+    GameOption {
+        flag: "--hum-every",
+        value: Some("N"),
+        help: "start one more loop every N frames, never stopped (a long-run fixture)",
+    },
+    GameOption {
+        flag: "--pid-screen",
+        value: None,
+        help: "open a screen named after the process's id (a long-run fixture)",
+    },
 ];
+
+/// The memory tag `--leak-bytes` keeps its bytes under.
+const LEAK_TAG: &str = "toy-leak";
 
 /// The loops `--burn-frame` runs: at least two instructions each, more
 /// than the Playdate's budget of a frame and less than a desktop's.
@@ -88,20 +115,31 @@ fn number(options: &[GameArg], flag: &str) -> Result<Option<u64>, String> {
         .map_err(|_| format!("{flag}: not a whole number: {value}"))
 }
 
-/// What `--burn-frame` and `--hold-mb` ask of each frame presented, if
-/// either is given: a burn in that frame, and that heap held from the
-/// first.
+/// What `--burn-frame`, `--hold-mb` and `--leak-bytes` ask of each frame
+/// presented, if one is given: a burn in that frame, that heap held from
+/// the first, and those bytes kept more each frame.
 fn fixture(options: &[GameArg]) -> Result<Option<impl FnMut() + 'static>, String> {
-    let (burn, hold_mb) = (
+    let (burn, hold_mb, leak) = (
         number(options, "--burn-frame")?,
         number(options, "--hold-mb")?,
+        number(options, "--leak-bytes")?,
     );
-    if burn.is_none() && hold_mb.is_none() {
+    if burn.is_none() && hold_mb.is_none() && leak.is_none() {
         return Ok(None);
     }
     let (mut frame, mut kept) = (0_u64, None::<Vec<u8>>);
+    let mut leaked: Vec<Box<[u8]>> = Vec::new();
+    let leak = leak.filter(|&bytes| bytes > 0).map(|bytes| {
+        let tag = shuyi_alloc_count::tags::tag(TagClass::Span as u8, LEAK_TAG);
+        (usize::try_from(bytes).unwrap_or(usize::MAX), tag)
+    });
     Ok(Some(move || {
         frame += 1;
+        if let Some((bytes, tag)) = leak {
+            let before = shuyi_alloc_count::tags::enter(tag);
+            leaked.push(std::hint::black_box(vec![1; bytes].into_boxed_slice()));
+            shuyi_alloc_count::tags::leave(before);
+        }
         if let Some(mb) = hold_mb
             && kept.is_none()
         {
@@ -118,9 +156,66 @@ fn fixture(options: &[GameArg]) -> Result<Option<impl FnMut() + 'static>, String
     }))
 }
 
+/// A long run's fixture screen over the toy's home: it starts a loop of
+/// `hum` every `every` frames, if given, and never stops one; its name is
+/// `name`.
+struct Humming {
+    name: &'static str,
+    every: Option<u64>,
+    frames: u64,
+}
+
+impl Screen<Toy> for Humming {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn actions(&self) -> Option<Vec<toy::Action>> {
+        Some(Vec::new())
+    }
+
+    fn update(&mut self, ctx: &mut ToyCtx, _: &FrameInput<toy::Action>) -> Transition<Toy> {
+        self.frames += 1;
+        if self
+            .every
+            .is_some_and(|every| self.frames.is_multiple_of(every))
+        {
+            ctx.audio.start_sound("hum");
+        }
+        Transition::None
+    }
+
+    fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+}
+
+/// The long run's fixture screen `options` ask for, if any.
+fn humming(options: &[GameArg]) -> Option<Humming> {
+    let every = number(options, "--hum-every")
+        .ok()
+        .flatten()
+        .filter(|&n| n > 0);
+    let pid = options.iter().any(|option| option.flag == "--pid-screen");
+    let name: &'static str = if pid {
+        // One name for the program's life: a long run opens it once.
+        Box::leak(format!("pid-{}", std::process::id()).into_boxed_str())
+    } else {
+        "humming"
+    };
+    (every.is_some() || pid).then_some(Humming {
+        name,
+        every,
+        frames: 0,
+    })
+}
+
 /// The toy on `ctx`, started where `options` say.
 fn game_on(ctx: ToyCtx, options: &[GameArg]) -> Game<Toy> {
     let has = |flag: &str| options.iter().any(|option| option.flag == flag);
+    if let Some(humming) = humming(options) {
+        let mut stack = ScreenStack::new(Box::new(toy::Home::default()));
+        stack.push(Box::new(humming));
+        return Game::with_stack(ctx, stack, toy::hooks());
+    }
     if has("--plasma") {
         toy::plasma::game_on(ctx)
     } else if has("--field") {

@@ -1,0 +1,43 @@
+// A long run (`cargo shuyi bench --long`, ticket 3509): the stage played
+// from the title through its opening scene, two of your moves and the
+// foe's turns, left for the title, then the options menu walked, and
+// round again: 456 frames a loop, 2,200 loops, 1,003,200 frames (about
+// 4.6 hours of play at 60 frames a second). The live heap and the sounds
+// alive must stay flat after the warm-up, and with `--twice` a second
+// run must hash every sample the same.
+//
+// Measured on 2026-11-24, on a 24-core Windows desktop: 440 loops played
+// in 7 seconds, and this file's one run in 25, so the pair of
+// `--twice` in about 50, besides building the tool program. A GitHub
+// runner is some times slower: the pair stays far under long-run.yml's
+// 40 minutes.
+(
+    format_version: 1,
+    about: "the stage, its scene, moves, the foe, leaving, and the options, looped",
+    script: (steps: [
+        keys("Enter"),
+        wait(1.5),
+        keys("Enter"),
+        wait(1.0),
+        keys("Escape"),
+        wait(0.5),
+        keys("z Up Right Right Right z"),
+        wait(1.0),
+        keys("z Right Right Up Up z"),
+        wait(1.0),
+        keys("Escape"),
+        wait(0.3),
+        keys("Enter"),
+        wait(0.5),
+        keys("Down Enter"),
+        wait(0.3),
+        keys("Down Down Down Up Up Up"),
+        wait(0.3),
+        keys("Escape"),
+        wait(0.3),
+        keys("Up"),
+    ]),
+    repeat: 2200,
+    warm_up: 20000,
+    sample_every: 5000,
+)

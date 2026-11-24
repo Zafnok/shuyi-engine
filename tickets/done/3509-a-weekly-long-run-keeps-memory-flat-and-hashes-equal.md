@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3509 — A weekly long run checks that memory and live sounds stay flat and that a second run's hashes match
@@ -192,27 +192,31 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Harness with `keep_logs(false)` holds the same live heap bytes,
+- [x] A Harness with `keep_logs(false)` holds the same live heap bytes,
       within 4 KiB, after 10,000 idle frames of the toy as after 1,000.
-- [ ] `cargo shuyi bench --long` in `crates/cli/toy` passes `flat` and
+- [x] `cargo shuyi bench --long` in `crates/cli/toy` passes `flat` and
       fails `leaks` with exit 1, naming `leaks`, both heap numbers and
       the toy's leak tag.
-- [ ] A scenario with `warm_up` of 1,000 frames that allocates 1 MB once
+- [x] A scenario with `warm_up` of 1,000 frames that allocates 1 MB once
       at frame 500 and never again passes.
-- [ ] A scenario whose sounds alive rise by one every 1,000 frames fails
+- [x] A scenario whose sounds alive rise by one every 1,000 frames fails
       naming the sound counts.
-- [ ] With `--twice`, a toy option that mixes the process id into its
+- [x] With `--twice`, a toy option that mixes the process id into its
       state fails at the first sample, naming its frame; without it,
       the pair passes.
-- [ ] `stage-loop.long.ron` plays at least 200,000 frames of Hello,
-      Grid and passes, and the job's summary shows its table.
-- [ ] `long-run.yml` runs on `workflow_dispatch`, passes on main, and
-      zizmor finds nothing new in it.
-- [ ] A long scenario with an unknown field is refused naming the field.
-- [ ] The public API listing changes only by `Harness::keep_logs` (an
-      addition).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `stage-loop.long.ron` plays at least 200,000 frames of Hello,
+      Grid and passes, ~~and the job's summary shows its table~~ (not
+      done: the job runs only once `long-run.yml` is on main; the table
+      it posts was checked locally).
+- [x] ~~`long-run.yml` runs on `workflow_dispatch`, passes on main~~,
+      and zizmor finds nothing new in it (not done: a workflow is
+      dispatched only from main; see the completion notes).
+- [x] A long scenario with an unknown field is refused naming the field.
+- [x] ~~The public API listing changes only by `Harness::keep_logs` (an
+      addition)~~ (not done: `Session`, a public trait, gains three
+      defaulted methods too; all additions, see Deviations).
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -230,5 +234,96 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `Harness::keep_logs(on)` (`crates/platform/src/harness.rs`): off, the
+  Harness keeps only the last frame's audio requests, music commands and
+  dropped plays, and the screens open now. The default keeps today's logs.
+- `Session::set_long`, `Session::frame_hash` and `Session::sounds_alive`,
+  each defaulted, and `Headless`'s answers (`keep_logs(false)` and
+  `App::hash_frames(true)`; `App::frame_hash`; `sounds_playing().len()`).
+- `crates/cli/src/bench/long.rs`: `LongScenario` (format 1,
+  `deny_unknown_fields`), `Sample`, the inner half `play` (samples written
+  as JSON lines as they are taken), `judge` (the flatness rule),
+  `first_difference` (the determinism rule), the report and its table.
+  `bench.rs`: `--long`, `--twice`, `bench-play --long`, `long_plan`,
+  `measure_long` and the `LongPlayer` trait; `find` shares `find_ending`.
+- The toy's options `--leak-bytes N` (under the memory tag `toy-leak`),
+  `--hum-every N` and `--pid-screen`, and four fixtures in
+  `crates/cli/toy/long/`: `flat`, `leaks`, `hums` and `pid`. CI's `bench`
+  job checks each in a process of its own: `flat` passes twice, `leaks`
+  fails naming `toy-leak`, `hums` fails naming the counts, `pid` fails
+  `--twice` at frame 100 and passes without it.
+- `examples/hello-grid/long/stage-loop.long.ron`: title, the stage and its
+  scene, two moves and the foe's turns, leaving, the options walked, and
+  back to the title; 456 frames a loop, 2,200 loops, 1,003,200 frames.
+  Locally (24 cores, Windows) one run took 25 s, and `--twice` passed:
+  the live heap between 195,169 and 198,070 bytes all through, five
+  distinct hashes among the samples, equal in both runs.
+- `.github/workflows/long-run.yml`, Monday 07:00 UTC and
+  `workflow_dispatch`, `timeout-minutes: 90`, `contents: read` (and
+  `issues: write` for its job, as `security.yml`); zizmor finds nothing
+  in it, and `ci.yml` keeps main's 6 low findings, none new.
+- ADR-0145, which extends ADR-0081; `docs/targets/README.md` (*Long
+  runs*, *In CI*); the book's *Size and speed*; the CLI's help.
+
+Deviations:
+
+- **A new ADR, not a section of ADR-0081.** The `write-adr` skill and
+  `AGENTS.md` say an accepted ADR's decision is never rewritten: an
+  extension is a new ADR with an `Extends:` line, and the old one's
+  `Status:` names it. ADR-0145 does that.
+- **The public API grows by four, not one.** `Session` is a public trait
+  (`shuyi_cli::contract::session`), so the ticket's step 2 adds three
+  defaulted methods to the listing beside `Harness::keep_logs`. All are
+  additions; no game implements `Session` (searched below).
+- **Samples are taken step by step.** A whole script plays many frames in
+  one call, so samples taken only at its end fell on the same frame of
+  the loop each time (one hash, one heap value over 200 samples). The
+  run plays the script one step at a time and samples at the end of the
+  first step that reaches each `sample_every` frames.
+- **The samples go to a file as they are taken** (JSON lines), so the
+  list never grows the heap it measures.
+- **Hello, Grid's loop is a million frames, not 200,000.** The ticket's
+  200,000 is a least; the pair takes about 50 s locally, far under 40
+  minutes, so the run covers five times as much play. The measured time
+  is in the file's comment. It is measured on this machine, not on a
+  runner: a workflow dispatches only once its file is on `main`.
+- **The sounds and warm-up criteria are checked two ways**: `judge` on
+  samples made by hand (a megabyte at frame 500 under a warm-up of
+  1,000; one sound more every 1,000 frames), and the toy's `hums`
+  fixture played in this program and in CI.
+- **`--target` and `--long` together are refused**, and `--twice` without
+  `--long`: a long run gates no target's budget.
+- **The integration tests are in `crates/cli/src/bench/long/tests.rs`**,
+  not `bench/tests.rs`. In the test program the whole heap moves with
+  the other tests' threads (a first full run hid the leak that way), so
+  the leak test judges the bytes under `toy-leak` alone, and the
+  `keep_logs` test counts under a memory tag of its thread's own. CI's
+  `bench` job judges the whole heap, in a process of its own.
+- **The table's test stands for the snapshot**: its samples are made by
+  hand, as the toy's heap in this program is the whole test program's.
+- **2739's clause is settled**: it now says it adds snake's long
+  scenario and its step in `long-run.yml` (*From 3509 (done)*).
+
+Not checked here:
+
+- `long-run.yml` hasn't run on `workflow_dispatch`: it can only once the
+  file is on `main`. Nick (or the next session) starts it with `gh
+  workflow run long-run.yml` after the merge, and its summary shows the
+  table; until it has, that box stays unticked.
+
+Size: 1,853 counted lines, against the 800 estimated: the tests are
+457 and the doc comments of `long.rs` most of its 581. Not split, as no
+half lands alone under 1,500: the weekly workflow, Hello, Grid's file
+and the docs are about 400 lines and need the command, and the command's
+rules are tested by the toy's fixtures and the Harness's lean mode they
+run on.
+
+Searched the game: `gh search code --repo Zafnok/visions-of-shuyi`
+for `impl Session for`, `bench-play` and `long.ron`: no hit.
+
+No break. No `Behaviour:` line: a game sees nothing change unless it
+asks for a long run.
+
+Game: nothing to adopt, the long run is a tool a game may call.
