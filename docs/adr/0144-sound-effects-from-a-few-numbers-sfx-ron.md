@@ -1,4 +1,4 @@
-# ADR-0143: Sound effects from a few numbers: `.sfx.ron`, rendered once in integers through the sound hook
+# ADR-0144: Sound effects from a few numbers: `.sfx.ron`, rendered once in integers through the sound hook
 
 - **Status:** Accepted
 - **Date:** 2026-11-23

@@ -116,6 +116,7 @@ pub mod prelude {
     pub use shuyi_assets::bundle::Embedded;
     pub use shuyi_assets::keymap::{ActionSet, UiAction};
     pub use shuyi_assets::{Bundle, ContentError, Layer};
+    pub use shuyi_core::{Bag, RandomSource};
     pub use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
     pub use shuyi_ui::frame::{ConsoleSpec, EngineColor, Rgb};
     pub use shuyi_ui::module::{Hook, Install, Module};

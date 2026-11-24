@@ -532,7 +532,7 @@ and MP3 read only headers here: decoding their samples
 
 ### Sound effects (`.sfx.ron`)
 
-A sound effect is a few numbers in a text file (ticket 2225, ADR-0143),
+A sound effect is a few numbers in a text file (ticket 2225, ADR-0144),
 behind the `sfx` feature of `shuyi-assets`: no dependency, and it builds
 without `std`. The game renders it once, as it loads it, to a 16-bit
 mono WAV at 44.1 kHz, so a new game has sounds with no audio file. A
