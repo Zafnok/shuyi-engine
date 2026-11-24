@@ -51,7 +51,9 @@ evidence below was checked in this repository on 2026-11-23.
    all five (checked 2026-11-23; `shuyi-core` answers 200). The rule of
    2026-10-21 (*Only these six*) says a name is published "when its
    crate is real", and all five are real now. 3510 makes the publish
-   list match the workspace and has this as its setup.
+   list match the workspace and has this as its setup. **Answered:**
+   Nick held all five on 2026-11-24 (`docs/decisions.md`, *the last
+   five engine crate names are held*); skip question 3.
 4. **Our own security advisories may not reach RustSec.** RustSec is
    the database `cargo audit` and `cargo deny` read, our own weekly
    advisory check included (ADR-0037). Its guide takes a new advisory

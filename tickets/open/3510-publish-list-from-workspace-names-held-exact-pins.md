@@ -7,7 +7,7 @@ model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: todo
 blocked_by: []
-nick_input: setup
+nick_input: none
 completed:
 ---
 
@@ -38,7 +38,9 @@ is published "when its crate is real", and 2026-11-01 held
 `shuyi-alloc-count` and `shuyi-playdate` on that rule. All five crates
 are real now (`shuyi-embed` and its macros from 2215, `shuyi-script`
 from 2101, `shuyi-sound` from 2210 and `shuyi-sound-out` from #240).
-No open ticket plans to hold them.
+Nick held all five as 0.0.0 placeholders on 2026-11-24
+(`docs/decisions.md`, *the last five engine crate names are held*),
+so this ticket's setup is done.
 
 The publish mechanics have three more gaps:
 
@@ -81,43 +83,9 @@ checked over `cargo metadata`, `tools/layers.ron`).
 
 ## Nick input
 
-**Setup:** hold the five names on crates.io as empty 0.0.0
-placeholders, as on 2026-10-21 and 2026-11-01.
-
-**Either order with 3528:** if 3528 is done, follow its answer on
-holding the crates' names: a yes is this setup; a no leaves the five
-names to 2005's sign-off, and `check-publish --index` (step 6) stays
-out of CI until they are held. If not, do every other step, and ask
-Nick for this setup at the end, telling him the 2026-10-21 rule already
-covers real crates; his answer goes in `docs/decisions.md` with the
-`ask-nick` skill.
-
-The session prepares five placeholder folders outside the repository
-(a library with no code, both license files, a README that points to
-this repository, `version = "0.0.0"`, as the earlier placeholders).
-Nick's own steps, in PowerShell:
-
-1. At `https://crates.io/settings/tokens/new`, make a token named
-   `hold-five`, scope `publish-new` only, crates `shuyi-*`, expiry the
-   shortest offered.
-2. Run, with the folder the session names:
-   ```powershell
-   cargo login
-   # paste the token when cargo asks
-   foreach ($name in 'shuyi-embed', 'shuyi-embed-macros', 'shuyi-script', 'shuyi-sound', 'shuyi-sound-out') {
-       Push-Location "<the folder the session names>\$name"
-       cargo publish
-       Pop-Location
-   }
-   cargo logout
-   ```
-   If crates.io refuses one for its limit on new crates, wait the time
-   its error names and run that one again.
-3. Revoke the token at `https://crates.io/settings/tokens`.
-
-The session never sees the token. It then checks the five with
-`cargo xtask check-publish --index` and records the names held in
-`docs/decisions.md` (the `ask-nick` skill).
+None left. The setup this ticket had, holding the five names on
+crates.io, was done on 2026-11-24 (`docs/decisions.md`, *the last five
+engine crate names are held*), which also answered 3528's question 3.
 
 ## Scope
 
@@ -245,15 +213,14 @@ manifests 300).
 5. Add `--index`, with the HTTP request behind a function the tests
    replace, so the tests need no network.
 6. In `.github/workflows/ci.yml`'s `layers` job: `cargo xtask
-   check-publish`, `cargo xtask check-publish --index` (once the names
-   are held, see *Nick input*), the one `cargo package --no-verify`
+   check-publish`, `cargo xtask check-publish --index` (the names are
+   held, see *Nick input*), the one `cargo package --no-verify`
    step, and a `timeout-minutes`.
 7. Write the ADR (the `write-adr` skill) and the runbook (the `document`
    skill).
 8. Edit the `work-ticket` skill's §3 bullet; run the sync check.
 9. Add `check-publish` to the `run-gates` skill's list of checks.
-10. Ask Nick for the setup (*Nick input*), check the five names with
-    `--index`, and record them with `ask-nick`.
+10. Check the fourteen names with `--index`.
 
 ## Acceptance criteria
 
@@ -267,9 +234,7 @@ manifests 300).
       `[workspace.dependencies]`.
 - [ ] Every member that isn't an engine crate has its own
       `publish = false`.
-- [ ] `cargo xtask check-publish --index` passes in CI with the five
-      names held, or, if 3528 said no, the step is absent and the
-      completion notes say so.
+- [ ] `cargo xtask check-publish --index` passes in CI.
 - [ ] The ADR and the runbook exist, and the docs map names the runbook.
 - [ ] The `work-ticket` skill no longer asks a PR for a version bump or
       a `CHANGELOG.md` line.
