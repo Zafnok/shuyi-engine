@@ -1,0 +1,44 @@
+// The agent eval's first task: tic-tac-toe from the grid template. Its
+// checks read only what the prompt names (evals/README.md).
+(
+    id: "tic-tac-toe",
+    prompt: "Make me a tic-tac-toe game with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template grid`: turn its stage into tic-tac-toe for two players on one keyboard or pad. The game still opens on its title, where Confirm starts a game. X goes first. Keep the actions named `Up`, `Down`, `Left`, `Right` (move the cursor) and `Confirm` (put a mark where the cursor is). The cursor starts on the middle cell, stops at the edges, and stays where it is after a mark. `cargo shuyi scene --json` shows the board, which stays on screen when the game ends, and the scene's data has `turn` (`\"x\"` or `\"o\"`) and `winner` (`\"\"` until the game ends, then `\"x\"`, `\"o\"` or `\"draw\"`). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one), and `cargo shuyi playtest --tries 5` plays it, with records that `cargo shuyi replay` replays.",
+    template: "grid",
+    name: "Tic-tac-toe",
+    time_box_minutes: 60,
+    targets: ["desktop", "web"],
+    checks: [
+        Gates,
+        Check,
+        Targets,
+        Web,
+        Export("linux"),
+        // The title, then a mark: the board shows something else.
+        Responds(steps: [Act("Right"), Act("Confirm")]),
+        Replay,
+        // X's first mark: O to move, and no winner yet.
+        Scene(steps: [Act("Confirm"), Act("Confirm")], has: [("/turn", Some("o")), ("/winner", Some(""))]),
+        // A won game: X takes the middle, the top-left and the bottom-right
+        // cells, O the top-middle and the top-right.
+        Scene(
+            steps: [
+                Act("Confirm"),
+                Act("Confirm"),
+                Act("Up"), Act("Confirm"),
+                Act("Left"), Act("Confirm"),
+                Act("Right"), Act("Right"), Act("Confirm"),
+                Act("Down"), Act("Down"), Act("Confirm"),
+            ],
+            has: [("/winner", Some("x"))],
+        ),
+    ],
+    // 3422 gives it its reference, `Overlay("evals/references/tic-tac-toe")`.
+    reference: None,
+    waits_for: ["3422"],
+    unmeasured: [
+        // The grid template lists no Playdate target (its frame is taller
+        // than the Playdate's screen); 2504 gives new games one.
+        ("a Playdate build", ["2504"]),
+        ("an agent's own time against the hour", ["2525"]),
+    ],
+)

@@ -305,7 +305,7 @@ None.
   without tests and data (`cargo xtask template-lines`'s code count,
   2512). The engine's `README.md` names the
   example beside hello-grid.
-- **The eval, either order with 2524:** if it is done, write
+- **The eval (from 2524, done):** write
   `evals/tasks/card-battle.ron`: template `blank`, name `Card Battle`,
   targets `desktop` and `web`, reference
   `Project("examples/card-battle")`, and the checks `Gates`, `Check`,
@@ -315,9 +315,7 @@ None.
   the title: `/fight` is `1` and `/energy` is `3`). Its prompt asks for
   this game in the words of 2524's tic-tac-toe prompt, without the
   example's cards or numbers beyond those the checks read.
-  `cargo xtask eval-reference card-battle` passes. If 2524 isn't done,
-  add a line to its *first tasks* in this PR naming the card-battle
-  task and this example as its reference.
+  `cargo xtask eval-grade` passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference card-battle` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - a map between fights, a longer run, shops, rests, healing, relics,
@@ -373,7 +371,7 @@ the PR. The run then has one fight.
    picture.
 8. Add the golden table (2116), and the parts of 2113 and 2527 that
    are done.
-9. Add the eval task, or the line in 2524. Run the gates.
+9. Add the eval task. Run the gates.
 
 ## Acceptance criteria
 
@@ -407,8 +405,7 @@ the PR. The run then has one fight.
 - [ ] The golden table above is in, and if 2527 is done, its part
       above is in.
 - [ ] `evals/tasks/card-battle.ron` grades this example with
-      `cargo xtask eval-reference card-battle`, or 2524's scope names
-      the task.
+      `cargo xtask eval-grade`.
 - [ ] If the PR stopped after step 6, a parked follow-up ticket holds
       steps 7 to 9, and the PR says so.
 - [ ] All gates in the `run-gates` skill pass.

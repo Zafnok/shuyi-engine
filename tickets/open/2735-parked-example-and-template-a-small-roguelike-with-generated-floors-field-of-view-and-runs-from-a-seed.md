@@ -243,9 +243,10 @@ None.
   `skills` job runs the example.
 - **The catalog:** set `shuyi-procgen`'s row in `docs/modules.md` and the
   `roguelike` answer in `docs/modules.ron` to ready.
-- **The eval:** if 2524 is done, add a roguelike task whose reference
-  solution is this example, graded through the contract. If not, add the
-  task to 2524's scope in this PR.
+- **The eval (from 2524, done):** add `evals/tasks/roguelike.ron` in
+  2524's format (`evals/README.md`), its reference
+  `Project("examples/roguelike")`, graded through the contract with
+  `cargo xtask eval-grade`. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference roguelike` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - saving a run halfway: 2768's run save (parked), removed when the run

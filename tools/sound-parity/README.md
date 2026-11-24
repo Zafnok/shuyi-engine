@@ -95,6 +95,26 @@ add that the output's buffer ran dry so many times, or that it never did, so the
 isn't the output's. A gap the output made delays what follows by its own length,
 and nothing of the sound is lost; one the loopback made loses the sound instead.
 
+The in-house feeder counts each track too (ticket 3320), in each run's `streams`
+line: `{"track", "stalled", "lowest"}` for each music or voice track since the probe
+last asked, and whether the `sound-feed` thread was raised. A **stalled frame** is
+one a mix had nothing of a track to play: the worker that decodes it into its ring
+came round too late, and the track stopped where it was while the effects played on.
+It is delayed, not skipped, so it is late against the music clock for the rest of
+its play, and every frame of a scenario after it differs. A track's **margin**
+(`lowest`) is the fewest frames its ring still held each time the worker came round,
+after the first fill: how close the mix came to catching it up, the measured worst
+wait that sizes the ring (`FEED_FRAMES`, 4,096 frames). A timing's metrics take the
+sum of the stalls as `stalled_frames` and the fewest of the margins as
+`lowest_margin`, and keep the tracks beside them, as `streams`.
+
+A stall is heard as a gap is, but the other sounds playing on hide it from the
+recording. So `perf:underruns` and `old-new:underruns` fail on a stalled frame as
+on a gap, and their detail says whose each is: the output's (its buffer ran dry so
+many times), the feeder's (which track stalled, and by how many frames), or, where
+neither count rose, neither's: the loopback, or what the mix was given. A failed
+scenario's message names the tracks that stalled in that run.
+
 **Re-running a failed Windows cell.** The gate judges what `sound-parity-windows`
 recorded, and GitHub's "Re-run failed jobs" re-runs `sound-parity` alone, with the
 passed `sound-parity-windows` and its artifact carried over: the same recording

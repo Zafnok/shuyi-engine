@@ -75,7 +75,7 @@ pub use hash::{HashError, StateHash, state_hash};
 pub use history::{History, NoSuchPoint, Replayed};
 pub use made::{ContentHash, Made};
 pub use path::{Reach, flow_field, reachable};
-pub use rng::{RandomSource, ScriptedRng, SimRng};
+pub use rng::{Bag, RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};
 pub use text::{Part, split_tokens};
 pub use threat::{

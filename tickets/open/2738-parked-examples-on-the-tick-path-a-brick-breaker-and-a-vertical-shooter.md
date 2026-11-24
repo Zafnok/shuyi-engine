@@ -216,14 +216,13 @@ None. When it unparks is his call (above).
     `site/content/examples/<name>.md`, plays at `/examples/<name>/`, and
     `/bricks/` redirects there (`aliases` in the card's front matter).
     2019's `web-render` job (done) boots it: it loops over the examples.
-- **The eval:** if 2524 is done, add `evals/tasks/bricks.ron`: template
+- **The eval (from 2524, done):** add `evals/tasks/bricks.ron`: template
   `blank`, targets `desktop` and `web`, reference
   `Project("examples/bricks")`, and the checks `Check`, `Targets`,
   `Web`, `Responds` and `Scene` (on the facts its prompt asks the game
   to expose: `/lives` and `/score`). No `Replay` check: it asks
   `playtest`, which this example doesn't offer. `cargo xtask
-  eval-reference bricks` passes. If 2524 isn't done, add the task to
-  2524's first tasks in its ticket, in this PR.
+  eval-grade` passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference bricks` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
 - **The shooter's ticket** (the `write-ticket` skill, the next free
   `27xx` id): `examples/shooter`, a vertical shoot-'em-up in the
   bricks' form, with the scope below and what the bricks taught. It has
@@ -329,8 +328,7 @@ None. When it unparks is his call (above).
 - [ ] CI builds the example for the web, and Pages publishes it.
 - [ ] The example's README states its own lines, and the engine's
       README names it.
-- [ ] The eval has a bricks task with the example as its reference, or
-      2524's scope has it.
+- [ ] The eval has a bricks task with the example as its reference.
 - [ ] The shooter's ticket is in `tickets/open/`, and 2122, 2124,
       2335 and `docs/ROADMAP.md` name it.
 - [ ] All gates in the `run-gates` skill pass.

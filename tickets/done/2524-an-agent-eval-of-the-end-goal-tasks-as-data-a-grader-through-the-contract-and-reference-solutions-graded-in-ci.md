@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["1134", "2803", "2566"]
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 2524 — An agent eval: tasks, a grader and reference solutions
@@ -380,22 +380,27 @@ None. Spending money on agent runs is 2525's question.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi run --act Right --act Confirm --json` plays on a game
+- [x] `cargo shuyi run --act Right --act Confirm --json` plays on a game
       from `shuyi new grid` (the `eval` job's `Responds` check; `--act`
       is 2566's).
-- [ ] `cargo xtask eval-reference --all` passes on tic-tac-toe and
+- [x] ~~`cargo xtask eval-reference --all` passes on tic-tac-toe and
       box-pushing in CI, and on snake or the platformer if 2739 or 1127
-      is done; it lists the rest as waiting.
-- [ ] `--template-only` on tic-tac-toe fails every `Scene` check and
-      passes `Check`.
-- [ ] The result file has every field above, and the PR description
-      has each reference's lines added and seconds.
-- [ ] A task file with an unknown field, and an overlay with an engine
-      `Cargo.toml`, are refused with exit code 2.
-- [ ] `grade.rs` reads no file of the project but `shuyi.ron` (for
+      is done; it lists the rest as waiting.~~ (not done: split for size
+      to 3421, the command and the job, and 3422, the tic-tac-toe
+      reference)
+- [x] ~~`--template-only` on tic-tac-toe fails every `Scene` check and
+      passes `Check`.~~ (not done: split to 3422; seen locally with the
+      draft, the completion notes say)
+- [x] The result file has every field above, and the PR description
+      has each reference's lines added and seconds (box-pushing's, the
+      one reference here).
+- [x] A task file with an unknown field is refused with exit code 2.
+      The overlay with an engine `Cargo.toml`: **moved** to 3421, with
+      `eval-reference`.
+- [x] `grade.rs` reads no file of the project but `shuyi.ron` (for
       `web.dist`) and that folder's listing, and writes nothing into the
       project itself; every other input is a command's answer.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -409,4 +414,75 @@ None. Spending money on agent runs is 2525's question.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done:
+- **The runner** (`crates/xtask/src/script.rs`): `Step::Responds` (a
+  `run` with input against as many frames with none, by `frame` and
+  `scene`), `Expect::Exists` (a value is there, `null` too), `save` to
+  an absolute path outside the game (the grader's own folder), and a
+  panic of the tool program named first in a step's detail. One runner:
+  the grader runs every check through `script::run`.
+- **Tasks as data** (`crates/xtask/src/eval/task.rs`, `evals/tasks/`):
+  `tic-tac-toe`, `box-pushing`, `snake` (`waits_for: ["2739"]`) and
+  `platformer` (`waits_for: ["1127"]`), `deny_unknown_fields`.
+- **The grader**, `cargo xtask eval-grade <task.ron> <project> [--base
+  <dir>] [--out <file>]` (`crates/xtask/src/eval/grade.rs`), with the
+  line count and the result file; exits 0, 1 or 2.
+- `evals/README.md`, and its row in the docs map.
+
+Graded by hand on 2026-11-24 on Windows, at the branch's commit:
+box-pushing (`site/tutorial/10-ship`, its `Project` reference), 11 of
+12 checks in 8.5 s on a warm build (109 s cold), +1,753 −38,467 lines
+over a fresh `blank`, 101 files. The failed check is `Export linux`:
+`SH1003`, a Linux package builds only on Linux. The removals are the
+template's files the tutorial's step never had (3421 decides how a
+`Project` reference counts them).
+
+Deviations:
+- **Split for size** (the ticket's own valve, and past it). The ticket
+  planned the CI job's split past about 600 lines; the whole came to
+  3,176 counted lines, 1,155 of them the tic-tac-toe reference. Split
+  off: `cargo xtask eval-reference` and the CI `eval` job to 3421, the
+  tic-tac-toe reference to 3422 (blocked by 3421). Both were written
+  and run before the split; the draft is on the branch
+  `draft-2524-eval-references` (commit `97e04ff4`, pushed, no PR), and
+  each ticket says what of it is its own. With it, locally: tic-tac-toe
+  passed every check but `Export linux` at +451 −725 lines over the
+  template, and with `--template-only` `Check` passed and both `Scene`
+  checks failed. The tic-tac-toe task waits for 3422.
+- **Checked against the code (the ticket was 34 days old):**
+  - the grid template is now parts (`templates/shuyi-default`), made
+    with `shuyi new <dir> --template grid`, and it opens on a title, so
+    tic-tac-toe's prompt says the title comes first and its `Scene`
+    steps start with a Confirm;
+  - since 2777 the template has the `web` entry, `build.rs` and the
+    wasm target, so the reference carries none of them;
+  - the template's *The gates* now lists `cargo shuyi check --target
+    all` (the `Targets` check) and `cargo shuyi lint`, so `Gates` runs
+    `lint` too;
+  - since 3004 `Web` runs `cargo shuyi export web` and reads the folder
+    its answer names (`out`, `folder`), and every turn task has
+    `Export("linux")`, the package its answer names;
+  - box-pushing's `Responds` steps are `[Confirm, Confirm, Right]`: a
+    Right on the title shows nothing.
+- **Playdate (from 3010):** no reference passes `cargo shuyi check
+  --target playdate` (neither template lists the target), so every
+  task keeps its `unmeasured` Playdate entry, waiting for 2504 (new
+  games pick their targets), or for 2739 and 1127.
+- **2033 isn't done**, so `Gates` keeps its own list (`GATES`); 2033
+  now says to make it read the template's block.
+- `cargo fmt --all --check` in a game made with `--engine-path` checks
+  the engine's crates too (they are path dependencies): an unformatted
+  engine checkout fails every graded game's `Gates 1`. In CI the `fmt`
+  job keeps it formatted (`evals/README.md` says so).
+
+Follow-up tickets: 3421, 3422. Settled the clauses that waited on 2524
+in 1127, 2033, 2739 and the parked 2735–2738, and wrote the handoffs in
+2504, 2525 and 2572 (now blocked by 3421 too).
+
+Breaking: none (`xtask` is never published).
+
+Behaviour: none a game sees.
+
+Book: none, no public item changed: the eval is repository tooling.
+
+Nick input: none.

@@ -36,6 +36,15 @@ pub trait Source {
         let _ = frame;
         Err(Error::NoRewind)
     }
+
+    /// Told, after an [`Error::Underrun`], that a mix had nothing of it for
+    /// `frames` frames and is waiting where it is: a source that keeps count of
+    /// its own stalls adds them up, as a [`Feed`](crate::mix::stream::Feed) does
+    /// for its worker to read. Nothing, unless it is written otherwise. A mix
+    /// calls it, so it waits, allocates and frees nothing.
+    fn stalled(&mut self, frames: u64) {
+        let _ = frames;
+    }
 }
 
 impl<S: Source + ?Sized> Source for Box<S> {
@@ -53,6 +62,10 @@ impl<S: Source + ?Sized> Source for Box<S> {
 
     fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
         (**self).rewind_to(frame)
+    }
+
+    fn stalled(&mut self, frames: u64) {
+        (**self).stalled(frames);
     }
 }
 

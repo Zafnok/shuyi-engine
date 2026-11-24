@@ -154,6 +154,8 @@ fn track_source(track: &Track, region: Option<Region>) -> Result<Box<dyn Source 
 
 /// A track read from its file, not playing. Its bytes are what it holds.
 pub struct Track {
+    /// Its file's name, which the probe says its stalls by.
+    name: Arc<str>,
     bytes: Arc<[u8]>,
     kind: Kind,
     /// How long it plays, if it is an OGG file.
@@ -166,9 +168,10 @@ pub struct Track {
 }
 
 impl Track {
-    /// `bytes` as a track: a file whose headers don't read is an error now. Loop
-    /// tags that don't read aren't: the track loops whole, and the player says why.
-    fn new(bytes: Vec<u8>) -> Result<Self, String> {
+    /// `bytes`, of the file at `path`, as a track: a file whose headers don't read is
+    /// an error now. Loop tags that don't read aren't: the track loops whole, and the
+    /// player says why.
+    fn new(path: &str, bytes: Vec<u8>) -> Result<Self, String> {
         let kind = Kind::of(&bytes)?;
         let length_ms = shuyi_assets::audio::ogg_length_ms(&bytes);
         let limits = track_limits();
@@ -184,6 +187,7 @@ impl Track {
             }
         };
         Ok(Self {
+            name: path.rsplit(['/', '\\']).next().unwrap_or(path).into(),
             bytes: bytes.into(),
             kind,
             length_ms,
@@ -325,20 +329,65 @@ impl AudioSide {
     }
 }
 
+/// What a track's feeding went through (ticket 3320): its file's name, the frames a
+/// mix waited on its ring, and the fewest frames the ring held when the worker came
+/// round, its margin, if it came round after the first fill.
+#[cfg_attr(
+    not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+    allow(dead_code)
+)]
+type TrackStats = (String, u64, Option<usize>);
+
 /// A worker's decoding of one track into its ring.
 struct Feeding {
     feeder: Feeder,
     source: Box<dyn Source + Send>,
     stop: Arc<AtomicBool>,
+    /// The track's file's name.
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
+    track: Arc<str>,
+    /// The frames the ring holds when it is full.
+    capacity: usize,
+    /// Whether the ring has been filled once: until then, it is empty because
+    /// nothing was written yet, not because the mix caught up.
+    filled: bool,
+    /// The fewest frames the ring held when the worker came round to it.
+    lowest: Option<usize>,
 }
 
 impl Feeding {
+    fn new(
+        feeder: Feeder,
+        source: Box<dyn Source + Send>,
+        stop: Arc<AtomicBool>,
+        track: Arc<str>,
+    ) -> Self {
+        Self {
+            capacity: feeder.room(),
+            feeder,
+            source,
+            stop,
+            track,
+            filled: false,
+            lowest: None,
+        }
+    }
+
     /// Tops the ring up: whether there is more to do, later. A file that goes wrong
-    /// partway ends there, and says so.
+    /// partway ends there, and says so. What the ring still held before is the
+    /// margin the worker kept.
     fn step(&mut self, problems: &Mutex<Vec<String>>) -> bool {
         if self.stop.load(Ordering::Acquire) {
             return false;
         }
+        if self.filled {
+            let held = self.capacity.saturating_sub(self.feeder.room());
+            self.lowest = Some(self.lowest.map_or(held, |lowest| lowest.min(held)));
+        }
+        self.filled = true;
         match self.feeder.fill_from(&mut self.source) {
             Ok(_) => !self.feeder.is_closed(),
             Err(error) => {
@@ -351,6 +400,15 @@ impl Feeding {
             }
         }
     }
+
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
+    fn stats(&self) -> TrackStats {
+        let track = self.track.to_string();
+        (track, self.feeder.underrun_frames(), self.lowest)
+    }
 }
 
 /// Every track being decoded, on the worker's side.
@@ -358,6 +416,16 @@ impl Feeding {
 struct Feedings {
     list: Arc<Mutex<Vec<Feeding>>>,
     problems: Arc<Mutex<Vec<String>>>,
+    /// Whether the worker's thread runs above the game's (ticket 3320): only the
+    /// probe asks.
+    #[cfg_attr(
+        not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
+        allow(dead_code)
+    )]
+    raised: Arc<AtomicBool>,
+    /// What the feedings done with went through, until the probe asks.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    ended: Arc<Mutex<Vec<TrackStats>>>,
 }
 
 impl Feedings {
@@ -372,8 +440,40 @@ impl Feedings {
     fn step(&self) {
         // Only the game's thread adds, and only briefly; a turn missed comes round.
         if let Ok(mut list) = self.list.try_lock() {
-            list.retain_mut(|feeding| feeding.step(&self.problems));
+            list.retain_mut(|feeding| {
+                let more = feeding.step(&self.problems);
+                if !more {
+                    self.retire(feeding);
+                }
+                more
+            });
         }
+    }
+
+    /// Keeps what `feeding` went through for the probe, as it goes: natively only,
+    /// where this is the worker's thread, never the audio thread's.
+    #[cfg_attr(
+        not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
+        allow(clippy::unused_self)
+    )]
+    fn retire(&self, feeding: &Feeding) {
+        #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+        self.ended
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(feeding.stats());
+        #[cfg(not(all(feature = "sound-probe", not(target_arch = "wasm32"))))]
+        let _ = feeding;
+    }
+
+    /// Each track since the last ask: those done with, then those being fed.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    fn stats(&self) -> Vec<TrackStats> {
+        let list = self.list.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut all =
+            std::mem::take(&mut *self.ended.lock().unwrap_or_else(PoisonError::into_inner));
+        all.extend(list.iter().map(Feeding::stats));
+        all
     }
 
     fn take_problems(&self) -> Vec<String> {
@@ -398,6 +498,11 @@ impl Worker {
         let thread = std::thread::Builder::new()
             .name("sound-feed".to_owned())
             .spawn(move || {
+                // Above the game's thread and below the output's (ticket 3320): a
+                // turn that waits for a core past what the ring holds stalls the
+                // track, and its decoding never keeps the mix waiting.
+                let raised = shuyi_sound_out::raise_worker();
+                feedings.raised.store(raised, Ordering::Release);
                 while !stopping.load(Ordering::Acquire) {
                     feedings.step();
                     std::thread::sleep(period);
@@ -644,14 +749,12 @@ impl InHouse {
             return Err("the sound queue is full".to_owned());
         }
         let stop = Arc::new(AtomicBool::new(false));
-        let mut feeding = Feeding {
-            feeder,
-            source,
-            stop: Arc::clone(&stop),
-        };
+        let mut feeding = Feeding::new(feeder, source, Arc::clone(&stop), Arc::clone(&track.name));
         // Its first frames now, and the worker takes it from there.
         if feeding.step(&engine.feedings.problems) {
             engine.feedings.add(feeding);
+        } else {
+            engine.feedings.retire(&feeding);
         }
         let Ok(voice) = engine.remote.play_stream(stream, params) else {
             stop.store(true, Ordering::Release);
@@ -702,6 +805,25 @@ impl InHouse {
             })
     }
 
+    /// Each track since the last ask, those done with included: its file's name, the
+    /// frames a mix waited on its ring, and the fewest frames its ring held when the
+    /// worker came round, its margin (ticket 3320). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn stream_stats(&self) -> Vec<(String, u64, Option<usize>)> {
+        self.engine
+            .as_ref()
+            .map_or_else(Vec::new, |engine| engine.feedings.stats())
+    }
+
+    /// Whether the worker that feeds the tracks runs above the game's thread
+    /// (ticket 3320). For the probe's log.
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
+    pub fn feeder_raised(&self) -> bool {
+        self.engine
+            .as_ref()
+            .is_some_and(|engine| engine.feedings.raised.load(Ordering::Acquire))
+    }
+
     /// How long a play takes to reach the mix going to the device's buffer, in
     /// milliseconds: the time to the callback that has it, at no volume so that
     /// nothing is heard. For the probe's `latency` order.
@@ -744,7 +866,7 @@ impl Backend for InHouse {
     fn load_music(&mut self, path: &str) -> Self::Loading {
         let path = path.to_owned();
         Pending::spawn("music-load", move || {
-            Track::new(std::fs::read(&path).map_err(|e| e.to_string())?)
+            Track::new(&path, std::fs::read(&path).map_err(|e| e.to_string())?)
         })
     }
 
@@ -756,7 +878,7 @@ impl Backend for InHouse {
                 .await
                 .map_err(|e| e.to_string())?;
             web::vetted(&bytes).await?;
-            Track::new(bytes)
+            Track::new(&path, bytes)
         })
     }
 

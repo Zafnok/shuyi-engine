@@ -11,7 +11,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi_core::{Dir, Grid, Pos, Sides, SimRng, TerrainId, TurnRules};
+use shuyi_core::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};
 
 /// Floor: anyone walks it.
 pub const FLOOR: TerrainId = TerrainId(0);
@@ -209,11 +209,9 @@ impl Stage {
             .map(|dir| self.wanderer.step(dir))
             .filter(|&to| self.open(to) && to != self.goal)
             .collect();
-        let count = u32::try_from(steps.len()).unwrap_or(u32::MAX);
-        if count == 0 {
+        let Some(pick) = self.rng.index(steps.len()) else {
             return;
-        }
-        let pick = usize::try_from(self.rng.roll_below(count)).unwrap_or(0);
+        };
         let (from, to) = (self.wanderer, steps[pick]);
         self.wanderer = to;
         events.push(Event::Wandered { from, to });

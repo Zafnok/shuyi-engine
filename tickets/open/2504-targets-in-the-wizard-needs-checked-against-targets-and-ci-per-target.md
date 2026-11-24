@@ -46,6 +46,13 @@ None.
 
 ## Scope
 
+**From 2524 (done):** the eval's tasks (`evals/tasks/*.ron`) keep an
+`unmeasured` entry, `("a Playdate build", ["2504"])`, because the grid
+and blank templates list no `playdate` target. Once a new game can pick
+`playdate`, give a task's reference the target, add `playdate` to the
+task's `targets` if `cargo shuyi check --target playdate` passes on it,
+and drop the entry.
+
 **In:**
 - **A planned target's ticket.** 2502's targets question shows a
   `planned` profile with its ticket and refuses it by flag (ADR-0013
