@@ -1,0 +1,12 @@
+// A fixture of `bench --long`: the toy starts one more loop every 1,000
+// frames and never stops one, so the sounds alive rise by one each
+// 1,000 frames. CI's `bench` job checks that it fails, naming the counts.
+(
+    format_version: 1,
+    about: "the toy starts a loop every 1,000 frames and never stops one",
+    start: [(flag: "--hum-every", value: "1000")],
+    repeat: 20,
+    idle: 1000,
+    warm_up: 1000,
+    sample_every: 250,
+)

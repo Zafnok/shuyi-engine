@@ -34,6 +34,9 @@ lcov.info
 # The feature cards' statuses `cargo xtask site-data --site site` makes from
 # the tickets they name (ticket 2815); `pages.yml` and CI make them.
 /site/data/tickets.toml
+# The book's guides, which `cargo xtask site-data` copies from docs/guides/
+# (ticket 2004).
+/site/content/learn/book/guides/
 # The files the playgrounds edit, which site/copy-playground.sh copies from
 # examples/hello-grid/files/ (ticket 2814) and from each step of the book's
 # project (ticket 2820).

@@ -52,11 +52,12 @@ None.
     modules.
 - **The music concern** in `docs/modules.ron`: answers `recorded`
   (default, ready) and `midi` (this module), `alternatives: false`.
-  **Either order with 2502:** if 2502 is done, give it `pick: Many` and
-  the question "What plays the music?", so the wizard asks it with no
-  change to the wizard, and add `--music` to its flags list in
-  `docs/templates.md`; if not, give it only the fields the catalog has
-  today, and 2502 adds `pick` and `question` (its clause says so).
+  **From 2502 (done):** `check-modules` fails a concern other than
+  `time` without `pick` and `question`, so give it `pick: Many` and the
+  question "What plays the music?". The wizard then asks it, and
+  `shuyi new --music` exists, with no change to the wizard; add
+  `--music` to the flags list in `docs/templates.md` ("The wizard's
+  questions").
 - **`Sequence`** in `shuyi_midi::sequence`: tracks of events (note on and
   off with key and velocity, program change, control change, tempo) at
   integer ticks, the ticks per quarter note, the tempo map, and the

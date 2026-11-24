@@ -17,6 +17,9 @@ name: Changes
 #     checks them against `Op::ALL` and `contract::VERSION`;
 #   - `docs/modules.md` and `docs/modules.ron`: the catalog, which `cargo
 #     xtask check-modules` (the `modules` job) and the tests read;
+#   - `docs/guides/**`: the guides, which `check-modules` checks against
+#     the catalog and whose code is the `shuyi` crate's doc test (ticket
+#     2004);
 #   - the parts of `site/` a code job or a crate's test reads: the
 #     tutorial's steps (`site/tutorial/**`, the `tutorial`,
 #     `tutorial-tries` and `exercises` jobs), the book's exercises
@@ -104,7 +107,7 @@ jobs:
               crates/app/src/audio*|crates/app/src/backend.rs|crates/app/src/lib.rs|crates/app/examples/sound_probe.rs|crates/app/Cargo.toml|crates/platform/src/audio*|crates/assets/src/audio*|crates/ui/src/audio*|crates/cli/web/*|crates/xtask/src/sound_parity*|crates/sound/*|crates/sound-out/*|tools/sound-parity/*|tools/web-check/*|.github/workflows/ci.yml|.github/workflows/changes.yml|Cargo.toml|Cargo.lock|rust-toolchain.toml|scripts/setup-linux.sh) sound=true ;;
             esac
             case "$path" in
-              crates/*|templates/*|examples/*|skills/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md|site/tutorial/*|site/exercises/*|site/snippets/*|site/static/tutorial-tries/*|site/config.toml) echo "code: $path"; code=true ;;
+              crates/*|templates/*|examples/*|skills/*|docs/contract.md|docs/modules.md|docs/modules.ron|docs/guides/*|README.md|site/tutorial/*|site/exercises/*|site/snippets/*|site/static/tutorial-tries/*|site/config.toml) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               site/*) echo "site: $path" ;;
               *) echo "code: $path"; code=true ;;

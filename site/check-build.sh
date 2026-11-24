@@ -61,8 +61,11 @@ fi
 
 # Every code block of the book comes from site/snippets/, which CI builds
 # and tests, through the `snippet` shortcode: no fenced Rust of its own.
+# The guides are the exception (ticket 2004): `cargo xtask site-data`
+# copies them from docs/guides/, read on GitHub too, where no shortcode
+# runs, and their Rust is the `shuyi` crate's doc test.
 book="$site_dir/content/learn/book"
-if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*(rust|rs)([^[:alnum:]_-]|$)' "$book"; then
+if grep -rnE --exclude-dir=guides '^[[:space:]]*(```|~~~)[[:space:]]*(rust|rs)([^[:alnum:]_-]|$)' "$book"; then
   fail "the book has a fenced Rust block: write it in site/snippets/ and show it with the snippet shortcode"
 fi
 

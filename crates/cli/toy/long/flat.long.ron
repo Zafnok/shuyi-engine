@@ -1,0 +1,12 @@
+// A fixture of `bench --long`: the toy idles 4,000 frames on the real
+// heap (`--leak-bytes 0` keeps nothing), and its heap stays flat. CI's
+// `bench` job checks that it passes, twice with the same hashes.
+(
+    format_version: 1,
+    about: "the toy idles on the real heap and keeps nothing",
+    start: [(flag: "--leak-bytes", value: "0")],
+    repeat: 40,
+    idle: 100,
+    warm_up: 500,
+    sample_every: 100,
+)

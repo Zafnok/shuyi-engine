@@ -116,13 +116,19 @@ this starts. The scaffold's license (`MIT-0 OR MIT OR Apache-2.0`,
     `NewOutput` gains `template_license: String` (additive:
     `NewOutput` is in the contract's answer, so regenerate its schema
     and raise `contract::VERSION`).
-- **Either order with 2502** (the new-game wizard): if 2502 is done,
+- **From 2502 (done)** (the new-game wizard): 2502 made the questions'
+  flags, but wrote no terminal prompts and didn't move the examples and
+  GitHub questions; 3424 lists the questions (`--questions --json`),
+  and 3423 writes the prompts and moves them. Until
+  3423 lands, ask the license as a plain prompt in
+  `crates/cli/src/contract/new/questions.rs` beside the GitHub
+  questions; keep `--license` and `--copyright`, and `--no-input`
+  means `none`.
+- **Either order with 3423** (the wizard's prompts): if 3423 is done,
   ask the license in the wizard after the GitHub questions, in its
-  prompt style, list it in `--questions --json` with a field saying an
-  agent asks its user and never picks a license itself, and keep
-  `--license` and `--copyright`; `--no-input` means `none`. If not, add
-  it as a plain prompt in `crates/cli/src/contract/new/questions.rs`
-  beside the GitHub questions; 2502 moves it into the wizard with them.
+  prompt style, and list it in `--questions --json` with a field saying
+  an agent asks its user and never picks a license itself. If not,
+  nothing to do (3423 moves it, its clause says so).
 - What changes for the game (Visions of Shuyi): nothing. It isn't made
   by `shuyi new` again, and no public item it uses breaks. `NewInput`
   and `NewOutput` gain fields; the completion notes have a `Behaviour:`
@@ -169,7 +175,7 @@ this starts. The scaffold's license (`MIT-0 OR MIT OR Apache-2.0`,
    (`templates/shuyi-default/base/README.md` gets the section with
    placeholders `{{license.game}}` and `{{template.license}}`).
 4. `crates/cli/src/contract/new/questions.rs` (or the wizard, per the
-   2502 clause): `questions::license` with its parse, and the warning
+   3423 clause): `questions::license` with its parse, and the warning
    for a public repository with no license.
 5. `NewOutput::template_license`; regenerate the contract's schema;
    raise `contract::VERSION`.
@@ -199,7 +205,7 @@ this starts. The scaffold's license (`MIT-0 OR MIT OR Apache-2.0`,
 - [ ] `template.ron`, the skills' `license:` lines and
       `marketplace.json` say the license 3529 chose, and the files it
       needs exist.
-- [ ] The 2502 clause is settled as it says.
+- [ ] The 3423 clause is settled as it says.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 

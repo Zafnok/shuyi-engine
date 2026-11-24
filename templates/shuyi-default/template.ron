@@ -8,16 +8,10 @@ Template(
     engine: ">=0.1, <0.2",
     license: "MIT OR Apache-2.0",
     format_version: 1,
+    // Its own questions: the perspectives, the catalog's other concerns
+    // and the targets are the engine's (`docs/modules.ron`), which `shuyi
+    // new` asks first, and a part's `Picked` may name them too.
     questions: [
-        Question(
-            id: "perspective",
-            text: "Which perspectives?",
-            pick: Many,
-            answers: [
-                Answer(id: "top-down-grid", text: "a top-down grid, turn by turn"),
-            ],
-            default: [],
-        ),
         // `yes` needs `shuyi new --private-url <repository>` (ADR-0111).
         Question(
             id: "private-files",
@@ -45,8 +39,8 @@ Template(
     ],
     // `shuyi new <dir> --template <name>`.
     short_names: {
-        // One screen, ready for the rest.
-        "blank": {},
+        // One screen, ready for the rest: no perspective, so no stage.
+        "blank": { "perspective": [] },
         // A turn-based grid stage, with its rules, a bot and records.
         "grid": { "perspective": ["top-down-grid"] },
     },

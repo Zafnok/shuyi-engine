@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2774", "2502", "2503", "1122"]
+blocked_by: ["2774", "2502", "2503", "1122", "3424"]
 nick_input: none
 completed:
 ---
@@ -52,8 +52,8 @@ None. Unparking is Nick's call, as for every parked ticket.
   - `split-screen`: two to four players, a view each, `by: "default"`,
     ready, tickets `["2385", "2386", "2387"]`.
   `cargo xtask check-modules` passes. The wizard asks it as a question
-  of its own (2502), with a `--local-players` flag beside
-  `--perspective` and `--online`, `one` by default, and in
+  of its own (2502's flags, 3424's list), with a `--local-players` flag
+  beside `--perspective` and `--online`, `one` by default, and in
   `--questions --json`.
 - **The part** `local-players-split` in the built-in template
   (`templates/shuyi-default/template.ron`, its files in

@@ -42,8 +42,14 @@
 //! `bench-play <file> [--target <id>] --out <file>` is its inner half,
 //! run in the game's tool program: it plays one scenario and writes what
 //! each frame recorded ([`Played`]).
+//!
+//! `bench --long [--twice]` plays the game's long scenarios
+//! (`*.long.ron`) instead, never under Callgrind, and checks that the heap
+//! and the sounds alive stay flat, and with `--twice` that a second run
+//! hashes the same ([`long`]); `bench-play --long` is its inner half.
 
 mod callgrind;
+pub(crate) mod long;
 mod report;
 #[cfg(test)]
 mod tests;
@@ -174,6 +180,12 @@ pub(crate) fn name_of(file: &str) -> &str {
 /// Every scenario file under `root`, from it with `/` between folders, in
 /// order: not under [`SKIPPED`] folders or hidden ones.
 pub(crate) fn find(root: &Path) -> Vec<String> {
+    find_ending(root, SUFFIX)
+}
+
+/// Every file under `root` whose name ends in `suffix`, as [`find`] finds
+/// scenarios.
+pub(crate) fn find_ending(root: &Path, suffix: &str) -> Vec<String> {
     let mut found = Vec::new();
     let mut dirs = vec![PathBuf::new()];
     while let Some(dir) = dirs.pop() {
@@ -187,7 +199,7 @@ pub(crate) fn find(root: &Path) -> Vec<String> {
                 if !name.starts_with('.') && !SKIPPED.contains(&name.as_str()) {
                     dirs.push(path);
                 }
-            } else if name.ends_with(SUFFIX) {
+            } else if name.ends_with(suffix) {
                 found.push(path.to_string_lossy().replace('\\', "/"));
             }
         }
@@ -207,19 +219,28 @@ pub(crate) struct Options {
     pub out: String,
     /// Whether to count instructions (under Valgrind).
     pub instructions: bool,
+    /// Whether to play the long scenarios instead (`--long`).
+    pub long: bool,
+    /// Whether a long run plays each twice and compares (`--twice`).
+    pub twice: bool,
 }
 
 /// The usage text, with `command` as the tool's name.
 pub(crate) fn usage(command: &str) -> String {
     format!(
         "usage: {command} bench [--target <id>] [--scenario <name>] [--out <dir>] \
-         [--no-instructions]\n\n\
+         [--no-instructions]\n       {command} bench --long [--twice] [--scenario <name>] \
+         [--out <dir>]\n\n\
          Plays each *.bench.ron scenario of the game headless and compares its\n\
          instructions per frame, its heap's peak and the package's size with the\n\
          budgets of each supported target the game lists (or of --target alone).\n\
          Instructions are counted under Valgrind (Linux); --no-instructions\n\
          measures the rest without it. The reports go in --out ({OUT} by\n\
-         default): bench-report.json and bench-report.md."
+         default): bench-report.json and bench-report.md.\n\n\
+         With --long it plays each *.long.ron scenario instead, for many frames,\n\
+         and fails when the live heap or the sounds alive grow; --twice plays\n\
+         each again in a second process and fails where a frame's hash differs.\n\
+         The reports are long-report.json and long-report.md."
     )
 }
 
@@ -230,6 +251,8 @@ pub(crate) fn parse_args(args: &[String]) -> Result<Options, String> {
         scenario: None,
         out: OUT.to_owned(),
         instructions: true,
+        long: false,
+        twice: false,
     };
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
@@ -243,14 +266,22 @@ pub(crate) fn parse_args(args: &[String]) -> Result<Options, String> {
             "--scenario" => options.scenario = Some(value()?),
             "--out" => options.out = value()?,
             "--no-instructions" => options.instructions = false,
+            "--long" => options.long = true,
+            "--twice" => options.twice = true,
             other => return Err(format!("unknown argument: {other}")),
         }
+    }
+    if options.twice && !options.long {
+        return Err("--twice is for a long run: --long --twice".to_owned());
+    }
+    if options.long && options.target.is_some() {
+        return Err("--target isn't for a long run, which plays on no target's budget".to_owned());
     }
     Ok(options)
 }
 
 /// A failure: its problem code and what went wrong.
-type Failed = (Code, String);
+pub(crate) type Failed = (Code, String);
 
 /// `bench` on `project` with `args`: its exit code.
 pub(crate) fn main(project: &Project, args: &[String]) -> u8 {
@@ -269,6 +300,9 @@ pub(crate) fn main(project: &Project, args: &[String]) -> u8 {
             return 2;
         }
     };
+    if options.long {
+        return long_main(project, &options, &fail);
+    }
     let plan = match plan(project, &options) {
         Ok(plan) => plan,
         Err(failed) => return fail(failed),
@@ -291,14 +325,130 @@ pub(crate) fn main(project: &Project, args: &[String]) -> u8 {
     u8::from(!report.over.is_empty())
 }
 
+/// `bench --long` on `project` with `options`: its exit code. `fail`
+/// says a failure and gives its exit code.
+fn long_main(project: &Project, options: &Options, fail: &dyn Fn(Failed) -> u8) -> u8 {
+    let scenarios = match long_plan(&project.root, options.scenario.as_deref()) {
+        Ok(scenarios) => scenarios,
+        Err(failed) => return fail(failed),
+    };
+    let player = match Built::new(project, false) {
+        Ok(player) => player,
+        Err(failed) => return fail(failed),
+    };
+    let out = project.root.join(&options.out);
+    let report = match measure_long(&scenarios, &player, &out.join("long-runs"), options.twice) {
+        Ok(report) => report,
+        Err(failed) => return fail(failed),
+    };
+    let table = long::markdown(&report);
+    let written = serde_json::to_string_pretty(&report)
+        .map_err(|e| e.to_string())
+        .and_then(|json| {
+            write_files(
+                &out,
+                &[(long::REPORT_JSON, json), (long::REPORT_MD, table.clone())],
+            )
+        });
+    if let Err(e) = written {
+        return fail((codes::FILE, e));
+    }
+    println!("{table}");
+    println!("bench: the reports are in {}", options.out);
+    u8::from(report.failed())
+}
+
+/// The long scenarios under `root`, read: only `name`'s, if given.
+pub(crate) fn long_plan(
+    root: &Path,
+    name: Option<&str>,
+) -> Result<Vec<(String, long::LongScenario)>, Failed> {
+    let mut files = find_ending(root, long::SUFFIX);
+    if let Some(name) = name {
+        files.retain(|file| long::name_of(file) == name);
+        if files.is_empty() {
+            return Err((
+                codes::WRONG_ARGUMENTS,
+                format!(
+                    "no long scenario {name}{} in the game's folder",
+                    long::SUFFIX
+                ),
+            ));
+        }
+    }
+    if files.is_empty() {
+        return Err((
+            codes::FILE,
+            format!("no *{} long scenario in the game's folder", long::SUFFIX),
+        ));
+    }
+    files
+        .into_iter()
+        .map(|file| {
+            let text = fs::read_to_string(root.join(&file))
+                .map_err(|e| (codes::FILE, format!("{file}: {e}")))?;
+            let scenario = long::LongScenario::read(&file, &text).map_err(|e| (codes::FILE, e))?;
+            Ok((file, scenario))
+        })
+        .collect()
+}
+
+/// How a long scenario is played: in a process of its own, so a second
+/// run starts afresh.
+pub(crate) trait LongPlayer {
+    /// Plays long scenario `file` (from the game's folder), with `dir` for
+    /// its working files: its samples.
+    fn play_long(&self, file: &str, dir: &Path) -> Result<long::LongPlayed, String>;
+}
+
+/// Plays each of `scenarios` with `player`, each run's files in a folder
+/// of `runs`, and twice if `twice`: the report.
+pub(crate) fn measure_long(
+    scenarios: &[(String, long::LongScenario)],
+    player: &dyn LongPlayer,
+    runs: &Path,
+    twice: bool,
+) -> Result<long::LongReport, Failed> {
+    let mut out = Vec::new();
+    for (file, scenario) in scenarios {
+        let name = long::name_of(file);
+        eprintln!("bench: {name}, a long run");
+        let first = player
+            .play_long(file, &runs.join(format!("{name}-1")))
+            .map_err(|e| (codes::GAME_ERROR, e))?;
+        let second = if twice {
+            eprintln!("bench: {name}, the second run");
+            let second = player
+                .play_long(file, &runs.join(format!("{name}-2")))
+                .map_err(|e| (codes::GAME_ERROR, e))?;
+            Some(second)
+        } else {
+            None
+        };
+        out.push(long::run(file, scenario, first, second.as_ref()));
+    }
+    Ok(long::LongReport {
+        format_version: long::FORMAT_VERSION,
+        runs: out,
+    })
+}
+
 /// Writes `report` and its `table` into `out`.
 fn write(out: &Path, report: &Report, table: &str) -> Result<(), String> {
-    fs::create_dir_all(out).map_err(|e| format!("creating {}: {e}", out.display()))?;
     let json = serde_json::to_string_pretty(report).map_err(|e| e.to_string())?;
-    for (name, text) in [
-        ("bench-report.json", json),
-        ("bench-report.md", table.to_owned()),
-    ] {
+    write_files(
+        out,
+        &[
+            ("bench-report.json", json),
+            ("bench-report.md", table.to_owned()),
+        ],
+    )
+}
+
+/// Writes each of `files`, a name and its text, into `out`.
+fn write_files(out: &Path, files: &[(&str, String)]) -> Result<(), String> {
+    fs::create_dir_all(out).map_err(|e| format!("creating {}: {e}", out.display()))?;
+    for (name, text) in files {
         let path = out.join(name);
         fs::write(&path, text).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
@@ -516,6 +666,44 @@ pub(crate) fn executable(stdout: &str) -> Option<PathBuf> {
         .find_map(|message| message["executable"].as_str().map(PathBuf::from))
 }
 
+impl LongPlayer for Built {
+    fn play_long(&self, file: &str, dir: &Path) -> Result<long::LongPlayed, String> {
+        let _ = fs::remove_dir_all(dir);
+        fs::create_dir_all(dir).map_err(|e| format!("creating {}: {e}", dir.display()))?;
+        let played_file = dir.join("samples.jsonl");
+        let play: Vec<OsString> = vec![
+            "bench-play".into(),
+            "--long".into(),
+            file.into(),
+            "--out".into(),
+            played_file.clone().into_os_string(),
+        ];
+        let output = Command::new(&self.exe)
+            .args(&self.args)
+            .args(play)
+            .current_dir(&self.root)
+            .output()
+            .map_err(|e| format!("{file}: cannot run the game's tool program: {e}"))?;
+        if !output.status.success() {
+            return Err(failed_run(file, &output));
+        }
+        long::read_played(&played_file).map_err(|e| format!("{file}: {e}"))
+    }
+}
+
+/// What a tool program that failed on `file` said: its status and the
+/// last lines of its errors.
+fn failed_run(file: &str, output: &std::process::Output) -> String {
+    let said = String::from_utf8_lossy(&output.stderr);
+    let tail: Vec<&str> = said.lines().rev().take(20).collect();
+    let tail: Vec<&str> = tail.into_iter().rev().collect();
+    format!(
+        "{file}: the game's tool program failed ({}):\n{}",
+        output.status,
+        tail.join("\n")
+    )
+}
+
 impl Player for Built {
     fn play(&self, file: &str, target: Option<&str>, dir: &Path) -> Result<Measured, String> {
         let _ = fs::remove_dir_all(dir);
@@ -540,14 +728,7 @@ impl Player for Built {
             .output()
             .map_err(|e| format!("{file}: cannot run the game's tool program: {e}"))?;
         if !output.status.success() {
-            let said = String::from_utf8_lossy(&output.stderr);
-            let tail: Vec<&str> = said.lines().rev().take(20).collect();
-            let tail: Vec<&str> = tail.into_iter().rev().collect();
-            return Err(format!(
-                "{file}: the game's tool program failed ({}):\n{}",
-                output.status,
-                tail.join("\n")
-            ));
+            return Err(failed_run(file, &output));
         }
         let text = fs::read_to_string(&played_file)
             .map_err(|e| format!("{file}: reading {}: {e}", played_file.display()))?;
@@ -807,10 +988,22 @@ fn at_start(folder: &Path, later: &[String]) -> Result<u64, String> {
     Ok(bytes)
 }
 
-/// `bench-play`'s arguments: the scenario file, the one-bit target and
-/// where its frames go.
-fn parse_play(args: &[String]) -> Result<(String, Option<String>, PathBuf), String> {
-    let (mut file, mut target, mut out) = (None, None, None);
+/// `bench-play`'s arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PlayArgs {
+    /// The scenario file.
+    file: String,
+    /// The one-bit target, if given.
+    target: Option<String>,
+    /// Where its frames go.
+    out: PathBuf,
+    /// Whether it is a long scenario (`--long`).
+    long: bool,
+}
+
+/// `bench-play`'s arguments.
+fn parse_play(args: &[String]) -> Result<PlayArgs, String> {
+    let (mut file, mut target, mut out, mut long) = (None, None, None, false);
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         let mut value = || {
@@ -821,6 +1014,7 @@ fn parse_play(args: &[String]) -> Result<(String, Option<String>, PathBuf), Stri
         match arg.as_str() {
             "--target" => target = Some(value()?),
             "--out" => out = Some(PathBuf::from(value()?)),
+            "--long" => long = true,
             flag if flag.starts_with("--") => return Err(format!("unknown argument: {flag}")),
             _ if file.is_none() => file = Some(arg.clone()),
             extra => return Err(format!("one scenario only, not also {extra}")),
@@ -828,17 +1022,30 @@ fn parse_play(args: &[String]) -> Result<(String, Option<String>, PathBuf), Stri
     }
     let file = file.ok_or("missing <file>")?;
     let out = out.ok_or("missing --out <file>")?;
-    Ok((file, target, out))
+    if long && target.is_some() {
+        return Err("--target isn't for a long scenario".to_owned());
+    }
+    Ok(PlayArgs {
+        file,
+        target,
+        out,
+        long,
+    })
 }
 
 /// `bench-play <file> [--target <id>] --out <file>` on `project` with the
 /// game's tools `game`: its exit code.
 pub(crate) fn play_main(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
-    let (file, target, out) = match parse_play(args) {
+    let PlayArgs {
+        file,
+        target,
+        out,
+        long,
+    } = match parse_play(args) {
         Ok(parsed) => parsed,
         Err(e) => {
             let usage = format!(
-                "usage: {} bench-play <file> [--target <id>] --out <file>",
+                "usage: {} bench-play [--long] <file> [--target <id>] --out <file>",
                 project.config.command()
             );
             eprint!(
@@ -851,6 +1058,15 @@ pub(crate) fn play_main(project: &Project, args: &[String], game: &dyn GameTools
     // Frames are measured by their instructions, never their time: a real
     // clock's readings could change the count from run to run.
     measure_with_a_fake_clock();
+    if long {
+        return match long::play(&project.root, &file, game, &out) {
+            Ok(()) => 0,
+            Err((code, e)) => {
+                eprint!("{}", codes::said("bench-play", code.0, &e, None));
+                codes::exit_code(Some(code.0))
+            }
+        };
+    }
     let played = play(&project.root, &file, target.as_deref(), game).and_then(|played| {
         let json = serde_json::to_string(&played).map_err(|e| (codes::FILE, e.to_string()))?;
         fs::write(&out, json).map_err(|e| (codes::FILE, format!("writing {}: {e}", out.display())))

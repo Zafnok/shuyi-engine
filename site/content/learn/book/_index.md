@@ -9,6 +9,7 @@ page_template = "chapter.html"
 parts = [
   { part = "start" },
   { chapters = "box-pusher" },
+  { section = "guides" },
   { part = "appendices", title = "Appendices" },
 ]
 +++

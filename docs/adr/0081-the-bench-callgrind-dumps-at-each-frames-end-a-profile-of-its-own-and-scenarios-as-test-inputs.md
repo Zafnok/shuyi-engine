@@ -1,6 +1,6 @@
 # ADR-0081: The bench: Callgrind dumps at each frame's end, a profile of its own, and scenarios as test inputs
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0146 (long runs: `bench --long`)
 - **Date:** 2026-11-05
 - **Related tickets:** 3008 (this), 3064, 3006, 3004, 3011, 3013, 2566
 - **Extends:** ADR-0008 §6

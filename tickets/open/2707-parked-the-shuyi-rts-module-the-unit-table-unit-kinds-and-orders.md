@@ -86,8 +86,10 @@ None.
   - **`needs`** (ADR-0012 §1): if 3017 is done, a provisional `needs`
     key with a comment that 2718 measures it. If not, 3017 gives it one
     with the other modules;
-  - **the wizard:** if 2502 is done, check that `--kind rts` appears in
-    `docs/templates.md`'s flags list, and add it if not.
+  - **the wizard:** **from 2502 (done):** `--kind` takes any answer of
+    the `kind` concern, so `--kind rts` works once `rts` is ready, with
+    no wizard change. List `--kind rts` among the flags in
+    `docs/templates.md` ("The wizard's questions").
 - **Features of the crate:** `assets` (on by default) holds the `Format`
   registration, so the simulation parts depend on `shuyi-core` alone
   when it is off (ADR-0015 §1); `view` is declared empty, filled by
