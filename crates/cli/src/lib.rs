@@ -57,6 +57,7 @@ pub mod private_assets;
 pub mod project;
 mod repos;
 mod reveal;
+pub mod rust_lines;
 mod sha256;
 pub mod skills;
 pub mod template;

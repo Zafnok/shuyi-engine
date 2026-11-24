@@ -269,8 +269,8 @@ each part is one PR.
   `site/content/examples/<name>.md` (2801, done); 2019's `web-render` job (done) boots it too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form: how to run it, its files, its
   targets, what each part of the engine does in it, and its own lines
-  without tests and data (`cargo xtask template-lines` if 2512 is done;
-  counted, and said how, if not). The engine's `README.md` names the
+  without tests and data (`cargo xtask template-lines`'s code count,
+  2512). The engine's `README.md` names the
   example beside hello-grid.
 
 **Part 3 (a follow-up ticket): the match-3 finished.**
@@ -290,7 +290,7 @@ each part is one PR.
   `reference: Project("examples/match-three")`, targets `desktop` and
   `web`, and checks `Gates`, `Check`, `Targets`, `Web`, `Replay` and a
   `Scene` check of `/score` and `/moves_left`; `cargo xtask eval-grade`
-  passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  passes on it. `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - in this PR, anything of parts 2 and 3 beyond writing their tickets: no

@@ -595,8 +595,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/xtask/Cargo.toml",
-            find: "a new game's compile times, the sound parity gates, the changelog",
-            with: "a new game's compile times, the changelog",
+            find: "a new game's compile times, the lines a game's author owns, the sound parity gates, the changelog",
+            with: "a new game's compile times, the lines a game's author owns, the changelog",
         ),
         Replace(
             file: "crates/xtask/Cargo.toml",

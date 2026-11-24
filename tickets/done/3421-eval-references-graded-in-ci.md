@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2524"]
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3421 — The eval's references graded on fresh games, and in CI
@@ -132,14 +132,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask eval-reference --all` passes on box-pushing in CI, and
+- [x] `cargo xtask eval-reference --all` passes on box-pushing in CI, and
       lists tic-tac-toe, snake and the platformer as waiting.
-- [ ] `--template-only` on box-pushing fails every `Scene` check and
+- [x] `--template-only` on box-pushing fails every `Scene` check and
       passes `Check`, checked by the job.
-- [ ] An overlay with a `Cargo.toml` that places an engine crate is
+- [x] An overlay with a `Cargo.toml` that places an engine crate is
       refused with exit code 2.
-- [ ] The PR description has box-pushing's lines added and seconds.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The PR description has box-pushing's lines added and seconds.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -148,4 +148,44 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `cargo xtask eval-reference (<id> | --all) [--out <dir>]
+  [--template-only]` (`crates/xtask/src/eval/reference.rs`), from the
+  draft on `draft-2524-eval-references`, fitted to what 2524 merged:
+  the exit codes are `grade::PASSED`, `FAILED` and `UNGRADED`, and the
+  draft's `TASKS` and `Task::listed` live in `reference.rs` (`TASKS`,
+  `waiting`), beside a new `pick`. `skills::runners` takes its build
+  folder, so `eval-reference` builds in `target/eval-build` with the
+  same pattern. A `Project` reference makes only the base; the draft
+  made an unused graded game too. The draft's refusal message lost a
+  line continuation (a run of spaces inside it): fixed, and the overlay
+  check now matches `Cargo.toml` exactly, not any name starting so.
+- **A `Project` reference counts only the files it has.** `grade::Base`
+  names the base and `grade::Over` which of its files count:
+  `Everything` for an agent's game and `eval-grade --base`,
+  `GamesFiles` for a `Project` reference, whose result's `limits` says
+  so. Box-pushing went from +1,753 −38,467 lines, 101 files, to +1,753
+  −404, 35 files. `evals/README.md` says why.
+- Graded locally on Windows: box-pushing passed 11 of 12 checks, all
+  but `Export linux` (`SH1003`), +1,753 −404 lines, 35 files, 163.4 s
+  of checks (4 min with the two games made). Its plain template passed
+  8 of 12 (`Check` among them) and failed `Responds`, `Replay`, `Scene 1`
+  and `Export linux`, exiting 1. `--all` listed platformer, snake and
+  tic-tac-toe as waiting.
+- **CI**: the `eval` job runs in the sniper SDK image
+  (`shuyi_cli::export::SNIPER`), git, jq and ca-certificates installed
+  before the checkout so it clones. It grades `--all`, then
+  `--template-only` must exit 1 with `Check` passed and every `Scene`
+  failed (jq), writes the table to the step summary and uploads
+  `eval-results/` and `eval-template/` as `eval-results`. `ci-result`
+  needs it. The grader's outputs are in `.gitignore`.
+- `cargo xtask gates` lists `eval` as CI's alone: `Export("linux")`
+  builds only in the Steam runtime's image, so a local run would always
+  fail it; `cargo xtask eval-reference <id>` grades one locally.
+- Settled what named 3421: the "either order with 3421" clauses of
+  1127, 2735, 2736, 2737, 2738 and 2739 now say what holds.
+- The draft's tic-tac-toe reference (`evals/references/`) is left to
+  3422, which names it, and adds its own `--template-only` step to this
+  job.
+- No break: xtask isn't published. No `Behaviour:` line: no crate a
+  game uses changed.
+- Docs: `evals/README.md`'s *Grading*, and `cargo xtask`'s usage text.

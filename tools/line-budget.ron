@@ -1,0 +1,12 @@
+// The most code lines a new `blank` game hands its author (ticket 2512):
+// the Rust outside `tests/` and outside `#[cfg(test)]` items, in the files
+// `shuyi new --template blank` writes, the engine's skill pack left out.
+// `cargo xtask template-lines --check` (crates/xtask/src/template_lines.rs)
+// counts it, and CI's `tickets` job runs it on every PR.
+//
+// This number is lowered, never raised (AGENTS.md rule 6): a part every new
+// game needs goes in the engine, where every game gets it (ADR-0036). The
+// check fails when the count is 10 or more under it, and names the number
+// to lower it to. 220: 211 lines on 2026-11-23, rounded up to a multiple of
+// 10.
+(template: "blank", code: 220)

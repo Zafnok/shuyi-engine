@@ -300,8 +300,8 @@ None.
     2019's `web-render` job (done) runs `check.py boot` on this build
     too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form, with the lines of its own code
-  without tests and data (`cargo xtask template-lines` if 2512 is done;
-  counted, and said how, if not). The engine's `README.md` names the
+  without tests and data (`cargo xtask template-lines`'s code count,
+  2512). The engine's `README.md` names the
   example beside hello-grid.
 - **The eval (from 2524, done):** write
   `evals/tasks/card-battle.ron`: template `blank`, name `Card Battle`,
@@ -313,7 +313,7 @@ None.
   the title: `/fight` is `1` and `/energy` is `3`). Its prompt asks for
   this game in the words of 2524's tic-tac-toe prompt, without the
   example's cards or numbers beyond those the checks read.
-  `cargo xtask eval-grade` passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference card-battle` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  `cargo xtask eval-grade` passes on it. `cargo xtask eval-reference card-battle` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - a map between fights, a longer run, shops, rests, healing, relics,
