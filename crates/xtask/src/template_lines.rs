@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shuyi_cli::contract::new::{NewInput, plan};
 use shuyi_cli::rust_lines::{exempt_lines, lex};
 use shuyi_cli::template::{BUILT_IN_ORIGIN, Template};
@@ -56,7 +56,8 @@ impl Options {
 }
 
 /// What a file is to the game's author.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum Kind {
     /// Rust outside `tests/`, without its `#[cfg(test)]` items.
     Code,
@@ -68,19 +69,6 @@ pub enum Kind {
     Setup,
     /// Not counted: Markdown, pictures, licenses, generated files, builds.
     LeftOut,
-}
-
-impl Kind {
-    /// Its name in `--json`.
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Code => "code",
-            Self::Tests => "tests",
-            Self::Data => "data",
-            Self::Setup => "setup",
-            Self::LeftOut => "left-out",
-        }
-    }
 }
 
 /// The setup files, by name, wherever they are.
@@ -190,19 +178,20 @@ fn marked(text: &str, marker: &str) -> usize {
 }
 
 /// One file of a game, as counted.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct File {
     /// Its path from the game's folder, `/`-separated.
     pub path: String,
     pub kind: Kind,
     /// The lines of its kind that count (0 when left out).
     pub lines: usize,
-    /// A code file's lines in `#[cfg(test)]` items, counted as tests.
+    /// A code file's lines in `#[cfg(test)]` items, counted as tests
+    /// (0 in any other file).
     pub test_lines: usize,
 }
 
 /// One game's counts.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct Counts {
     /// The folder, or the template's short name.
     pub folder: String,
@@ -377,36 +366,8 @@ pub fn markdown(all: &[Counts]) -> String {
 }
 
 /// The counts as JSON, with every file's path, kind and lines.
-pub fn json(all: &[Counts]) -> serde_json::Value {
-    let folders: Vec<serde_json::Value> = all
-        .iter()
-        .map(|c| {
-            let files: Vec<serde_json::Value> = c
-                .files
-                .iter()
-                .map(|f| {
-                    let mut file = serde_json::json!({
-                        "path": f.path,
-                        "kind": f.kind.name(),
-                        "lines": f.lines,
-                    });
-                    if f.test_lines > 0 {
-                        file["test_lines"] = f.test_lines.into();
-                    }
-                    file
-                })
-                .collect();
-            serde_json::json!({
-                "folder": c.folder,
-                "code": c.code,
-                "tests": c.tests,
-                "data": c.data,
-                "setup": c.setup,
-                "files": files,
-            })
-        })
-        .collect();
-    serde_json::Value::Array(folders)
+pub fn json(all: &[Counts]) -> String {
+    serde_json::to_string(all).unwrap_or_default()
 }
 
 /// The cap, `tools/line-budget.ron`.

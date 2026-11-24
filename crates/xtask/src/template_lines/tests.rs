@@ -300,8 +300,7 @@ fn the_table_lines_up() {
 
 #[test]
 fn the_json_has_every_files_path_kind_and_lines() {
-    let value = json(&fixed());
-    let text = value.to_string();
+    let text = json(&fixed());
     let back: serde_json::Value = serde_json::from_str(&text).unwrap();
     assert_eq!(back[0]["folder"], "blank");
     assert_eq!(back[0]["files"][0]["path"], "src/ui/title.rs");

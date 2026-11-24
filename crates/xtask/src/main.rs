@@ -609,7 +609,7 @@ fn template_lines(root: &Path, args: &[String]) -> ExitCode {
         }
     }
     let shown = if options.json {
-        template_lines::json(&all).to_string()
+        template_lines::json(&all)
     } else {
         template_lines::table(&all)
     };
