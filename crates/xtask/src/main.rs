@@ -18,6 +18,7 @@
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
+//! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
@@ -167,6 +168,15 @@ usage:
       its lines over it, by `git diff --no-index`. Writes <file> (by default
       eval-result.json). Exits 0 when every check passed, 1 when one failed,
       2 when it couldn't grade.
+  cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]
+      Grade a task's reference solution, or with --all every task's that has
+      one (and list the ones that wait), with eval-grade, over a base: two
+      games `shuyi new` makes in target/eval/, one the reference is laid over
+      (a whole project is graded where it is), the other the base. Writes
+      <dir>/<id>.json (by default eval-results/). With --template-only, grade
+      the plain template instead, to show the checks can fail. The games build
+      in target/eval-build with no incremental cache unless CARGO_TARGET_DIR
+      is set. Exits as eval-grade, its worst over the tasks.
   cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, a fixed reference build, and
@@ -325,6 +335,11 @@ fn main() -> ExitCode {
             &args[1..],
             &script::System::default(),
         )),
+        Some("eval-reference") => {
+            let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
+            let (maker, runner) = skills::runners(&root, eval::reference::BUILD, env_target);
+            ExitCode::from(eval::reference::command(&root, &args[1..], &maker, &runner))
+        }
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),
@@ -495,7 +510,8 @@ fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let (maker, game) = skills::runners(root, std::env::var_os("CARGO_TARGET_DIR").is_some());
+    let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
+    let (maker, game) = skills::runners(root, skills::BUILD, env_target);
     let outcome = skills::run(root, &skills::games_dir(root), &options, &maker, &game);
     eprint!("{}", outcome.report);
     report("skill-examples", &outcome.errors, &[])

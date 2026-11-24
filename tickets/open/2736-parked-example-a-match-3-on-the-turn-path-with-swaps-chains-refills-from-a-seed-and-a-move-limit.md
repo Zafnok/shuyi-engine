@@ -289,7 +289,7 @@ each part is one PR.
   `reference: Project("examples/match-three")`, targets `desktop` and
   `web`, and checks `Gates`, `Check`, `Targets`, `Web`, `Replay` and a
   `Scene` check of `/score` and `/moves_left`; `cargo xtask eval-grade`
-  passes on it. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+  passes on it. `cargo xtask eval-reference match-three` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 
 **Out (do not do):**
 - in this PR, anything of parts 2 and 3 beyond writing their tickets: no

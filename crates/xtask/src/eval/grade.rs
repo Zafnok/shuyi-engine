@@ -77,6 +77,46 @@ pub struct Lines {
     pub files: u64,
 }
 
+/// What a game's lines are counted over: a fresh `shuyi new` of the
+/// task's template and name, and which of its files count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Base<'a> {
+    /// Its folder.
+    pub dir: &'a Path,
+    /// Which of its files count.
+    pub over: Over,
+}
+
+impl<'a> Base<'a> {
+    /// The base at `dir`, every one of its files counted.
+    pub fn whole(dir: &'a Path) -> Self {
+        Self {
+            dir,
+            over: Over::Everything,
+        }
+    }
+}
+
+/// Which of the base's files a game's lines count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Over {
+    /// Every one: a file the game lacks counts its lines as removed. A game
+    /// made from the template, as an agent's is.
+    Everything,
+    /// Only the ones the game has: a whole project made apart from the
+    /// template (a `Project` reference), which never had what the template
+    /// gained since (its skill pack, its workflows).
+    GamesFiles,
+}
+
+/// What a grade exits with: every check passed.
+pub const PASSED: u8 = 0;
+/// What a grade exits with: a check failed.
+pub const FAILED: u8 = 1;
+/// What a grade exits with: it couldn't grade (no such game, a bad task
+/// file, a task that waits).
+pub const UNGRADED: u8 = 2;
+
 /// What grading found: the result file's JSON, and whether every check
 /// passed.
 #[derive(Debug, Clone, PartialEq)]
@@ -89,23 +129,22 @@ pub struct Outcome {
     pub report: String,
 }
 
-/// `eval-grade <args>` in the engine checkout at `root`: its exit code, 0
-/// when every check passed, 1 when one failed, and 2 when it couldn't
-/// grade (no such game, a bad task file, a task that waits).
+/// `eval-grade <args>` in the engine checkout at `root`: its exit code,
+/// [`PASSED`], [`FAILED`] or [`UNGRADED`].
 pub fn command(root: &Path, args: &[String], runner: &dyn Runner) -> u8 {
     let graded = Options::parse(args).and_then(|options| {
         let task = Task::read(&options.task)?;
-        let base = options.base.as_deref();
+        let base = options.base.as_deref().map(Base::whole);
         to_file(&task, &options.project, base, root, &options.out, runner)
     });
     match graded {
         Ok(outcome) => {
             eprint!("{}", outcome.report);
-            u8::from(!outcome.passed)
+            if outcome.passed { PASSED } else { FAILED }
         }
         Err(e) => {
             eprintln!("eval-grade: {e}");
-            2
+            UNGRADED
         }
     }
 }
@@ -115,7 +154,7 @@ pub fn command(root: &Path, args: &[String], runner: &dyn Runner) -> u8 {
 pub fn to_file(
     task: &Task,
     game: &Path,
-    base: Option<&Path>,
+    base: Option<Base>,
     root: &Path,
     out: &Path,
     runner: &dyn Runner,
@@ -131,9 +170,12 @@ pub fn to_file(
         return Err(format!("{}: no game (no shuyi.ron)", game.display()));
     }
     if let Some(base) = base
-        && !base.join("shuyi.ron").is_file()
+        && !base.dir.join("shuyi.ron").is_file()
     {
-        return Err(format!("--base {}: no game (no shuyi.ron)", base.display()));
+        return Err(format!(
+            "--base {}: no game (no shuyi.ron)",
+            base.dir.display()
+        ));
     }
     let head = runner.run(root, "git", &["rev-parse".to_owned(), "HEAD".to_owned()])?;
     let engine = head.stdout.trim().to_owned();
@@ -157,7 +199,7 @@ pub fn to_file(
 pub fn grade(
     task: &Task,
     game: &Path,
-    base: Option<&Path>,
+    base: Option<Base>,
     engine: &str,
     scratch: &Path,
     runner: &dyn Runner,
@@ -168,6 +210,11 @@ pub fn grade(
         .collect();
     let mut limits = Vec::new();
     let lines = if let Some(base) = base {
+        if base.over == Over::GamesFiles {
+            limits.push(
+                "a whole project: the base's files it lacks are left out of the lines".to_owned(),
+            );
+        }
         count_lines(base, game, runner)
             .map_err(|e| limits.push(format!("the lines weren't counted: {e}")))
             .ok()
@@ -336,7 +383,7 @@ pub fn web_dist(shuyi_ron: &str) -> Option<String> {
 
 /// `game`'s lines over `base`: `git diff --no-index --no-renames --numstat`,
 /// less what [`left_out`] drops.
-fn count_lines(base: &Path, game: &Path, runner: &dyn Runner) -> Result<Lines, String> {
+fn count_lines(base: Base, game: &Path, runner: &dyn Runner) -> Result<Lines, String> {
     let dist = fs::read_to_string(game.join("shuyi.ron"))
         .ok()
         .and_then(|text| web_dist(&text));
@@ -345,23 +392,29 @@ fn count_lines(base: &Path, game: &Path, runner: &dyn Runner) -> Result<Lines, S
         let full = std::path::absolute(p).map_err(|e| format!("{}: {e}", p.display()))?;
         Ok::<_, String>(full.to_string_lossy().replace('\\', "/"))
     };
-    let (base, game_shown) = (shown(base)?, shown(game)?);
+    let (base_shown, game_shown) = (shown(base.dir)?, shown(game)?);
     let diff = "-c core.autocrlf=false diff --no-index --no-renames --numstat -z";
     let mut args: Vec<String> = diff.split(' ').map(str::to_owned).collect();
-    args.extend([base.clone(), game_shown.clone()]);
+    args.extend([base_shown.clone(), game_shown.clone()]);
     let ran = runner.run(game, "git", &args)?;
     // 1: they differ, or an error that says so; 0: they don't.
     let error = (ran.stderr.lines()).any(|l| l.starts_with("error:") || l.starts_with("fatal:"));
     if error || !matches!(ran.code, Some(0 | 1)) {
         return Err(format!("git diff failed: {}", ran.stderr.trim()));
     }
-    Ok(numstat(&ran.stdout, &base, &game_shown, dist.as_deref()))
+    Ok(numstat(
+        &ran.stdout,
+        (&base_shown, base.over),
+        &game_shown,
+        dist.as_deref(),
+    ))
 }
 
 /// The lines of `git diff --no-index --numstat -z`'s `out` between the
-/// folders `base` and `game`, as given to it, less what [`left_out`] drops;
-/// `dist` is the web build's folder.
-pub fn numstat(out: &str, base: &str, game: &str, dist: Option<&str>) -> Lines {
+/// folders `base` and `game`, as given to it, less what [`left_out`] drops
+/// and, over [`Over::GamesFiles`], the base's files the game lacks; `dist`
+/// is the web build's folder.
+pub fn numstat(out: &str, (base, over): (&str, Over), game: &str, dist: Option<&str>) -> Lines {
     let mut lines = Lines::default();
     let mut fields = out.split('\0');
     // Each file: `added\tremoved\t`, then its path before and after, one
@@ -370,6 +423,9 @@ pub fn numstat(out: &str, base: &str, game: &str, dist: Option<&str>) -> Lines {
         (fields.next(), fields.next(), fields.next())
     {
         let path = if after == "/dev/null" {
+            if over == Over::GamesFiles {
+                continue;
+            }
             relative(before, base)
         } else {
             relative(after, game)

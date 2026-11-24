@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
 
-use super::grade::{self, Lines, left_out, numstat, web_dist, web_folder_holds};
+use super::grade::{self, Lines, Over, left_out, numstat, web_dist, web_folder_holds};
+use super::reference::{self, done_waits, places_engine_crate, refuse_overlay};
 use super::task::{After, GATES, Input, Kind, Reference, Task, input_args};
 use crate::script::{self, Expect, Ran, Runner, Step};
 
@@ -200,20 +201,31 @@ fn numstat_counts_lines_files_and_binaries_and_leaves_out_builds_and_locks() {
     let fields: Vec<&str> = files.iter().flat_map(|&(c, b, a)| [c, b, a]).collect();
     let out = fields.join("\0") + "\0";
     assert_eq!(
-        numstat(&out, "base", "game", Some("web-out")),
+        numstat(&out, ("base", Over::Everything), "game", Some("web-out")),
         Lines {
             added: 13,
             removed: 5,
             files: 4
         }
     );
+    // A whole project: the base's CLAUDE.md, which it never had, is left
+    // out.
+    assert_eq!(
+        numstat(&out, ("base", Over::GamesFiles), "game", Some("web-out")),
+        Lines {
+            added: 13,
+            removed: 1,
+            files: 3
+        }
+    );
     // Without a web folder of its own, `web-out/` counts.
-    assert_eq!(numstat(&out, "base", "game/", None).added, 20);
+    let everything = ("base", Over::Everything);
+    assert_eq!(numstat(&out, everything, "game/", None).added, 20);
     assert!(left_out("target/x", None));
     assert!(!left_out("targets/x", None));
     assert!(!left_out("crates/target.rs", None));
     assert!(left_out("site/dist/web/a", Some("site/dist/web/")));
-    assert_eq!(numstat("", "base", "game", None), Lines::default());
+    assert_eq!(numstat("", everything, "game", None), Lines::default());
 }
 
 #[test]
@@ -364,15 +376,125 @@ fn the_options_parse_and_refuse() {
     assert_eq!(grade.out, PathBuf::from(grade::OUT));
     assert!(grade::Options::parse(&args(&["t.ron"])).is_err());
     assert!(grade::Options::parse(&args(&["t.ron", "g", "--bogus"])).is_err());
+    let all = reference::Options::parse(&args(&["--all", "--out", "r"])).unwrap();
+    assert_eq!(
+        (all.id, all.out, all.template_only),
+        (None, PathBuf::from("r"), false)
+    );
+    let one = reference::Options::parse(&args(&["box-pushing", "--template-only"])).unwrap();
+    assert_eq!(
+        (one.id.as_deref(), one.out, one.template_only),
+        (Some("box-pushing"), PathBuf::from(reference::OUT), true)
+    );
+    for wrong in [
+        &[][..],
+        &["a", "--all"],
+        &["a", "b"],
+        &["--all", "--out"],
+        &["--all", "--bogus"],
+    ] {
+        assert!(
+            reference::Options::parse(&args(wrong)).is_err(),
+            "{wrong:?}"
+        );
+    }
 }
 
 #[test]
-fn the_tasks_in_the_repository_read() {
-    let mut ids = Vec::new();
-    for entry in fs::read_dir(root().join("evals/tasks")).unwrap() {
-        let path = entry.unwrap().path();
-        let task = Task::read(&path).unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(path.file_stem().unwrap().to_str(), Some(task.id.as_str()));
+fn the_waiting_warning_names_a_waits_for_ticket_that_is_done() {
+    let root = temp("waits");
+    fs::create_dir_all(root.join("tickets/done")).unwrap();
+    fs::write(root.join("tickets/done/1127-a-platformer.md"), "").unwrap();
+    fs::write(root.join("tickets/done/27390-another.md"), "").unwrap();
+    let task = Task {
+        id: "platformer".to_owned(),
+        reference: Reference::None,
+        waits_for: vec!["1127".to_owned(), "2739".to_owned()],
+        ..task()
+    };
+    assert_eq!(
+        done_waits(&root, &task),
+        ["1127 is done: give `platformer` a reference and empty its `waits_for`"]
+    );
+    assert_eq!(done_waits(&root, &self::task()), Vec::<String>::new());
+    let all = [task, self::task()];
+    assert_eq!(
+        reference::waiting(&all),
+        ["platformer (waits for 1127, 2739)"]
+    );
+    assert_eq!(reference::pick(&all, None).unwrap(), [&all[1]]);
+    assert_eq!(
+        reference::pick(&all, Some("platformer")).unwrap(),
+        [&all[0]]
+    );
+    assert_eq!(
+        reference::pick(&all, Some("pong")).unwrap_err(),
+        "no task pong in evals/tasks/"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_overlay_that_places_the_engines_crates_is_refused_with_exit_code_2() {
+    for placed in [
+        "shuyi = { path = \"../engine/crates/shuyi\" }",
+        "  \"shuyi-cli\" = { git = \"https://x\" }",
+        "shuyi-core = \"0.1\"",
+        "shuyi.path = \"..\"",
+        "[dependencies.shuyi-core]\npath = \"..\"",
+        "[workspace.dependencies.shuyi]\nworkspace = true",
+    ] {
+        assert!(places_engine_crate(placed), "{placed}");
+    }
+    for allowed in [
+        "[dependencies]\nshuyi.workspace = true\n",
+        "shuyi-core = { workspace = true, features = [\"schema\"] }",
+        "name = \"tic-tac-toe\"\nserde.workspace = true",
+        "shuyiness = { path = \"x\" }",
+    ] {
+        assert!(!places_engine_crate(allowed), "{allowed}");
+    }
+    let root = temp("overlay");
+    fs::create_dir_all(root.join("evals/tasks")).unwrap();
+    fs::write(root.join("evals/tasks/t.ron"), TASK).unwrap();
+    let overlay = root.join("evals/references/t");
+    fs::create_dir_all(overlay.join("crates/game")).unwrap();
+    fs::write(overlay.join("crates/game/build.rs"), "fn main() {}").unwrap();
+    let member = "[dependencies]\nshuyi.workspace = true\n";
+    fs::write(overlay.join("crates/game/Cargo.toml"), member).unwrap();
+    assert_eq!(refuse_overlay(&overlay), None);
+    let workspace = "[workspace.dependencies]\nshuyi = { path = \"../shuyi\" }\n";
+    fs::write(overlay.join("Cargo.toml"), workspace).unwrap();
+    let why = refuse_overlay(&overlay).unwrap();
+    assert!(
+        why.ends_with(
+            "Cargo.toml: an overlay's Cargo.toml may not say where the engine's crates are \
+             (`shuyi new --engine-path` does)"
+        ),
+        "{why}"
+    );
+    // Refused before any game is made.
+    let never = Fake(|command: &str| panic!("ran {command}"));
+    let args = ["t".to_owned()];
+    assert_eq!(reference::command(&root, &args, &never, &never), 2);
+    assert!(!root.join("target").exists());
+    // An unknown id isn't graded.
+    let pong = ["pong".to_owned()];
+    assert_eq!(reference::command(&root, &pong, &never, &never), 2);
+    // Nor a task file whose id isn't its name.
+    fs::write(root.join("evals/tasks/u.ron"), TASK).unwrap();
+    let errors = reference::tasks(&root).unwrap_err();
+    assert!(
+        errors[0].ends_with("u.ron: its id is t, not its file's name"),
+        "{errors:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn the_tasks_here_read_and_all_grades_box_pushing_and_lists_the_waiting() {
+    let tasks = reference::tasks(&root()).unwrap_or_else(|e| panic!("{e:?}"));
+    for task in &tasks {
         assert_eq!(task.time_box_minutes, 60, "{}", task.id);
         // A task with no reference waits for the ticket that gives it one.
         assert_eq!(
@@ -381,13 +503,24 @@ fn the_tasks_in_the_repository_read() {
             "{}",
             task.id
         );
-        if let Reference::Project(dir) = &task.reference {
-            assert!(root().join(dir).join("shuyi.ron").is_file(), "{dir}");
+        match &task.reference {
+            Reference::Overlay(dir) => assert_eq!(refuse_overlay(&root().join(dir)), None),
+            Reference::Project(dir) => {
+                assert!(root().join(dir).join("shuyi.ron").is_file(), "{dir}");
+            }
+            Reference::None => {}
         }
-        ids.push(task.id);
     }
-    ids.sort();
+    let ids: Vec<&str> = tasks.iter().map(|t| t.id.as_str()).collect();
     assert_eq!(ids, ["box-pushing", "platformer", "snake", "tic-tac-toe"]);
+    let graded: Vec<&str> = (reference::pick(&tasks, None).unwrap().iter())
+        .map(|t| t.id.as_str())
+        .collect();
+    assert_eq!(graded, ["box-pushing"]);
+    let waiting = reference::waiting(&tasks);
+    for id in ["platformer", "snake", "tic-tac-toe"] {
+        assert!(waiting.iter().any(|w| w.starts_with(id)), "{waiting:?}");
+    }
 }
 
 /// The schema in `crates/cli/schemas/` of `op`'s answer.

@@ -331,7 +331,7 @@ None.
     `playdate` to its targets and drop its `unmeasured` Playdate entry,
     if its reference passes `cargo shuyi check --target playdate`;
   - `cargo xtask eval-grade evals/tasks/snake.ron examples/snake`
-    passes. **Either order with 3421:** if 3421 is done, `cargo xtask eval-reference snake` passes and CI's `eval` job grades it; if not, nothing more (3421's `--all` grades every task with a reference).
+    passes. `cargo xtask eval-reference snake` passes and CI's `eval` job grades it (3421's `--all` grades every task with a reference).
 - **The engine's README:** its *Game styles* paragraph claims a grid in
   real time, linking the example (ADR-0003 §1).
 - **What changes for the game:** nothing. `ticks` is new, and `turns`

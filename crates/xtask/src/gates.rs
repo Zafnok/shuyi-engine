@@ -455,6 +455,9 @@ pub const GATES: &[Gate] = &[
         .ci_only("the tests on wasm32 under wasmtime; natively, `test` runs the golden tables"),
     gate("export", "export", CODE)
         .ci_only("exports on each OS's runner and the Steam runtime"),
+    gate("eval", "eval", CODE).ci_only(
+        "grades the eval's references in the Steam runtime's image, where `Export(\"linux\")` builds; `cargo xtask eval-reference <id>` grades one here",
+    ),
     gate("render", "render", CODE).ci_only("needs Xvfb and Mesa"),
     gate("web-render", "web-render", CODE)
         .ci_only("needs headless Chromium and Playwright"),
