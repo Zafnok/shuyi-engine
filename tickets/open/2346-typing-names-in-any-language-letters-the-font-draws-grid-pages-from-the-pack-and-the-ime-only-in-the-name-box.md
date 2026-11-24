@@ -219,9 +219,9 @@ None.
      - while typing, when the caret cell moves it calls
        `set_ime_position` with the window pixel just under that cell
        (so the IME's list doesn't hide the name), placed as `render.rs`
-       places the console: `shuyi_ui::frame::console::layout`, in
-       physical pixels. **Either order with 2333:** if it is done, its
-       placement function instead;
+       places the console: **from 2333 (done):** `render::placement`
+       (`shuyi_ui::frame::console::place` with the frame's scale mode,
+       in physical pixels), as the pointer does;
      - with no caret it only turns the IME on;
      - the decisions are a pure function, tested without a window.
    - On macOS, Linux and the web these calls do nothing in miniquad

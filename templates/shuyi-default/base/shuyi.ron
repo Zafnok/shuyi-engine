@@ -54,8 +54,10 @@
 
     // `cargo shuyi check --target all`: the targets the game ships on (the
     // engine's profiles, `targets/` in its repository), each with its
-    // frame in pixels (48 × 24 cells of 8 × 16), its scale (`integer` or
-    // `fit`) and its smallest text's height (the font's cell).
+    // frame in pixels (48 × 24 cells of 8 × 16), its scale (`integer`, or
+    // `fit` to fill the window, drawn sharp; it matches the game's
+    // `GameSettings::DEFAULT_SCALE`) and its smallest text's height (the
+    // font's cell).
     targets: {
         "desktop": (frame: (384, 384), scale: integer, text_px: 16),
         "web": (frame: (384, 384), scale: integer, text_px: 16),

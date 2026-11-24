@@ -104,6 +104,31 @@ fn the_strength_is_the_blend_times_the_spread() {
 }
 
 #[test]
+fn the_strength_percent_scales_the_tint_up_to_the_ranges_color() {
+    assert_eq!(RangeShow::TINT.strength_percent, 100);
+    let show = |percent| {
+        RangeShow::TINT
+            .spreading()
+            .outlined()
+            .with_strength(percent)
+    };
+    assert_eq!(show(100), RangeShow::TINT.spreading().outlined());
+    let close = |got: f32, want: f32| assert!((got - want).abs() < 1e-6, "{got} ≠ {want}");
+    let half = 1000 + SPREAD_STEP_MS + SPREAD_FADE_MS / 2;
+    close(show(150).strength(&row(5000), (2, 1)), SHOWN_BLEND * 1.5);
+    close(
+        show(150).strength(&row(half), (2, 1)),
+        SHOWN_BLEND * 0.5 * 1.5,
+    );
+    close(show(50).strength(&row(5000), (2, 1)), SHOWN_BLEND * 0.5);
+    assert_eq!(show(0).strength(&row(5000), (2, 1)), 0.0);
+    // Never past the range's color itself.
+    assert_eq!(show(400).strength(&row(5000), (2, 1)), 1.0);
+    // Nothing where the spread hasn't reached, however strong.
+    assert_eq!(show(400).strength(&row(1000), (2, 1)), 0.0);
+}
+
+#[test]
 fn the_shimmer_runs_along_the_diagonal() {
     let show = RangeShow::TINT.with_wave(Wave::Shimmer);
     let blend = |at, ms| show.blend(at, (6, 3), ms);

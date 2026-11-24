@@ -370,7 +370,10 @@ is done.
 
 | Ticket | What |
 | ------ | ---- |
-| 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, and the player's pick |
+| 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, fit drawn sharp |
+| 3240 | The player's pick of the picture: sharp pixels or fill the screen (after 2333) |
+| 3241 | The capture mode compares a filled frame with the raster, in the render jobs (after 2333) |
+| 3242 | `check --target` compares each target's scale with the game's `DEFAULT_SCALE` (after 2333) |
 | 2335 | Rotated sprites: an angle around a pivot and `flip_y`, with an integer `Angle` in `shuyi-core` |
 | 2336 | Drawn shapes for every game: lines, circles and polygons |
 | 2337 | Tints and blend modes on sprites and overlays |
@@ -843,7 +846,7 @@ The parked ones are under *Parked* below.
 | 2375 | The log on screen in debug builds: a `log` channel and the console's newest lines (after 2315 and 2356) |
 | 2377 | The system's reduced-motion preference as the default of the player's motion setting |
 | 2378 | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
-| 3419 | `run`'s answer lists the plays the cue rules dropped (after 2345) |
+| 3419 (done) | `run`'s answer lists the plays the cue rules dropped (after 2345) |
 | 2380 | The profiles screen asks the system keyboard for a name (after 2346) |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
 | 2552 | `shuyi module new`: an outside module's crate, metadata, README and skill (after 2526) |
@@ -916,6 +919,10 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 3303 | Refuse every debug feature in the resolved export build, not the live link alone (done 2026-11-09) |
 | 3301 | A store watch: new Steam and itch.io titles matched by name and picture against the reveal kit, with notice templates (from 2917; after 2816) |
 | 3302 | Closed builds carry a per-recipient overlay in a signed ledger, a deterrent never proof (from 2917; after 2816 and 3300; done 2026-11-14) |
+| 2602 | Host a turn-game preview as bounded actions and pixels, built and tested locally only; no paid hosting until Nick approves its measured cost (unparked 2026-11-23): its worker, a visitor's game in a process of its own (done 2026-11-23) |
+| 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
+| 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609; done 2026-11-23) |
+| 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
 | 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
 
 ## Parked
@@ -1153,7 +1160,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2385–2387, 2774–2775 | Local split screen for two to four players: layouts side by side or stacked and the three- and four-player shapes with the player's pick, a view per seat with its camera, HUD rectangle and spare quarter, a check that views fit the target, a listener per view, an example and a template part | Nick asks (2026-10-24: "These will be parked since they're not needed for Visions of Shuyi") |
 | 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
 | 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
-| 2602–2603, 3083 | A hosted action-to-pixels preview, server-held future content, and marked closed previews with supported capture limits | Nick asks; networking stays parked |
+| 2603, 3083 | Server-held future content, and marked closed previews with supported capture limits (2602 and its split, 2609–2611, the hosted preview itself, were unparked on 2026-11-23 to be built and tested locally only) | Nick asks; networking stays parked |
 | 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |
 | 2118–2121, 2735–2738, 2740 | Roguelikes, a gallery of small games, and hex grids | Nick asks, after the game launches (2026-10-20) |
 | 2909 | Research: video playback | with the visual novels |

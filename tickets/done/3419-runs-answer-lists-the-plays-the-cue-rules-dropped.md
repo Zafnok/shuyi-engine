@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2345"]
 nick_input: none
-completed:
+completed: 2026-11-23
 ---
 
 # 3419 — `run`'s answer lists the plays the cue rules dropped
@@ -82,19 +82,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With the toy game's `click` given `min_gap_ms: 40` (`Toy::audio`
+- [x] With the toy game's `click` given `min_gap_ms: 40` (`Toy::audio`
       is public; `CueRules::DEFAULT.with_min_gap_ms(40)`), `keys f f f`
       on a `Headless` session answers `dropped: [{frame: 5, cue:
       "click", why: "gap"}]`, both clicks under `sounds`, and the JSON's
       `dropped` entry has the keys the schema's `Dropped` lists.
-- [ ] An answer with nothing dropped has no `dropped` field, and reads
+- [x] An answer with nothing dropped has no `dropped` field, and reads
       back as itself.
-- [ ] The fake session's text answer has `sounds: click (frame 1), click
+- [x] The fake session's text answer has `sounds: click (frame 1), click
       (frame 1)` and `dropped: click (frame 1, gap)`.
-- [ ] `contract::VERSION` is one over `main`'s, with the schemas and
+- [x] `contract::VERSION` is one over `main`'s, with the schemas and
       `versions.json` updated, and the schemas' test passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -104,5 +104,42 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `Dropped { frame, cue, why }` beside `Sound` in
+  `crates/cli/src/contract/session.rs`, `#[non_exhaustive]` as
+  `AddedSound` is (an answer's type that may grow, ADR-0039).
+  `Session::dropped_sounds` answers none by default; `Headless` reads
+  `Harness::dropped_sounds`, and `FakeSession` lists two clicks in frame 1
+  and drops the second.
+- `RunOutput::dropped`, left out when empty, filled by `run_output` (so
+  the MCP server's `step` answers it too); `attached.rs`'s `run` answer
+  holds none. The text answer prints `dropped: click (frame 5, gap)` after
+  `sounds:`.
+- Contract version 55; `run.output.json` and `session.step.output.json`
+  regenerated, and the fingerprint in `versions.json`.
+- `docs/contract.md`'s `run` row; the book's sound paragraph
+  (`saves-and-settings.md`) names `run`'s `dropped` beside
+  `h.dropped_sounds()`.
+- Tests: `run_lists_the_plays_the_cue_rules_dropped`
+  (`contract/session/tests.rs`: the toy with a 40 ms gap, `f f f`, the
+  JSON's keys against the schema's, and an answer with none dropped reads
+  back as itself); the fake's text in `run/tests.rs`. The test of
+  `run`'s keys against its schema leaves `dropped` out of the schema's
+  list, as that run drops nothing.
+- **2378's clause:** 2378 is not done, so nothing here; its ticket's
+  clauses now say what holds (the contract part says to add its words to
+  `Dropped::why`'s doc comment and raise the version).
+- Deviation: none.
+
+No break: `RunOutput` is `#[non_exhaustive]`, and `Session` gains a
+method with a default body.
+
+Behaviour: shuyi-cli: `run`'s (and `step`'s) answer has a `dropped` list
+when the cue rules dropped a play, and its text a `dropped:` line;
+contract version 55. Searched the game for `RunOutput`
+(`gh search code --repo Zafnok/visions-of-shuyi RunOutput`): it builds
+none; `dropped_sounds`: no hit.
+
+Book: the book's sound paragraph in `saves-and-settings.md` now names
+`run`'s `dropped`.
+
+Nick input: none.

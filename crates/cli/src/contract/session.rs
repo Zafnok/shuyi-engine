@@ -30,6 +30,7 @@ use schemars::{JsonSchema, Schema};
 use serde::{Deserialize, Serialize};
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_assets::keymap::ActionSet;
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::heap;
@@ -217,6 +218,22 @@ pub struct Sound {
     pub frame: u32,
     /// The cue.
     pub cue: String,
+}
+
+/// A play the cue rules dropped (ADR-0139): it is under the answer's
+/// sounds too, as the game asked for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct Dropped {
+    /// The frame it was asked for in.
+    pub frame: u32,
+    /// The cue.
+    pub cue: String,
+    /// Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`
+    /// after its last play that sounded.
+    pub why: String,
 }
 
 /// A sound the game made at run time
@@ -425,6 +442,15 @@ pub trait Session {
         Vec::new()
     }
 
+    /// Makes this a session a visitor plays (`shuyi preview`): the
+    /// developer's debug tools off from now on, and the actions a visitor
+    /// may press, those of [`actions`](Self::actions) a player can rebind
+    /// (an action no player can rebind is a developer's key). `None`, the
+    /// default: the game offers no preview.
+    fn for_visitor(&mut self) -> Option<Vec<String>> {
+        None
+    }
+
     /// Plays the session record it was made ready for
     /// ([`GameTools::session_from`]) to
     /// its end, or its first frame that plays differently, and says how far
@@ -453,6 +479,12 @@ pub trait Session {
 
     /// The sound cues asked for, in order.
     fn sounds(&self) -> Vec<Sound>;
+
+    /// The plays the cue rules dropped, in order (none by default). Each
+    /// is under [`sounds`](Self::sounds) too.
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        Vec::new()
+    }
 
     /// The sounds the game added at run time and hasn't removed, in cue
     /// order (none by default).
@@ -735,6 +767,16 @@ impl<G: GameData> Session for Headless<G> {
         game.map_or_default(|game| pressable(game.input().keymap()))
     }
 
+    fn for_visitor(&mut self) -> Option<Vec<String>> {
+        if !self.loaded() {
+            return None;
+        }
+        self.harness.ctx_mut().debug_tools = false;
+        let rebindable =
+            |name: &String| G::Action::from_name(name).is_some_and(ActionSet::is_rebindable);
+        Some(self.actions().into_iter().filter(rebindable).collect())
+    }
+
     fn play_record(&mut self) -> Option<Played> {
         let mut played = self.harness.play_all().clone();
         if let Some(errors) = self.harness.app().errors() {
@@ -838,6 +880,18 @@ impl<G: GameData> Session for Headless<G> {
                     })
                 }
                 _ => None,
+            })
+            .collect()
+    }
+
+    fn dropped_sounds(&self) -> Vec<Dropped> {
+        self.harness
+            .dropped_sounds()
+            .into_iter()
+            .map(|(frame, dropped)| Dropped {
+                frame,
+                cue: dropped.cue.clone(),
+                why: dropped.why.word().to_owned(),
             })
             .collect()
     }

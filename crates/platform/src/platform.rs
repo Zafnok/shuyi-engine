@@ -10,6 +10,7 @@ use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageTable;
 pub use shuyi_assets::target::Color;
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::onebit::{Font, Images, PatternMap};
 use shuyi_ui::frame_cap::FrameCap;
@@ -217,6 +218,12 @@ pub struct Frame<'a> {
     /// under the card, in its ink ([`Card::ink`](crate::Card::ink)).
     /// `None` on a game's frame or the errors', and before the load counts.
     pub loading: Option<(u32, u32)>,
+    /// How the frame fills a window (the game's
+    /// [`GameSettings::DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE),
+    /// ADR-0140): a windowed backend places it with
+    /// [`place`](shuyi_ui::frame::console::place); a backend that shows
+    /// its display 1:1 ignores it.
+    pub scale: ScaleMode,
 }
 
 impl<'a> Frame<'a> {
@@ -232,6 +239,7 @@ impl<'a> Frame<'a> {
             frame_cap_serial: 0,
             reload_errors: &[],
             loading: None,
+            scale: ScaleMode::Integer,
         }
     }
 

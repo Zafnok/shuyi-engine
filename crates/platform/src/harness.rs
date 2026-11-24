@@ -38,6 +38,7 @@ use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::{AudioRequest, Gain, MusicClock, MusicCommand};
+use shuyi_ui::frame::console::ScaleMode;
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::input::pad::PadKind;
@@ -804,6 +805,16 @@ impl<G: GameData> Harness<G> {
                 ..
             })
         )
+    }
+
+    /// How the last game frame asked to fill a window ([`Frame::scale`](crate::Frame::scale)):
+    /// the game's [`DEFAULT_SCALE`](shuyi_ui::settings::GameSettings::DEFAULT_SCALE);
+    /// `None` before one.
+    pub fn scale(&self) -> Option<ScaleMode> {
+        match self.platform.last_frame() {
+            Some(Presented::Game { scale, .. }) => Some(*scale),
+            _ => None,
+        }
     }
 
     /// Every music command of the run so far, in order.

@@ -1,6 +1,6 @@
 ---
 name: shuyi-animate
-description: Motion in a game on Shuyi Engine, drawn from the time alone by the skin and never by the rules. It covers what exists today (sprites cut from a sheet, a grid walk shown at the player's speed, text typing out, the hurry clock, idle motion, ease curves and tweens, cinematic pans). Animation clips as data and particles aren't built yet. Use when something on screen should move, blink, walk or type out, or when a test needs any moment of a motion. Not for a stage that moves in real time (shuyi-stage-field) or timed shots set to music (shuyi-cinematic).
+description: Motion in a game on Shuyi Engine, drawn from the time alone by the skin and never by the rules. It covers what exists today (sprites cut from a sheet, a grid walk shown at the player's speed, text typing out, the hurry clock, idle motion, the graphics tier a target shows, ease curves and tweens, cinematic pans). Animation clips as data and particles aren't built yet. Use when something on screen should move, blink, walk or type out, or when a test needs any moment of a motion. Not for a stage that moves in real time (shuyi-stage-field) or timed shots set to music (shuyi-cinematic).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -54,6 +54,13 @@ a worked example. Until then, use what is below.
 - **Idle motion.** `ctx.idle_motion` (`IdleMotion::On` or `Off`) says
   whether a screen left alone may move its decoration. A screen that
   sways or twinkles on its own checks it first.
+- **The graphics tier.** `ctx.platform.graphics` (`GraphicsTier`:
+  `Minimal`, `Reduced` or `Full`, from the target's profile) says how
+  much a game moves there. A moving look (a tile that loops, particles,
+  an effect over the screen) says the lowest tier it plays at, and a
+  skin draws its still below that: `tier.plays(lowest)`. The Playdate is
+  `Reduced`. A debug build shows another tier with
+  `SHUYI_GRAPHICS=reduced`.
 - **Ease curves and tweens.** `shuyi_core::ease`: a value from one
   end to another over a time, along a named curve (below).
 - **Pans.** The cinematic player's `Pan` (a picture moved across the
@@ -113,7 +120,8 @@ let y = POP.value_at(ms_since_the_score_changed);
 3. **Respect the player.** Decoration moves only while
    `ctx.idle_motion` is `On`; a walk's speed is `WalkSpeeds`'; text
    types at the player's text speed. A setting that turns motion off
-   leaves the screen readable, standing still.
+   leaves the screen readable, standing still. Below a look's lowest
+   tier (`ctx.platform.graphics`) the skin draws the look's still.
 4. **Test a moment, not a run.** Give the screen's draw a time and read
    what it built: the view, the cells, or the buffer's `sprites()` for
    a look. `cargo shuyi frame-png` draws a frame after a script with

@@ -9,7 +9,11 @@
 //! private files' repository, keys and secrets (its `--help`; not part
 //! of the library's API: it acts on the developer's GitHub account); `reveal`,
 //! the reveal kit, the evidence a game keeps before its first public
-//! footage (its `--help`; not part of the library's API); `bench`, which plays the game's benchmark scenarios
+//! footage (its `--help`; not part of the library's API); `preview`, the
+//! hosted preview, the game served to visitors as pictures from this
+//! machine (its `--help`; not part of the library's API); `preview-worker`,
+//! one visitor's session of the hosted preview, the game played as pictures
+//! from this machine (not part of the library's API); `bench`, which plays the game's benchmark scenarios
 //! and gates them against its targets' budgets (`docs/targets/README.md`); the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
@@ -48,6 +52,7 @@ pub mod lang_status;
 pub mod mcp;
 pub mod notices;
 pub mod pool;
+mod preview;
 pub mod private_assets;
 pub mod project;
 mod repos;
@@ -100,6 +105,8 @@ pub const COMMANDS: &[&str] = &[
     "reveal",
     "bench",
     "bench-play",
+    "preview",
+    "preview-worker",
     "trim-targets",
     "seed-target",
 ];
@@ -178,6 +185,8 @@ commands:
                                      instructions per frame (Valgrind), the heap's peak and
                                      the package's size against its targets' budgets
   web [--release] [--<feature>...]   build and package the web (WASM) build
+  preview [--port N] [...]           serve the game to visitors as pictures from this
+                                     machine, never its program or files (preview --help)
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
   repos [--dry-run] [--json] [...]   put the game on GitHub: it creates its repository, its
                                      private files' one, their deploy keys and secrets on
@@ -194,6 +203,9 @@ commands:
                                      from this one's, before its first build
                                      (seed-target --help)
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
+  preview-worker [--frames N] [--scale N] [game options]
+                                     one visitor's game of the hosted preview: each action
+                                     on stdin, a JSON line, answered with the frame after it
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
@@ -270,6 +282,18 @@ fn mcp_host(project: &Project, args: &[String], game: Option<&dyn GameTools>) ->
         }
         // It says so if the project names no game tool program.
         None => game::run_in_game_program(project, "mcp-host", args),
+    }
+}
+
+/// `preview-worker` on `project`: served by the game's tools if they are
+/// at hand, else in the game's tool program.
+fn preview_worker(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
+    match game {
+        Some(game) => {
+            let stdin = std::io::stdin();
+            preview::worker::serve(game, args, stdin.lock(), std::io::stdout().lock())
+        }
+        None => game::run_in_game_program(project, "preview-worker", args),
     }
 }
 
@@ -374,6 +398,11 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             None => Ok(game::run_in_game_program(project, name, args)),
         },
         "web" => web(project, args),
+        "preview" => match game {
+            Some(game) => Ok(preview::main(project, args, game)),
+            None => Ok(game::run_in_game_program(project, name, args)),
+        },
+        "preview-worker" => Ok(preview_worker(project, args, game)),
         "private-assets" => private_assets(project, args),
         "repos" => Ok(repos::main(project, args)),
         other => Ok(other_command(project, other, args)),

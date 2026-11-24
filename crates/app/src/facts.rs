@@ -9,10 +9,14 @@
 //! window reach the game on `desktop` and `web`, where miniquad reads a
 //! drop ([`drops`](crate::drops)), and not on the Steam Deck, whose game
 //! mode has no desktop to drag a file from.
+//!
+//! A debug build shows another graphics tier than its target's when
+//! `SHUYI_GRAPHICS` names one ([`preview_graphics`]), so a lesser
+//! target's stills can be seen on the desktop.
 
 use shuyi_assets::target::TargetProfile;
 use shuyi_platform::{Loader, Start};
-use shuyi_ui::{FileDrops, GameData, PlatformFacts};
+use shuyi_ui::{FileDrops, GameData, GraphicsTier, PlatformFacts};
 
 /// The engine's profiles of the targets this backend builds, by id.
 const PROFILES: [(&str, &str); 3] = [
@@ -83,6 +87,38 @@ pub(crate) fn start_as<G: GameData>(id: &str, mut start: Start<G>) -> (Start<G>,
     }
 }
 
+/// `facts` at the graphics tier `asked` names (the value of
+/// [`GRAPHICS_VAR`](shuyi_platform::GRAPHICS_VAR), in a debug build), and
+/// a warning when it names none: then the facts stay their target's.
+pub(crate) fn preview_graphics(
+    facts: PlatformFacts,
+    asked: Option<&str>,
+) -> (PlatformFacts, Option<String>) {
+    let Some(asked) = asked else {
+        return (facts, None);
+    };
+    if let Some(tier) = GraphicsTier::from_name(asked) {
+        return (facts.with_graphics(tier), None);
+    }
+    let known: Vec<&str> = GraphicsTier::ALL.iter().map(|t| t.name()).collect();
+    let warning = format!(
+        "{}: no graphics tier \"{asked}\"; the tiers are {}, and the target's, {}, stays",
+        shuyi_platform::GRAPHICS_VAR,
+        known.join(", "),
+        facts.graphics
+    );
+    (facts, Some(warning))
+}
+
+/// What [`preview_graphics`] reads: the variable, in a build with the
+/// debug tools alone.
+pub(crate) fn asked_graphics() -> Option<String> {
+    if !shuyi_ui::DEBUG_TOOLS {
+        return None;
+    }
+    std::env::var(shuyi_platform::GRAPHICS_VAR).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -125,6 +161,31 @@ mod tests {
         let error = facts_for("nowhere").unwrap_err();
         assert!(error.contains("\"nowhere\""), "{error}");
         assert!(error.contains("desktop, web, steam-deck"), "{error}");
+    }
+
+    #[test]
+    fn a_debug_build_previews_the_graphics_tier_it_is_asked_for() {
+        let desktop = facts_for("desktop").unwrap();
+        assert_eq!(
+            preview_graphics(desktop.clone(), None),
+            (desktop.clone(), None)
+        );
+        let (reduced, warning) = preview_graphics(desktop.clone(), Some("reduced"));
+        assert_eq!(
+            reduced,
+            desktop.clone().with_graphics(GraphicsTier::Reduced)
+        );
+        assert_eq!(warning, None);
+        let (minimal, _) = preview_graphics(desktop.clone(), Some("Minimal"));
+        assert_eq!(minimal.graphics, GraphicsTier::Minimal);
+        let (same, warning) = preview_graphics(desktop.clone(), Some("low"));
+        assert_eq!(same, desktop);
+        assert_eq!(
+            warning.as_deref(),
+            Some(
+                "SHUYI_GRAPHICS: no graphics tier \"low\"; the tiers are Minimal, Reduced, Full, and the target's, Full, stays"
+            )
+        );
     }
 
     static FONT: FontAtlasDef = FontAtlasDef::new(0, 0, BTreeMap::new(), 0);
