@@ -630,7 +630,7 @@ load if they're wrong.
 Behaviour: shuyi-app: `run_game` plays the sounds a short-path game's
 `audio.ron` names, from its files (they were silent).
 
-Size: 2,202 counted lines, the ticket's own split point (after step 6):
+Size: 2,276 counted lines, the ticket's own split point (after step 6):
 the format with its renderer, checks, formats, tests, ADR and docs is
 most of it and is one format (half of it would be a type no file reads),
 and the templates' menu sounds are its first use; the rest is 2277.
