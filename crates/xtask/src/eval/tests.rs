@@ -492,7 +492,7 @@ fn an_overlay_that_places_the_engines_crates_is_refused_with_exit_code_2() {
 }
 
 #[test]
-fn the_tasks_here_read_and_all_grades_box_pushing_and_lists_the_waiting() {
+fn the_tasks_here_read_and_all_grades_box_pushing_and_tic_tac_toe_and_lists_the_waiting() {
     let tasks = reference::tasks(&root()).unwrap_or_else(|e| panic!("{e:?}"));
     for task in &tasks {
         assert_eq!(task.time_box_minutes, 60, "{}", task.id);
@@ -516,9 +516,9 @@ fn the_tasks_here_read_and_all_grades_box_pushing_and_lists_the_waiting() {
     let graded: Vec<&str> = (reference::pick(&tasks, None).unwrap().iter())
         .map(|t| t.id.as_str())
         .collect();
-    assert_eq!(graded, ["box-pushing"]);
+    assert_eq!(graded, ["box-pushing", "tic-tac-toe"]);
     let waiting = reference::waiting(&tasks);
-    for id in ["platformer", "snake", "tic-tac-toe"] {
+    for id in ["platformer", "snake"] {
         assert!(waiting.iter().any(|w| w.starts_with(id)), "{waiting:?}");
     }
 }

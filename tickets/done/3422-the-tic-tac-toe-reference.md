@@ -98,7 +98,10 @@ None.
   template's `turn` is a number and it has no `winner`), exit 1.
 - `evals/tasks/tic-tac-toe.ron` now names its reference and waits for
   nothing. The `eval` job grades the plain template too, with the same
-  `jq` checks as box-pushing's; `evals/README.md` says so.
+  `jq` checks as box-pushing's; `evals/README.md` says so. xtask's test
+  of the tasks here (`crates/xtask/src/eval/tests.rs`) now expects
+  `--all` to grade tic-tac-toe too, and only platformer and snake to
+  wait.
 - Docs: `evals/README.md`'s *Grading* names the new CI check; no public
   API, contract or format changed, so nothing else.
 - No break.
