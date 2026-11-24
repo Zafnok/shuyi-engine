@@ -152,6 +152,48 @@ fn each_number_out_of_range_is_an_error_on_its_fields_line() {
 }
 
 #[test]
+fn each_range_holds_its_ends() {
+    let mut def = SfxDef::new(Wave::Square { duty: 1 }, MIN_HZ, 1, 0, 0);
+    def.to_hz = MAX_HZ;
+    assert_eq!(problems(&def), []);
+    def.wave = Wave::Square { duty: 99 };
+    def.hz = MIN_HZ - 1;
+    assert_eq!(problems(&def), [("hz", "hz 19 is under 20".to_owned())]);
+}
+
+#[test]
+fn the_waves_have_their_values_at_each_point_of_a_cycle() {
+    let quarter = 1_u32 << 30;
+    // A triangle: low at the start and the end, high at half, 0 between.
+    assert_eq!(triangle(0), -32_767);
+    assert_eq!(triangle(quarter), 0);
+    assert_eq!(triangle(2 * quarter), 32_767);
+    assert_eq!(triangle(3 * quarter), 0);
+    assert_eq!(triangle(u32::MAX), -32_766);
+    assert_eq!(triangle(quarter / 2), -16_383);
+    assert_eq!(triangle(5 * (quarter / 2)), 16_384);
+    // A square of duty 25 is high exactly for its first quarter.
+    assert_eq!(square(quarter - 1, 25), 32_767);
+    assert_eq!(square(quarter, 25), -32_767);
+    assert_eq!(square(0, 1), 32_767);
+    assert_eq!(square(u32::MAX, 99), -32_767);
+    // The saw rises from low to high.
+    assert_eq!(
+        (ramp(0), ramp(1 << 31), ramp(u32::MAX)),
+        (-32_767, 0, 32_766)
+    );
+    // The vibrato's triangle: 0, up to the sample rate, 0, down, 0, at
+    // 1 hz over a second.
+    let at = |i: i64| wobble(i, 1);
+    assert_eq!(
+        [at(0), at(11_025), at(22_050), at(33_075), at(44_100)],
+        [0, 44_100, 0, -44_100, 0]
+    );
+    assert_eq!((at(5_512), at(27_562)), (22_048, -22_048));
+    assert_eq!(wobble(11_025, 2), 0);
+}
+
+#[test]
 fn a_fields_line_is_the_field_not_a_longer_name() {
     let source = "(\n  to_hz: 1,\n  hz: 2,\n)";
     assert_eq!(field_line(source, "hz"), Some(3));
@@ -319,6 +361,10 @@ fn a_definition_out_of_range_renders_bounded() {
     let found = problems(&wild);
     assert!(!found.is_empty(), "{found:?}");
     assert_eq!(render(&wild).len(), 220_500);
+    // The lengths are cut to the longest in their order: the fade last.
+    let mut long = SfxDef::new(Wave::Sine, 440, 3000, 5000, 100);
+    long.attack_ms = 1000;
+    assert_eq!(render(&long).len(), 220_500);
     let silent = SfxDef::new(Wave::Sine, 440, 0, 0, 100);
     let none = render(&silent);
     assert!(none.is_empty(), "{none:?}");
@@ -357,6 +403,20 @@ fn another_seed_moves_a_preset_within_its_ranges_the_same_each_time() {
         }
         assert_ne!(preset(name, 1), preset(name, 2), "{name}");
     }
+    // A step near the end stays inside a hold that shrinks.
+    let mut late = SfxDef::new(Wave::Sine, 440, 100, 0, 50);
+    late.step = Some(Step {
+        at_ms: 99,
+        percent: 150,
+    });
+    let mut moved = 0;
+    for seed in 1..50 {
+        let mut def = late.clone();
+        vary(&mut def, seed);
+        assert_eq!(problems(&def), [], "{seed}: {def:?}");
+        moved += usize::from(def.step.unwrap().at_ms < 99);
+    }
+    assert!(moved > 0);
     // Near the top, a step's preset keeps its pitch under the highest.
     let mut high = preset("coin", 0).unwrap();
     high.hz = 9000;
@@ -474,7 +534,17 @@ fn the_two_formats_read_a_file_and_the_sound_one_only_a_sound_effects_name() {
         .unwrap_err();
     assert_eq!(broken[0].file, "a.sfx.ron");
     // Through the registry, by its extension.
+    // Both read RON text, up to the text formats' limit.
+    assert_eq!(
+        (SfxDefRon.extensions(), SfxRon.extensions()),
+        (&["ron"][..], &["ron"][..])
+    );
+    assert_eq!(
+        (SfxDefRon.max_bytes(), SfxRon.max_bytes()),
+        (TEXT_MAX_BYTES, TEXT_MAX_BYTES)
+    );
     let formats = crate::format::Formats::standard();
+    assert_eq!(formats.extensions::<SfxDef>(), ["ron"]);
     let path = AssetPath::new("sfx/a.sfx.ron");
     assert_eq!(
         formats.decode::<Sound>(&path, coin, &cx),

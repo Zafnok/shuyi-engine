@@ -366,12 +366,17 @@ fn ramp(phase: u32) -> i64 {
 /// A triangle at `phase`: from -[`FULL`] at 0 up to [`FULL`] at half the
 /// cycle, and down again.
 fn triangle(phase: u32) -> i64 {
-    let at = i64::from(phase);
     let half = i64::from(HALF);
-    if at < half {
-        -FULL + 2 * FULL * at / half
+    FULL - 2 * FULL * (i64::from(phase) - half).abs() / half
+}
+
+/// A square at `phase`: [`FULL`] for the first `duty` percent of the
+/// cycle, -[`FULL`] for the rest.
+fn square(phase: u32, duty: u8) -> i64 {
+    if u64::from(phase) * 100 < u64::from(duty) << 32 {
+        FULL
     } else {
-        FULL - 2 * FULL * (at - half) / half
+        -FULL
     }
 }
 
@@ -399,14 +404,10 @@ fn noise(rng: &mut SimRng) -> i64 {
 /// [`SAMPLE_RATE`]: `hz` times a second, starting at 0 and rising.
 fn wobble(i: i64, hz: u8) -> i64 {
     let rate = i64::from(SAMPLE_RATE);
-    let at = 4 * ((i * i64::from(hz)) % rate);
-    if at < rate {
-        at
-    } else if at < 3 * rate {
-        2 * rate - at
-    } else {
-        at - 4 * rate
-    }
+    // Four times the place in the cycle, a quarter cycle ahead: a
+    // triangle of it starts at 0 and rises.
+    let at = (4 * ((i * i64::from(hz)) % rate) + 3 * rate) % (4 * rate);
+    (at - 2 * rate).abs() - rate
 }
 
 /// `def` with every number in its range ([`problems`]), so a render of
@@ -468,10 +469,7 @@ pub fn render(def: &SfxDef) -> Vec<i16> {
         }
         let pitch = pitch.clamp(0, MAX_PITCH);
         let wave = match def.wave {
-            Wave::Square { duty } => {
-                let high = u64::from(phase) * 100 < u64::from(duty) << 32;
-                if high { FULL } else { -FULL }
-            }
+            Wave::Square { duty } => square(phase, duty),
             Wave::Triangle => triangle(phase.wrapping_add(QUARTER)),
             Wave::Saw => ramp(phase.wrapping_add(HALF)),
             Wave::Sine => sine(phase),
