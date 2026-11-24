@@ -313,8 +313,8 @@ Not checked here:
   workflow run long-run.yml` after the merge, and its summary shows the
   table; until it has, that box stays unticked.
 
-Size: 1,853 counted lines, against the 800 estimated: the tests are
-457 and the doc comments of `long.rs` most of its 581. Not split, as no
+Size: 1,964 counted lines, against the 800 estimated: the tests are
+547 and the doc comments of `long.rs` most of its 581. Not split, as no
 half lands alone under 1,500: the weekly workflow, Hello, Grid's file
 and the docs are about 400 lines and need the command, and the command's
 rules are tested by the toy's fixtures and the Harness's lean mode they
