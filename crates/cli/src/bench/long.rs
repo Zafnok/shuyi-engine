@@ -1,7 +1,7 @@
 //! `bench --long`: plays a game's long scenarios for many frames and
 //! checks that its memory and the sounds it keeps alive stay flat, and,
 //! with `--twice`, that a second run hashes every sampled frame the same
-//! (ticket 3509, ADR-0145).
+//! (ticket 3509, ADR-0146).
 //!
 //! A **long scenario** is a `*.long.ron` file anywhere in the game's
 //! folder, found as `bench` finds its scenarios ([`LongScenario`]). Its

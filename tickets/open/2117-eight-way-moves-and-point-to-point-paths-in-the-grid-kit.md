@@ -205,9 +205,11 @@ None.
   ARM64. **From 2116 (done):** its `determinism` job also runs
   `shuyi-core`'s tests on wasm32, so the test runs there too, with
   nothing more to add.
-- **Either order with 2004** (guides): if 2004 is done, add a paragraph
-  to `docs/guides/top-down-grid.md`: four-way by default, eight-way with
-  `Topology::Square8`, and `find_path`. If not, 2004 writes it.
+- **From 2004 (done)** (guides): add a paragraph to
+  `docs/guides/top-down-grid.md`'s *What it uses*: four-way by default,
+  eight-way with `Topology::Square8`, and `find_path`. Its Rust block is
+  the `shuyi` crate's doc test: keep it passing, and drop `2117` from its
+  `Tickets:` line.
 - **Either order with 2709** (parked, RTS paths): if 2709 is done, make
   `shuyi_rts::paths` take its eight directions, step costs, corner rule
   and octile heuristic from `shuyi_core` (`Dir8`,
