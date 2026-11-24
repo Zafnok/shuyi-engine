@@ -1,6 +1,6 @@
 name: Long run
 
-# The weekly long run (ticket 3509, ADR-0145): Hello, Grid's long
+# The weekly long run (ticket 3509, ADR-0146): Hello, Grid's long
 # scenarios (`examples/hello-grid/long/*.long.ron`) play headless for
 # hundreds of thousands of frames, twice, each in a process of its own.
 # A run fails when the live heap or the sounds alive grow past the

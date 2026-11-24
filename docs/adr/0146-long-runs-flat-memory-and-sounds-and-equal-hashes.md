@@ -1,4 +1,4 @@
-# ADR-0145: Long runs: the heap and the sounds alive stay flat over hundreds of thousands of frames, and a second run hashes the same
+# ADR-0146: Long runs: the heap and the sounds alive stay flat over hundreds of thousands of frames, and a second run hashes the same
 
 - **Status:** Accepted
 - **Date:** 2026-11-24

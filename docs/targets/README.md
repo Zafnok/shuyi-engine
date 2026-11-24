@@ -118,7 +118,7 @@ cargo shuyi bench --long --scenario stage-loop
 
 A slow leak shows only over hours: a cache that grows with each map, a
 sound never stopped, a log that keeps every line. `--long` plays the
-game's long scenarios ([ADR-0145](../adr/0145-long-runs-flat-memory-and-sounds-and-equal-hashes.md)),
+game's long scenarios ([ADR-0146](../adr/0146-long-runs-flat-memory-and-sounds-and-equal-hashes.md)),
 in the same `shuyi-bench` profile and never under Valgrind, so it runs on
 Windows too. Every `sample_every` frames it reads the live heap, each
 memory tag's live bytes, the sounds alive and the frame's hash. After

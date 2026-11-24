@@ -264,7 +264,7 @@ What was done:
   `workflow_dispatch`, `timeout-minutes: 90`, `contents: read` (and
   `issues: write` for its job, as `security.yml`); zizmor finds nothing
   in it, and `ci.yml` keeps main's 6 low findings, none new.
-- ADR-0145, which extends ADR-0081; `docs/targets/README.md` (*Long
+- ADR-0146, which extends ADR-0081; `docs/targets/README.md` (*Long
   runs*, *In CI*); the book's *Size and speed*; the CLI's help.
 
 Deviations:
@@ -272,7 +272,7 @@ Deviations:
 - **A new ADR, not a section of ADR-0081.** The `write-adr` skill and
   `AGENTS.md` say an accepted ADR's decision is never rewritten: an
   extension is a new ADR with an `Extends:` line, and the old one's
-  `Status:` names it. ADR-0145 does that.
+  `Status:` names it. ADR-0146 does that.
 - **The public API grows by four, not one.** `Session` is a public trait
   (`shuyi_cli::contract::session`), so the ticket's step 2 adds three
   defaulted methods to the listing beside `Harness::keep_logs`. All are
