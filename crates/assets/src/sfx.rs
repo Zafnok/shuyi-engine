@@ -406,7 +406,7 @@ fn wobble(i: i64, hz: u8) -> i64 {
     let rate = i64::from(SAMPLE_RATE);
     // Four times the place in the cycle, a quarter cycle ahead: a
     // triangle of it starts at 0 and rises.
-    let at = (4 * ((i * i64::from(hz)) % rate) + 3 * rate) % (4 * rate);
+    let at = (4 * i * i64::from(hz) + 3 * rate) % (4 * rate);
     (at - 2 * rate).abs() - rate
 }
 
