@@ -181,7 +181,10 @@ wins in 50"`, `{wins}` is filled in with its value, printed if the test fails.
 In a game whose tools give a playtest (a `grid` game's do), `cargo shuyi playtest --tries 20`
 plays each of its named bots 20 times on every core: how each try ended, a record of each
 with `--json` for `replay`, and, when the game gives checks, whether each bot wins as often
-as the game wants. A `grid` game starts with one bot and no checks, a plain bot run.
+as the game wants. Twenty or a hundred tries are a sample, so each share comes with its 95%
+interval (`band 50–75% · 95% 40–58%` for 49 wins in 100): a bot is marked too hard or too easy
+only when the whole interval misses the band, and `~ maybe` when the share misses but the
+interval still reaches it. A `grid` game starts with one bot and no checks, a plain bot run.
 
 ## Records and replays
 
