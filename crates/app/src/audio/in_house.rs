@@ -332,6 +332,10 @@ impl AudioSide {
 /// What a track's feeding went through (ticket 3320): its file's name, the frames a
 /// mix waited on its ring, and the fewest frames the ring held when the worker came
 /// round, its margin, if it came round after the first fill.
+#[cfg_attr(
+    not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+    allow(dead_code)
+)]
 type TrackStats = (String, u64, Option<usize>);
 
 /// A worker's decoding of one track into its ring.
@@ -340,6 +344,10 @@ struct Feeding {
     source: Box<dyn Source + Send>,
     stop: Arc<AtomicBool>,
     /// The track's file's name.
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
     track: Arc<str>,
     /// The frames the ring holds when it is full.
     capacity: usize,
@@ -393,6 +401,10 @@ impl Feeding {
         }
     }
 
+    #[cfg_attr(
+        not(any(test, all(feature = "sound-probe", not(target_arch = "wasm32")))),
+        allow(dead_code)
+    )]
     fn stats(&self) -> TrackStats {
         let track = self.track.to_string();
         (track, self.feeder.underrun_frames(), self.lowest)
@@ -404,7 +416,12 @@ impl Feeding {
 struct Feedings {
     list: Arc<Mutex<Vec<Feeding>>>,
     problems: Arc<Mutex<Vec<String>>>,
-    /// Whether the worker's thread runs above the game's (ticket 3320).
+    /// Whether the worker's thread runs above the game's (ticket 3320): only the
+    /// probe asks.
+    #[cfg_attr(
+        not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
+        allow(dead_code)
+    )]
     raised: Arc<AtomicBool>,
     /// What the feedings done with went through, until the probe asks.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
