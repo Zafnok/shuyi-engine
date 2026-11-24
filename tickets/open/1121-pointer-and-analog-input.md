@@ -38,11 +38,10 @@ None. Our game doesn't use these unless a later ticket says so.
   the mouse buttons other than the primary into `RawInputEvent`s; the
   mouse's place, its primary button, the wheel and touches already
   arrive through 2405's events.
-- **Either order with 2402:** if 2402 is done, its `in-house-pads`
-  source fills `PadState`s too, from `StandardPad`'s `i16` sticks:
-  take the axes from the `PadState`s, not from gilrs alone, so both
-  native sources give the same `RawInputEvent`s; if not, nothing to do
-  (2402 keeps these events unchanged).
+- **Either order with 2402:** if 2402 is done, the native source is
+  SDL3's (ADR-0146): take the axes from its `PadState`s, as from gilrs's
+  if not, so either source gives the same `RawInputEvent`s (2402 keeps
+  these events unchanged).
 - `shuyi-ui::input` gets four things:
   - `Axis` actions (two-axis and one-axis) bound to sticks or to keys
     (keys give full deflection);

@@ -1,6 +1,6 @@
 # ADR-0021: The platform layer in-house: written from specifications, in crates of their own, with wgpu and winit for graphics and the window
 
-- **Status:** Accepted
+- **Status:** Accepted; §1's sound choice resolved by ADR-0066, its controllers choice resolved by ADR-0146, which also narrows §4's `shuyi-pads` and §6
 - **Date:** 2026-10-19
 - **Related tickets:** 2902, 2903 (research first); 2210–2215, 2402, 2403,
   3030–3034, 2008

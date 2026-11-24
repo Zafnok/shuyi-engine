@@ -88,7 +88,8 @@ What is planned:
   1120), which 2362 already points at.
 - 1144 leaves Remote Play Together out as needing no code. That holds
   only while every pad drives one player (an edit to 1144 says so).
-- 2402: the in-house pads crate keeps "a stable id while plugged in".
+- 2402: SDL3's source (ADR-0146) keeps an id stable while the pad stays
+  plugged in, and gives a pad plugged back a new one.
 
 Turn-based hotseat already works: one shared input, and `TurnRules`
 sides (ADR-0006: Nick's first reaction was "hotseat yes"). It stays the
@@ -369,8 +370,8 @@ online)?
   and camera feel per view (2362);
 - online play (1140–1147): Remote Play Together needs nothing beyond
   this;
-- our own pad code and its stable ids (2402, parked): gilrs and the
-  browser give stable ids today;
+- the SDL3 pad source and its ids (2402, parked): gilrs and the browser
+  give stable ids today, and SDL3 does too while a pad stays plugged in;
 - a second physical screen (3023): a surface is not a seat;
 - each seat's own hold or toggle and timings: every seat plays with
   the current profile's (2404, the clause above), as with its bindings;
