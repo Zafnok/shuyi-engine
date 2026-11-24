@@ -181,7 +181,7 @@ None. Bands, floors and what a miss does stay the game's data (game
   Wilson formula outside the repository.
 - The contract's schemas changed (`found.Rate.interval`, the new
   verdicts, `Check::Gap` and `Found::Gap` in `playtest` and
-  `autobalance` answers): contract version 56.
+  `autobalance` answers): contract version 57.
 - Docs: the module docs of `bots/playtest` (the interval, the gap, the
   example file's `gaps`) and `targets.rs`;
   `skills/shuyi-balance-bots/SKILL.md` (the interval, the maybe marks,
@@ -280,7 +280,7 @@ find: ["Targets { success"]
 
 Behaviour: shuyi-core, shuyi-cli: a rate out of its band whose 95% interval still reaches the band is `MaybeBelow` or `MaybeAbove` (`~ maybe too hard`, `~ maybe too easy`), no longer `Below` or `Above`: 59/100 against a band from 60 was ✗ too hard and is now a maybe. The table's rate line reads `band 60–85% · 95% 31–95%   ✓` (no interval with 0 tries). `blocked`, and so whether `playtest` fails, is unchanged: the floor is judged on the share.
 
-Behaviour: shuyi-cli: the contract is version 56: `playtest` and `autobalance` answers carry `found.Rate.interval` (`[lo, hi]`), the two new verdicts, and a plan's `Gap` checks with `found.Gap`. A history line kept before reads as before, with no interval.
+Behaviour: shuyi-cli: the contract is version 57: `playtest` and `autobalance` answers carry `found.Rate.interval` (`[lo, hi]`), the two new verdicts, and a plan's `Gap` checks with `found.Gap`. A history line kept before reads as before, with no interval.
 
 Behaviour: shuyi-core: a targets file with a `gaps` field reads now (it was refused as an unknown field). `Targets::checks` gives the same checks for a file without one.
 
