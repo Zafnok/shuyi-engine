@@ -1,10 +1,13 @@
 //! The server over workers on threads, each running the toy in its lobby
 //! (Options, Key bindings, Talk, Quit), or stalled: actions allowed and
 //! refused, the sessions at once, a deadline, closing, and the requests
-//! nothing answers, over a real connection too.
+//! nothing answers, over a real connection too. Its limits are in
+//! [`limits`].
+
+mod limits;
 
 use std::io::{BufReader, Read, Write};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 
 use serde_json::Value;
 
@@ -55,14 +58,23 @@ fn stalled(starts: bool) -> Launch {
     })
 }
 
-/// The answer to `method` on `path` with `body`.
-fn asked(server: &Server, method: &str, path: &str, body: &str) -> Answer {
+/// This test's address, and another's.
+const HERE: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+const THERE: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2));
+
+/// The answer to `method` on `path` with `body`, from `address`.
+fn asked_from(server: &Server, address: IpAddr, method: &str, path: &str, body: &str) -> Answer {
     let request = Request {
         method: method.to_owned(),
         path: path.to_owned(),
         body: body.as_bytes().to_vec(),
     };
-    server.answer(&request)
+    server.answer(&request, address)
+}
+
+/// The answer to `method` on `path` with `body`, from [`HERE`].
+fn asked(server: &Server, method: &str, path: &str, body: &str) -> Answer {
+    asked_from(server, HERE, method, path, body)
 }
 
 /// The status and the JSON body of `method` on `path` with `body`.
@@ -72,11 +84,17 @@ fn ask(server: &Server, method: &str, path: &str, body: &str) -> (u16, Value) {
     (answer.status, body)
 }
 
-/// A new session's path.
-fn start(server: &Server) -> String {
-    let (status, body) = ask(server, "POST", "/session", "");
-    assert_eq!(status, 200, "{body}");
+/// A new session's path, from `address`.
+fn start_from(server: &Server, address: IpAddr) -> String {
+    let answer = asked_from(server, address, "POST", "/session", "");
+    let body: Value = serde_json::from_slice(&answer.body).unwrap();
+    assert_eq!(answer.status, 200, "{body}");
     format!("/session/{}", body["session"].as_str().unwrap())
+}
+
+/// A new session's path, from [`HERE`].
+fn start(server: &Server) -> String {
+    start_from(server, HERE)
 }
 
 /// The status and body of `action` pressed in the session at `path`.
@@ -130,7 +148,7 @@ fn a_session_starts_on_a_frame_and_an_allowed_action_answers_the_next() {
         assert_eq!(ask(&server, "POST", &path, body).0, 400, "{body}");
     }
     // An action while one runs is refused.
-    let session = Arc::clone(&lock(&server.table).live[id]);
+    let session = Arc::clone(&lock(&server.table).live[id].live);
     let held = lock(&session);
     let busy = asked(&server, "POST", &path, "{\"action\": \"CursorDown\"}");
     assert_eq!(busy.status, 409);
@@ -168,9 +186,9 @@ fn the_sessions_at_once_are_bounded_those_starting_among_them() {
     assert_eq!(header(&refused, "Retry-After"), Some("30"));
     // Ending one makes room, but not while another is starting.
     assert_eq!(ask(&server, "DELETE", &first, "").0, 204);
-    lock(&server.table).starting = 1;
+    lock(&server.table).starting.push(THERE);
     assert_eq!(ask(&server, "POST", "/session", "").0, 503);
-    lock(&server.table).starting = 0;
+    lock(&server.table).starting.clear();
     start(&server);
     assert_eq!(open(&server), 2);
 }
@@ -191,7 +209,7 @@ fn a_worker_that_doesnt_answer_in_time_is_ended_with_its_session() {
     // One that doesn't start in time never is a session.
     let server = Server::new(limits, stalled(false));
     assert_eq!(ask(&server, "POST", "/session", "").0, 500);
-    assert_eq!((open(&server), lock(&server.table).starting), (0, 0));
+    assert_eq!((open(&server), lock(&server.table).starting.len()), (0, 0));
 }
 
 #[test]

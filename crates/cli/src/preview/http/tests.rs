@@ -104,5 +104,6 @@ fn an_answer_says_its_length_and_never_lets_a_page_cache_or_sniff_it() {
     let text = String::from_utf8(empty.to_bytes()).unwrap();
     assert!(text.starts_with("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n"));
     assert!(!text.contains("\r\nContent-Type:"), "{text}");
+    assert_eq!(reason(429), "Too Many Requests");
     assert_eq!(reason(500), "Internal Server Error");
 }

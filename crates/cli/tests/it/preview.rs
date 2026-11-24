@@ -127,8 +127,16 @@ fn a_visitor_plays_hello_grid_over_http_as_pictures_and_text() {
         .current_dir(&dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap_or_else(|e| panic!("spawn shuyi preview: {e}"));
+    // Its log, and its workers', read as it goes.
+    let mut stderr = server.stderr.take().unwrap();
+    let log = std::thread::spawn(move || {
+        let mut log = String::new();
+        let _ = stderr.read_to_string(&mut log);
+        log
+    });
     let mut lines = BufReader::new(server.stdout.take().unwrap()).lines();
     let address = loop {
         let line = lines.next().expect("the server's address").unwrap();
@@ -180,4 +188,17 @@ fn a_visitor_plays_hello_grid_over_http_as_pictures_and_text() {
     // Its standard input closed, the server ends every worker and stops.
     drop(server.stdin.take());
     assert!(server.wait().unwrap().success());
+    // Its log says why each session ended and what it spent, and whether
+    // a worker's memory is kept here.
+    let log = log.join().unwrap();
+    let ended = "preview: a session ended (ended by its visitor): 4 actions, ";
+    assert!(log.contains(ended), "{log}");
+    let unkept = "--memory isn't kept here";
+    if cfg!(target_os = "linux") {
+        assert!(log.contains(" held at most; 0 open"), "{log}");
+        assert!(!log.contains(unkept), "{log}");
+    } else {
+        assert!(log.contains("its memory unread; 0 open"), "{log}");
+        assert!(log.contains(unkept), "{log}");
+    }
 }

@@ -97,7 +97,7 @@ impl Answer {
 
 /// The statuses the preview answers, each with its reason phrase; any
 /// other is a server's error, 500.
-const REASONS: [(u16, &str); 12] = [
+const REASONS: [(u16, &str); 13] = [
     (200, "OK"),
     (204, "No Content"),
     (400, "Bad Request"),
@@ -106,6 +106,7 @@ const REASONS: [(u16, &str); 12] = [
     (408, "Request Timeout"),
     (409, "Conflict"),
     (413, "Content Too Large"),
+    (429, "Too Many Requests"),
     (431, "Request Header Fields Too Large"),
     (501, "Not Implemented"),
     (503, "Service Unavailable"),
