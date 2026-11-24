@@ -34,7 +34,7 @@ from that page sent it through `nusb`, and gilrs then read all 17 buttons,
 the sticks and the triggers. SDL3 still didn't list the pad with
 `SDL_JOYSTICK_HIDAPI_SWITCH2=0`.
 
-[ADR-0146](../../docs/adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+[ADR-0147](../../docs/adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
 §3 says how: a small `shuyi-pads` crate. This ticket was first "Linux and
 macOS through our own code, and gilrs removed"; 2903 rewrote it, and
 2402 now removes gilrs.
@@ -49,7 +49,7 @@ working after being unplugged and plugged back.
 
 **In:**
 - **The crate** `crates/pads` (`shuyi-pads`), MIT OR Apache-2.0, no
-  `shuyi-*` dependency, `unsafe_code = "forbid"` (ADR-0146 §3), a line in
+  `shuyi-*` dependency, `unsafe_code = "forbid"` (ADR-0147 §3), a line in
   `tools/layers.ron`:
   - `nusb` (Apache-2.0 OR MIT; re-check on the day), default features
     off;

@@ -23,7 +23,7 @@ it.
 **Nick chose SDL3 with a fix for Switch** (2026-11-24). The fix was then
 found and tried: one start-up command that switchbrew.org's protocol
 page documents, sent by our own code, made the Switch 2 pad report every
-button. [ADR-0146](../adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+button. [ADR-0147](../adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
 records the plan.
 
 ## What the engine needs from pads
@@ -42,7 +42,7 @@ open tickets that name pads. **R** is needed now or by a planned ticket;
 | R: sticks and triggers as values | 1121 (parked) |
 | R: two-motor rumble on desktop; the browser's `vibrationActuator` on the web | 2408 (parked) |
 | R: never block or panic in the frame | the frame reads pads every frame on the main thread |
-| R: the web keeps macroquad's loader, so no `wasm-bindgen` | `AGENTS.md`, game ADR-0034; `crates/cli/web/gamepad.js` |
+| R: the web reads the browser's Gamepad API itself: `gamepad.js` through macroquad's loader today, `web-sys` once the web build moves to `wasm-bindgen` (3331, ADR-0136) | `crates/cli/web/gamepad.js`, `crates/app/src/pads/web.rs` |
 | L: the logo button | not read today; a game's pause menu, Steam Deck (3012 says never read the Steam button) |
 | L: gyro, touchpad, lights, battery | 2402's Out: "write a ticket when a game asks" |
 | L: Android and iOS pads; the Switch's own pads | 3015 (parked); 3014 (parked, a private backend) |
@@ -146,7 +146,8 @@ uses SDL for input only, not its window or sound, as we would.
   libusb (LGPL-2.1) must stay off, so wired Switch 2 pads stay unread
   until SDL reads them without it.
 - **The seam:** `shuyi-app`'s pad source changes; `Pads` and everything
-  above it stay. The web keeps `gamepad.js`. The game sees no API change.
+  above it stay. The web keeps its own reading (`gamepad.js`, then
+  `web-sys` with 3331). The game sees no API change.
 - **Effort:** about one ticket of 400–800 lines (the source, its build
   in CI on three systems, `shuyi doctor`'s check, rumble if 2408 is
   done), against two `xhigh` tickets for our own code.
@@ -223,10 +224,11 @@ SDL3 still didn't list the pad, with its Switch 2 driver turned off by
 `SDL_JOYSTICK_HIDAPI_SWITCH2=0`; other hints weren't tried with the pad
 plugged in. So SDL3 is the answer, with a small fix of our own:
 
-- [ADR-0146](../adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+- [ADR-0147](../adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
   records it, resolving ADR-0021 §1's controllers choice;
 - **2402** (parked) is rewritten: desktop pads through SDL3, gilrs
-  removed;
+  removed, and, as Nick then asked, a toggle (on by default) so a game
+  can leave controller support out on desktop and save the 1.8 MB;
 - **2403** (parked) is rewritten: the Switch 2 start-up in `shuyi-pads`,
   and the pad read through SDL3 or by the crate itself;
 - **2414** tries both on the Steam Deck, as Nick asked;

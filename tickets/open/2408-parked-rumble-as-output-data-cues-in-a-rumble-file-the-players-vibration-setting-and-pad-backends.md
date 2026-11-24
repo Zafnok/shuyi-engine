@@ -60,7 +60,7 @@ What Shuyi has today (checked 2026-10-20):
 - Planned: 2402 (parked) moves desktop pads to SDL3 and gives them
   `Motors` through `SDL_RumbleGamepad` if this is done (its either-order
   clause), as 2903 (done) chose
-  ([ADR-0146](../../docs/adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md));
+  ([ADR-0147](../../docs/adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md));
   Switch 2 pads (2403) get no rumble;
   2340, 2406 (seats) and 2407 (phones' browsers) point their rumble
   here.
@@ -284,7 +284,7 @@ if he wants rumble in the game.
   - **SDL3's pads, either order with 2402 (parked):** if 2402 is done,
     gilrs is gone, so skip the gilrs part above: `Source::set_motors`
     calls `SDL_RumbleGamepad(pad, strong, weak, for_ms)` with each
-    level `× 65535 / 100`, and `stop_motors` a rumble of 0 (ADR-0146).
+    level `× 65535 / 100`, and `stop_motors` a rumble of 0 (ADR-0147).
     SDL ends a rumble itself after `for_ms`. Windows, Linux and macOS
     alike, where SDL's driver has motors. If 2402 isn't done, nothing
     more: 2402 adds it when it lands, by its own clause.

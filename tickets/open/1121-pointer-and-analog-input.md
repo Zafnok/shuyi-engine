@@ -39,7 +39,7 @@ None. Our game doesn't use these unless a later ticket says so.
   mouse's place, its primary button, the wheel and touches already
   arrive through 2405's events.
 - **Either order with 2402:** if 2402 is done, the native source is
-  SDL3's (ADR-0146): take the axes from its `PadState`s, as from gilrs's
+  SDL3's (ADR-0147): take the axes from its `PadState`s, as from gilrs's
   if not, so either source gives the same `RawInputEvent`s (2402 keeps
   these events unchanged).
 - `shuyi-ui::input` gets four things:

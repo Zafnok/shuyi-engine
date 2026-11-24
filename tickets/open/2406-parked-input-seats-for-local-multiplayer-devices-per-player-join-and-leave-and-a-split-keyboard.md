@@ -88,7 +88,7 @@ What is planned:
   1120), which 2362 already points at.
 - 1144 leaves Remote Play Together out as needing no code. That holds
   only while every pad drives one player (an edit to 1144 says so).
-- 2402: SDL3's source (ADR-0146) keeps an id stable while the pad stays
+- 2402: SDL3's source (ADR-0147) keeps an id stable while the pad stays
   plugged in, and gives a pad plugged back a new one.
 
 Turn-based hotseat already works: one shared input, and `TurnRules`

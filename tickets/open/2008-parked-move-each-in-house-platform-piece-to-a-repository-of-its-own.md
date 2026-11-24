@@ -28,14 +28,10 @@ mechanical:
   with the permitted library decoder adapters and CPAL output selected
   by 2902. Their full replacement and removal gate is 3079 (a blocker);
   no independent codec implementation from 2211–2214 is being carved;
-- `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
-  own code;
+- `shuyi-pads` (2403): the Switch 2 pads' start-up the controller
+  research (2903) kept as our own code, beside SDL3 (ADR-0147);
 - `shuyi-embed` and `shuyi-embed-macros` (2215, done; ADR-0138);
 - `shuyi-gpu`, the 2D renderer crate (3325, ADR-0136). If those are
-- `shuyi-pads` (2403): the Switch 2 pads' start-up the controller
-  research (2903) kept as our own code, beside SDL3 (ADR-0146);
-- `shuyi-embed` (2215);
-- the 2D renderer crate that 3034's tickets make. If those are
   not all done when this is unparked, move the others, and leave a
   ticket for those.
 
