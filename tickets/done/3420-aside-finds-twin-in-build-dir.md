@@ -84,14 +84,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A program at `debug/trpg-tools.exe` with its hard-linked twin at
+- [x] A program at `debug/trpg-tools.exe` with its hard-linked twin at
       `debug/build/trpg-tools/<hash>/out/trpg_tools.exe` and no `deps/`
       is moved aside with its twin, and a copy left in both places.
-- [ ] The same for an example at `debug/examples/tools.exe`.
-- [ ] A file in `build/*/*/out/` of another length or time is left.
-- [ ] A program with no twin in either layout is still never moved.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The same for an example at `debug/examples/tools.exe`.
+- [x] A file in `build/*/*/out/` of another length or time is left.
+- [x] A program with no twin in either layout is still never moved.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
