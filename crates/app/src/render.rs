@@ -542,7 +542,9 @@ impl Renderer {
         wide: bool,
         set: Option<&str>,
     ) -> Option<(AtlasRect, Color, f32)> {
-        if let Some(rect) = self.atlas.wide_rect_in(set, glyph).filter(|_| wide) {
+        // A narrow glyph is never looked up in the wide sets: most cells
+        // are narrow, and a lookup costs a search of every set (3244).
+        if wide && let Some(rect) = self.atlas.wide_rect_in(set, glyph) {
             return Some((rect, color(fg), 2.0));
         }
         if let Some(rect) = self.atlas.glyph_rect(glyph) {
