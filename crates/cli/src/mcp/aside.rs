@@ -26,8 +26,16 @@
 //! system allows: no gap of the order's own, and rarely one of the
 //! system's (ticket 2574).
 //!
+//! The twin is where cargo's layout puts it (ticket 3420): before Rust
+//! 1.100, `<profile>/deps/<stem>-<hash>` (or beside an example); in the
+//! build-dir layout since, `<profile>/build/<package>/<hash>/out/<crate
+//! name>`, with no `deps/` at all. Finding none there once left every
+//! server on Windows holding its program, and the next `cargo run` that
+//! relinked it failed with `Access is denied`.
+//!
 //! Only a cargo build output has a twin: a `shuyi` installed with `cargo
-//! install` has none and is never moved.
+//! install` has none and is never moved. A cargo output (a `<stem>.d`
+//! beside it) whose twin isn't found says so on stderr.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -75,9 +83,12 @@ fn stamp(path: &Path) -> Option<(u64, SystemTime)> {
     Some((meta.len(), meta.modified().ok()?))
 }
 
-/// `exe`'s twins: each `<exe stem>-*` with `exe`'s extension, length and
-/// modified time, in `<exe dir>/deps/` (a binary) or beside it (an
-/// example).
+/// `exe`'s twins, each with `exe`'s extension, length and modified time:
+/// in cargo's old layout each `<exe stem>-*` in `<exe dir>/deps/` (a
+/// binary) or beside it (an example); in its build-dir layout (Rust 1.100,
+/// ticket 3420) each `<profile>/build/<package>/<hash>/out/<name>`, where
+/// the profile folder is `exe`'s or, for an example, its parent, and
+/// `<name>` is the stem, or the crate name cargo makes of it (`_` for `-`).
 fn twins(exe: &Path, stem: &str) -> Vec<PathBuf> {
     let (Some(dir), Some(stamp_of_exe)) = (exe.parent(), stamp(exe)) else {
         return Vec::new();
@@ -98,8 +109,51 @@ fn twins(exe: &Path, stem: &str) -> Vec<PathBuf> {
                 && stamp(path) == Some(stamp_of_exe)
         })
         .collect();
+    twins.extend(
+        build_dir_candidates(exe, dir, stem)
+            .into_iter()
+            .filter(|path| stamp(path) == Some(stamp_of_exe)),
+    );
     twins.sort();
+    twins.dedup();
     twins
+}
+
+/// The paths where cargo's build-dir layout could keep `exe`'s twin: in
+/// each `<profile>/build/<package>/<hash>/out/`, only the one or two names
+/// it could have, so no `out/` is listed.
+fn build_dir_candidates(exe: &Path, dir: &Path, stem: &str) -> Vec<PathBuf> {
+    let profile = if dir.file_name().is_some_and(|name| name == "examples") {
+        dir.parent().unwrap_or(dir)
+    } else {
+        dir
+    };
+    let mut names = vec![stem.to_string()];
+    let crate_name = stem.replace('-', "_");
+    if crate_name != stem {
+        names.push(crate_name);
+    }
+    let names: Vec<String> = match exe.extension().and_then(|e| e.to_str()) {
+        Some(ext) => names.iter().map(|n| format!("{n}.{ext}")).collect(),
+        None => names,
+    };
+    let subfolders = |dir: &Path| -> Vec<PathBuf> {
+        fs::read_dir(dir)
+            .map(|entries| {
+                entries
+                    .filter_map(Result::ok)
+                    .filter(|entry| entry.file_type().is_ok_and(|t| t.is_dir()))
+                    .map(|entry| entry.path())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    subfolders(&profile.join("build"))
+        .iter()
+        .flat_map(|package| subfolders(package))
+        .flat_map(|hash| names.iter().map(move |name| hash.join("out").join(name)))
+        .filter(|path| path.is_file())
+        .collect()
 }
 
 /// Deletes every file in `dir` that can be deleted; a program still
@@ -182,6 +236,17 @@ pub fn move_aside(exe: &Path, pid: u32) -> Result<Vec<PathBuf>, String> {
         .ok_or_else(|| format!("{}: no folder", exe.display()))?;
     let twins = twins(exe, stem);
     if twins.is_empty() {
+        if dir.join(format!("{stem}.d")).is_file() {
+            // A cargo build output whose twin is somewhere else (a
+            // `build-dir` outside the target folder): said, not silent
+            // (ticket 3420).
+            eprintln!(
+                "mcp: found no build twin of {}, so it stays where it is: \
+                 while this server runs, a build there may be refused \
+                 relinking it",
+                exe.display()
+            );
+        }
         return Ok(Vec::new());
     }
     let running = dir.join(RUNNING);
