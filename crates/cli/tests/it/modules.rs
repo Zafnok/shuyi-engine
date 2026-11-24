@@ -32,6 +32,10 @@ const CONCERNS: &str = r#"(concerns: [
         (id: "procedural", name: "procedural animation", by: "shuyi-beta", status: ready, tickets: ["2"]),
         (id: "soft-body", name: "soft bodies", by: "shuyi-gamma", status: parked, tickets: ["3", "4"]),
     ]),
+    (id: "perspective", name: "Perspective", alternatives: true, pick: Many,
+     question: "Which perspectives?", answers: [
+        (id: "top-down-grid", name: "top-down grid", by: "default", status: ready, tickets: []),
+    ]),
 ])"#;
 
 /// An engine checkout at `dir`: its concerns, a default crate, and two

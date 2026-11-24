@@ -173,13 +173,12 @@ None.
     `shuyi new demo --template hex` (the part `stage-hex-grid`, also
     picked by `--set perspective=hex-grid`), and Hello, Hex stays the
     example to read first.
-- **Either order with 2502** (the wizard): if 2502 is done, its
-  prompts offer the `hex-grid` answer from the catalog with no change,
-  and `shuyi new demo --perspective hex-grid --no-input` picks this
-  part. The guide names that command beside `--template hex`, and a
-  test checks that the two make the same plan. If not, the guide names
-  `--template hex` and `--set perspective=hex-grid`, and 2502 adds the
-  `--perspective` command and its test (its clause with 2771 says so).
+- **From 2502 (done)** (the wizard's flags): `--perspective` takes the
+  catalog's `hex-grid` answer once it is ready, with no change, and
+  `shuyi new demo --perspective hex-grid --no-input` picks this part. A test checks
+  that it makes the same plan as `--template hex`, and
+  `docs/guides/hex-grid.md`'s *what starts it* names that command
+  beside `--template hex`.
 - **Either order with 2503** (several perspectives in one game): if
   2503 is done, its CI job makes and builds a game for every pair of
   ready perspectives, so the pairs with `hex-grid` must build and pass

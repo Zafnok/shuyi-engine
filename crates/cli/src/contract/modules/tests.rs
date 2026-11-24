@@ -32,6 +32,9 @@ fn catalog() -> Catalog {
                 id: "bodies".into(),
                 name: "Bodies".into(),
                 alternatives: true,
+                pick: None,
+                question: None,
+                serves: Vec::new(),
                 answers: vec![
                     choice("movers", "default", Status::Parked),
                     choice("rigid", "shuyi-alpha", Status::Ready),

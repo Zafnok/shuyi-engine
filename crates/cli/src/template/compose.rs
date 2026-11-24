@@ -24,8 +24,8 @@ use std::path::{Path, PathBuf};
 
 use toml_edit::{DocumentMut, Item, Table, Value};
 
-use super::{Answers, Part, Template, folder_of, ron_merge};
-use crate::catalog::{self, Catalog};
+use super::{Answers, Part, TARGETS, Template, asked, folder_of, ron_merge};
+use crate::catalog::{self, Catalog, Concerns};
 
 /// The flow's list of stages, which `shuyi new` writes from the parts'
 /// stages.
@@ -52,6 +52,9 @@ pub struct Fill {
     pub name: String,
     /// `{{crate_name}}`: its crate's name (`moon-garden`).
     pub crate_name: String,
+    /// `{{id}}`: its reverse-DNS id (`com.example.moon-garden`), as
+    /// `shuyi.ron`'s `app` and `app_info.rs` hold it.
+    pub id: String,
     /// `"{{engine.<crate>}}"`: by an engine crate's folder under
     /// `crates/` (`core`), the dependency on it, a TOML inline table.
     pub engine: BTreeMap<String, String>,
@@ -249,7 +252,7 @@ impl fmt::Display for ComposeError {
 impl std::error::Error for ComposeError {}
 
 /// `text`, the file `file`, with its placeholders filled: `{{name}}`,
-/// `{{crate_name}}`, `"{{engine.<crate>}}"` (with its quotes),
+/// `{{crate_name}}`, `{{id}}`, `"{{engine.<crate>}}"` (with its quotes),
 /// `{{engine_ref}}`, `{{engine.docs}}`, `{{private_url}}` (when the game has
 /// one) and `{{answer.<question>}}` (the question's answers in
 /// `answers`, joined by `,`). A GitHub Actions expression, `${{ … }}`, passes through as it
@@ -295,6 +298,7 @@ pub fn fill(
         let value = match inner {
             "name" => with.name.clone(),
             "crate_name" => with.crate_name.clone(),
+            "id" => with.id.clone(),
             "engine_ref" => with.engine_ref.clone(),
             "engine.docs" => with.engine_docs.clone(),
             "private_url" => match &with.private_url {
@@ -706,9 +710,9 @@ pub fn compose(
     with: &Fill,
 ) -> Result<Plan, ComposeError> {
     template
-        .check_answers(answers)
+        .check_answers(answers, &catalog.concerns)
         .map_err(|message| ComposeError::Answer { message })?;
-    let answers = template.with_defaults(answers);
+    let answers = with_concern_defaults(&template.with_defaults(answers), &catalog.concerns);
     let parts = picked(template, &answers)?;
     let mut written = written(template, &parts, with, &answers)?;
     let stages = stages(template, &parts, &mut written)?;
@@ -726,17 +730,22 @@ pub fn compose(
 
     let mut modules = Vec::new();
     let mut features = Vec::new();
-    for part in &parts {
-        for name in &part.modules {
-            let module = catalog.module(name).ok_or_else(|| ComposeError::Module {
-                part: part.id.clone(),
-                module: name.clone(),
-                message: crate::contract::add::unknown(catalog, name),
-            })?;
-            if !modules.contains(&module.name) {
-                modules.push(module.name.clone());
-                features.push((part.id.clone(), module.feature().to_owned()));
-            }
+    // The parts' modules, then each module a concern's answer picked names
+    // that no part turns on (ADR-0013: every catalog answer works with no
+    // part), as `shuyi add` turns it on.
+    let wanted = parts
+        .iter()
+        .flat_map(|part| part.modules.iter().map(|m| (part.id.clone(), m.clone())))
+        .chain(answered_modules(&catalog.concerns, &answers));
+    for (by, name) in wanted {
+        let module = catalog.module(&name).ok_or_else(|| ComposeError::Module {
+            part: by.clone(),
+            module: name.clone(),
+            message: crate::contract::add::unknown(catalog, &name),
+        })?;
+        if !modules.contains(&module.name) {
+            modules.push(module.name.clone());
+            features.push((by, module.feature().to_owned()));
         }
     }
     let root = PathBuf::from("Cargo.toml");
@@ -765,21 +774,31 @@ pub fn compose(
     for (question, picked) in &answers.0 {
         // A question's default answer that adds nothing does so by design
         // (`private-files` = `no`): only another answer no part serves is a
-        // limit. The composer itself serves `examples`.
-        if question == EXAMPLES {
+        // limit. The composer itself serves `examples`, `new` the targets,
+        // and a module turned on serves its answer.
+        if question == EXAMPLES || question == TARGETS {
             continue;
         }
-        let default = template
-            .questions
-            .iter()
-            .find(|q| &q.id == question)
-            .map_or(&[][..], |q| q.default.as_slice());
-        for answer in picked.iter().filter(|a| !default.contains(a)) {
-            let served = template.parts.iter().any(|p| {
-                p.when
-                    .picks()
-                    .contains(&(question.as_str(), answer.as_str()))
-            });
+        let concern = asked(&catalog.concerns, question);
+        let default: Vec<&str> = match (template.question(question), concern) {
+            (Some(q), _) => q.default.iter().map(String::as_str).collect(),
+            (None, Some(c)) => c
+                .default_answer()
+                .map(|a| a.id.as_str())
+                .into_iter()
+                .collect(),
+            (None, None) => Vec::new(),
+        };
+        for answer in picked.iter().filter(|a| !default.contains(&a.as_str())) {
+            let module = concern
+                .and_then(|c| c.answers.iter().find(|a| &a.id == answer))
+                .is_some_and(|a| a.by != "default");
+            let served = module
+                || template.parts.iter().any(|p| {
+                    p.when
+                        .picks()
+                        .contains(&(question.as_str(), answer.as_str()))
+                });
             if !served {
                 limits.push(format!(
                     "no part of the template for `{question}` = `{answer}`: nothing added"
@@ -797,6 +816,38 @@ pub fn compose(
         answers,
         limits,
     })
+}
+
+/// `answers` with each concern `shuyi new` asks that they leave out at its
+/// default ([`catalog::Concern::default_answer`]), if it has one.
+pub fn with_concern_defaults(answers: &Answers, concerns: &Concerns) -> Answers {
+    let mut all = answers.clone();
+    for concern in concerns.concerns.iter().filter(|c| c.pick.is_some()) {
+        if let Some(default) = concern.default_answer() {
+            all.0
+                .entry(concern.id.clone())
+                .or_insert_with(|| vec![default.id.clone()]);
+        }
+    }
+    all
+}
+
+/// The modules the concerns' answers picked in `answers` name, each with
+/// the answer that names it (`scripting=rhai`): those not of the default
+/// engine.
+fn answered_modules(concerns: &Concerns, answers: &Answers) -> Vec<(String, String)> {
+    let mut modules = Vec::new();
+    for (question, picked) in &answers.0 {
+        let Some(concern) = asked(concerns, question) else {
+            continue;
+        };
+        for answer in concern.answers.iter().filter(|a| picked.contains(&a.id)) {
+            if answer.by != "default" {
+                modules.push((format!("{question}={}", answer.id), answer.by.clone()));
+            }
+        }
+    }
+    modules
 }
 
 /// The skills of `catalog`'s pack added to `files` under `.claude/skills/`,

@@ -644,10 +644,14 @@ jobs:
           # with no checkout: its gates and its web build run on its public
           # files, as a fork's do. It is made without the skills' worked
           # examples (ticket 2597, ADR-0113), and the blank game with them.
+          # The grid game picks every ready answer of the wizard's questions
+          # by their flags too (ticket 2502, ADR-0013 §2).
           - template: grid
             private: --set private-files=yes --private-url https://github.com/o/demo-assets.git --no-examples
+            answers: --no-input --perspective top-down-grid --online none --world-drawing flat --kind tactics --scripting none --targets desktop,web,playdate,steam-deck --id org.example.demo
           - template: blank
             private: ""
+            answers: ""
     runs-on: ubuntu-latest
     container: ubuntu:24.04
     defaults:
@@ -656,6 +660,7 @@ jobs:
     env:
       TEMPLATE: ${{ matrix.template }}
       PRIVATE: ${{ matrix.private }}
+      ANSWERS: ${{ matrix.answers }}
     steps:
       # The image has no git: checkout downloads the commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -674,8 +679,8 @@ jobs:
       - run: apt-get install -y --no-install-recommends jq git
       - name: Make a game with shuyi new
         run: |
-          # shellcheck disable=SC2086 # $PRIVATE is five words, or none
-          cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE
+          # shellcheck disable=SC2086 # $PRIVATE and $ANSWERS are words, or none
+          cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE $ANSWERS
       - name: The game's own setup script finds nothing to do
         run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
       # Its author's first build writes Cargo.lock, which the game commits

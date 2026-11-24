@@ -64,8 +64,10 @@ fn each_flag_parses_and_the_rest_go_to_new() {
             assets_visibility: Some(Visibility::Public),
             private: Some(vec!["text".to_owned(), "sprites".to_owned()]),
             folders: Some(vec!["levels".to_owned(), "maps".to_owned()]),
+            no_input: false,
         }
     );
+    assert!(self::flags(&["g", "--no-input"]).no_input);
     assert_eq!(flags_of_none(), Flags::default());
     assert_eq!(self::flags(&["g", "--no-github"]).github, Some(false));
     assert_eq!(self::flags(&["g", "--examples"]).examples, Some(true));

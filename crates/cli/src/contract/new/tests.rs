@@ -307,12 +307,22 @@ fn answers_the_template_doesnt_take_are_refused() {
     let template = built_in();
     let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut wrong = NewInput::new("g");
-    wrong.set = Answers::parse("set", "{ \"perspective\": [\"side-view\"] }").unwrap();
+    wrong.set = Answers::parse("set", "{ \"perspective\": [\"sideways\"] }").unwrap();
     let (code, error) = plan(cwd, &template, &wrong, "Moon", "moon").unwrap_err();
     assert_eq!(code, codes::WRONG_ARGUMENTS);
     assert!(
-        error.contains("`side-view` is no answer of `perspective`"),
+        error.contains("`sideways` is no answer of `perspective`"),
         "{error}"
+    );
+    // A parked answer is the catalog's, shown and never picked (ADR-0013
+    // §6).
+    wrong.set = Answers::parse("set", "{ \"perspective\": [\"side-view\"] }").unwrap();
+    let (code, error) = plan(cwd, &template, &wrong, "Moon", "moon").unwrap_err();
+    assert_eq!(code, codes::WRONG_ARGUMENTS);
+    assert_eq!(
+        error,
+        "`side-view` (side view), an answer of `perspective`, is parked: ticket 1127 builds it, \
+         so no game picks it yet"
     );
     let (code, error) = plan(
         cwd,
@@ -658,12 +668,17 @@ fn new_makes_the_game_in_an_empty_folder_only_unless_forced() {
         (out.name.as_str(), out.crate_name.as_str()),
         ("Moon Garden", "moon-garden")
     );
+    // No answer: the catalog's defaults, a top-down grid (ADR-0013 §2).
     assert_eq!(
         (out.template.as_str(), out.parts.as_slice()),
-        ("shuyi-default", &["base".to_owned()][..])
+        (
+            "shuyi-default",
+            &["base".to_owned(), "stage-top-down-grid".to_owned()][..]
+        )
     );
     assert!(out.files.contains(&"Cargo.toml".to_owned()));
-    assert!(out.overwritten.is_empty() && out.modules.is_empty() && out.stages.is_empty());
+    assert!(out.overwritten.is_empty() && out.modules.is_empty());
+    assert_eq!(out.stages, ["top-down-grid"]);
     let made = fs::read_to_string(dir.join("Moon Garden/README.md")).unwrap();
     assert!(made.starts_with("# Moon Garden\n"), "{made}");
     assert!(
@@ -879,6 +894,7 @@ fn what_new_made_reads_for_people() {
         dir: "g".into(),
         name: "Game".into(),
         crate_name: "game".into(),
+        id: "com.example.game".into(),
         template: "shuyi-default".into(),
         answers: Answers::default(),
         parts: vec!["base".into(), "stage".into()],
@@ -1904,5 +1920,153 @@ fn a_workflow_given_the_private_files_key_is_one_the_test_reads() {
             .iter()
             .any(|l| l.starts_with("case: .github/workflows/other.yml: the job build")),
         "{leaks:?}"
+    );
+}
+
+/// Every file under `dir`, by its path from it, with its bytes.
+fn tree(dir: &Path) -> BTreeMap<String, Vec<u8>> {
+    let mut files = BTreeMap::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(at) = pending.pop() {
+        for entry in fs::read_dir(&at).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                let shown = path
+                    .strip_prefix(dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                files.insert(shown, fs::read(&path).unwrap());
+            }
+        }
+    }
+    files
+}
+
+#[test]
+fn the_wizards_flags_answer_its_questions_as_set_does() {
+    let args: Vec<String> = [
+        "g",
+        "--perspective",
+        "top-down-grid",
+        "--bodies",
+        "movers, rigid-body",
+        "--online",
+        "none",
+        "--targets",
+        "desktop,web",
+        "--id",
+        "org.example.g",
+        "--set",
+        "examples=no",
+    ]
+    .iter()
+    .map(|a| (*a).to_owned())
+    .collect();
+    let input = parse_args(&args).unwrap();
+    assert_eq!(
+        input.set,
+        Answers::parse(
+            "set",
+            "{ \"perspective\": [\"top-down-grid\"], \"bodies\": [\"movers\", \"rigid-body\"], \
+             \"online\": [\"none\"], \"targets\": [\"desktop\", \"web\"], \"examples\": [\"no\"] }"
+        )
+        .unwrap()
+    );
+    assert_eq!(input.id.as_deref(), Some("org.example.g"));
+    // `time` has no flag: it follows from the perspectives.
+    let time: Vec<String> = ["g", "--time", "turns"]
+        .iter()
+        .map(|a| (*a).to_owned())
+        .collect();
+    assert_eq!(parse_args(&time).unwrap_err(), "unknown option: --time");
+    let bare: Vec<String> = ["g", "--kind"].iter().map(|a| (*a).to_owned()).collect();
+    assert_eq!(parse_args(&bare).unwrap_err(), "--kind needs a value");
+}
+
+#[test]
+fn no_answer_makes_the_grid_game() {
+    let dir = scratch("defaults");
+    let mut first = NewInput::new("first");
+    first.name = Some("Moon".to_owned());
+    let made = new(&dir, &first);
+    assert!(made.ok, "{made:?}");
+    let answers = made.result.unwrap().answers;
+    assert_eq!(answers.0["perspective"], ["top-down-grid"]);
+    assert_eq!(answers.0["targets"], ["desktop", "web"]);
+    // The same as the grid's short name.
+    let mut grid = NewInput::new("grid").template("grid");
+    grid.name = Some("Moon".to_owned());
+    assert!(new(&dir, &grid).ok);
+    assert_eq!(tree(&dir.join("first")), tree(&dir.join("grid")));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn an_id_goes_into_the_project_and_app_info_and_a_bad_one_is_refused() {
+    let dir = scratch("id");
+    let mut input = NewInput::new("g").template("blank");
+    input.id = Some("org.example.demo".to_owned());
+    let made = new(&dir, &input);
+    assert!(made.ok, "{made:?}");
+    assert_eq!(made.result.unwrap().id, "org.example.demo");
+    let project = crate::project::Project::load(&dir.join("g")).unwrap();
+    let app = project.config.app.as_ref().unwrap();
+    assert_eq!(app.id, "org.example.demo");
+    // The game's app_info.rs is the one app-info writes.
+    assert_eq!(
+        crate::app_info::stale(app, &dir.join("g"), project.config.command()),
+        Vec::<String>::new()
+    );
+    input.id = Some("9.example".to_owned());
+    input.force = true;
+    let refused = new(&dir, &input);
+    assert_eq!(refused.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    assert_eq!(
+        refused.error.unwrap(),
+        "--id: \"9.example\": each part between dots starts with a letter, and \"9\" doesn't"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_parked_answer_or_a_planned_target_by_flag_is_refused_with_its_status() {
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let template = built_in();
+    let mut parked = NewInput::new("g");
+    parked.set = Answers::parse("set", "{ \"bodies\": [\"procedural\"] }").unwrap();
+    let (code, error) = plan(cwd, &template, &parked, "G", "g").unwrap_err();
+    assert_eq!(code, codes::WRONG_ARGUMENTS);
+    assert_eq!(
+        error,
+        "`procedural` (procedural animation), an answer of `bodies`, is parked: tickets 2701, \
+         2702, 2703 and 2704 build it, so no game picks it yet"
+    );
+    let mut planned = NewInput::new("g");
+    planned.set = Answers::parse("set", "{ \"targets\": [\"switch\"] }").unwrap();
+    let (_, error) = plan(cwd, &template, &planned, "G", "g").unwrap_err();
+    assert!(
+        error.starts_with("the target `switch` is planned"),
+        "{error}"
+    );
+    planned.set = Answers::parse("set", "{ \"targets\": [\"moon\"] }").unwrap();
+    let (_, error) = plan(cwd, &template, &planned, "G", "g").unwrap_err();
+    assert!(
+        error.starts_with("no target `moon`: the engine's are "),
+        "{error}"
+    );
+    // A ready target the manifest doesn't list yet is a limit (2504).
+    let mut more = NewInput::new("g");
+    more.set = Answers::parse("set", "{ \"targets\": [\"desktop\", \"playdate\"] }").unwrap();
+    let (_, limits) = plan(cwd, &template, &more, "G", "g").unwrap();
+    assert!(
+        limits.contains(
+            &"shuyi.ron lists the template's targets (desktop, web), not the ones picked \
+              (desktop, playdate): 2504 makes it list the picked ones"
+                .to_owned()
+        ),
+        "{limits:?}"
     );
 }

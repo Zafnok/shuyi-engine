@@ -40,7 +40,7 @@ town-and-battle example), 1129 (`shuyi new` and `templates/`) and 2004
 new`. If 3108 is done, add the two templates to its menu and to its
 tests; if not, nothing to do (3108 lists them when it lands).
 
-**From 2501 (done), and either order with 2502** (the wizard,
+**From 2501 and 2502 (done)** (the wizard,
 [ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)):
 - write the two templates as parts of the built-in template
   (`templates/shuyi-default`, `docs/templates.md`), not as folders:
@@ -48,12 +48,12 @@ tests; if not, nothing to do (3108 lists them when it lands).
   that applies when the *World drawing* answer `diorama` is picked over
   a grid, top-down or isometric stage. Keep `top-down-3d` and `hd-2d`
   as short names;
-- if 2502 is done, there is no menu: the wizard's perspective and
-  *World drawing* questions offer them. If 2502 isn't done, the menu
-  lists the short names (the paragraph above), and 2502 replaces it
-  (its clause says so).
+- there is no menu: the wizard's perspective question offers
+  `top-down-3d`, and its *World drawing* question (asked once one of
+  its answers other than `flat` is ready or planned) offers `diorama`
+  (HD-2D).
 
-Either way, set both answers in `docs/modules.ron` to ready.
+Set both answers in `docs/modules.ron` to ready.
 
 Copy nothing from Square Enix's games (`docs/decisions.md`,
 2026-10-17): no names, art or assets.

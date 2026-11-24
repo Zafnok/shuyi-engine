@@ -133,10 +133,11 @@ say whether a new developer would know where to start.
   pages;
 - tutorials longer than one page (the examples are the long form).
 
-**Either order with 2502** (the wizard, ADR-0013): if 2502 is done, each
-direction guide's "which template starts it" names the wizard answers
-and the `shuyi new … --no-input` command. If not, write the template
-name, and 2502 updates the guides.
+**From 2502 (done)** (the wizard, ADR-0013): `shuyi new` takes a flag
+per catalog question (`--perspective`, `--kind`, …) and `--no-input`.
+2502 did not touch the guides, so this ticket does: each direction
+guide's "which template starts it" names the wizard answers that start
+it and the `shuyi new <dir> --no-input --perspective <id> …` command.
 
 **Either order with 2206** (parked, MIDI playback): if 2206 is done,
 each direction guide's "modules" list names MIDI (`shuyi-midi`) as an

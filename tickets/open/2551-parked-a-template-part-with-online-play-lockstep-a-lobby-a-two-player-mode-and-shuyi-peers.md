@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2501", "2502", "2529", "1145"]
+blocked_by: ["2501", "2502", "2529", "1145", "3424"]
 nick_input: none
 completed:
 ---

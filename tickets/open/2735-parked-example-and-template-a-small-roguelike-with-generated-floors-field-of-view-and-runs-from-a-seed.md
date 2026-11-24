@@ -217,8 +217,8 @@ None.
   - a game made with it builds, and its test walks to the stairs. Add
     it to the `templates` job of `.github/workflows/ci.yml`, which makes
     a game and runs its gates;
-  - if 2502 is done, `shuyi new demo --kind roguelike` makes it. If not,
-    `shuyi new demo --set kind=roguelike` does, and 2502 adds the flag.
+  - **from 2502 (done):** `shuyi new demo --kind roguelike --no-input`
+    makes it; the guide and CI name `--kind`.
 - **The direction guide** `docs/guides/roguelike.md`, in full and in
   2004's order, linked from `docs/guides/README.md`:
   - which template starts it (the part above);

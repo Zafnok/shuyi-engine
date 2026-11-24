@@ -119,8 +119,8 @@ he likes. His comments become tickets.
     (ADR-0033 §17);
   - a game made with it builds and its test walks to the stairs; add it
     to CI's `templates` job;
-  - if 2502 is done, `shuyi new demo --kind dungeon-crawler` makes it;
-    if not, `shuyi new demo --set kind=dungeon-crawler` does.
+  - **from 2502 (done):** `shuyi new demo --kind dungeon-crawler
+    --no-input` makes it; the guide and CI name `--kind`.
 - **The guide** `docs/guides/dungeon-crawler.md`, in 2004's order:
   which template part starts it; the modules (`shuyi-crawl`,
   `shuyi-rpg`) and the kits; what looks related but isn't for it (3D
