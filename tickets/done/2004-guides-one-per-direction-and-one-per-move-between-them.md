@@ -165,7 +165,7 @@ to do (2503 links the guides).
 - [x] The top-down grid guide's code runs (it is a doc test, or taken
       from `hello-grid`'s tests).
 - [x] The guides are on the docs site.
-- [ ] Nick's sign-off is recorded in the Completion notes.
+- [x] Nick's sign-off is recorded in the Completion notes.
 - [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -249,4 +249,4 @@ it wants exists, so the 18 guides (about 580 lines of docs) and the check
 land together, and the copy into the book (about 130 lines) reads them
 with the check's own parser and is this ticket's "on the docs site".
 
-Nick's sign-off: asked when the PR opened; not yet recorded.
+Nick's sign-off, 2026-11-24: he read `top-down-grid.md` and `side-view.md` and answered "Yes, signed off": a new developer would know where to start.
