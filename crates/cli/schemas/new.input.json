@@ -28,6 +28,14 @@
       "type": "boolean",
       "default": false
     },
+    "id": {
+      "description": "The game's reverse-DNS id (`org.example.moon-garden`), checked as\n`app-info` checks it; `com.example.<crate name>` if none.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "name": {
       "description": "The game's name; the folder's name if none.",
       "type": [

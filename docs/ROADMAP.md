@@ -763,7 +763,9 @@ targets. After the MVP
 | Ticket | What |
 | ------ | ---- |
 | 2501 | Templates as data: `template.ron`, parts, a pure composer behind `shuyi new` |
-| 2502 | The wizard: one question per concern from the catalog, multi-pick, a flag per answer, the questions as JSON |
+| 2502 | The wizard's answers from the catalog: `pick` and `question` per concern, a flag per question, parked answers refused, `--id`, `--no-input` |
+| 3424 | The wizard's questions as data: `--questions --json`, the command that makes a game again, `created_with` |
+| 3423 | The wizard's prompts in a terminal, the GitHub and examples questions among them (Nick signs off) |
 | 2503 | Several perspectives in one game: a stage each, moves between them, a test that crosses them |
 | 2504 | Targets in the wizard: the picked modules' needs checked against each target (with 3017), CI per target (after 3001 and 3004) |
 | 2505 | Templates from a folder or git at a revision, no code run, `shuyi template check` and `new` |

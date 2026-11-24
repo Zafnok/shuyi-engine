@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
-blocked_by: ["2502", "3001", "3004"]
+blocked_by: ["2502", "3001", "3004", "3424"]
 nick_input: none
 completed:
 ---
@@ -128,7 +128,7 @@ and drop the entry.
     the map when the game's files hold one);
   - `target-steam-deck`, when `steam-deck` is picked: if 3012 is done,
     its export in the matrix; if not, 3012 adds it (its scope says so).
-- **The JSON** of `--questions` (2502) gives each module's `needs` and
+- **The JSON** of `--questions` (3424) gives each module's `needs` and
   each target's capabilities, if 3017 is done, so an agent can explain a
   refusal before it happens. If not, 3017 adds them (its clause says
   so).

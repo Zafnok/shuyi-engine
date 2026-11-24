@@ -5,9 +5,12 @@
 //!
 //! The answers pick the parts: a short name of the template's
 //! (`--template grid`, `--template blank`), then an answers file
-//! (`--answers answers.ron`), then `--set <question>=<answer[,answer]>`,
-//! each in place of the one before for the questions it answers. A
-//! question none answers takes its default. The template's composer
+//! (`--answers answers.ron`), then `--set <question>=<answer[,answer]>` and
+//! the wizard's flags (`--perspective top-down-grid`, `--targets
+//! desktop,web`), each in place of the one before for the questions it
+//! answers. A question none answers takes its default. The questions are
+//! the catalog's concerns, the targets and the template's own (ADR-0013
+//! §1; the flags are [`wizard`]'s). The template's composer
 //! ([`template::compose`]) makes the files with no I/O, and
 //! [`template::apply`] writes them.
 //!
@@ -18,6 +21,7 @@
 //! | ----------- | ------- |
 //! | `{{name}}` | the game's name, as given (`Moon Garden`) |
 //! | `{{crate_name}}` | its crate's name (`moon-garden`) |
+//! | `{{id}}` | its reverse-DNS id, `--id` (`com.example.<crate_name>` without) |
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
 //! | `{{engine_ref}}` | the engine's commit as a workflow's `uses: …@` names it: a 40-digit `--engine-rev`, else `main` |
 //! | `{{engine.docs}}` | a Markdown list of the engine's rules and docs for the game's agent: at `main` and on the site, at a commit, or in a checkout on this machine |
@@ -43,7 +47,7 @@ use serde::{Deserialize, Serialize};
 use super::codes::{self, Code};
 use super::{Answer, Op};
 use crate::catalog::Catalog;
-use crate::template::{self, Answers, ComposeError, Fill, Plan, Template};
+use crate::template::{self, Answers, ComposeError, Fill, Plan, TARGETS, Template};
 
 /// The engine's repository, which a new game depends on by git.
 pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
@@ -109,6 +113,10 @@ pub struct NewInput {
     /// The game's name; the folder's name if none.
     #[serde(default)]
     pub name: Option<String>,
+    /// The game's reverse-DNS id (`org.example.moon-garden`), checked as
+    /// `app-info` checks it; `com.example.<crate name>` if none.
+    #[serde(default)]
+    pub id: Option<String>,
     /// Where it gets the engine from.
     #[serde(default)]
     pub engine: Engine,
@@ -132,6 +140,7 @@ impl NewInput {
             answers: None,
             set: Answers::default(),
             name: None,
+            id: None,
             engine: Engine::Main,
             force: false,
             private_url: None,
@@ -156,6 +165,8 @@ pub struct NewOutput {
     pub name: String,
     /// Its crate's name.
     pub crate_name: String,
+    /// Its reverse-DNS id, as `shuyi.ron`'s `app` holds it.
+    pub id: String,
     /// The template's id (`shuyi-default`).
     pub template: String,
     /// The answers it was made for, each question left out at its
@@ -336,12 +347,18 @@ fn engine_root(cwd: &Path, path: &str) -> Result<String, String> {
     Ok(root)
 }
 
+/// The id of a game of crate `krate` that gives none: `com.example.<krate>`.
+pub fn default_id(krate: &str) -> String {
+    format!("com.example.{krate}")
+}
+
 /// What fills the placeholders of a game named `name`, of crate `krate`,
 /// on `engine` (at `root` if a checkout).
 pub fn fill_for(name: &str, krate: &str, engine: &Engine, root: Option<&str>) -> Fill {
     Fill {
         name: name.to_owned(),
         crate_name: krate.to_owned(),
+        id: default_id(krate),
         engine: ENGINE_CRATES
             .iter()
             .map(|krate| ((*krate).to_owned(), dependency(engine, root, krate)))
@@ -433,12 +450,30 @@ pub fn plan(
     }
     .map_err(|e| (codes::ENGINE_DEPENDENCY, e))?;
     let answers = answers_of(cwd, template, input).map_err(refused)?;
+    let answers = with_targets(answers, template).map_err(refused)?;
     check_private(&answers, input.private_url.as_deref()).map_err(refused)?;
     let mut fill = fill_for(name, krate, &input.engine, root.as_deref());
     fill.private_url.clone_from(&input.private_url);
+    if let Some(id) = &input.id {
+        crate::app_info::check_id(id).map_err(|e| refused(format!("--id: {e}")))?;
+        fill.id.clone_from(id);
+    }
     let plan = template::compose(template, &answers, &catalog, &fill)
         .map_err(|e| (code_of(&e), e.to_string()))?;
     limits.extend(plan.limits.iter().cloned());
+    let picked = plan.answers.0.get(TARGETS).cloned().unwrap_or_default();
+    if picked != plan.targets {
+        limits.push(format!(
+            "shuyi.ron lists the template's targets ({}), not the ones picked ({}): 2504 makes it \
+             list the picked ones",
+            plan.targets.join(", "),
+            if picked.is_empty() {
+                "none".to_owned()
+            } else {
+                picked.join(", ")
+            }
+        ));
+    }
     if matches!(input.engine, Engine::Rev { .. })
         && engine_ref(&input.engine).is_none()
         && plan.files.contains_key(Path::new(PLAYTEST_WORKFLOW))
@@ -449,6 +484,38 @@ pub fn plan(
         ));
     }
     Ok((plan, limits))
+}
+
+/// `answers` with the targets checked against the engine's profiles, or
+/// `template`'s if they name none: a planned target is shown, never picked
+/// (ADR-0013 §6).
+fn with_targets(mut answers: Answers, template: &Template) -> Result<Answers, String> {
+    let Some(picked) = answers.0.get(TARGETS) else {
+        answers
+            .0
+            .insert(TARGETS.to_owned(), wizard::default_targets(template));
+        return Ok(answers);
+    };
+    let targets = wizard::engine_targets()?;
+    for id in picked {
+        match targets.iter().find(|t| &t.id == id) {
+            Some(target) if target.ready => {}
+            Some(_) => {
+                return Err(format!(
+                    "the target `{id}` is planned: the engine doesn't run on it yet, so no game \
+                     picks it"
+                ));
+            }
+            None => {
+                let ids: Vec<&str> = targets.iter().map(|t| t.id.as_str()).collect();
+                return Err(format!(
+                    "no target `{id}`: the engine's are {}",
+                    ids.join(", ")
+                ));
+            }
+        }
+    }
+    Ok(answers)
 }
 
 /// The game's name and its crate's name for `input` under `cwd`: `--name`,
@@ -496,6 +563,7 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
     ));
     let output = NewOutput {
         dir: input.dir.clone(),
+        id: input.id.clone().unwrap_or_else(|| default_id(&krate)),
         name,
         crate_name: krate,
         template: template.id.clone(),
@@ -516,14 +584,20 @@ pub fn usage(command: &str) -> String {
     let names = template::built_in().map_or_else(|_| String::new(), |t| short_names(&t));
     format!(
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
-         \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
+         \x20          [--perspective IDS] [--bodies IDS] [--online ID] [--world-drawing IDS]\n\
+         \x20          [--kind IDS] [--scripting ID] [--targets IDS] [--no-input]\n\
+         \x20          [--name NAME] [--id ID] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
          \x20          [--force] [--json] [--examples | --no-examples]\n\
          \x20          [--github | --no-github] [--owner LOGIN] [--visibility public|private]\n\
          \x20          [--assets-visibility private|public] [--private KINDS | --private none]\n\
          \x20          [--private-folder PATH]...\n\n\
          Makes a new game in <dir> (missing or empty, or any with --force) from the engine's\n\
          template, its parts picked by the answers: --template's short name ({names}),\n\
-         then --answers' file, then each --set. The game depends on the engine's repository\n\
+         then --answers' file, then each --set and each flag of the catalog's concerns\n\
+         (--perspective, --bodies…: answer ids, several with commas) and --targets. A\n\
+         question nothing answers takes its default, and a planned or parked answer is\n\
+         refused. --id is the game's reverse-DNS id (com.example.<crate name> without).\n\
+         The game depends on the engine's repository\n\
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\
          --private-url names (https://github.com/<owner>/<repo>.git).\n\n\
@@ -533,8 +607,9 @@ pub fn usage(command: &str) -> String {
          --github makes <owner>/<crate name> (public by default) and, unless --private\n\
          none, <owner>/<crate name>-assets (private by default) for the KINDS of files\n\
          kept private and each --private-folder, with `{command} repos`. The KINDS are\n\
-         {kinds} (all by default). Each flag answers its question. Run elsewhere, or with --json,\n\
-         it asks nothing and makes no repository unless --github is given (not with --json).",
+         {kinds} (all by default). Each flag answers its question. Run elsewhere, with --json\n\
+         or with --no-input, it asks nothing and makes no repository unless --github is given\n\
+         (not with --json).",
         kinds = questions::KINDS.map(|(kind, _)| kind).join(",")
     )
 }
@@ -560,6 +635,16 @@ pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
                 set.insert(question, answers);
             }
             "--name" => input.name = Some(value()?),
+            "--id" => input.id = Some(value()?),
+            "--targets" => {
+                let (_, targets) = Answers::parse_set(&format!("{TARGETS}={}", value()?))?;
+                set.insert(TARGETS.to_owned(), targets);
+            }
+            flag if wizard::concern_flag(flag).is_some() => {
+                let concern = wizard::concern_flag(flag).unwrap_or_default();
+                let (_, answers) = Answers::parse_set(&format!("{concern}={}", value()?))?;
+                set.insert(concern, answers);
+            }
             "--engine-rev" => input.engine = Engine::Rev { rev: value()? },
             "--engine-path" => input.engine = Engine::Path { path: value()? },
             "--private-url" => input.private_url = Some(value()?),
@@ -608,6 +693,7 @@ pub fn text(output: &NewOutput) -> String {
 }
 
 pub(crate) mod questions;
+pub mod wizard;
 
 #[cfg(test)]
 mod tests;

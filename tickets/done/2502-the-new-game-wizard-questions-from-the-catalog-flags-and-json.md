@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2501"]
-nick_input: sign-off
-completed:
+nick_input: none
+completed: 2026-11-24
 ---
 
 # 2502 — The new-game wizard
@@ -49,9 +49,8 @@ perspectives to be picked, but until 2503 lands a game has one stage.
 
 ## Nick input
 
-**Sign-off:** run `shuyi new` in a terminal and answer the questions.
-Say whether the wording is clear and whether anything you expected to be
-asked is missing.
+None. Nick's sign-off moved to 3423, with the terminal's prompts he
+signs off on.
 
 ## Scope
 
@@ -90,45 +89,18 @@ asked is missing.
   direction menu to `shuyi new`, replace it with the wizard: its
   directions are now perspective answers (ADR-0013 §1). Keep its tests'
   promise that no terminal means no prompt.
-- **`wizard::questions(&Catalog, &Template) -> Vec<Question>`**, pure:
-  1. the name and folder, then the game's id (reverse-DNS, default
-     `com.example.<crate>`, checked by `shuyi_cli::app_info::check_id`,
-     3048);
-  2. the perspectives (`Many`);
-  3. one question per catalog concern, in the catalog's order, skipping
-     a concern none of whose answers applies to the perspectives picked
-     (bodies and motion isn't asked for grid-only games, ADR-0013 §1),
-     and never `time`;
-  4. the template's own questions;
-  5. the targets (`Many`), from the target profiles (3001).
-
-  Each answer carries its status (`Ready`, `Planned { ticket }`,
-  `Parked { ticket }`) and a one-line description. 2003's module
-  metadata (`ModuleInfo`) has none, and an answer by `default` or by a
-  module not built yet has no crate to read one from: take it from
-  `docs/modules.ron` (the answer's `name`, or a new field beside
-  `pick` and `question`).
-- **Interactive prompts** in a terminal: single and multi-select lists,
-  with planned answers shown greyed with their ticket and not
-  selectable. Use `inquire` or `dialoguer`. Check the license from its
-  `Cargo.toml` and repository on the day (both are believed MIT), that
-  `cargo deny` passes, and that its default features pull in nothing
-  denied. Never require MSVC.
-- **Keys:** the prompt library's own keys (arrows, space, enter) are a
-  terminal's, not the game's, so rule 8 doesn't apply to them. The help
-  line under each prompt still names them.
+- **`wizard::questions`**, the questions with their answers' status:
+  split off into 3424 at the second size valve (below).
+- **Interactive prompts** in a terminal, and the keys they use: split
+  off into 3423 at the size valve (below).
 - **Flags** for every question: `--id` (see below),
   `--perspective`, `--bodies`, `--music` (if 2205 is done), `--kind`
   (from 2003's *Kind of game* concern, ADR-0015 §1), `--online`,
   `--targets`, and `--set` (2501) for template questions. A planned
   answer given by flag fails with its status and ticket. `--no-input`,
   or stdin not being a terminal, asks nothing and uses the defaults.
-- **`shuyi new <dir> --questions --json`** returns the questions, their
-  answers and their status, and makes nothing. Its schema is checked
-  like the rest of the contract (1129).
-- **At the end** the wizard prints the one `shuyi new … --no-input`
-  command that makes the same game, and the composer writes the answers
-  into `shuyi.ron` under `created_with`.
+- **`--questions --json`, the printed command and `created_with`:**
+  3424's (below).
 - **The game's id. From 3048 (done):** the template's base part has
   `app: (name: "{{name}}", id: "com.example.{{crate_name}}", code:
   "crates/game/src/app_info.rs")` in `shuyi.ron`, and
@@ -141,10 +113,8 @@ asked is missing.
 - **Each picked answer that is a module** turns it on through the
   template's parts or, if no part names it, through `shuyi add`'s code
   directly (ADR-0013: every catalog answer works with no part).
-- **The skill pack. From 1134 (done):** update the `shuyi-new-game`
-  skill (`skills/shuyi-new-game/SKILL.md`) to call `shuyi new <dir>
-  --questions --json`, ask its user, and pass the answers as flags;
-  `check-skills` passes.
+- **The skill pack:** its `shuyi-new-game` skill calls `--questions
+  --json`, so it is 3424's.
 - **Docs:** `docs/templates.md` (2501) gets a section on the wizard and
   its flags. **From 2004 (done):** each ready direction guide's *What
   starts it* (`docs/guides/`, today `top-down-grid.md` alone) names the
@@ -168,11 +138,8 @@ asked is missing.
   the same game, and change that command to `--kind` where its guide
   and CI name it. If not, nothing to do: each uses `--kind` when it
   lands (its scope says so).
-- **Either order with 2739** (parked: the `stage-arcade-grid` part): if
-  2739 is done, the built-in template already asks `time` among its own
-  questions (step 4 above), so the prompts and `--questions --json`
-  show it; check that they do. If not, nothing to do: 2739 adds the
-  question to the template, and its scope says the prompts show it.
+- **The `time` question of 2739's part** in `--questions --json`:
+  3424's.
 - **Either order with 2771** (parked: the `stage-hex-grid` part): if
   2771 is done, `--template hex` and `--set perspective=hex-grid` make
   the game its part makes. Check that `--perspective hex-grid
@@ -180,34 +147,27 @@ asked is missing.
   beside `--template hex` in `docs/guides/hex-grid.md`'s *what starts
   it*. If not, nothing to do: 2771 names the command and adds the test
   when it lands (its clause says so).
-- **From 2592 (done):** `shuyi new` asks six questions about the
-  game's GitHub repositories and its private files, as plain prompts in
-  `crates/cli/src/contract/new/questions.rs` (each a function over a
-  `Terminal`, a flag answering each, nothing asked off a terminal or
-  with `--json`). Move them into the wizard, after the catalog's and
-  the template's, in the wizard's prompt style; `--questions --json`
-  lists them with a field saying an agent must not answer `github: yes`
-  itself, and `--no-input` means `--no-github`.
-- **Either order with 2848** (the game's license): if 2848 is done,
-  `questions::license` (`--license`, `--copyright`) moves into the
-  wizard with the GitHub questions, in its prompt style, and
-  `--questions --json` lists it with a field saying an agent asks its
-  user and never picks a license itself; `--no-input` means `none`, and
-  both flags stay. If not, nothing to do (2848 adds it to the wizard
-  when it lands).
-- **From 2597 (done):** whether a new game gets the skills' worked
-  examples is the template's `examples` question (ADR-0113), asked with
-  the others in the wizard. `new`'s terminal prompt for it
-  (`questions::examples`, asked first, before the GitHub questions, with
-  `--examples`/`--no-examples`) moves into the wizard, and its flags
-  stay.
+- **The GitHub, license and examples prompts (2592, 2848, 2597):**
+  moving them into the wizard's prompt style is 3423's, with the
+  prompts.
 - **Either order with 3338** (each target's support level): if 3338 is
   done, the targets question offers a `Preview` profile like a
   supported one, with "preview: not yet run on its device" beside it,
   and never offers a `Planned` one; if not, nothing to do (3338 adds
   that to this question when it lands).
 
+**Estimated size:** about 2,000 lines (code 900, tests 800, docs 300).
+
+**Split:** past 1,000 lines, split off the interactive prompts and the
+move of 2592's and 2597's prompts into them: done, as 3423. At 2,052
+counted lines with the rest, the questions as data, `--questions
+--json`, the printed command, `created_with` and the skill were split
+off too, as 3424.
+
 **Out (do not do):**
+- the terminal's prompts (3423);
+- the questions as data, `--questions --json`, the printed command and
+  `created_with` (3424);
 - moves between stages (2503); until then, several perspectives give
   separate stages and a `limits` entry;
 - checking targets against modules, per-target CI (2504);
@@ -229,26 +189,25 @@ asked is missing.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new demo --no-input` makes the same game as `shuyi new
+- [x] `shuyi new demo --no-input` makes the same game as `shuyi new
       demo --template grid`.
-- [ ] `shuyi new demo --questions --json` lists every catalog concern
-      with each answer's status, and matches its schema.
-- [ ] A parked answer by flag (for example `--bodies procedural`)
+- [x] ~~`shuyi new demo --questions --json` lists every catalog concern
+      with each answer's status, and matches its schema.~~ (not done:
+      split off to 3424, whose acceptance has it)
+- [x] A parked answer by flag (for example `--bodies procedural`)
       fails, naming its status and ticket 2701.
-- [ ] Answering the prompts, then running the printed command with
-      `--no-input` into another folder, gives the same bytes (an
-      integration test drives the prompts through the library's test
-      backend, or through the answers the prompts produce).
-- [ ] With every ready answer picked, the new game builds and passes its
+- [x] ~~Running the printed command with `--no-input` into another
+      folder gives the same bytes.~~ (not done: split off to 3424, whose
+      acceptance has it)
+- [x] With every ready answer picked, the new game builds and passes its
       tests in CI.
-- [ ] `shuyi new demo --no-input --id org.example.demo` writes that id
+- [x] `shuyi new demo --no-input --id org.example.demo` writes that id
       into `shuyi.ron`'s `app.id` and `app_info.rs`, and the game passes
       `app-info --check`. A bad id by flag fails with `check_id`'s
       error.
-- [ ] `check-modules` fails on a concern other than `time` without
+- [x] `check-modules` fails on a concern other than `time` without
       `pick` or `question`.
-- [ ] Nick's sign-off is recorded in the Completion notes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -260,3 +219,113 @@ asked is missing.
   builds (CI).
 
 ## Completion notes
+
+**What was done.** The catalog's concerns (`docs/modules.ron`) gained
+`pick` and `question`, every one but `time`, and `cargo xtask
+check-modules` fails a concern without them (its rule 6, tested by
+`a_concern_but_time_needs_its_pick_and_question_and_serves_names_perspectives`
+and over the repository's own file). `shuyi_cli::catalog::Concern` and
+the xtask read them (RON's `implicit_some` now on for `modules.ron`).
+The perspective is the catalog's question: the template's `perspective`
+question is gone, its parts' `Picked("perspective", …)` and the short
+name `grid` keep their ids, a part's `Picked` may name any concern, and
+a template question may not take a concern's id or `targets`. The
+composer checks a concern's answers against the catalog (a planned or
+parked one fails with its status and tickets), gives each concern its
+first ready answer when none is given (so no answer at all is the grid
+game, and `blank` is now `{ "perspective": [] }`), and turns on the
+module a picked answer names when no part does.
+
+`shuyi new` takes a flag per asked concern (`wizard::concern_flag`:
+`--perspective`, `--bodies`, `--online`, `--world-drawing`, `--kind`,
+`--scripting`), `--targets` (checked against the engine's profiles; a
+planned one refused; the template's `desktop,web` by default; a target
+picked beside them is a `limits` entry naming 2504), `--id` (checked by
+`app_info::check_id`, filling a new `{{id}}` placeholder in the base's
+`shuyi.ron` and `app_info.rs`; `NewOutput::id`) and `--no-input`. CI's
+grid game picks every ready answer by flag. `docs/templates.md` has *The
+wizard's questions*; the book's quick start, `docs/contract.md` and
+`docs/modules.md` say what changed. Contract version 56 (`Concern`'s
+fields in `modules`, `NewInput::id`, `NewOutput::id`).
+
+**Deviations.**
+- The ticket was 37 days old. Checked against the code, before the
+  code: the catalog has seven concerns, not six (`scripting` came since,
+  and got `pick: One`, "How are the rules written?"); the perspective
+  concern already had `hex-grid` and `first-person-grid` beside those
+  the ticket names, with their statuses; 3108 and 3109 were added to
+  `first-person`, `third-person` and `top-down-3d` as asked.
+- **Split twice at the size valve.** First, before the code: the
+  terminal's prompts, the keys they name, moving 2592's GitHub and
+  2597's examples prompts into them, 2848's license clause, and Nick's
+  sign-off, as 3423. Then, with everything written and passing, at
+  2,052 counted lines: `wizard::questions` and its types, `--questions
+  [--json]` and its schema, the printed command, `created_with` and the
+  skill, as 3424, which 3423 now waits for. The two halves land apart:
+  this one makes every answer work by flag; 3424 lists them and records
+  them. That code exists, tested, on the local branch `t3424-draft`
+  (this ticket's session), for 3424 to start from.
+- A third, optional field per concern, `serves` (the perspectives its
+  answers are for), for 3424's skipping rule: no field held which
+  perspectives an answer applies to for answers by `default` or by a
+  module not built. It is on the concern, not the answer, because
+  `catalog::Choice` isn't `#[non_exhaustive]` and a field there would be
+  a break. Only `bodies` has one; `check-modules` checks it names
+  perspectives.
+- The answers' one-line description is the catalog answer's `name`: no
+  new field.
+- The direction menu: 3108 isn't done, so there was none to replace.
+- 2004 merged first and took its *if not* branch, so this ticket made
+  the ready guide, `docs/guides/top-down-grid.md`, name the answers and
+  the `--no-input` command that start it, and the guides' README says a
+  guide names them; the planned guides have nothing to start yet.
+- Either-order clauses: 2205, 2206, 2707, 2719, 2726, 2732, 2735,
+  2739, 2754, 2771, 2848, 3108, 3109 and 3338 aren't done, so nothing was
+  done for them here; each one's clause now says what holds, and those
+  about the questions' list name 3424 (2504, 2551 and 2775 wait for it
+  too).
+
+**Follow-up tickets.** 3423 (the terminal's prompts, and Nick's
+sign-off) and 3424 (the questions as data, `--questions --json`, the
+printed command and `created_with`).
+
+Breaking: shuyi-cli: `template::Template::check_answers`: takes the catalog's concerns, `check_answers(&answers, &catalog.concerns)`.
+
+```migration
+since: 0.1.0
+what: Template::check_answers checks the catalog's concerns too, and takes them.
+old: Template::check_answers(&self, &Answers)
+new: Template::check_answers(&self, &Answers, &Concerns)
+before: |
+  template.check_answers(&answers)?;
+after: |
+  template.check_answers(&answers, &catalog.concerns)?;
+find: ["check_answers(&answers)"]
+```
+
+Breaking: shuyi-cli: `contract::new::NewOutput`: gains `id`, so a literal of it names it.
+
+```migration
+since: 0.1.0
+what: NewOutput, new's answer, gains the game's reverse-DNS id.
+old: NewOutput { dir, name, crate_name, template, answers, parts, files, overwritten, modules, targets, stages, skills }
+new: NewOutput { dir, name, crate_name, id, template, answers, parts, files, overwritten, modules, targets, stages, skills }
+before: |
+  let out = NewOutput { dir, name, crate_name, template, answers, parts, files, overwritten, modules, targets, stages, skills };
+after: |
+  let out = NewOutput { dir, name, crate_name, id, template, answers, parts, files, overwritten, modules, targets, stages, skills };
+```
+
+Behaviour: shuyi-cli: `shuyi new <dir>` with no template and no answers makes the grid game (the perspective's first ready answer, `top-down-grid`), where it made the blank one; `--template blank` is unchanged.
+Behaviour: shuyi-cli: `shuyi new` refuses a planned or parked answer of a concern (`--set perspective=side-view`: "`side-view` (side view), an answer of `perspective`, is parked: ticket 1127 builds it, so no game picks it yet"), where `side-view` was "no answer of `perspective`"; an unknown question's error lists the engine's questions too.
+Behaviour: shuyi-cli: `shuyi new --engine-path <checkout>` reads the concerns from that checkout: one whose `docs/modules.ron` predates this change (no `perspective` concern with a `pick`) refuses `--template grid` and `blank` ("no question `perspective`"); move the checkout forward.
+Behaviour: shuyi-cli: a new game's answers (`NewOutput::answers`) hold each concern's answer and `targets`, and its `app.id` and `app_info.rs` come from `{{id}}`, `com.example.<crate>` without `--id`, as before.
+
+The game builds no `NewOutput` and calls no `check_answers`
+(`gh search code --repo Zafnok/visions-of-shuyi 'check_answers'`: no
+hit; `'NewOutput'`: only `docs/engine/pins.md`, saying the game builds
+none).
+
+Book: the quick start's *Make a game* names the flags and `--id`.
+
+Nick input: none here; his sign-off on the prompts is 3423's.

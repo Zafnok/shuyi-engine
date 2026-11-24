@@ -116,6 +116,10 @@ and do it later ([On GitHub](#on-github), below). A **template** is what the gam
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
+Without `--template`, the flags pick the parts: `--perspective top-down-grid`, `--targets
+desktop,web`, and `--id io.github.<you>.moon-garden`, the id your players' saves are kept
+under. An answer that isn't built yet is refused, with the tickets that build it.
+
 The game depends on the engine's repository at its latest commit, and `shuyi new`
 says so. `--engine-rev <commit>` pins your game to one, so the engine can't change
 under you.

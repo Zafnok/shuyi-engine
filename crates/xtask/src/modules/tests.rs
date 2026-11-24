@@ -26,11 +26,14 @@ fn metadata(concern: &str, answer: &str, alternatives: &[&str]) -> String {
 }
 
 const CONCERNS_RON: &str = r#"(concerns: [
-    (id: "bodies", name: "Bodies", alternatives: true, answers: [
+    (id: "time", name: "Time", alternatives: true, answers: [
+        (id: "turns", name: "turns", by: "default", status: ready, tickets: []),
+    ]),
+    (id: "bodies", name: "Bodies", alternatives: true, pick: Many, question: "How?", answers: [
         (id: "rigid-body", name: "rigid", by: "shuyi-alpha", status: planned, tickets: []),
         (id: "procedural", name: "procedural", by: "shuyi-beta", status: planned, tickets: []),
     ]),
-    (id: "kind", name: "Kind of game", alternatives: false, answers: [
+    (id: "kind", name: "Kind of game", alternatives: false, pick: Many, question: "What?", answers: [
         (id: "rts", name: "rts", by: "shuyi-alpha", status: planned, tickets: []),
         (id: "vn", name: "vn", by: "shuyi-beta", status: planned, tickets: []),
     ]),
@@ -292,6 +295,35 @@ fn missing_files_are_errors() {
             .unwrap_err()
             .starts_with("docs/modules.ron: ")
     );
+}
+
+#[test]
+fn a_concern_but_time_needs_its_pick_and_question_and_serves_names_perspectives() {
+    let concerns = parse_concerns(
+        r#"(concerns: [
+            (id: "time", name: "Time", alternatives: true, answers: []),
+            (id: "perspective", name: "P", alternatives: true, pick: Many, question: "Which?",
+             answers: [(id: "top-down", name: "t", by: "default", status: ready, tickets: [])]),
+            (id: "bodies", name: "B", alternatives: true, pick: Many, question: " ",
+             serves: ["top-down", "sideways"], answers: []),
+            (id: "online", name: "O", alternatives: true, question: "How?", answers: []),
+        ])"#,
+    )
+    .unwrap();
+    let mut errors = Vec::new();
+    check_questions(&concerns, &mut errors);
+    assert_eq!(errors.len(), 3, "{errors:#?}");
+    assert!(errors[0].starts_with("the concern `bodies` in docs/modules.ron has no question:"));
+    assert!(errors[1].contains("serves `sideways`, which is no answer of `perspective`"));
+    assert!(errors[2].starts_with("the concern `online` in docs/modules.ron has no pick:"));
+}
+
+#[test]
+fn the_repository_concerns_say_how_shuyi_new_asks_them() {
+    let text = include_str!("../../../../docs/modules.ron");
+    let mut errors = Vec::new();
+    check_questions(&parse_concerns(text).unwrap(), &mut errors);
+    assert_eq!(errors, Vec::<String>::new());
 }
 
 #[test]

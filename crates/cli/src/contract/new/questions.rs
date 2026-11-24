@@ -34,11 +34,15 @@ pub const KINDS: [(&str, &str); 5] = [
 ];
 
 /// `new`'s options taking a value, whose value is never one of [`Flags`]'.
-const TAKES_A_VALUE: [&str; 7] = [
+/// The wizard's flags of the catalog's concerns take one too
+/// ([`super::wizard::concern_flag`]).
+const TAKES_A_VALUE: [&str; 9] = [
     "--template",
     "--answers",
     "--set",
     "--name",
+    "--id",
+    "--targets",
     "--engine-rev",
     "--engine-path",
     "--private-url",
@@ -62,6 +66,9 @@ pub struct Flags {
     pub private: Option<Vec<String>>,
     /// `--private-folder`s: the developer's own folders, under `files/`.
     pub folders: Option<Vec<String>>,
+    /// `--no-input`: nothing asked, as off a terminal: every question
+    /// the flags leave takes its default, and no repository is made.
+    pub no_input: bool,
 }
 
 /// Reads `new`'s arguments (not `--json`): [`parse_args`]' and the flags
@@ -95,7 +102,10 @@ pub fn parse(args: &[String]) -> Result<(NewInput, Flags), String> {
                 flags.private = Some(kinds(&value()?).map_err(|e| format!("--private: {e}"))?);
             }
             "--private-folder" => folders.push(value()?),
-            flag if TAKES_A_VALUE.contains(&flag) => {
+            "--no-input" => flags.no_input = true,
+            flag if TAKES_A_VALUE.contains(&flag)
+                || super::wizard::concern_flag(flag).is_some() =>
+            {
                 rest.push(arg.clone());
                 rest.push(value()?);
             }
@@ -694,7 +704,7 @@ pub fn main(cwd: &Path, input: NewInput, flags: &Flags, json: bool) -> Made {
     let stdin = io::stdin();
     let mut lock = stdin.lock();
     let mut stdout = io::stdout();
-    let terminal = (!json && on_a_terminal()).then_some(Terminal {
+    let terminal = (!json && !flags.no_input && on_a_terminal()).then_some(Terminal {
         input: &mut lock,
         out: &mut stdout,
     });

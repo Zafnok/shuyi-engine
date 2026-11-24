@@ -75,9 +75,9 @@ whether it is what you meant by MIDI sound.
   `templates/shuyi-default/template.ron`, when `music` has `midi`
   picked, adds a short CC0 `.mid` of our own, a cue for it, and the bank
   line in `shuyi.ron` the README describes, as a `shuyi.ron` piece that
-  `shuyi new` merges into the base's (`docs/templates.md`). Until the
-  wizard asks the catalog's concerns (2502), `music` is a question of
-  the template's own there, as `perspective` is.
+  `shuyi new` merges into the base's (`docs/templates.md`). **From 2502
+  (done):** the wizard asks the catalog's concerns, so the part's `when`
+  is `Picked("music", "midi")`, on 2205's `music` concern.
 - **An example**, `examples/midi-music/`: a screen that plays a sequence
   and lets the player change its tempo and mute a track through actions
   (never keys: the `input-actions` skill). It has a Harness test, a
@@ -114,8 +114,8 @@ into them, ADR-0099): nothing to do here.
       and replay tests pass.
 - [ ] A Harness run of the example lists the sequence cue as started.
 - [ ] The README's cost section has the measured numbers.
-- [ ] If 2502 is done: `shuyi new demo --no-input --music midi` makes a
-      game that builds and plays the template's sequence.
+- [ ] `shuyi new demo --no-input --music midi` makes a game that builds
+      and plays the template's sequence.
 - [ ] Nick's sign-off is recorded in the Completion notes.
 - [ ] All gates in the `run-gates` skill pass.
 
@@ -125,6 +125,6 @@ into them, ADR-0099): nothing to do here.
   samples as expected on the fixture.
 - Snapshot: the offline render hash.
 - Integration: the example's Harness, replay and `frame-png` tests; the
-  wizard game if 2502 is done.
+  game `shuyi new demo --no-input --music midi` makes.
 
 ## Completion notes

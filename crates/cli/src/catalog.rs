@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use toml_edit::{Array, DocumentMut, InlineTable, Item, TableLike, Value};
 
 use crate::skills::{self, Pack};
+use crate::template::Pick;
 
 /// The concerns, from the engine's root.
 pub const CONCERNS: &str = "docs/modules.ron";
@@ -70,8 +71,33 @@ pub struct Concern {
     /// thing in one stage, so that two modules answering it name each
     /// other; `false` when they can share a stage.
     pub alternatives: bool,
+    /// How many answers a game picks, as `shuyi new` asks it (ADR-0013
+    /// §1); none for a concern it doesn't ask (`time`, which follows from
+    /// the perspectives).
+    #[serde(default)]
+    pub pick: Option<Pick>,
+    /// The words `shuyi new` asks it with (`How do bodies move?`).
+    #[serde(default)]
+    pub question: Option<String>,
+    /// The perspectives its answers are for: `shuyi new` doesn't ask it of
+    /// a game with none of them. Empty for every one.
+    #[serde(default)]
+    pub serves: Vec<String>,
     /// Its answers.
     pub answers: Vec<Choice>,
+}
+
+impl Concern {
+    /// The answer a game takes when it gives none: its first ready one.
+    pub fn default_answer(&self) -> Option<&Choice> {
+        self.answers.iter().find(|a| a.status == Status::Ready)
+    }
+
+    /// Whether its answers are for a game of the perspectives `picked`:
+    /// it serves every perspective, or one of them.
+    pub fn serves_any(&self, picked: &[String]) -> bool {
+        self.serves.is_empty() || picked.iter().any(|p| self.serves.contains(p))
+    }
 }
 
 /// One answer to a concern.
@@ -118,9 +144,18 @@ impl Status {
 }
 
 impl Concerns {
+    /// The concerns of the engine this `shuyi` was built from, as it
+    /// embeds them.
+    pub fn embedded() -> Result<Self, String> {
+        Self::parse(include_str!("../../../docs/modules.ron"))
+    }
+
     /// `docs/modules.ron`'s text, read.
     pub fn parse(text: &str) -> Result<Self, String> {
-        ron::from_str(text).map_err(|e| format!("{CONCERNS}: {e}"))
+        ron::Options::default()
+            .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME)
+            .from_str(text)
+            .map_err(|e| format!("{CONCERNS}: {e}"))
     }
 
     /// The concern `concern`'s answer `answer`, if both are there.
@@ -295,7 +330,7 @@ impl Catalog {
     /// the `shuyi` crate's features, one a module, with no metadata, and its
     /// skill pack.
     pub fn embedded() -> Result<Self, String> {
-        let concerns = Concerns::parse(include_str!("../../../docs/modules.ron"))?;
+        let concerns = Concerns::embedded()?;
         Ok(Self {
             root: PathBuf::new(),
             concerns,
