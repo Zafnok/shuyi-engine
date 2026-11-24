@@ -81,7 +81,7 @@ None. Running it on a real Deck is 3013.
     through `HelpKeys` (the `input-actions` skill);
   - the Steam and Quick Access buttons are never read;
   - **either order with 2402 (parked):** if 2402 is done, pads come
-    through SDL3 (ADR-0146), so the Deck is told apart by the ids SDL
+    through SDL3 (ADR-0147), so the Deck is told apart by the ids SDL
     reports for it, as 2414 records; if not, by gilrs's, and 2402
     carries the detection over when it lands;
   - the context starts with `ctx.device` on

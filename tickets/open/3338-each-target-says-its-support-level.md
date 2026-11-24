@@ -141,10 +141,16 @@ read the same way, with a bare `Preview` still reading (`playdate`
 names 3011, `steam-deck` names 3013); if not, `Preview` is bare, and
 2504 gives it the field when it gives `Planned` one.
 
-**Either order with 2502:** if 2502 is done, its targets question offers
-a `Preview` target like a supported one, with "preview: not yet run on
-its device" beside it, and still never offers a `Planned` one; if not,
-nothing to do (2502 does the same when it lands).
+**From 2502 (done):** `shuyi new --targets` takes the engine's
+profiles through `engine_targets()` in
+`crates/cli/src/contract/new/wizard.rs`, a `Target { id, ready }` per
+profile; a planned one is refused by flag. Take a `Preview` profile
+there like a supported one.
+
+**Either order with 3424** (the questions as data): if 3424 is done,
+its targets question offers a `Preview` profile with "preview: not yet
+run on its device" beside it, and never offers a `Planned` one; if not,
+nothing to do (3424 does it, its clause says so).
 
 **Either order with 3507:** if 3507 is done, `docs/targets/web.md`'s
 `## On the device` names headless Firefox and headless WebKit in CI (the

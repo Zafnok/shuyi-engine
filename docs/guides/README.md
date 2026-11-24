@@ -45,7 +45,8 @@ A guide starts with the answers it covers, as `concern/answer` ids from
 [`docs/modules.ron`](../modules.ron), its status (*ready* or *planned*)
 and its tickets. Then a direction guide says, in this order:
 
-1. which template starts it;
+1. which `shuyi new` answers start it (`--perspective`, `--kind`…),
+   and the template's short name if it has one;
 2. which kits and modules it uses;
 3. which ones look related but aren't for it, and why;
 4. which example to read first.

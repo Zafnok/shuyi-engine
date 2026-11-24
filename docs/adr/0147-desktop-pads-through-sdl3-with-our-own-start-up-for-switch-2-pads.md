@@ -1,4 +1,4 @@
-# ADR-0146: Desktop pads through SDL3, with our own start-up for Switch 2 pads
+# ADR-0147: Desktop pads through SDL3, with our own start-up for Switch 2 pads
 
 - **Status:** Accepted
 - **Date:** 2026-11-24

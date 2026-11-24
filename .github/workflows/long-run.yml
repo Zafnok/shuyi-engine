@@ -1,0 +1,70 @@
+name: Long run
+
+# The weekly long run (ticket 3509, ADR-0146): Hello, Grid's long
+# scenarios (`examples/hello-grid/long/*.long.ron`) play headless for
+# hundreds of thousands of frames, twice, each in a process of its own.
+# A run fails when the live heap or the sounds alive grow past the
+# scenario's slack after its warm-up, or when the second run hashes a
+# sampled frame differently. Never on a pull request: it takes too long.
+# A failure opens one `long-run` issue, or comments on the open one.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # weekly, Monday 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  long-run:
+    name: long run
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: long-run
+      - name: Long runs of Hello, Grid, twice
+        working-directory: examples/hello-grid
+        run: cargo shuyi bench --long --twice
+      - name: Post the table
+        if: always()
+        run: |
+          table=examples/hello-grid/dist/bench/long-report.md
+          if [ -f "$table" ]; then cat "$table" >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: long-report
+          path: |
+            examples/hello-grid/dist/bench/long-report.*
+          retention-days: 30
+      # The run's URL goes in through env, never into the script itself.
+      - name: Open or update the long-run issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create long-run --force --color D93F0B \
+            --description "The weekly long run found a leak or a run that differs (long-run.yml)"
+          number=$(gh issue list --label long-run --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "The long run failed again: $RUN_URL"
+          else
+            gh issue create --label long-run \
+              --title "Long run: a leak or a difference in Hello, Grid" \
+              --body "The weekly long run failed: $RUN_URL
+
+          Its report (the \`long-report\` artifact) names the scenario, the heap or sound counts of the first and last quarters, the memory tags that grew most, or the frame where the second run differed. Fix it with a ticket of its own (the \`write-ticket\` skill)."
+          fi

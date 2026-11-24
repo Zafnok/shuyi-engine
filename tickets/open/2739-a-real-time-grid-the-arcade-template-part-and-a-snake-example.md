@@ -277,11 +277,12 @@ None.
     The example does that, `shuyi export playdate` builds it, and the PR
     says whether it runs in the Playdate Simulator (`--run`, if the SDK
     is installed where the PR is made).
-- **Either order with 3509:** if 3509 is done, add a long scenario for
-  `examples/snake` (`examples/snake/long/*.long.ron`: a seeded play that
-  loses, restarts and loses again) and run it in
-  `.github/workflows/long-run.yml` beside Hello, Grid; if not, nothing
-  to do (3509 adds it when it lands).
+- **From 3509 (done):** add a long scenario for `examples/snake`
+  (`examples/snake/long/*.long.ron`: a seeded play that loses, restarts
+  and loses again, looped by `repeat`; `docs/targets/README.md`, *Long
+  runs*) and run it in `.github/workflows/long-run.yml` beside Hello,
+  Grid: a second `cargo shuyi bench --long --twice` step in
+  `examples/snake`, and its `long-report.md` in the job's summary.
 - **The template part `stage-arcade-grid`** in `templates/shuyi-default/`
   (2501):
   - the built-in template gets its own question `time` ("On a grid:
@@ -298,8 +299,11 @@ None.
     task. Its `GameSettings::BACKGROUND` is
     `Background::KEEP_RUNNING.paused()` (built by 3093);
   - `--template arcade` is a short name for those answers, as `grid`
-    and `blank` are, and `--set time=ticks` picks it. If 2502 is done,
-    its prompts show the question;
+    and `blank` are, and `--set time=ticks` picks it. **Either
+    order with 3424** (the questions as data): if 3424 is done, a test
+    checks that `shuyi new --questions --json` lists the template's own
+    `time` question among the template's; if not, nothing to do (3424
+    checks it, its clause says so). 3423's prompts ask it;
   - its test: with `Right` held for one second, the hero moves the same
     number of tiles in frames of 1/30 s (`Harness::frame`) as in frames
     of 1/60 s;

@@ -23,7 +23,7 @@ it.
 **Nick chose SDL3 with a fix for Switch** (2026-11-24). The fix was then
 found and tried: one start-up command that switchbrew.org's protocol
 page documents, sent by our own code, made the Switch 2 pad report every
-button. [ADR-0146](../adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+button. [ADR-0147](../adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
 records the plan.
 
 ## What the engine needs from pads
@@ -224,7 +224,7 @@ SDL3 still didn't list the pad, with its Switch 2 driver turned off by
 `SDL_JOYSTICK_HIDAPI_SWITCH2=0`; other hints weren't tried with the pad
 plugged in. So SDL3 is the answer, with a small fix of our own:
 
-- [ADR-0146](../adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+- [ADR-0147](../adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
   records it, resolving ADR-0021 §1's controllers choice;
 - **2402** (parked) is rewritten: desktop pads through SDL3, gilrs
   removed, and, as Nick then asked, a toggle (on by default) so a game

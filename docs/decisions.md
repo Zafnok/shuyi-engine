@@ -2154,7 +2154,7 @@ game:
 - **Controller support on desktop is a toggle, on by default.** A game
   for Windows, macOS or Linux includes SDL3's pads unless its developer
   turns them off; turned off, the game reads no controllers there and
-  is about 1.8 MB smaller. 2402 builds the toggle (ADR-0146 §5).
+  is about 1.8 MB smaller. 2402 builds the toggle (ADR-0147 §5).
 - The web (whose pad reading costs nothing to speak of) and the consoles
   (their own backends) are not part of the toggle.
 

@@ -644,10 +644,14 @@ jobs:
           # with no checkout: its gates and its web build run on its public
           # files, as a fork's do. It is made without the skills' worked
           # examples (ticket 2597, ADR-0113), and the blank game with them.
+          # The grid game picks every ready answer of the wizard's questions
+          # by their flags too (ticket 2502, ADR-0013 §2).
           - template: grid
             private: --set private-files=yes --private-url https://github.com/o/demo-assets.git --no-examples
+            answers: --no-input --perspective top-down-grid --online none --world-drawing flat --kind tactics --scripting none --targets desktop,web,playdate,steam-deck --id org.example.demo
           - template: blank
             private: ""
+            answers: ""
     runs-on: ubuntu-latest
     container: ubuntu:24.04
     defaults:
@@ -656,6 +660,7 @@ jobs:
     env:
       TEMPLATE: ${{ matrix.template }}
       PRIVATE: ${{ matrix.private }}
+      ANSWERS: ${{ matrix.answers }}
     steps:
       # The image has no git: checkout downloads the commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -674,8 +679,8 @@ jobs:
       - run: apt-get install -y --no-install-recommends jq git
       - name: Make a game with shuyi new
         run: |
-          # shellcheck disable=SC2086 # $PRIVATE is five words, or none
-          cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE
+          # shellcheck disable=SC2086 # $PRIVATE and $ANSWERS are words, or none
+          cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE" $PRIVATE $ANSWERS
       - name: The game's own setup script finds nothing to do
         run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
       # Its author's first build writes Cargo.lock, which the game commits
@@ -1095,7 +1100,10 @@ jobs:
   # both times. The table goes in the job's summary. Then the toy's
   # fixtures: a frame that burns instructions fails on the Playdate naming
   # that frame, and 11 MB held fails on the Playdate and passes on the
-  # desktop.
+  # desktop; and the long runs' (`bench --long`, ticket 3509): flat passes
+  # twice, a leak fails naming its tag, loops never stopped fail naming
+  # the counts, and a process id in the state fails `--twice` at the first
+  # sample. Hello, Grid's long run is weekly (long-run.yml).
   bench:
     name: bench
     needs: [changes, export]
@@ -1152,6 +1160,25 @@ jobs:
           expect 0 burns-in-frame-5 desktop ""
           expect 1 holds-11-mb playdate "holds-11-mb on playdate: the heap's peak reached"
           expect 0 holds-11-mb desktop ""
+      - name: The toy's long-run fixtures fail where they must
+        working-directory: crates/cli/toy
+        run: |
+          expect() {
+            local code=$1 says=$2; shift 2
+            set +e
+            cargo run -q -p shuyi-cli -- bench --long "$@" > out.txt 2>&1
+            local got=$?
+            set -e
+            cat out.txt
+            if [ "$got" != "$code" ]; then echo "::error::bench --long $*: exit $got, not $code"; exit 1; fi
+            if [ -n "$says" ] && ! grep -qF -- "$says" out.txt; then echo "::error::bench --long $*: no \"$says\""; exit 1; fi
+          }
+          expect 0 "" --twice --scenario flat --out dist/bench/flat
+          expect 1 "leaks: the live heap grew from " --scenario leaks --out dist/bench/leaks
+          grep -qF "grew most under toy-leak +" out.txt
+          expect 1 "hums: the sounds alive grew from " --scenario hums --out dist/bench/hums
+          expect 1 "pid: the second run differs from the first at frame 100" --twice --scenario pid --out dist/bench/pid-twice
+          expect 0 "" --scenario pid --out dist/bench/pid
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

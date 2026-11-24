@@ -17,6 +17,9 @@ modules a game has on. A module turned on joins the game through
 - A **concern** is a question every game answers one way or another. A
   **direction** is the answers a stage picks, one per concern. The
   concerns and their answers are data, in [`modules.ron`](modules.ron).
+  `shuyi new` asks each concern but *Time* with its `question`, taking
+  one answer or many (its `pick`), and offers only its ready answers
+  ([`templates.md`](templates.md#the-wizards-questions)).
 - Two modules that answer the same concern are **alternatives**: they
   never drive the same thing in one stage. They can still share a game,
   in different stages, or on different things when their READMEs say
@@ -32,8 +35,9 @@ A row's name is its crate. A module's crate also says what it answers in
 its `Cargo.toml`, under `[package.metadata.shuyi]`. `cargo xtask
 check-modules` checks the two against each other: every crate outside
 the default engine has a row here, a README and its metadata; every
-answer it names is in `modules.ron`; alternatives name each other; and
-every feature of `shuyi` names a row.
+answer it names is in `modules.ron`; alternatives name each other;
+every feature of `shuyi` names a row; and every concern but *Time* has
+its `pick` and its `question`.
 
 ## Bodies and motion
 

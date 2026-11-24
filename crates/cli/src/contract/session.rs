@@ -31,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_assets::keymap::ActionSet;
+use shuyi_core::StateHash;
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::heap;
@@ -539,6 +540,23 @@ pub trait Session {
         None
     }
 
+    /// Readies the session for a long run (`bench --long`, ADR-0081): its
+    /// driver keeps no log of every frame, so what it holds stays the same
+    /// however long it runs, and each frame is hashed
+    /// ([`frame_hash`](Self::frame_hash)). By default it does nothing.
+    fn set_long(&mut self) {}
+
+    /// The last frame's hash, of what happened in it, once frames are
+    /// hashed ([`set_long`](Self::set_long)). By default none.
+    fn frame_hash(&self) -> Option<StateHash> {
+        None
+    }
+
+    /// How many sounds started with a handle are alive now. By default 0.
+    fn sounds_alive(&self) -> u32 {
+        0
+    }
+
     /// The current frame as the game paints it, each console pixel
     /// `scale` × `scale` (the game's choice if `None`). By default the
     /// game offers none.
@@ -987,6 +1005,19 @@ impl<G: GameData> Session for Headless<G> {
 
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         self.harness.heap_snapshot()
+    }
+
+    fn set_long(&mut self) {
+        self.harness.keep_logs(false);
+        self.harness.app_mut().hash_frames(true);
+    }
+
+    fn frame_hash(&self) -> Option<StateHash> {
+        self.harness.app().frame_hash()
+    }
+
+    fn sounds_alive(&self) -> u32 {
+        u32::try_from(self.harness.sounds_playing().len()).unwrap_or(u32::MAX)
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {

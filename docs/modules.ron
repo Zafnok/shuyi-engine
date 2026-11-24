@@ -10,6 +10,13 @@
 // - `alternatives`: `true` when its answers never drive the same thing in
 //   one stage, so two modules answering it name each other in their
 //   `alternatives`; `false` when its answers can share a stage;
+// - `pick` and `question`: how many answers a game picks (`One` or
+//   `Many`) and the words `shuyi new` asks it with (ADR-0013 §1); every
+//   concern has both but `time`, which `shuyi new` doesn't ask: it follows
+//   from the perspectives. A game that gives no answer takes the first
+//   ready one;
+// - `serves` (if any): the perspectives its answers are for, so `shuyi
+//   new` doesn't ask it of a game with none of them (no list: every one);
 // - `answers`, each with:
 //   - `id`: what a module's metadata names (`answer = "rigid-body"`);
 //   - `name`: how the catalog says it;
@@ -35,6 +42,8 @@
             id: "perspective",
             name: "Perspective",
             alternatives: true,
+            pick: Many,
+            question: "Which perspectives?",
             answers: [
                 (id: "top-down-grid", name: "top-down grid", by: "default", status: ready, tickets: []),
                 (id: "top-down", name: "top-down free", by: "default", status: parked, tickets: ["1120", "1122"]),
@@ -42,15 +51,18 @@
                 (id: "side-view", name: "side view", by: "default", status: parked, tickets: ["1127"]),
                 (id: "hex-grid", name: "hex grid", by: "default", status: parked, tickets: ["2121", "2740"]),
                 (id: "first-person-grid", name: "first-person grid", by: "shuyi-crawl", status: parked, tickets: ["2741"]),
-                (id: "first-person", name: "first person", by: "shuyi-3d", status: parked, tickets: ["3101"]),
-                (id: "third-person", name: "third person", by: "shuyi-3d", status: parked, tickets: ["3101"]),
-                (id: "top-down-3d", name: "top-down 3D", by: "shuyi-3d", status: parked, tickets: ["3101"]),
+                (id: "first-person", name: "first person", by: "shuyi-3d", status: parked, tickets: ["3101", "3108"]),
+                (id: "third-person", name: "third person", by: "shuyi-3d", status: parked, tickets: ["3101", "3108"]),
+                (id: "top-down-3d", name: "top-down 3D", by: "shuyi-3d", status: parked, tickets: ["3101", "3109"]),
             ],
         ),
         (
             id: "bodies",
             name: "Bodies and motion",
             alternatives: true,
+            pick: Many,
+            question: "How do bodies move?",
+            serves: ["top-down", "isometric", "side-view", "first-person", "third-person", "top-down-3d"],
             answers: [
                 (id: "movers", name: "movers and drawn clips", by: "default", status: parked, tickets: ["1122", "2231"]),
                 (id: "rigid-body", name: "rigid-body physics", by: "shuyi-physics", status: parked, tickets: ["1128"]),
@@ -61,6 +73,8 @@
             id: "online",
             name: "Online play",
             alternatives: true,
+            pick: One,
+            question: "How do players play online?",
             answers: [
                 (id: "none", name: "none", by: "default", status: ready, tickets: []),
                 (id: "lockstep", name: "lockstep", by: "shuyi-net", status: parked, tickets: ["1140", "1141"]),
@@ -72,6 +86,8 @@
             id: "world-drawing",
             name: "World drawing",
             alternatives: true,
+            pick: Many,
+            question: "How is the world drawn?",
             answers: [
                 (id: "flat", name: "flat 2D", by: "default", status: ready, tickets: []),
                 (id: "diorama", name: "diorama (HD-2D)", by: "shuyi-diorama", status: parked, tickets: ["3107"]),
@@ -84,6 +100,8 @@
             // A strategy game can tell its story as a visual novel
             // (ADR-0015 §1).
             alternatives: false,
+            pick: Many,
+            question: "What kind of game is it?",
             answers: [
                 (id: "tactics", name: "tactics", by: "default", status: ready, tickets: []),
                 (id: "rts", name: "real-time strategy", by: "shuyi-rts", status: parked, tickets: ["2707"]),
@@ -99,6 +117,8 @@
             id: "scripting",
             name: "Scripted rules",
             alternatives: true,
+            pick: One,
+            question: "How are the rules written?",
             answers: [
                 (id: "none", name: "none: rules in Rust", by: "default", status: ready, tickets: []),
                 (id: "rhai", name: "Rhai scripts", by: "shuyi-script", status: planned, tickets: ["2101", "2102"]),

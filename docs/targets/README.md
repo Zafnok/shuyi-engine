@@ -108,6 +108,59 @@ export <target>` first to gate it.
 Valgrind runs on Linux: on Windows, run it in WSL, or leave the
 instructions to CI with `--no-instructions`.
 
+### Long runs
+
+```
+cargo shuyi bench --long                     # every long scenario
+cargo shuyi bench --long --twice             # each twice, in two processes, hashes compared
+cargo shuyi bench --long --scenario stage-loop
+```
+
+A slow leak shows only over hours: a cache that grows with each map, a
+sound never stopped, a log that keeps every line. `--long` plays the
+game's long scenarios ([ADR-0146](../adr/0146-long-runs-flat-memory-and-sounds-and-equal-hashes.md)),
+in the same `shuyi-bench` profile and never under Valgrind, so it runs on
+Windows too. Every `sample_every` frames it reads the live heap, each
+memory tag's live bytes, the sounds alive and the frame's hash. After
+`warm_up` it splits the samples in quarters, and fails when the most live
+heap of the last quarter is over the first quarter's most by more than
+`slack.heap_bytes`, or the most sounds alive by more than `slack.sounds`,
+naming the scenario, both numbers and the three memory tags that grew
+most. With `--twice` it fails at the first sample whose frame's hash
+differs between the two runs. It writes `long-report.json` and
+`long-report.md` to `dist/bench`. Wall time is never read.
+
+A long scenario is a file named `<name>.long.ron` anywhere in the game's
+folder, found as the scenarios are:
+
+```ron
+(
+    format_version: 1,
+    about: "the stage, moves, the options, looped",
+    // The game's start options, as a scenario's.
+    start: [],
+    // The steps played each time: go round a loop that ends where it began.
+    script: (steps: [keys("Enter"), wait(1.0), keys("Escape"), wait(0.3)]),
+    // The times the script plays, and the frames with no input after each.
+    repeat: 2000,
+    idle: 0,
+    // The first frames are not judged: caches filling, the first load.
+    warm_up: 20000,
+    // Frames between samples.
+    sample_every: 5000,
+    // How much the last quarter may be over the first: 64 KiB and no
+    // sound, unless given.
+    slack: (heap_bytes: 65536, sounds: 0),
+)
+```
+
+Write one that goes round the game's whole loop, from the title through
+play and back, so each part is entered many times. Hello, Grid's is
+[`examples/hello-grid/long/stage-loop.long.ron`](../../examples/hello-grid/long/stage-loop.long.ron):
+a million frames, about four and a half hours of play. The engine's own
+weekly run (`.github/workflows/long-run.yml`) plays it; a game runs
+`cargo shuyi bench --long --twice` in its own CI if it wants to.
+
 ## A game's scenarios
 
 A scenario is a file named `<name>.bench.ron` anywhere in the game's
@@ -144,4 +197,9 @@ checks that every frame's count is the same both times, posts the table
 as the job's summary, and fails on any number over its budget. It also
 checks the toy's fixtures in `crates/cli/toy/bench/`: a frame that burns
 instructions fails on the Playdate naming its frame, and a scenario
-holding 11 MB fails on the Playdate and passes on the desktop.
+holding 11 MB fails on the Playdate and passes on the desktop. And the
+toy's long-run fixtures in `crates/cli/toy/long/`: `flat` passes twice,
+`leaks` fails naming its memory tag, `hums` fails naming the sounds
+alive, and `pid` fails `--twice` at its first sample. Hello, Grid's long
+run is weekly, never on a pull request (`long-run.yml`): a failure opens
+an issue labelled `long-run`.

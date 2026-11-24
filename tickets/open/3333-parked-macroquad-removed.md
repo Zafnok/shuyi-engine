@@ -81,7 +81,7 @@ None.
 
 **Out (do not do):**
 - quad-snd, gilrs and the sound path: 3079 removed quad-snd, and the
-  controllers are 2402's and 2403's (ADR-0146).
+  controllers are 2402's and 2403's (ADR-0147).
 
 **Estimated size:** about 1,100 lines, most of them removed (code 700,
 CI and scripts 150, docs 250).

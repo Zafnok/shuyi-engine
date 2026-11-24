@@ -83,9 +83,8 @@ None.
     background, `vn.ron`, and keymap layouts;
   - a game made with it builds, and its test plays the starter scene to
     its end;
-  - if 2502 is done, `shuyi new demo --kind visual-novel` makes it. If
-    not, `shuyi new demo --set kind=visual-novel` does, and 2502 adds
-    the flag.
+  - **from 2502 (done):** `shuyi new demo --kind visual-novel
+    --no-input` makes it; the guide and CI name `--kind`.
 - **The direction guide** `docs/guides/visual-novel.md`, in full and in
   2004's order:
   - which template starts it (the part above);

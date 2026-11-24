@@ -19,7 +19,7 @@ completed:
 3.4.20 on Nick's pads on Windows
 ([`docs/research/2903-controllers-after-gilrs.md`](../../docs/research/2903-controllers-after-gilrs.md)),
 and SDL3 was chosen
-([ADR-0146](../../docs/adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)).
+([ADR-0147](../../docs/adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)).
 The Steam Deck wasn't tried. Nick, 2026-11-22: "rn we leave untested but
 have it as a followup". 2402 (parked) replaces gilrs with SDL3 and waits
 for this, so the Deck's behaviour is known before the switch. 3012 wants
@@ -41,7 +41,7 @@ About 2 minutes a run, six runs.
 **In:**
 - Write the probe again in a scratch folder (outside the repository),
   with gilrs 0.11.2 (or the release of the day) and `sdl3-sys` with SDL's
-  input parts (ADR-0146 §1), each as a cargo feature.
+  input parts (ADR-0147 §1), each as a cargo feature.
 - Build it for `x86_64-unknown-linux-gnu` in Docker's `rust:1-bookworm`
   image (Nick allowed the pull on 2026-11-22), with `cmake` and
   `libudev-dev` installed in the container.

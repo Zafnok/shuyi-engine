@@ -113,7 +113,7 @@ What was done:
   command, sent by a scratch program through `nusb`, made the Switch 2
   pad report all 17 buttons through gilrs. So the answer's first branch
   holds: SDL3, with our own start-up for Switch 2 pads.
-- [ADR-0146](../../docs/adr/0146-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
+- [ADR-0147](../../docs/adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)
   records it, resolving ADR-0021 §1's controllers choice and narrowing
   its §4 and §6; ADR-0021's status line and the ADR index say so.
 - 2402 is rewritten (desktop pads through SDL3, gilrs removed) and 2403
@@ -122,7 +122,7 @@ What was done:
 - New ticket 2414 (not parked) tries both libraries on the Steam Deck,
   and 2402 waits for it.
 - Nick then asked for controller support on desktop to be a toggle, on
-  by default, to save the 1.8 MB: ADR-0146 §4 and 2402's Scope. And he
+  by default, to save the 1.8 MB: ADR-0147 §4 and 2402's Scope. And he
   made it a rule: an optional dependency that makes games bigger comes
   behind a toggle (`docs/decisions.md`, 2026-11-24; `AGENTS.md` rule 13).
 - Merged `main` after 3034 landed: 3327 and 3333 now name SDL3 for the
