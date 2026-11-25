@@ -492,6 +492,10 @@ Behaviour: shuyi-ui: Restore defaults (`Settings::restored`) keeps the language 
 Behaviour: shuyi-app, shuyi-playdate: `PlatformFacts::languages` holds the system's languages (sys-locale on a desktop, `navigator.languages` on the web, the Playdate's `getLanguage`), so a session record carries them.
 Behaviour: shuyi, shuyi-app: a new default feature, `system-languages`; a game that takes the facade with `default-features = false` gets no system language on a desktop until it adds `shuyi/system-languages`.
 
+Sound parity: none, the gates themselves didn't change: the give-up's
+kept lines (`give_up::KEPT`, the footprint and `ci.yml`) follow the API
+gate's `shuyi-app` feature list, which now names `system-languages`.
+
 Book: `site/content/learn/book/saves-and-settings.md` (*Settings*) says
 what the language setting is, the three first-language policies and the
 row.
