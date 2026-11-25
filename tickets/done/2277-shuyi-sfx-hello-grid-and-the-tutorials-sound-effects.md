@@ -210,6 +210,9 @@ chapter into a new ticket blocked by this one.
   `Op` (`gh search code --repo Zafnok/visions-of-shuyi 'Op::'` and
   `'shuyi_cli::contract'` at pin `b69585e`: imports of `autobalance`,
   `playtest`, `replay`, `session` and `Answer` only); `Op` is
-  `#[non_exhaustive]`, so `Op::Sfx` is an addition.
+  `#[non_exhaustive]`, so `Op::Sfx` is an addition: it is the enum's
+  last variant, so the others keep their discriminants (CI's `api` job
+  found the shift when it sat beside `Doctor`), and `Op::ALL` lists it
+  after `doctor`.
 
 Behaviour: shuyi-cli: `Op::ALL` has `sfx` between `doctor` and `explain`, `shuyi mcp` lists an `sfx` tool, and every answer says `"contract": 60`.

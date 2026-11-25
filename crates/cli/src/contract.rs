@@ -112,8 +112,6 @@ pub enum Op {
     Bake,
     /// The toolchain checked.
     Doctor,
-    /// A sound effect from a preset or a file.
-    Sfx,
     /// A problem code's page.
     Explain,
     /// A running build reached over the live link.
@@ -135,6 +133,9 @@ pub enum Op {
     Reset,
     /// The MCP session's game stopped.
     Stop,
+    /// A sound effect from a preset or a file. Last, so the variants
+    /// before it keep their places.
+    Sfx,
 }
 
 impl Op {
