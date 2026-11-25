@@ -190,7 +190,7 @@ chapter into a new ticket blocked by this one.
   the ticket left open: `--seed` with a file is refused (`SH0001`: a
   file's own `seed` field is its noise's); a file that can't be read or
   written is `SH3004`; a file with problems answers `ok: false` with no
-  code, its own text, and writes nothing. Contract version 60. MCP's
+  code, its own text, and writes nothing. Contract version 61 (60 went to 3423). MCP's
   `sfx` tool runs in the session's folder and takes no `project`.
 - **Docs**: `docs/contract.md`'s row, the crate's table, the CLI's usage,
   the root README's `shuyi-cli` row, the template's `AGENTS.md` row,
@@ -215,4 +215,4 @@ chapter into a new ticket blocked by this one.
   found the shift when it sat beside `Doctor`), and `Op::ALL` lists it
   after `doctor`.
 
-Behaviour: shuyi-cli: `Op::ALL` has `sfx` between `doctor` and `explain`, `shuyi mcp` lists an `sfx` tool, and every answer says `"contract": 60`.
+Behaviour: shuyi-cli: `Op::ALL` has `sfx` between `doctor` and `explain`, `shuyi mcp` lists an `sfx` tool, and every answer says `"contract": 61`.
