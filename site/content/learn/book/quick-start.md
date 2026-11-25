@@ -107,12 +107,15 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. In a terminal it first asks whether to include the engine skills' *worked
-examples*, files that show each skill at work (`bots.rs`, `playtest.ron`…): yes keeps
-them for you and your coding agent to read, no leaves only the skills, and the game runs
-the same either way (`--examples` or `--no-examples` answers it). Then it asks whether to
-put the game on GitHub too: each question says what pressing Enter picks, or answer no
-and do it later ([On GitHub](#on-github), below). A **template** is what the game starts from. `blank` is one screen, a title.
+it. In a terminal it asks what the flags don't say, each question a list to pick from
+with its default already picked, so Enter alone takes it: the game's id, how its rules
+are written, which targets it ships on, and whether to include the engine skills'
+*worked examples*, files that show each skill at work (`bots.rs`, `playtest.ron`…).
+Yes keeps them for you and your coding agent to read, no leaves only the skills, and
+the game runs the same either way (`--examples` or `--no-examples` answers it). Answers
+that aren't built yet are shown greyed under a list, with the tickets that build them.
+Then it asks whether to put the game on GitHub too: answer no and do it later ([On
+GitHub](#on-github), below). A **template** is what the game starts from. `blank` is one screen, a title.
 `grid` adds a turn-based grid game with its rules in a crate of their own, a bot and
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 

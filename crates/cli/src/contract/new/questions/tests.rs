@@ -1,10 +1,11 @@
-//! The questions with scripted lines, the flags, and whole runs of `new`
-//! with `repos` against the scripted machine and GitHub of
-//! [`crate::repos::fake`]. None reaches the network.
+//! The questions answered by a script ([`prompts::scripted`]), the flags,
+//! and whole runs of `new` with `repos` against the scripted machine and
+//! GitHub of [`crate::repos::fake`]. None reaches the network.
 
 use std::fs;
 use std::path::PathBuf;
 
+use super::prompts::scripted::{Scripted, picked, typed};
 use super::*;
 use crate::repos::fake::Fake;
 
@@ -14,20 +15,6 @@ fn args(items: &[&str]) -> Vec<String> {
 
 fn flags(items: &[&str]) -> Flags {
     parse(&args(items)).unwrap().1
-}
-
-/// Runs `question` on the lines `typed`: its answer and what it wrote.
-fn answered<T>(
-    typed: &str,
-    question: impl FnOnce(&mut Terminal<'_>) -> io::Result<T>,
-) -> (io::Result<T>, String) {
-    let mut input = typed.as_bytes();
-    let mut out = Vec::new();
-    let answer = question(&mut Terminal {
-        input: &mut input,
-        out: &mut out,
-    });
-    (answer, String::from_utf8(out).unwrap())
 }
 
 #[test]
@@ -135,95 +122,215 @@ fn the_private_url_is_the_games_name_with_assets() {
 }
 
 #[test]
-fn the_yes_or_no_questions_take_an_empty_line_as_their_default_and_ask_again() {
-    let (answer, out) = answered("\n", |t| github(t, "Moon Garden", true));
-    assert!(answer.unwrap());
+fn the_yes_or_no_questions_are_lists_at_their_default() {
+    let question = github_question("Moon Garden", true, true);
     assert_eq!(
-        out,
-        "Put Moon Garden on GitHub? It needs the GitHub CLI (gh), signed in.\n  yes or no, or \
-         press Enter for yes: "
+        question.text,
+        "Put Moon Garden on GitHub? It needs the GitHub CLI (gh), signed in."
+    );
+    assert_eq!(question.takes, Takes::One);
+    assert_eq!(question.flag.as_deref(), Some("--github"));
+    assert_eq!(question.agent.as_deref(), Some(GITHUB_AGENT));
+    let mut script = Scripted::enters(1);
+    assert!(yes(&mut script, &question).unwrap());
+    assert_eq!(
+        script.lists[0].choices,
+        [
+            ("yes".to_owned(), "yes".to_owned()),
+            ("no".to_owned(), "no".to_owned())
+        ]
     );
     // Without gh the default is no, and the question says why.
-    let (answer, out) = answered("\n", |t| github(t, "Moon Garden", false));
-    assert!(!answer.unwrap());
-    assert!(out.contains("gh isn't installed"), "{out}");
-    assert!(out.ends_with("press Enter for no: "), "{out}");
-    let (answer, out) = answered("maybe\nNo\n", |t| github(t, "G", true));
-    assert!(!answer.unwrap());
-    // The question once, its choices again after a wrong answer.
-    assert_eq!(out.matches("Put G on GitHub?").count(), 1);
-    assert_eq!(out.matches("press Enter for yes").count(), 2);
-    assert!(out.contains("  `maybe`: yes or no\n"), "{out}");
-    let (answer, out) = answered("\n", |t| private(t, "you/g-assets"));
-    assert!(answer.unwrap());
-    assert_eq!(
-        out,
-        "Keep some files in a second, private repository, you/g-assets, so they aren't in the \
-         public code?\n  yes or no, or press Enter for yes: "
+    let question = github_question("Moon Garden", false, false);
+    assert!(
+        question.text.contains("gh isn't installed"),
+        "{}",
+        question.text
     );
-    assert!(!answered("n\n", |t| private(t, "r")).0.unwrap());
+    assert!(!yes(&mut Scripted::enters(1), &question).unwrap());
+    let mut script = Scripted::new([picked(&["no"])]);
+    assert!(!yes(&mut script, &github_question("G", true, true)).unwrap());
+    let question = keep_question("you/g-assets", true);
+    assert_eq!(
+        question.text,
+        "Keep some files in a second, private repository, you/g-assets, so they aren't in the \
+         public code?"
+    );
+    assert!(yes(&mut Scripted::enters(1), &question).unwrap());
+    assert!(!yes(&mut Scripted::new([picked(&["no"])]), &question).unwrap());
 }
 
 #[test]
 fn the_visibility_questions_default_to_public_then_private() {
-    let (answer, out) = answered("\n", |t| game_visibility(t, "you/g"));
-    assert_eq!(answer.unwrap(), Visibility::Public);
+    let question = visibility_question("you/g", Visibility::Public);
     assert_eq!(
-        out,
-        "Should you/g be public or private? GitHub's CI is free on a public repository.\n  \
-         public or private, or press Enter for public: "
+        question.text,
+        "Should you/g be public or private? GitHub's CI is free on a public repository."
     );
-    let (answer, out) = answered("p\nPRIV\n", |t| game_visibility(t, "you/g"));
-    assert_eq!(answer.unwrap(), Visibility::Private);
-    assert!(out.contains("  `p`: public or private\n"), "{out}");
-    let (answer, out) = answered("\n", |t| assets_visibility(t, "you/g-assets"));
-    assert_eq!(answer.unwrap(), Visibility::Private);
-    assert!(out.ends_with("press Enter for private: "), "{out}");
     assert_eq!(
-        answered("public\n", |t| assets_visibility(t, "r"))
-            .0
-            .unwrap(),
+        visibility(&mut Scripted::enters(1), &question).unwrap(),
+        Visibility::Public
+    );
+    assert_eq!(
+        visibility(&mut Scripted::new([picked(&["private"])]), &question).unwrap(),
+        Visibility::Private
+    );
+    let question = assets_visibility_question("you/g-assets", Visibility::Private);
+    assert!(
+        question
+            .text
+            .starts_with("Should you/g-assets be private or public?")
+    );
+    assert_eq!(
+        visibility(&mut Scripted::enters(1), &question).unwrap(),
+        Visibility::Private
+    );
+    assert_eq!(
+        visibility(&mut Scripted::new([picked(&["public"])]), &question).unwrap(),
         Visibility::Public
     );
 }
 
 #[test]
-fn the_kinds_question_shows_each_folder_and_takes_numbers_or_names() {
-    let (answer, out) = answered("\n", which_kinds);
-    assert_eq!(answer.unwrap(), DEFAULT_FOLDERS);
-    assert!(
-        out.contains("  1. files/text/      writing: dialogue, scripts…\n"),
-        "{out}"
+fn the_kinds_question_ticks_every_kind_and_asks_again_for_none() {
+    let mut script = Scripted::enters(1);
+    assert_eq!(which_kinds(&mut script).unwrap(), DEFAULT_FOLDERS);
+    assert_eq!(
+        script.lists[0].choices[0],
+        (
+            "text".to_owned(),
+            "files/text/: writing: dialogue, scripts…".to_owned()
+        )
     );
-    assert!(out.ends_with("press Enter for all five: "), "{out}");
-    let (answer, out) = answered("art\nnone\n2, music\n", which_kinds);
-    assert_eq!(answer.unwrap(), ["sprites", "music"]);
-    assert!(out.contains("  `art` is no kind"), "{out}");
-    assert!(out.contains("  pick one kind at least"), "{out}");
+    let mut script = Scripted::new([picked(&[]), picked(&["music", "sprites"])]);
+    assert_eq!(which_kinds(&mut script).unwrap(), ["music", "sprites"]);
+    assert!(
+        script
+            .shown
+            .iter()
+            .any(|line| line.starts_with("Tick one kind at least")),
+        "{:?}",
+        script.shown
+    );
+    // A kind that isn't one is no choice.
+    let mut script = Scripted::new([picked(&["art"])]);
+    assert!(
+        which_kinds(&mut script)
+            .unwrap_err()
+            .to_string()
+            .contains("`art` is no choice")
+    );
 }
 
 #[test]
 fn the_folders_question_takes_a_comma_list_or_nothing() {
-    let (answer, out) = answered("\n", other_folders);
-    assert_eq!(answer.unwrap(), Vec::<String>::new());
-    assert_eq!(
-        out,
-        "Any other folders under files/ to keep there?\n  folders, several with commas (levels, \
-         maps), or press Enter for none: "
-    );
-    let (answer, out) = answered("a b\nfiles/levels, maps\n", other_folders);
-    assert_eq!(answer.unwrap(), ["levels", "maps"]);
+    let mut script = Scripted::enters(1);
+    assert_eq!(other_folders(&mut script).unwrap(), Vec::<String>::new());
+    assert!(script.shown[0].starts_with("Any other folders under files/ to keep there?"));
+    let mut script = Scripted::new([typed("a b"), typed("files/levels, maps")]);
+    assert_eq!(other_folders(&mut script).unwrap(), ["levels", "maps"]);
     assert!(
-        out.contains("  --private-folder: `a b` isn't a folder"),
-        "{out}"
+        script
+            .shown
+            .iter()
+            .any(|line| line.starts_with("  --private-folder: `a b` isn't a folder")),
+        "{:?}",
+        script.shown
     );
 }
 
 #[test]
-fn no_line_left_is_an_error_not_a_default() {
-    let (answer, _) = answered("", |t| github(t, "G", true));
+fn no_answer_left_is_an_error_not_a_default() {
+    let answer = yes(&mut Scripted::default(), &github_question("G", true, true));
     assert_eq!(answer.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 }
+
+#[test]
+fn the_github_questions_are_listed_after_the_wizards_with_the_agents_field() {
+    let scratch = Scratch::new("listed");
+    let (input, flags) = parse(&args(&["moon-garden", "--name", "Moon Garden"])).unwrap();
+    let answer = listed(&scratch.dir, input, &flags);
+    assert!(answer.ok, "{answer:?}");
+    let questions = answer.result.unwrap().questions;
+    let ids: Vec<&str> = questions.iter().map(|q| q.id.as_str()).collect();
+    assert_eq!(
+        ids[ids.len() - 7..],
+        [
+            "targets",
+            GITHUB,
+            VISIBILITY,
+            KEEP_PRIVATE,
+            PRIVATE,
+            PRIVATE_FOLDER,
+            ASSETS_VISIBILITY
+        ]
+    );
+    let github = questions.iter().find(|q| q.id == GITHUB).unwrap();
+    assert_eq!(github.default, ["no"]);
+    assert!(github.skipped.is_none());
+    assert!(
+        github
+            .agent
+            .as_deref()
+            .unwrap()
+            .contains("never answer yes yourself")
+    );
+    // Only `github` says what an agent must do, and the rest wait for it.
+    assert_eq!(questions.iter().filter(|q| q.agent.is_some()).count(), 1);
+    for question in &questions[questions.len() - 5..] {
+        assert_eq!(
+            question.skipped.as_deref(),
+            Some("asked only when the game goes on GitHub (--github)"),
+            "{}",
+            question.id
+        );
+    }
+    // With --github they are asked, at the flags' answers; with --private
+    // none the private repository's aren't.
+    let (input, flags) = parse(&args(&[
+        "moon-garden",
+        "--github",
+        "--owner",
+        "studio",
+        "--visibility",
+        "private",
+        "--private",
+        "none",
+    ]))
+    .unwrap();
+    let questions = listed(&scratch.dir, input, &flags)
+        .result
+        .unwrap()
+        .questions;
+    let find = |id: &str| questions.iter().find(|q| q.id == id).unwrap();
+    assert_eq!(find(GITHUB).default, ["yes"]);
+    assert_eq!(find(VISIBILITY).default, ["private"]);
+    assert!(
+        find(VISIBILITY)
+            .text
+            .starts_with("Should studio/moon-garden be")
+    );
+    assert!(find(VISIBILITY).skipped.is_none());
+    assert_eq!(find(KEEP_PRIVATE).default, ["no"]);
+    assert_eq!(
+        find(PRIVATE).skipped.as_deref(),
+        Some("no files are kept private (--private none)")
+    );
+    assert!(!scratch.game().exists());
+}
+
+/// The flags that answer the wizard's questions but the name's (which
+/// [`Scratch::run`] gives) and the examples'.
+const WIZARD: [&str; 8] = [
+    "--id",
+    "com.example.moon-garden",
+    "--perspective",
+    "top-down-grid",
+    "--scripting",
+    "none",
+    "--targets",
+    "desktop,web",
+];
 
 /// A working folder with the game's folder in it, and the fake's
 /// temporary folder.
@@ -248,20 +355,21 @@ impl Scratch {
         Fake::new(&self.game(), &self.dir.join("temp"))
     }
 
-    /// `new moon-garden` with `items` and the lines `typed` on a
-    /// terminal, if any.
-    fn run(&self, items: &[&str], typed: Option<&str>, fake: &mut Fake) -> (Made, String) {
+    /// `new moon-garden` with `items`, answered by `script` as on a
+    /// terminal, if any: what it made, and what the prompts showed.
+    fn run(
+        &self,
+        items: &[&str],
+        script: Option<Scripted>,
+        fake: &mut Fake,
+    ) -> (Made, Vec<String>) {
         let mut all = vec!["moon-garden", "--name", "Moon Garden"];
         all.extend_from_slice(items);
         let (input, flags) = parse(&args(&all)).unwrap();
-        let mut lines = typed.unwrap_or("").as_bytes();
-        let mut out = Vec::new();
-        let terminal = typed.map(|_| Terminal {
-            input: &mut lines,
-            out: &mut out,
-        });
-        let made = new_with(&self.dir, input, &flags, false, terminal, fake);
-        (made, String::from_utf8(out).unwrap())
+        let mut script = script;
+        let prompter = script.as_mut().map(|s| s as &mut dyn Prompter);
+        let made = new_with(&self.dir, input, &flags, false, prompter, fake);
+        (made, script.map_or_else(Vec::new, |s| s.shown))
     }
 
     fn shuyi_ron(&self) -> String {
@@ -292,47 +400,32 @@ fn github_changes(fake: &Fake) -> Vec<String> {
 fn every_default_taken_makes_the_game_and_both_repositories() {
     let scratch = Scratch::new("defaults");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(&[], Some("\n\n\n\n\n\n\n"), &mut fake);
+    let (made, shown) = scratch.run(&[], Some(Scripted::enters(11)), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     let report = made.repos.as_ref().unwrap();
     assert!(report.ok, "{report:?}");
     assert_eq!(made.exit_code(), 0);
     assert!(made.finish.is_none());
-    // The seven questions, in order.
-    // A line typed isn't echoed, so each question follows the prompt
-    // before it, "…press Enter for <default>: ".
-    let asked: Vec<&str> = out
-        .split("press Enter for ")
-        .enumerate()
-        .filter_map(|(at, piece)| match at {
-            0 => Some(piece),
-            _ => piece.split_once(": ").map(|(_, rest)| rest),
-        })
-        .filter_map(|q| q.lines().next())
-        .filter(|q| !q.is_empty())
-        .collect();
-    // Each question says what Enter picks.
-    let defaults: Vec<&str> = out
-        .split("press Enter for ")
-        .skip(1)
-        .filter_map(|q| q.split(':').next())
-        .collect();
-    assert_eq!(
-        defaults,
-        ["yes", "yes", "public", "yes", "all five", "none", "private"],
-        "{out}"
-    );
-    assert_eq!(asked.len(), 7, "{out}");
-    assert!(asked[0].starts_with("Include the engine skills' worked examples"));
-    assert!(asked[1].starts_with("Put Moon Garden on GitHub?"));
-    assert!(asked[2].starts_with("Should you/moon-garden be public or private?"));
-    assert!(
-        asked[3]
-            .starts_with("Keep some files in a second, private repository, you/moon-garden-assets")
-    );
-    assert!(asked[4].starts_with("Which kinds of files go there?"));
-    assert!(asked[5].starts_with("Any other folders"));
-    assert!(asked[6].starts_with("Should you/moon-garden-assets be private or public?"));
+    // The wizard's questions (the name is given), then the GitHub ones, in
+    // order; the concerns with nothing to pick between aren't shown.
+    let asked: Vec<&str> = shown.iter().map(String::as_str).collect();
+    let starts = [
+        "A unique id for the game, like io.github.yourname.moon-garden:",
+        "Which perspectives?",
+        "How are the rules written?",
+        "Include the engine skills' worked examples",
+        "Which targets does it ship on?",
+        "Put Moon Garden on GitHub?",
+        "Should you/moon-garden be public or private?",
+        "Keep some files in a second, private repository, you/moon-garden-assets",
+        "Which kinds of files go there?",
+        "Any other folders",
+        "Should you/moon-garden-assets be private or public?",
+    ];
+    assert_eq!(asked.len(), starts.len(), "{shown:#?}");
+    for (asked, start) in asked.iter().zip(starts) {
+        assert!(asked.starts_with(start), "{asked}");
+    }
     // Enter took the examples: the game has them, as before.
     assert!(
         scratch
@@ -379,10 +472,13 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
 fn no_github_asks_nothing_and_makes_only_the_folder() {
     let scratch = Scratch::new("no-github");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(&["--no-github", "--examples"], Some(""), &mut fake);
+    let mut items = WIZARD.to_vec();
+    items.extend(["--no-github", "--examples"]);
+    let (made, shown) = scratch.run(&items, Some(Scripted::default()), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     assert!(made.repos.is_none());
-    assert_eq!(out, "");
+    // Every question answered by a flag, or with nothing to pick: none shown.
+    assert!(shown.is_empty(), "{shown:#?}");
     assert_eq!(fake.calls.len(), 0);
     assert!(!scratch.shuyi_ron().contains("private_assets"));
 }
@@ -397,16 +493,19 @@ fn off_a_terminal_it_asks_nothing_and_makes_no_repository() {
     assert!(fake.calls.is_empty(), "{:?}", fake.calls);
     // Nor with --json, even on a terminal; and --github is refused there.
     let (input, flags) = parse(&args(&["json-game"])).unwrap();
-    let mut lines = "\n".as_bytes();
-    let mut out = Vec::new();
-    let terminal = Terminal {
-        input: &mut lines,
-        out: &mut out,
-    };
-    let made = new_with(&scratch.dir, input, &flags, true, Some(terminal), &mut fake);
+    let mut script = Scripted::enters(20);
+    let made = new_with(
+        &scratch.dir,
+        input,
+        &flags,
+        true,
+        Some(&mut script),
+        &mut fake,
+    );
     assert!(made.answer.ok);
     assert!(made.repos.is_none());
-    assert_eq!(String::from_utf8_lossy(&out), "");
+    assert!(script.shown.is_empty(), "{:?}", script.shown);
+    assert_eq!(script.steps.len(), 20);
     assert_eq!(fake.calls.len(), 0);
     let (input, flags) = parse(&args(&["json-game-2", "--github"])).unwrap();
     let made = new_with(&scratch.dir, input, &flags, true, None, &mut fake);
@@ -441,27 +540,22 @@ fn private_none_makes_only_the_public_repository() {
 fn chosen_kinds_and_own_folders_are_all_the_private_repository_holds() {
     let scratch = Scratch::new("kinds");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(
-        &[
-            "--github",
-            "--private",
-            "sprites",
-            "--private-folder",
-            "files/levels",
-        ],
-        Some("\n\n\n"),
-        &mut fake,
-    );
+    let mut items = WIZARD.to_vec();
+    items.extend([
+        "--examples",
+        "--github",
+        "--private",
+        "sprites",
+        "--private-folder",
+        "files/levels",
+    ]);
+    let (made, shown) = scratch.run(&items, Some(Scripted::enters(2)), &mut fake);
     assert!(made.repos.as_ref().unwrap().ok, "{:?}", made.repos);
-    // Only what no flag answered was asked: the examples and the two
-    // visibilities.
-    assert!(out.contains("Should you/moon-garden be public"), "{out}");
-    assert!(
-        out.contains("Should you/moon-garden-assets be private or public?"),
-        "{out}"
-    );
-    assert!(!out.contains("Which kinds"), "{out}");
-    assert!(!out.contains("Put Moon Garden"), "{out}");
+    // Only what no flag answered was asked: the two visibilities.
+    let asked = &shown;
+    assert_eq!(asked.len(), 2, "{shown:#?}");
+    assert!(asked[0].starts_with("Should you/moon-garden be public"));
+    assert!(asked[1].starts_with("Should you/moon-garden-assets be private or public?"));
     let folders: Vec<&String> = fake.repos["you/moon-garden-assets"]
         .files
         .keys()
@@ -633,20 +727,25 @@ fn a_game_with_private_files_has_their_skill_and_its_agents_md_names_it() {
 }
 
 #[test]
-fn the_examples_question_defaults_to_yes_and_asks_again_after_a_wrong_answer() {
-    let (answer, out) = answered("\n", examples);
-    assert!(answer.unwrap());
-    assert_eq!(
-        out,
-        "Include the engine skills' worked examples (bots.rs, playtest.ron…)? They show each \
-         skill at work; a game runs without them.\n  yes or no, or press Enter for yes: "
+fn the_examples_question_is_the_templates_yes_by_default() {
+    let scratch = Scratch::new("examples-question");
+    let (input, flags) = parse(&args(&["moon-garden"])).unwrap();
+    let questions = listed(&scratch.dir, input, &flags)
+        .result
+        .unwrap()
+        .questions;
+    let examples = questions.iter().find(|q| q.id == EXAMPLES).unwrap();
+    assert_eq!(examples.asker, super::super::wizard::Asker::Template);
+    assert!(
+        examples
+            .text
+            .starts_with("Include the engine skills' worked examples"),
+        "{}",
+        examples.text
     );
-    assert!(!answered("no\n", examples).0.unwrap());
-    let (answer, out) = answered("some\nn\n", examples);
-    assert!(!answer.unwrap());
-    assert_eq!(out.matches("Include the engine").count(), 1);
-    assert_eq!(out.matches("press Enter for yes").count(), 2);
-    assert!(out.contains("  `some`: yes or no\n"), "{out}");
+    assert_eq!(examples.default, ["yes"]);
+    assert!(yes(&mut Scripted::enters(1), examples).unwrap());
+    assert!(!yes(&mut Scripted::new([picked(&["no"])]), examples).unwrap());
 }
 
 /// Whether the game in `scratch` has any skill's worked example.
@@ -666,31 +765,35 @@ fn has_examples(scratch: &Scratch) -> bool {
 fn a_no_to_the_examples_question_leaves_them_out_and_a_flag_or_set_asks_nothing() {
     let scratch = Scratch::new("examples-no");
     let mut fake = scratch.fake();
-    let (made, out) = scratch.run(&["--no-github"], Some("no\n"), &mut fake);
+    let mut items = WIZARD.to_vec();
+    items.push("--no-github");
+    let (made, shown) = scratch.run(&items, Some(Scripted::new([picked(&["no"])])), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     assert!(
-        out.starts_with("Include the engine skills' worked examples"),
-        "{out}"
+        shown
+            .iter()
+            .any(|line| line.starts_with("Include the engine skills' worked examples")),
+        "{shown:#?}"
     );
     assert!(!has_examples(&scratch));
     let result = made.answer.result.as_ref().unwrap();
     assert_eq!(result.answers.0[EXAMPLES], ["no"]);
     drop(scratch);
     // A flag or --set answers it: nothing is asked.
-    for (items, has) in [
-        (&["--no-github", "--no-examples"][..], false),
-        (&["--no-github", "--examples"][..], true),
-        (&["--no-github", "--set", "examples=no"][..], false),
-        (
-            &["--no-github", "--set", "examples=no", "--no-examples"][..],
-            false,
-        ),
+    for (extra, has) in [
+        (&["--no-examples"][..], false),
+        (&["--examples"][..], true),
+        (&["--set", "examples=no"][..], false),
+        (&["--set", "examples=no", "--no-examples"][..], false),
     ] {
         let scratch = Scratch::new("examples-flag");
         let mut fake = scratch.fake();
-        let (made, out) = scratch.run(items, Some(""), &mut fake);
+        let mut items = WIZARD.to_vec();
+        items.push("--no-github");
+        items.extend_from_slice(extra);
+        let (made, shown) = scratch.run(&items, Some(Scripted::default()), &mut fake);
         assert!(made.answer.ok, "{items:?}: {:?}", made.answer);
-        assert_eq!(out, "", "{items:?}");
+        assert!(shown.is_empty(), "{items:?}: {shown:#?}");
         assert_eq!(has_examples(&scratch), has, "{items:?}");
     }
     // Off a terminal (and so with --json and through the MCP tool), the
