@@ -113,7 +113,7 @@ A `//` starts a **comment**, a note for people that the computer ignores.
 ### The words: `en.ron`
 
 Every word the player reads is in this one file, English here, and looked up by a
-name called its **key**:
+name called its **text key**:
 
 {{ snippet(step="01-new", file="crates/game/files/en.ron", language="ron") }}
 
@@ -187,16 +187,16 @@ shortest:
 {% newcomer(to="rust", topic="comments, an attribute, `use`, `;` and `fn main`") %}
 There are only a few real lines here, so let's take every one.
 
-**`//!`** is a comment too, a special kind that describes the whole file. **`//`**
-is an ordinary comment. And **`///`**, which you'll see soon, describes the thing
+*`//!`* is a comment too, a special kind that describes the whole file. *`//`*
+is an ordinary comment. And *`///`*, which you'll see soon, describes the thing
 right after it. Comments don't change what the program does.
 
-**`#![cfg_attr(...)]`** is an instruction to the compiler. This one says that a
+*`#![cfg_attr(...)]`* is an instruction to the compiler. This one says that a
 finished Windows build shouldn't open a black console window behind the game. You
 won't need to write any of these for a while: when you see `#[...]`, read it as a
 note to the compiler.
 
-**`use shuyi::prelude::run_game;`** says "I want to use `run_game`, which is in
+*`use shuyi::prelude::run_game;`* says "I want to use `run_game`, which is in
 the `prelude` of `shuyi`". Code in Rust is organized in **modules**, like folders,
 and `::` walks down them, as `/` does in a folder path. The `use` is a shortcut,
 so below you can write `run_game` and not the whole path.
@@ -204,13 +204,13 @@ so below you can write `run_game` and not the whole path.
 Every line that does something ends with `;`. A missing `;` is the
 most common mistake there is, and the compiler will tell you just where it is.
 
-**`fn main() { ... }`** defines a **function**: a named list of instructions.
+*`fn main() { ... }`* defines a **function**: a named list of instructions.
 `fn` means "function", `main` is its name, the `()` holds what it is given
 (nothing, here), and the curly braces `{ }` hold what it does. Every Rust program
 starts by running the function called `main`.
 {% end %}
 
-**`run_game(game::game());`** **calls** two functions. `game::game()` calls the
+*`run_game(game::game());`* **calls** two functions. `game::game()` calls the
 function `game` in your game's code, and it answers with a description of your
 game. Then `run_game` takes that description and runs it, opening the window and
 starting the loop. It doesn't return until the game ends.
@@ -236,7 +236,7 @@ Then it gathers the data files:
 
 {{ snippet(step="01-new", file="crates/game/src/lib.rs", anchor="files") }}
 
-`shuyi::files!` takes the whole `files` folder and puts it **inside** the program
+`shuyi::files!` takes the whole `files` folder and puts it *inside* the program
 when it compiles. That is why your game needs no installer and works in a browser:
 it carries its files in itself.
 
@@ -455,7 +455,7 @@ The last job is the **draw** of the game loop, which paints the frame:
 `buf`, the **glyph buffer**, is the frame: a grid of 48 **cells** across
 by 24 down. Each cell holds a character, a text color and a background color. Cells
 are 8 pixels wide and 16 tall, so the frame is 384 by 384 pixels. `x` counts cells
-from the left, and `y` counts them **from the top, downward**, both starting at 0.
+from the left, and `y` counts them *from the top, downward*, both starting at 0.
 That last part surprises people: a bigger `y` is lower on the screen.
 
 So this reads as: fill every cell with a space on the background color. Work out how
@@ -490,23 +490,23 @@ One more: `draw_box` takes a style, an enum with two possibilities:
 
 ## The rest of the files
 
-**`stages.rs`** is empty for now, and you'll fill it in next. A **stage** is what
+*`stages.rs`* is empty for now, and you'll fill it in next. A **stage** is what
 the game is really about, what the title starts. It's the reason the title's
 `play` line isn't on your screen: there's nothing to start yet.
 
-**`app_info.rs`** says who the game is. It's written by `cargo shuyi app-info`,
+*`app_info.rs`* says who the game is. It's written by `cargo shuyi app-info`,
 from `shuyi.ron`. Never edit it by hand.
 
-**`examples/tools.rs`** is a tiny second program, the one `cargo shuyi` actually
+*`examples/tools.rs`* is a tiny second program, the one `cargo shuyi` actually
 runs. It's how the engine's tools get to play your game.
 
 {% newcomer(to="rust", topic="`Cargo.toml` and dependencies") %}
-**`Cargo.toml`** (both of them) lists your **dependencies**, the code your game
+*`Cargo.toml`* (both of them) lists your **dependencies**, the code your game
 is built on. `crates/game/Cargo.toml` names `shuyi`, the engine. Adding a line
 there is how you add somebody else's code to your game.
 {% end %}
 
-**`shuyi.ron`** is the project file. Its comments explain each part. You'll change
+*`shuyi.ron`* is the project file. Its comments explain each part. You'll change
 it twice: just below, and when you ship.
 
 ## A test

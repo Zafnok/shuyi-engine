@@ -12,8 +12,8 @@ This page is for you if you've used another engine, and you'd like to know what 
 words are called here. If you haven't, you can skip it: nothing else in the book needs it.
 
 Most of another engine's ideas have a counterpart here, under another name and often in a
-plainer shape. The engine has no **scene tree** (a hierarchy of objects, as in Godot) and
-no **entity system** (game objects as loose bundles of data, as in Bevy) by default, and a
+plainer shape. The engine has no *scene tree* (a hierarchy of objects, as in Godot) and
+no *entity system* (game objects as loose bundles of data, as in Bevy) by default, and a
 game's state is plain structs it owns.
 
 {% newcomer(to="rust", topic="a struct") %}

@@ -900,7 +900,7 @@ showed were missing:
 | ------ | ---- |
 | 3534 | A docs gate over the changed paths: a contract, template or format change updates the book and the skill pack, or its ticket's `Book:` and `Skills:` lines say why not |
 | 3429 | Every flag of an operation's CLI is a field of its input or is listed as the CLI's alone, so MCP gets what the CLI gets |
-| 2852 | `cargo xtask check-book` fails a term the book defines that has no glossary row |
+| 2852 (done) | `cargo xtask check-book` fails a term the book defines that has no glossary row |
 | 3535 | The `document` skill names the homes sessions miss, and every retro checks the docs against what merged |
 
 ### The website shows the engine at work

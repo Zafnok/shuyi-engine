@@ -16,7 +16,7 @@ online play. Each of those needs to rebuild or repeat the game, exactly.
 You get all of them from one rule, if you keep it from the start.
 {% end %}
 
-A game's rules are a **state**, and that state changes **only through commands**. A
+A game's rules are a **state**, and that state changes *only through commands*. A
 **command** is plain data saying what a player asks for:
 "plant a seed here". The same state and the same command always give the same events
 and the same new state, on every machine, which is called being **deterministic**.

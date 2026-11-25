@@ -264,7 +264,7 @@ where the game keeps its saves. The last ten stay. A build for players (`--relea
 nothing, because a record holds what the player pressed and what they saved.
 
 Something went wrong just now and you don't want to quit? If your game has a debug menu, it
-lists **Save session**, which writes the record so far and carries on. In a browser, where a
+lists *Save session*, which writes the record so far and carries on. In a browser, where a
 page has no folders, that entry downloads the file instead.
 
 Now play it, from the command line, with the path the game's log printed:
@@ -367,7 +367,7 @@ the keymap's, so a typo stops the test, and says what it would take:
 bad chord in test script: unknown key chord "Entr"; expected a key such as "h", "0", ";", "Left", "Enter", "Escape", "Space", "Tab", "Backspace" or "F1", optionally prefixed by "Shift+"
 ```
 
-**`called Option::unwrap() on a None value`** on `h.screen::<GardenScreen>()`. Either that
+*`called Option::unwrap() on a None value`* on `h.screen::<GardenScreen>()`. Either that
 screen isn't on the stack, so print `h.screens()`, or it has no `as_any` to be found by
 ([chapter 6](@/learn/book/games-and-screens.md#asking-the-screen-below)).
 
