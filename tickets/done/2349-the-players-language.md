@@ -430,7 +430,7 @@ follows this one. It builds game#0825 on `Settings::language` (an
 **Deviations.**
 
 - **Step 6 split to 2278**, by the ticket's *Size* clause (this PR is
-  past 600 lines; `cargo xtask pr-size` counts 1,108). 2278 holds a
+  past 600 lines; `cargo xtask pr-size` counts 1,156). 2278 holds a
   pack's `files/`, `localized_path` and `Ctx::localized`; 2238's
   clause and 2725's line now name 2278, and 3059 (whose tests read a
   pack's `files/`) is blocked by 2278 too. 3007's line on
