@@ -33,8 +33,8 @@ The parity runner generates private seeded traces in the 2912 random-plus-win
 shape and adds guaranteed deadline loss, rejected-action and bonus-boundary
 families. It checks the complete JSON record at every step, including the
 state hash and SHA-256 of the ASCII scene. The latter is a fixture scene
-proxy, not `shuyi_ui::Scene`. CI's headless browser gate replays
-win, loss and refusal paths for each of the three arms. The kernel unit test
+proxy, not `shuyi_ui::Scene`. CI's headless browser gate replayed
+(until ticket 2093) win, loss and refusal paths for each of the three arms. The kernel unit test
 exhausts all `u8` input pairs.
 
 ## Dynamic attacker protocol
@@ -188,6 +188,17 @@ candidate; a timeout only justifies a longer, hard-isolated and fully tooled
 trial after successful baselines.
 
 ## Reproduce
+
+**Where the materials are.** Ticket 2093 moved `tools/research/` out of
+the engine, with its history, to
+[`shuyi-engine-research`](https://github.com/Zafnok/shuyi-engine-research)
+(this study is its
+[`2914/`](https://github.com/Zafnok/shuyi-engine-research/tree/main/2914)).
+The paths below are as they were in the engine: they run in a checkout of
+the engine's commit
+[`f4b902f8`](https://github.com/Zafnok/shuyi-engine/tree/f4b902f89e317504bcf1a4fc3544517923ca1c77/tools/research),
+the last that has them, or with that repository cloned into
+`tools/research/`.
 
 From the repository root, with the pinned Rust and `wasm32-unknown-unknown`
 target installed:

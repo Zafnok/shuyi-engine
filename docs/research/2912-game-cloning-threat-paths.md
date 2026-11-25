@@ -275,8 +275,19 @@ unestablished; P and A only validate their planted smoke tests.
 
 ### Reproduction and artifact audit
 
-The non-secret [fixture crate](../../tools/research/2912/fixture/) and
-[study runner](../../tools/research/2912/study.py) are the reproducible
+**Where the materials are.** Ticket 2093 moved `tools/research/` out of
+the engine, with its history, to
+[`shuyi-engine-research`](https://github.com/Zafnok/shuyi-engine-research)
+(this study is its
+[`2912/`](https://github.com/Zafnok/shuyi-engine-research/tree/main/2912)).
+The paths below are as they were in the engine: they run in a checkout of
+the engine's commit
+[`f4b902f8`](https://github.com/Zafnok/shuyi-engine/tree/f4b902f89e317504bcf1a4fc3544517923ca1c77/tools/research),
+the last that has them, or with that repository cloned into
+`tools/research/`.
+
+The non-secret [fixture crate](https://github.com/Zafnok/shuyi-engine-research/tree/main/2912/fixture) and
+[study runner](https://github.com/Zafnok/shuyi-engine-research/blob/main/2912/study.py) are the reproducible
 materials. `cargo test -p cloning-fixture --locked` runs the seeded replay,
 winning-path and atomic-refusal checks. Run `python
 tools/research/2912/study.py prepare` with Pillow 12.3.0 and Wasmtime 50.0.0
@@ -291,7 +302,7 @@ its default behavior remains the same, but a fresh build need not have the
 The pre-attempt SHA-256 commitment to that seed was
 `d91d2f5bb0d213e955225e37e973e8a4b626f93fbe3102c9124cace2a934d46b`.
 The runner materialized 20 random traces and one mandatory winning trace
-per game after submission. The [runner](../../tools/research/2912/study.py)
+per game after submission. The [runner](https://github.com/Zafnok/shuyi-engine-research/blob/main/2912/study.py)
 had SHA-256 `134aa88dd1a129c1cc5dd204dd852e966b672a8599f1611c8d7f89b10a18494b`
 when scored. A later output-path safety check made the final runner's hash
 `ed9642caf3e77e25fa112dd1db10e927f630883552a5284e2e0846cfd08c5f6a`;
