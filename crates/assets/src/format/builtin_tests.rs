@@ -897,6 +897,26 @@ fn a_settings_file_in_a_language_pack_is_no_error() {
 }
 
 #[test]
+fn a_language_packs_copies_of_files_are_not_read() {
+    let [english, info, ui] = pack_files();
+    let copies = vec![
+        english.clone(),
+        info.clone(),
+        ui.clone(),
+        ("lang/xx/files/x.png", png_file([0; 8])),
+        ("lang/xx/files/x.png.meta", b"()".to_vec()),
+    ];
+    let read = bundled(&lang_pack(), bundle(copies), "lang/xx/lang.ron");
+    assert!(read.is_ok(), "{read:?}");
+    // Another unknown file still fails, `files` without its folder too.
+    let stray = vec![english, info, ui, ("lang/xx/files", b"x".to_vec())];
+    assert_eq!(
+        shown(bundled(&lang_pack(), bundle(stray), "lang/xx/lang.ron")),
+        ["base/lang/xx/files: not a file a language has"]
+    );
+}
+
+#[test]
 fn a_language_packs_errors_name_its_files() {
     let pack = |files: Vec<(&'static str, Vec<u8>)>, path: &str| {
         shown(bundled(&lang_pack(), bundle(files), path))

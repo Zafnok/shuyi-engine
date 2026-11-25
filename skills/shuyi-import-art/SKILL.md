@@ -38,6 +38,7 @@ unless the person who asked for the game wants one.
 | Kind | Files |
 | ---- | ----- |
 | a picture | `.png` (its size for the image table; the platform draws its pixels) |
+| a language's own picture | a copy at the same path in the language's folder, `lang/<tag>/files/<path>` (`lang/ja/files/title/end.png`), for a picture with words in it; a screen draws `ctx.localized("lang", path, …)` each frame |
 | a palette | the palette file, `files/palette.ron`: colours by name |
 | a font atlas | `files/font/atlas.ron` and its `.png`, made from BDF fonts by `cargo shuyi font-atlas`, with every character the game's text uses that the font has; `--wide <font.bdf>` adds Japanese or Chinese ones, two cells wide, from a font twice as wide, and `--wide <set>=<font.bdf>` a named set a pack's `lang.ron` draws from (`wide_font`), one a language; `cargo shuyi check` names one the atlas lacks |
 | a grid map | the `.map` text format: a RON header, a `---` line, one character a tile (a stage's own format, registered by its tools) |

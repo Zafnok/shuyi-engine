@@ -243,6 +243,19 @@ need. A plural that leaves out a form its language has still loads, showing `oth
 it, and `cargo shuyi lang-status ru` lists it under `missing forms:`. A tip is measured
 form by form: each wording of a `{device, select, …}` must fit the box.
 
+## A language's own pictures
+
+A picture with words in it, a shop sign or a title logo, can differ by language. A
+language's folder may hold `files/`, its copy of any of the game's files at the same
+path: `lang/ja/files/title/end.png` is the Japanese `title/end.png`. Nothing reads them
+as text, and they bake into the pack like any other file. A screen asks for the path
+each time it draws, `ctx.localized("lang", "title/end.png", |p| images.id(p).is_some())`,
+so a change of language shows the right picture at once. It looks along the language's chain (`pt-BR`, then `pt`) for the first copy
+the game has, and gives the plain path when there is none. A target that needs its own
+copy of a language's picture puts it at the same path in its folder
+(`assets@playdate/lang/ja/files/title/end.png`); without one, the language's copy wins
+over the target's plain one, since the words matter more.
+
 ## Voices
 
 A language's voice clips sit in its voice folder, one per dialogue line, listed in its
