@@ -83,8 +83,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",
-            find: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui`,\n  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's `golden` test.\n",
-            with: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui` and\n  `shuyi-platform`, and Hello, Grid's `golden` test.\n",
+            find: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui`,\n  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's and Snake's\n  `golden` tests.\n",
+            with: "- on wasm32 under wasmtime in the `determinism` job, with every unit and\n  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui` and\n  `shuyi-platform`, and Hello, Grid's and Snake's `golden` tests.\n",
         ),
         Replace(
             file: ".claude/skills/run-gates/SKILL.md",

@@ -536,7 +536,14 @@ fn mcp_ready_builds_what_the_server_needs_and_exits() {
     fs::create_dir_all(dir.join("src")).unwrap();
     fs::write(dir.join("src/main.rs"), "fn main() {}\n").unwrap();
     fs::write(dir.join("shuyi.ron"), r#"(game: (package: "tiny-game"))"#).unwrap();
-    let output = shuyi(&dir, &["mcp", "--ready"]);
+    // Built in its own `target/`, even where the tests run with a shared
+    // `CARGO_TARGET_DIR` (the eval's, grading an example of this workspace).
+    let output = Command::new(env!("CARGO_BIN_EXE_shuyi"))
+        .args(["mcp", "--ready"])
+        .current_dir(&dir)
+        .env_remove("CARGO_TARGET_DIR")
+        .output()
+        .unwrap_or_else(|e| panic!("spawn shuyi: {e}"));
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert!(stdout(&output).starts_with("mcp: ready (contract "));
     assert!(dir.join("target").is_dir(), "the program was built");

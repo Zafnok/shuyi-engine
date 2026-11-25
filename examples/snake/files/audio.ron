@@ -1,0 +1,13 @@
+// Snake's sounds, each a sound effect in `sfx/` written as a few numbers
+// (`.sfx.ron`), played on the rules' events: `eat` on `Ate`, `die` on
+// `Died`.
+(
+    music_fade_ms: 500,
+    sounds: [
+        (id: "eat", files: ["sfx/eat.sfx.ron"], volume: 80, credit: Own),
+        (id: "die", files: ["sfx/die.sfx.ron"], volume: 80, credit: Own),
+    ],
+    music: [],
+    pools: [],
+    credits: [],
+)

@@ -492,7 +492,7 @@ fn an_overlay_that_places_the_engines_crates_is_refused_with_exit_code_2() {
 }
 
 #[test]
-fn the_tasks_here_read_and_all_grades_box_pushing_and_tic_tac_toe_and_lists_the_waiting() {
+fn the_tasks_here_read_and_all_grades_box_pushing_snake_and_tic_tac_toe_and_lists_the_waiting() {
     let tasks = reference::tasks(&root()).unwrap_or_else(|e| panic!("{e:?}"));
     for task in &tasks {
         assert_eq!(task.time_box_minutes, 60, "{}", task.id);
@@ -516,11 +516,16 @@ fn the_tasks_here_read_and_all_grades_box_pushing_and_tic_tac_toe_and_lists_the_
     let graded: Vec<&str> = (reference::pick(&tasks, None).unwrap().iter())
         .map(|t| t.id.as_str())
         .collect();
-    assert_eq!(graded, ["box-pushing", "tic-tac-toe"]);
+    assert_eq!(graded, ["box-pushing", "snake", "tic-tac-toe"]);
     let waiting = reference::waiting(&tasks);
-    for id in ["platformer", "snake"] {
-        assert!(waiting.iter().any(|w| w.starts_with(id)), "{waiting:?}");
-    }
+    assert!(
+        waiting.iter().any(|w| w.starts_with("platformer")),
+        "{waiting:?}"
+    );
+    assert!(
+        !waiting.iter().any(|w| w.starts_with("snake")),
+        "{waiting:?}"
+    );
 }
 
 /// The schema in `crates/cli/schemas/` of `op`'s answer.
@@ -588,4 +593,43 @@ fn the_answers_paths_the_grader_reads_are_in_the_contracts_schemas() {
             path.join("/")
         );
     }
+}
+
+#[test]
+fn a_game_inside_a_larger_workspace_is_graded_as_its_own_package() {
+    let dir = temp("member");
+    // A game that is its own workspace, as `shuyi new` makes one.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/*\"]\n",
+    )
+    .unwrap();
+    assert_eq!(grade::member_package(&dir), None);
+    // A member of a workspace rooted elsewhere, as an example is.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"snake\"\nversion.workspace = true\n",
+    )
+    .unwrap();
+    assert_eq!(grade::member_package(&dir).as_deref(), Some("snake"));
+    assert_eq!(grade::member_package(&dir.join("none")), None);
+    let _ = fs::remove_dir_all(&dir);
+    // Its gates run on it alone; the other checks don't change.
+    let task = task();
+    let scratch = Path::new("scratch");
+    let plan = grade::scoped(task.plan(scratch), "snake");
+    let names: Vec<&str> = plan.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(
+        names[1],
+        "Gates 2: cargo clippy -p snake --all-targets -- -D warnings"
+    );
+    assert_eq!(names[2], "Gates 3: cargo test -p snake");
+    assert_eq!(names[0], "Gates 1: cargo fmt --all --check");
+    let Step::Cargo { args, .. } = &plan[2].steps[0] else {
+        panic!("{:?}", plan[2].steps);
+    };
+    assert_eq!(args, &["test", "-p", "snake"]);
+    let whole = task.plan(scratch);
+    assert_eq!(plan.len(), whole.len());
+    assert_eq!(plan[5].name, whole[5].name);
 }

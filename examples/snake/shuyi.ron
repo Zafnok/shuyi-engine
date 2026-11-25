@@ -1,0 +1,64 @@
+// Snake's project file: what `cargo shuyi <command>` (the engine's tools)
+// builds and runs here. Paths are from this folder.
+(
+    command: "cargo shuyi",
+
+    // Who the game is, the same on every target: `cargo shuyi app-info`
+    // writes it into `src/app_info.rs` (`snake::app_info::APP`), and
+    // `check --target` checks it.
+    app: (
+        name: "Snake",
+        id: "io.github.zafnok.shuyi-engine.snake",
+        code: "src/app_info.rs",
+    ),
+
+    // The game's tool program, for the commands that run the game:
+    // `frame-png`, `lang-status` and the contract's `check`, `run`,
+    // `scene` and `replay`.
+    game: (package: "snake", example: "snake-tools", features: ["tools"]),
+
+    // The folder of its files, which `cargo shuyi run --watch` lays over the
+    // embedded ones.
+    assets: "files",
+
+    // `cargo shuyi frame-png --preview`: `preview.png`, the animated picture
+    // the README and the website's Examples card show. These are
+    // `frame-png`'s arguments after the output path: the title, a run
+    // started, then 40 frames 0.05 s apart (2 s) as the snake heads for
+    // the wall. An APNG of 400 × 240; a test fails when the file is stale
+    // (`tests/it/files.rs`).
+    preview: (
+        args: ["--keys", "Enter Down", "--every", "0.05", "--count", "40",
+               "--scale", "1", "--apng"],
+    ),
+
+    // `cargo shuyi check --target all`: the targets it ships on, each with
+    // its frame: 50 × 15 cells of 8 × 16 (`snake::CONSOLE`), 400 × 240,
+    // which the Playdate's screen fits at scale 1.
+    targets: {
+        "desktop": (frame: (400, 240), scale: integer, text_px: 16),
+        "web": (frame: (400, 240), scale: integer, text_px: 16),
+        "steam-deck": (frame: (400, 240), scale: integer, text_px: 16),
+        "playdate": (frame: (400, 240), scale: integer, text_px: 16),
+    },
+
+    // `cargo shuyi web --release`: the web build, in `dist/web/`.
+    web: (
+        package: "snake",
+        bin: "snake",
+        title: "Snake",
+        dist: "dist/web",
+    ),
+
+    // `cargo shuyi check-keys`: no key named in the game's code or text.
+    check_keys: (
+        rust: ["src"],
+        assets: ["files"],
+        not_text: ["files/keymap.ron"],
+        hint: "react to an action (the keymap names the keys), or name a key through the player's keymap",
+    ),
+
+    // The game's own license texts (its font's): each goes whole into the
+    // `NOTICES.txt` of every package the engine's tools make.
+    notices: (texts: ["files/font/Terminus-LICENSE.txt"]),
+)

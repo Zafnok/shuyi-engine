@@ -1,0 +1,12 @@
+// The numbers of a run (`snake::rules::Tuning`). At 60 steps a second, a
+// period of 8 steps is 7.5 tiles a second.
+(
+    // The snake's tiles at the start, its head on the board's `Start`.
+    start_length: 3,
+    // The steps between two moves at the start.
+    first_period: 8,
+    // The fewest steps between two moves: 15 tiles a second.
+    fastest_period: 4,
+    // The food eaten between two speed-ups, each a step sooner.
+    points_per_speed_up: 5,
+)

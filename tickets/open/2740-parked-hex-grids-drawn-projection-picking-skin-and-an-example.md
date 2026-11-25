@@ -228,16 +228,14 @@ None.
     its font's license (3039); the font atlas copied from
     `examples/hello-grid/files/font` with its license file; a short
     `README.md` like Hello, Grid's;
-  - **CI and Pages.** Either order with 2735, 2736, 2737, 2738 and
-    2739 (the other examples): if the `wasm` job of
-    `.github/workflows/ci.yml` and `pages.yml` already loop over every
-    `examples/*/shuyi.ron` that has a `web` section, hello-hex is
-    picked up with no workflow change. If not, CI's `wasm` job gets its
-    two steps (`cargo shuyi check --target all` and `cargo shuyi web
-    --release`, from its folder), the `run-gates` skill names it beside
-    Hello, Grid, and Pages publishes it beside Hello, Grid with a link,
-    as Hello, Grid is linked: its card on the website's Examples page,
-    `site/content/examples/hello-hex.md` (2801, done);
+  - **CI and Pages.** Either order with 2735, 2736, 2737 and 2738 (the
+    other examples). **From 2739 (done):** the `wasm` job of
+    `.github/workflows/ci.yml`, `pages.yml` and `web-render` loop over
+    every `examples/*/shuyi.ron` that has a `web` section, so hello-hex
+    is picked up with no workflow change; it needs its card on the
+    website's Examples page, `site/content/examples/hello-hex.md` (2801,
+    done), and the gates' `wasm` gate (`crates/xtask/src/gates.rs`) its
+    two lines;
   - nothing from an existing hex game, and nothing from Visions of
     Shuyi (`AGENTS.md` rule 4);
   - tests: a Harness playthrough to the goal through actions only

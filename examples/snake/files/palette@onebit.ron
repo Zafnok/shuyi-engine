@@ -1,0 +1,44 @@
+// Snake's look on a black and white screen (ADR-0008 §4): each role of
+// `palette.ron` drawn in 8 × 8 patterns, `fg` for what is drawn in its
+// colour (a glyph), `bg` for a cell's background in it (`fg` again if not
+// said). As the colour skin is light on dark, so is this one.
+(
+    roles: {
+        // The engine's: text white on black, never dithered.
+        "text": (fg: White, bg: Black),
+        "text_dim": (fg: White, bg: Black),
+        "panel": (fg: Black),
+        "border": (fg: White),
+        "highlight": (fg: White, bg: Black),
+        "warning": (fg: White, bg: Black),
+        "focus": (fg: White),
+        "background": (fg: Black),
+        "accent": (fg: White, bg: Black),
+        "bright": (fg: White, bg: Black),
+        // A key's name in a hint: black, edged in white, on the line's
+        // black.
+        "key": (fg: Black, bg: White, edge: true),
+
+        // The board's: the floor black, the walls grey, the snake white
+        // and the food in checks.
+        "floor_fg": (fg: Dither25),
+        "floor_bg": (fg: Black),
+        "wall_fg": (fg: White),
+        "wall_bg": (fg: Dither50),
+        "head": (fg: White, bg: Black),
+        "body": (fg: White),
+        "food": (fg: Checker2, bg: Black),
+    },
+
+    // What the colours tell apart, which one bit must too: the snake from
+    // the food, the floor from the walls, and a key from the words round
+    // it.
+    distinct: [
+        ["body", "food"],
+        ["floor_bg", "wall_bg"],
+        ["text", "key"],
+    ],
+
+    // The roles text is drawn in.
+    text: ["text", "text_dim", "warning", "accent", "bright", "key"],
+)

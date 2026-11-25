@@ -1,0 +1,71 @@
+[package]
+name = "snake"
+description = "Shuyi Engine's snake: a grid game in real time, on the short path"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "snake"
+path = "src/main.rs"
+# The window's binary; the library and its tests build without it, for a
+# target with no window (CI's `determinism` job runs the golden test under
+# WASI).
+required-features = ["window"]
+
+[[example]]
+# The game's tool program: `cargo shuyi <command>` runs it (`shuyi.ron`'s
+# `game`). Not `tools`: Hello, Grid's has that name in this workspace, and
+# two examples of one name build one file.
+name = "snake-tools"
+path = "examples/tools.rs"
+required-features = ["tools"]
+
+[features]
+default = ["window"]
+# `window`: the binary, which opens the game in macroquad's window.
+window = ["shuyi/app"]
+# `tools`: the engine's tools for the game (`snake::tools`) and its
+# Harness, for its tool program and its tests; the scene's data describes
+# its shape for `scene --shape`.
+tools = ["dep:shuyi-cli", "shuyi/schema", "dep:schemars"]
+# `link`: the live link, so `cargo shuyi attach` reaches the game running
+# in its window: `SHUYI_LINK=0 cargo run -p snake --features link`, in a
+# debug build. Off by default.
+link = ["window", "shuyi-app/link"]
+
+[dependencies]
+# The engine, by its front door: the short path (`shuyi::prelude`), the
+# grid kit and the tick rules.
+shuyi = { path = "../../crates/shuyi", default-features = false, features = ["std"] }
+# The engine's tools, which turn on the Harness.
+shuyi-cli = { path = "../../crates/cli", optional = true }
+# The macroquad backend, already under `shuyi`, named for its `link`
+# feature.
+shuyi-app = { path = "../../crates/app", optional = true }
+# The engine's assets, for their `sfx` feature: the sounds in `files/sfx/`
+# are sound effects written as a few numbers, rendered as they load.
+shuyi-assets = { path = "../../crates/assets", features = ["sfx"] }
+serde.workspace = true
+ron = { workspace = true, features = ["std"] }
+# The shape of the scene's data, for the tools (`tools`).
+schemars = { workspace = true, optional = true }
+
+[package.metadata.cargo-machete]
+# Named for their features (`link`, `sfx`), not their code.
+ignored = ["shuyi-app", "shuyi-assets"]
+
+[dev-dependencies]
+# The Harness and the tools for the tests in tests/, without the window:
+# the golden test builds for WASI (ticket 2116).
+snake = { path = ".", default-features = false, features = ["tools"] }
+proptest.workspace = true
+insta.workspace = true
+# The golden table of `tests/golden.rs`.
+shuyi-assets = { path = "../../crates/assets", features = ["golden", "sfx"] }

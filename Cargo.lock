@@ -2131,6 +2131,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "snake"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "proptest",
+ "ron",
+ "schemars",
+ "serde",
+ "shuyi",
+ "shuyi-app",
+ "shuyi-assets",
+ "shuyi-cli",
+ "snake",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
