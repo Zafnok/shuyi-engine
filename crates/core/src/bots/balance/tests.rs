@@ -11,8 +11,8 @@ use proptest::prelude::*;
 
 use super::*;
 use crate::bots::playtest::{
-    Band, Condition, Judged, Measure, Measures, MedianVerdict, RateVerdict, Tried, UnknownEntrant,
-    Want, judge,
+    Band, Condition, GapVerdict, Judged, Measure, Measures, MedianVerdict, RateVerdict, Tried,
+    UnknownEntrant, Want, judge,
 };
 use crate::bots::{Bot, Report};
 use crate::turn::TurnRules;
@@ -216,7 +216,7 @@ fn search(
 fn successes(report: &PlaytestReport) -> u32 {
     match report.checks[0].found {
         Found::Rate { successes, .. } => successes,
-        Found::Median { .. } => panic!("{report:?}"),
+        _ => panic!("{report:?}"),
     }
 }
 
@@ -587,7 +587,7 @@ fn a_stop_while_pruning_keeps_a_setting_in_every_band() {
 }
 
 #[test]
-fn the_distance_sums_how_far_each_rate_is_outside_and_skips_medians() {
+fn the_distance_sums_how_far_each_rate_is_outside_and_skips_medians_and_gaps() {
     let rate = |successes, count, min, max| Judged {
         check: Check::Rate {
             entrant: "a".to_string(),
@@ -600,6 +600,7 @@ fn the_distance_sums_how_far_each_rate_is_outside_and_skips_medians() {
             count,
             verdict: Band { min, max }.verdict(successes, count),
             blocked: false,
+            interval: Band::interval(successes, count),
         },
     };
     let median = Judged {
@@ -614,6 +615,17 @@ fn the_distance_sums_how_far_each_rate_is_outside_and_skips_medians() {
             median: Some(1),
             than: Some(1),
             verdict: MedianVerdict::Fail,
+        },
+    };
+    // A gap is about two bots too.
+    let gap = Judged {
+        check: Check::gap("a", "a", won(), 0),
+        found: Found::Gap {
+            successes: 9,
+            count: 10,
+            than_successes: 0,
+            than_count: 10,
+            verdict: GapVerdict::Over,
         },
     };
     let report = |checks| PlaytestReport {
@@ -631,6 +643,7 @@ fn the_distance_sums_how_far_each_rate_is_outside_and_skips_medians() {
             rate(9, 10, 60, 70),
             rate(5, 10, 40, 60),
             median,
+            gap,
         ])),
         500
     );
@@ -661,6 +674,7 @@ proptest! {
                         count,
                         verdict: Band { min, max }.verdict(successes, count),
                         blocked: false,
+                        interval: Band::interval(successes, count),
                     },
                 }
             })

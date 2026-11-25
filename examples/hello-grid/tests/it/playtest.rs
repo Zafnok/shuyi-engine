@@ -37,13 +37,15 @@ fn every_check_holds_on_seeds_0_to_49() {
                 successes: 6,
                 count: 50,
                 verdict: RateVerdict::Within,
-                blocked: false
+                blocked: false,
+                interval: Some((6, 23)),
             },
             &Found::Rate {
                 successes: 50,
                 count: 50,
                 verdict: RateVerdict::Within,
-                blocked: false
+                blocked: false,
+                interval: Some((93, 100)),
             },
             &Found::Median {
                 median: Some(4),

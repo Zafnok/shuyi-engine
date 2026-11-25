@@ -69,19 +69,192 @@ fn a_band_holds_both_its_ends() {
             );
             match found(&report.unwrap(), 0) {
                 Found::Rate { verdict, .. } => *verdict,
-                other @ Found::Median { .. } => panic!("{other:?}"),
+                other => panic!("{other:?}"),
             }
         })
         .collect();
+    // Just out, the interval still reaches the band.
     assert_eq!(
         verdicts,
         [
-            RateVerdict::Below,
+            RateVerdict::MaybeBelow,
             RateVerdict::Within,
             RateVerdict::Within,
-            RateVerdict::Above
+            RateVerdict::MaybeAbove
         ]
     );
+}
+
+#[test]
+fn the_interval_of_44_in_100_is_35_to_53() {
+    assert_eq!(Band::interval(44, 100), Some((35, 53)));
+    // Wilson's interval is never empty, and stays inside 0–100 at the ends.
+    assert_eq!(Band::interval(0, 100), Some((0, 3)));
+    assert_eq!(Band::interval(100, 100), Some((97, 100)));
+    assert_eq!(Band::interval(1, 1), Some((21, 100)));
+    assert_eq!(Band::interval(0, 0), None);
+    assert_eq!(Band::interval(5, 0), None);
+    // More successes than tries count as all of them.
+    assert_eq!(Band::interval(7, 4), Band::interval(4, 4));
+}
+
+#[test]
+fn an_interval_narrower_than_a_percent_is_the_shares_own() {
+    // 33.33 % of a million: 33.24–33.43, no whole percent inside.
+    assert_eq!(Band::interval(333_333, 1_000_000), Some((33, 33)));
+    // The most tries there can be, all of them: no overflow.
+    assert_eq!(Band::interval(u32::MAX, u32::MAX), Some((100, 100)));
+    assert_eq!(Band::interval(0, u32::MAX), Some((0, 0)));
+}
+
+#[test]
+fn a_rate_is_sure_out_of_its_band_only_when_its_whole_interval_is() {
+    let band = Band { min: 30, max: 55 };
+    let at = |successes| band.verdict(successes, 100);
+    // 20: 14–28. 29: 22–38. 40: in. 60: 51–69. 70: 61–78.
+    assert_eq!(at(20), RateVerdict::Below);
+    assert_eq!(at(29), RateVerdict::MaybeBelow);
+    assert_eq!(at(40), RateVerdict::Within);
+    assert_eq!(at(60), RateVerdict::MaybeAbove);
+    assert_eq!(at(70), RateVerdict::Above);
+    // The interval's own ends: 38 reaches a band from 38, not one from 39.
+    assert_eq!(
+        Band { min: 38, max: 55 }.verdict(29, 100),
+        RateVerdict::MaybeBelow
+    );
+    assert_eq!(
+        Band { min: 39, max: 55 }.verdict(29, 100),
+        RateVerdict::Below
+    );
+    assert_eq!(
+        Band { min: 0, max: 51 }.verdict(60, 100),
+        RateVerdict::MaybeAbove
+    );
+    assert_eq!(
+        Band { min: 0, max: 50 }.verdict(60, 100),
+        RateVerdict::Above
+    );
+    // No try is in every band.
+    assert_eq!(band.verdict(0, 0), RateVerdict::Within);
+}
+
+#[test]
+fn the_floor_is_still_judged_on_the_share_itself() {
+    // 29 of 100 is maybe too hard, and under a 30 % floor all the same.
+    let report = judge(
+        vec![("a".into(), tries(29, 100))],
+        &[rate("a", 30, 55, Some(30))],
+    )
+    .unwrap();
+    assert_eq!(
+        found(&report, 0),
+        &Found::Rate {
+            successes: 29,
+            count: 100,
+            verdict: RateVerdict::MaybeBelow,
+            blocked: true,
+            interval: Some((22, 38)),
+        }
+    );
+    assert!(report.blocked);
+    // 20 is surely too hard and over a 20 % floor.
+    let report = judge(
+        vec![("a".into(), tries(20, 100))],
+        &[rate("a", 30, 55, Some(20))],
+    )
+    .unwrap();
+    assert!(matches!(
+        found(&report, 0),
+        Found::Rate {
+            verdict: RateVerdict::Below,
+            blocked: false,
+            ..
+        }
+    ));
+    assert!(!report.blocked);
+}
+
+#[test]
+fn a_rate_kept_before_the_interval_still_reads() {
+    let old = "Rate(successes: 1, count: 2, verdict: Within, blocked: false)";
+    let found: Found = ron::from_str(old).unwrap();
+    assert!(
+        matches!(found, Found::Rate { interval: None, .. }),
+        "{found:?}"
+    );
+    let judged = r#"(check: Rate(entrant: "a", success: [], band: (min: 0, max: 100)),
+                     found: Rate(successes: 1, count: 2, verdict: Within, blocked: false))"#;
+    assert!(ron::from_str::<Judged>(judged).is_ok());
+}
+
+fn gap(entrant: &str, than: &str, most: u32) -> Check {
+    Check::gap(entrant, than, won(), most)
+}
+
+/// The verdict of a gap of `most` points between `best` and `starter`,
+/// each `(successes, count)`.
+fn gap_of(best: (u32, u32), starter: (u32, u32), most: u32) -> GapVerdict {
+    let tries = vec![
+        ("best".to_string(), tries(best.0, best.1)),
+        ("starter".to_string(), tries(starter.0, starter.1)),
+    ];
+    let report = judge(tries, &[gap("best", "starter", most)]).unwrap();
+    assert!(!report.blocked, "a gap never blocks");
+    match found(&report, 0) {
+        Found::Gap {
+            successes,
+            count,
+            than_successes,
+            than_count,
+            verdict,
+        } => {
+            assert_eq!((*successes, *count), best);
+            assert_eq!((*than_successes, *than_count), starter);
+            *verdict
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn a_gap_of_10_points_holds_at_60_against_50_and_not_at_61() {
+    assert_eq!(gap_of((60, 100), (50, 100), 10), GapVerdict::Within);
+    assert_eq!(gap_of((61, 100), (50, 100), 10), GapVerdict::Over);
+    // Under the other entrant's share is always within.
+    assert_eq!(gap_of((10, 100), (90, 100), 0), GapVerdict::Within);
+    assert_eq!(gap_of((50, 100), (50, 100), 0), GapVerdict::Within);
+    assert_eq!(gap_of((51, 100), (50, 100), 0), GapVerdict::Over);
+}
+
+#[test]
+fn a_gap_compares_in_integers_across_different_try_counts() {
+    // 6 of 10 is 60 %, 121 of 200 is 60.5 %: against 50 of 100.
+    assert_eq!(gap_of((6, 10), (50, 100), 10), GapVerdict::Within);
+    assert_eq!(gap_of((120, 200), (5, 10), 10), GapVerdict::Within);
+    assert_eq!(gap_of((121, 200), (5, 10), 10), GapVerdict::Over);
+    // 1 of 3 is 33.3 %, over 1 of 4 by 8.3 points.
+    assert_eq!(gap_of((1, 3), (1, 4), 9), GapVerdict::Within);
+    assert_eq!(gap_of((1, 3), (1, 4), 8), GapVerdict::Over);
+    // With no try on a side there is nothing to be over.
+    assert_eq!(gap_of((0, 0), (0, 100), 0), GapVerdict::Within);
+    assert_eq!(gap_of((5, 5), (0, 0), 0), GapVerdict::Within);
+    // The most tries there can be: no overflow.
+    assert_eq!(
+        gap_verdict((u32::MAX, u32::MAX), (0, u32::MAX), 100),
+        GapVerdict::Within
+    );
+    assert_eq!(
+        gap_verdict((u32::MAX, u32::MAX), (0, u32::MAX), 99),
+        GapVerdict::Over
+    );
+}
+
+#[test]
+fn a_gap_names_both_its_entrants() {
+    let check = gap("best", "starter", 15);
+    assert_eq!(check.entrants(), ["best", "starter"]);
+    let judged = judge(vec![("best".into(), tries(1, 2))], &[check]);
+    assert_eq!(judged, Err(UnknownEntrant::new(0, "starter")));
 }
 
 #[test]
@@ -184,7 +357,7 @@ fn a_median_check_compares_two_entrants() {
                 than,
                 verdict,
             } => (median, than, verdict),
-            Found::Rate { .. } => panic!("{j:?}"),
+            _ => panic!("{j:?}"),
         })
         .collect();
     assert_eq!(
@@ -525,16 +698,20 @@ fn the_report_reads_as_a_table() {
             rate("casual", 60, 85, None),
             rate("hardcore", 50, 75, Some(30)),
             median_check("hardcore", Want::Lower, "casual"),
+            gap("casual", "hardcore", 20),
         ],
     )
     .unwrap();
+    // 3 of 4 is 31–95 %, 1 of 4 is 5–69 %, so only maybe too hard; and
+    // casual succeeds 50 points more often, over the 20 the gap allows.
     assert_eq!(
         report.to_string(),
         "4 tries (seeds 0–3)\n\
          \n\
-         casual   · 3/4 succeed                  band 60–85%   ✓\n\
-         hardcore · 1/4 succeed                  band 50–75%   ✗ too hard · blocked: under the 30% floor\n\
-         hardcore · turns median 4 (casual 6)    lower ✓\n\
+         casual   · 3/4 succeed                   band 60–85% · 95% 31–95%   ✓\n\
+         hardcore · 1/4 succeed                   band 50–75% · 95% 5–69%   ~ maybe too hard · blocked: under the 30% floor\n\
+         hardcore · turns median 4 (casual 6)     lower ✓\n\
+         casual   · 3/4 succeed (hardcore 1/4)    at most 20 points over ✗\n\
          \n\
          try 0 · casual · 0 · turns 1 · turns 5 · won 1\n\
          try 1 · casual · 0 · turns 1 · turns 6 · won 1\n\
@@ -548,7 +725,7 @@ fn the_report_reads_as_a_table() {
     // Brief, the table stops before the tries.
     let table = report.to_string();
     let brief = report.brief();
-    assert!(brief.ends_with("lower ✓\n"), "{brief}");
+    assert!(brief.ends_with("over ✗\n"), "{brief}");
     assert_eq!(table[..brief.len()], brief);
     assert!(!brief.contains("try "));
     let unknown = judge(
@@ -556,15 +733,18 @@ fn the_report_reads_as_a_table() {
         &[
             rate("a", 10, 20, None),
             median_check("a", Want::Higher, "a"),
+            gap("a", "a", 0),
         ],
     )
     .unwrap();
+    // No try: no interval to show.
     assert_eq!(
         unknown.to_string(),
         "0 tries\n\
          \n\
          a · 0/0 succeed             band 10–20%   ✓\n\
-         a · turns median – (a –)    higher –\n"
+         a · turns median – (a –)    higher –\n\
+         a · 0/0 succeed (a 0/0)     at most 0 points over ✓\n"
     );
 }
 
@@ -658,8 +838,55 @@ proptest! {
             && share <= u64::from(max) * u64::from(count);
         prop_assert_eq!(verdict == RateVerdict::Within, inside);
         let below = share < u64::from(min) * u64::from(count);
-        prop_assert_eq!(verdict == RateVerdict::Below, below);
-        prop_assert_eq!(verdict == RateVerdict::Above, !inside && !below);
+        let (low, high) = Band::interval(successes, count).unwrap();
+        prop_assert_eq!(verdict == RateVerdict::Below, below && high < min);
+        prop_assert_eq!(verdict == RateVerdict::MaybeBelow, below && high >= min);
+        let above = !inside && !below;
+        prop_assert_eq!(verdict == RateVerdict::Above, above && low > max);
+        prop_assert_eq!(verdict == RateVerdict::MaybeAbove, above && low <= max);
+    }
+
+    #[test]
+    fn the_interval_holds_the_shares_own_percent(
+        count in prop_oneof![1..1_000_u32, 1..=u32::MAX],
+        successes in any::<u32>(),
+    ) {
+        // Any share, from none to every try.
+        let successes = u32::try_from(u64::from(successes) % (u64::from(count) + 1)).unwrap();
+        let (low, high) = Band::interval(successes, count).unwrap();
+        prop_assert!(low <= high && high <= 100, "{low}–{high}");
+        // The share, rounded down and up, against the interval's ends.
+        let share = u64::from(successes) * 100;
+        let count = u64::from(count);
+        let down = share / count;
+        let up = share.div_ceil(count);
+        prop_assert!(u64::from(low) <= up && down <= u64::from(high),
+            "{successes} of {count}: {low}–{high}");
+        // A whole percent is inside it.
+        if share % count == 0 {
+            prop_assert!((u64::from(low)..=u64::from(high)).contains(&down));
+        }
+    }
+
+    #[test]
+    fn a_gap_holds_exactly_when_the_shares_differ_by_at_most_its_most(
+        count in 1..300_u32,
+        than_count in 1..300_u32,
+        successes in 0..300_u32,
+        than_successes in 0..300_u32,
+        most in 0..=100_u32,
+    ) {
+        let (s, ts) = (successes.min(count), than_successes.min(than_count));
+        let verdict = gap_verdict((s, count), (ts, than_count), most);
+        // The two shares over a common count, in hundredths of a percent.
+        let mine = i64::from(s) * 100 * i64::from(than_count);
+        let theirs = i64::from(ts) * 100 * i64::from(count);
+        let allowed = i64::from(most) * i64::from(count) * i64::from(than_count);
+        prop_assert_eq!(verdict == GapVerdict::Within, mine - theirs <= allowed);
+        // A larger most never turns a gap over.
+        if verdict == GapVerdict::Within {
+            prop_assert_eq!(gap_verdict((s, count), (ts, than_count), most + 1), GapVerdict::Within);
+        }
     }
 }
 
@@ -775,9 +1002,113 @@ fn bands_of(checks: &[Check]) -> Vec<(&str, u32, u32)> {
         .iter()
         .filter_map(|check| match check {
             Check::Rate { entrant, band, .. } => Some((entrant.as_str(), band.min, band.max)),
-            Check::Median { .. } => None,
+            _ => None,
         })
         .collect()
+}
+
+/// [`kind_targets`] with two gaps, one of them to an entrant who
+/// doesn't always play.
+fn gap_targets() -> Targets<Tier> {
+    let mut with_gaps = kind_targets();
+    let text = r#"[
+        (entrant: "a", than: "base", success: [(measure: "won", min: Some(1))], most: 15),
+        (entrant: "b", than: "a", success: [(measure: "won", min: Some(1))], most: 5),
+    ]"#;
+    with_gaps.gaps = ron::from_str(text).unwrap();
+    with_gaps
+}
+
+#[test]
+fn targets_give_the_gaps_after_the_medians_wherever_both_entrants_play() {
+    let targets = gap_targets();
+    let all = ["a", "b", "base"];
+    let checks = targets.checks(&Tier::Easy, &all);
+    assert_eq!(
+        checks[2..],
+        [
+            median_check("b", Want::Lower, "base"),
+            gap("a", "base", 15),
+            gap("b", "a", 5),
+        ]
+    );
+    // Without `base`, its gap is left out, and its median.
+    let checks = targets.checks(&Tier::Easy, &["a", "b"]);
+    assert_eq!(checks.last(), Some(&gap("b", "a", 5)));
+    assert_eq!(checks.len(), 3);
+    // A tier with no bands still checks the gaps.
+    let hard = targets.checks(&Tier::Hard, &all);
+    assert_eq!(hard[1..], [gap("a", "base", 15), gap("b", "a", 5)]);
+}
+
+#[test]
+fn a_kind_that_leaves_the_medians_out_keeps_the_gaps() {
+    let targets = gap_targets();
+    let all = ["a", "b", "base"];
+    let hold = targets.checks_of(&Tier::Easy, &["hold"], &all);
+    assert!(!hold.iter().any(|c| matches!(c, Check::Median { .. })));
+    assert_eq!(hold[2..], [gap("a", "base", 15), gap("b", "a", 5)]);
+}
+
+#[test]
+fn a_gap_left_out_of_the_file_is_none_and_an_unknown_field_is_an_error() {
+    assert_eq!(targets().gaps, Vec::<GapTarget>::new());
+    let text = r#"(success: {}, gaps: [(entrant: "a", than: "b", success: [], most: 1, by: 2)])"#;
+    assert!(ron::from_str::<Targets<Tier>>(text).is_err());
+    // A gap without its most is an error, not a gap of 0.
+    let text = r#"(success: {}, gaps: [(entrant: "a", than: "b", success: [])])"#;
+    assert!(ron::from_str::<Targets<Tier>>(text).is_err());
+}
+
+#[test]
+fn unknown_entrants_include_a_gaps_two() {
+    let text = r#"(
+        success: {"best": [], "starter": []},
+        gaps: [(entrant: "bets", than: "starter", success: [], most: 15),
+               (entrant: "best", than: "startr", success: [], most: 15)],
+    )"#;
+    let targets: Targets<Tier> = ron::from_str(text).unwrap();
+    assert_eq!(
+        targets.unknown_entrants(&["best", "starter"]),
+        vec!["bets", "startr"]
+    );
+}
+
+#[test]
+fn a_gap_and_targets_built_by_their_constructors_are_the_literals() {
+    assert_eq!(
+        GapTarget::new("best", "starter", won(), 15),
+        GapTarget {
+            entrant: "best".into(),
+            than: "starter".into(),
+            success: won(),
+            most: 15,
+        }
+    );
+    let success = BTreeMap::from([("a".to_string(), won())]);
+    assert_eq!(
+        Targets::<Tier>::new(success.clone()),
+        Targets {
+            success,
+            bands: BTreeMap::new(),
+            floors: BTreeMap::new(),
+            medians: Vec::new(),
+            kinds: BTreeMap::new(),
+            gaps: Vec::new(),
+        }
+    );
+    let check = Check::gap("best", "starter", won(), 15);
+    assert_eq!(
+        check,
+        Check::Gap {
+            entrant: "best".into(),
+            than: "starter".into(),
+            success: won(),
+            most: 15,
+        }
+    );
+    assert_eq!(check.clone().with_floor(Some(20)), check);
+    assert_eq!(check.clone().with_among(Vec::new()), check);
 }
 
 #[test]
@@ -884,19 +1215,23 @@ fn any_targets() -> impl Strategy<Value = Targets<u8>> {
     let kind = (bands.clone(), any::<bool>())
         .prop_map(|(bands, medians)| KindTargets::new(bands, medians));
     let kind_name = prop::sample::select(vec!["hold", "trial"]).prop_map(str::to_string);
+    let gap = (name.clone(), name.clone(), 0..=100_u32)
+        .prop_map(|(entrant, than, most)| GapTarget::new(entrant, than, won(), most));
     (
         prop::collection::btree_map(name.clone(), Just(won()), 0..5),
         bands,
         prop::collection::btree_map(name.clone(), 0..=100_u32, 0..5),
         prop::collection::vec(median, 0..5),
         prop::collection::btree_map(kind_name, kind, 0..3),
+        prop::collection::vec(gap, 0..5),
     )
-        .prop_map(|(success, bands, floors, medians, kinds)| Targets {
+        .prop_map(|(success, bands, floors, medians, kinds, gaps)| Targets {
             success,
             bands,
             floors,
             medians,
             kinds,
+            gaps,
         })
 }
 

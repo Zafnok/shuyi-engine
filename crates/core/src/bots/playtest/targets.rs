@@ -5,6 +5,12 @@
 //! each kind's bands lie over the tier's, entrant by entrant, and a kind
 //! can leave the medians out, for a stage that lasts the same however it
 //! is played ([`Targets::checks_of`]).
+//!
+//! Medians and gaps compare two entrants, on a stage of any tier: a
+//! median that one leans the way wanted of the other, a gap that one's
+//! share of successes is at most so many points over the other's. A gap
+//! is checked on a stage of every kind, even one that leaves the medians
+//! out, since a gap of successes doesn't hang on how long a stage lasts.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -16,7 +22,8 @@ use super::{Band, Check, Condition, Want};
 
 /// What each entrant should achieve, over the game's own tier type `T`
 /// (whatever its stages are labelled with). [`Targets::checks`] gives a
-/// stage's checks from it.
+/// stage's checks from it. A game reads it from a file, or builds it with
+/// [`Targets::new`] and assigns the rest (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(
@@ -26,6 +33,7 @@ use super::{Band, Check, Condition, Want};
         deserialize = "T: Ord + Deserialize<'de>"
     )
 )]
+#[non_exhaustive]
 pub struct Targets<T: Ord> {
     /// What makes a try a success, per entrant.
     pub success: BTreeMap<String, Vec<Condition>>,
@@ -42,6 +50,10 @@ pub struct Targets<T: Ord> {
     /// What changes on a stage of each kind the game names, by its name.
     #[serde(default)]
     pub kinds: BTreeMap<String, KindTargets<T>>,
+    /// Gaps between two entrants' shares of successes, on a stage of any
+    /// tier and kind.
+    #[serde(default)]
+    pub gaps: Vec<GapTarget>,
 }
 
 /// What changes on a stage of one kind ([`Targets::kinds`]): its own
@@ -98,12 +110,63 @@ pub struct MedianTarget {
     pub than: String,
 }
 
+/// A [`Check::Gap`] wanted wherever both entrants play: `entrant`'s share
+/// of tries meeting `success` is at most `most` percentage points over
+/// `than`'s. Build it with [`GapTarget::new`] (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct GapTarget {
+    /// The entrant checked.
+    pub entrant: String,
+    /// The entrant compared with.
+    pub than: String,
+    /// What a success is, for both.
+    pub success: Vec<Condition>,
+    /// The most `entrant`'s share may be over `than`'s, in percentage
+    /// points.
+    pub most: u32,
+}
+
+impl GapTarget {
+    /// `entrant`'s share of tries meeting `success` is at most `most`
+    /// points over `than`'s.
+    pub fn new(
+        entrant: impl Into<String>,
+        than: impl Into<String>,
+        success: Vec<Condition>,
+        most: u32,
+    ) -> Self {
+        Self {
+            entrant: entrant.into(),
+            than: than.into(),
+            success,
+            most,
+        }
+    }
+}
+
 impl<T: Ord> Targets<T> {
+    /// Targets with only `success`, what makes a try a success per
+    /// entrant: no bands, floors, medians, kinds or gaps, which a game
+    /// assigns.
+    pub fn new(success: BTreeMap<String, Vec<Condition>>) -> Self {
+        Self {
+            success,
+            bands: BTreeMap::new(),
+            floors: BTreeMap::new(),
+            medians: Vec::new(),
+            kinds: BTreeMap::new(),
+            gaps: Vec::new(),
+        }
+    }
+
     /// The checks of a stage of `tier` that `entrants` play: a
     /// [`Check::Rate`] per entrant, in the order given, that has both a
-    /// success rule and a band for `tier`, then each median, in file
-    /// order, whose two entrants both play. Every check names only
-    /// entrants of `entrants`.
+    /// success rule and a band for `tier`, then each median, then each
+    /// gap, in file order, whose two entrants both play. Every check names
+    /// only entrants of `entrants`.
     pub fn checks(&self, tier: &T, entrants: &[&str]) -> Vec<Check> {
         self.checks_of(tier, &[], entrants)
     }
@@ -112,7 +175,8 @@ impl<T: Ord> Targets<T> {
     /// `entrants` play, as [`checks`](Self::checks) gives them but with
     /// each kind's bands for `tier` over the tier's, entrant by entrant (a
     /// later kind wins), and no median if any of `kinds` leaves them out.
-    /// A kind the targets don't name changes nothing.
+    /// The gaps stay whatever the kinds. A kind the targets don't name
+    /// changes nothing.
     pub fn checks_of(&self, tier: &T, kinds: &[&str], entrants: &[&str]) -> Vec<Check> {
         let named = || kinds.iter().filter_map(|&kind| self.kinds.get(kind));
         let mut bands: BTreeMap<&str, Band> = BTreeMap::new();
@@ -147,7 +211,18 @@ impl<T: Ord> Targets<T> {
                 want: m.want,
                 than: m.than.clone(),
             });
-        rates.chain(medians).collect()
+        let plays = |name: &String| entrants.contains(&name.as_str());
+        let gaps = self
+            .gaps
+            .iter()
+            .filter(|g| plays(&g.entrant) && plays(&g.than))
+            .map(|g| Check::Gap {
+                entrant: g.entrant.clone(),
+                than: g.than.clone(),
+                success: g.success.clone(),
+                most: g.most,
+            });
+        rates.chain(medians).chain(gaps).collect()
     }
 
     /// The names the targets use that aren't in `known`, sorted, each
@@ -166,7 +241,8 @@ impl<T: Ord> Targets<T> {
                     .flat_map(|kind| kind.bands.values().flat_map(BTreeMap::keys)),
             )
             .chain(self.floors.keys())
-            .chain(self.medians.iter().flat_map(|m| [&m.entrant, &m.than]));
+            .chain(self.medians.iter().flat_map(|m| [&m.entrant, &m.than]))
+            .chain(self.gaps.iter().flat_map(|g| [&g.entrant, &g.than]));
         named
             .filter(|name| !known.contains(&name.as_str()))
             .cloned()
