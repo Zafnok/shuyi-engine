@@ -218,14 +218,14 @@ impl<'a> Font<'a> {
         if cell.glyph == ' ' {
             return None;
         }
+        // Only a glyph whose continuation follows it is looked up in the
+        // wide sets: most cells are narrow, and a lookup costs a search of
+        // every set (3244).
         let wide = buf.get(x + 1, y).is_some_and(Cell::is_continuation);
-        match self
-            .wide_rows(cell.glyph, 0, buf.widths().wide_font())
-            .filter(|_| wide)
-        {
-            Some(rows) => Some(rows),
-            None => self.rows(cell.glyph),
-        }
+        let rows = wide
+            .then(|| self.wide_rows(cell.glyph, 0, buf.widths().wide_font()))
+            .flatten();
+        rows.or_else(|| self.rows(cell.glyph))
     }
 
     /// How many screen rows a glyph drawn `scale` times as big covers.

@@ -564,10 +564,14 @@ impl FontAtlasDef {
 /// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts,
 /// and the cells of the picture of the arrow keys it draws in their place
 /// ([`arrows_cells`](Self::arrows_cells), ticket 3217).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CellWidths {
     /// The wide characters; `None` when there are none.
     wide: Option<Rc<BTreeSet<char>>>,
+    /// The first of [`wide`](Self::wide): a character before it is never
+    /// in the set, which [`is_wide`](Self::is_wide) answers without a
+    /// search (Latin text, ticket 3244).
+    first_wide: char,
     /// Whether [`WIDE_PUNCTUATION`] is wide.
     punctuation: bool,
     /// The language's wide set, if it names one.
@@ -590,10 +594,18 @@ struct FaceInks {
     bold: Option<Rc<FontInk>>,
 }
 
+impl Default for CellWidths {
+    /// [`CellWidths::NARROW`].
+    fn default() -> Self {
+        Self::NARROW
+    }
+}
+
 impl CellWidths {
     /// Nothing is wide: one cell for every character.
     pub const NARROW: Self = Self {
         wide: None,
+        first_wide: char::MAX,
         punctuation: false,
         set: None,
         inks: None,
@@ -668,6 +680,7 @@ impl CellWidths {
     pub fn wide(wide: impl IntoIterator<Item = char>) -> Self {
         let wide: BTreeSet<char> = wide.into_iter().collect();
         Self {
+            first_wide: wide.first().copied().unwrap_or(char::MAX),
             wide: (!wide.is_empty()).then(|| Rc::new(wide)),
             ..Self::NARROW
         }
@@ -699,7 +712,7 @@ impl CellWidths {
 
     /// Whether `c` takes two cells.
     pub fn is_wide(&self, c: char) -> bool {
-        self.wide.as_ref().is_some_and(|wide| wide.contains(&c))
+        (c >= self.first_wide && self.wide.as_ref().is_some_and(|wide| wide.contains(&c)))
             || (self.punctuation && is_wide_punctuation(c))
     }
 
@@ -1180,6 +1193,22 @@ mod tests {
         assert_eq!(CellWidths::of(&required_only()), CellWidths::NARROW);
         assert_eq!(CellWidths::wide([]), CellWidths::default());
         assert!(!CellWidths::NARROW.is_wide('あ'));
+    }
+
+    /// A character before the set's first is answered narrow without a
+    /// search (3244), but wide punctuation still counts, and a character
+    /// after the first that the set lacks is narrow.
+    #[test]
+    fn is_wide_answers_a_character_before_the_first_wide_one() {
+        let widths = CellWidths::wide(['い', 'あ']);
+        assert_eq!(CellWidths::default(), CellWidths::NARROW);
+        assert!(!widths.is_wide('A') && !widths.is_wide('\0'));
+        assert!(widths.is_wide('あ') && widths.is_wide('い'));
+        assert!(!widths.is_wide('ぃ'), "between the two, not in the set");
+        assert!(!widths.is_wide('“'));
+        let chinese = widths.in_lang(None, true);
+        assert!(chinese.is_wide('“') && chinese.is_wide('…'));
+        assert!(!chinese.is_wide('A'));
     }
 
     #[test]
