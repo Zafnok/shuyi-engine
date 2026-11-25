@@ -1483,6 +1483,15 @@ jobs:
         run: |
           title=$(bash scripts/pr-title.sh)
           cargo xtask pr-size --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
+      # The docs map's rows as rules (ticket 3534, ADR-0149): a change to a
+      # schema, the template, a format or a problem code changes its homes
+      # (the skill pack, the book, …), or its done ticket's notes say why
+      # not. It runs whatever the PR touches, unlike `api`.
+      - name: Check the docs' rules
+        if: github.event_name == 'pull_request'
+        run: |
+          title=$(bash scripts/pr-title.sh)
+          cargo xtask docs-rules --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title"
       - name: Check Markdown links
         run: cargo xtask check-links
       # The lines a game's author owns (ticket 2512): the table in the run's

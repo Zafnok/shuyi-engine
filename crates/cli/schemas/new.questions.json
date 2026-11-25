@@ -123,6 +123,13 @@
       "description": "A question `shuyi new` asks.",
       "type": "object",
       "properties": {
+        "agent": {
+          "description": "What an agent asking for its user must do with it, if it must do\nmore than ask: `github`'s says an agent never answers `yes` itself.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "answers": {
           "description": "The answers it offers, every one with its status; none for text.",
           "type": "array",

@@ -769,6 +769,7 @@ targets. After the MVP
 | 3424 | The wizard's questions as data: `wizard::questions`, `--questions --json` |
 | 3425 | The command that makes a game again, printed by `shuyi new`, and the answers kept in `shuyi.ron` under `created_with` |
 | 3423 | The wizard's prompts in a terminal, the GitHub and examples questions among them (Nick signs off) |
+| 3430 | `shuyi new` asks the save folder's name after the id, prefilled with the id; `--storage` answers it (Nick signs off) |
 | 2503 | Several perspectives in one game: a stage each, moves between them, a test that crosses them |
 | 2504 | Targets in the wizard: the picked modules' needs checked against each target (with 3017), CI per target (after 3001 and 3004) |
 | 2505 | Templates from a folder or git at a revision, no code run, `shuyi template check` and `new` |

@@ -1,10 +1,12 @@
-//! `shuyi new`'s questions: whether to include the skills' worked examples
-//! (ADR-0113), then about the game's repositories (ADR-0112): whether to
-//! put the game on GitHub, each repository's visibility, and which kinds of
-//! files stay private. Each question is a function from a [`Terminal`]
-//! (its input and its writer) to its answer, so a test feeds it lines; a
-//! flag answers each one ([`Flags`]), and none is asked off a terminal
-//! ([`on_a_terminal`]).
+//! `shuyi new` from the command line: the wizard's questions
+//! ([`prompts::ask`]: the name, the id, the perspectives, the catalog's,
+//! the template's with the worked examples (ADR-0113), the targets), then
+//! the questions about the game's repositories (ADR-0112): whether to put
+//! the game on GitHub, each repository's visibility, and which kinds of
+//! files stay private. Each is asked through a [`Prompter`], so a test
+//! answers from a script; a flag answers each one ([`Flags`]), and none is
+//! asked off a terminal ([`on_a_terminal`]). `--questions` lists them all
+//! ([`listed`]), the GitHub ones as [`github_questions`] makes them.
 //!
 //! With `--github`, [`new_with`] composes the private part with the private
 //! repository's address (`https://github.com/<owner>/<crate name>-assets.git`),
@@ -13,16 +15,17 @@
 //! repository: they act on no account.
 
 use std::fmt::Write as _;
-use std::io::{self, BufRead, IsTerminal as _, Write};
+use std::io::{self, IsTerminal as _};
 use std::path::Path;
 
-use super::wizard::Questions;
-use super::{NewInput, NewOutput, PRIVATE_FILES, answers_of, name_of, new, parse_args};
+use super::prompts::{self, Prompter, pick};
+use super::wizard::{Question, Questions, Takes, engine_list, engine_text};
+use super::{NewInput, NewOutput, PRIVATE_FILES, name_of, new, parse_args};
 use crate::contract::codes::{self, Code};
 use crate::contract::{Answer, Op};
 use crate::project::Project;
 use crate::repos::{self, DEFAULT_FOLDERS, Host, Report, Slug, Visibility};
-use crate::template::{self, EXAMPLES};
+use crate::template::EXAMPLES;
 
 /// The kinds of files a game may keep private, each the folder of
 /// `files/` it makes, with what it holds.
@@ -187,106 +190,34 @@ pub fn private_url(owner: &str, krate: &str) -> String {
     format!("https://github.com/{owner}/{krate}-assets.git")
 }
 
-/// Where the questions are asked: what the developer types, and where
-/// the questions go.
-pub struct Terminal<'a> {
-    /// The answers, a line each.
-    pub input: &'a mut dyn BufRead,
-    /// The questions.
-    pub out: &'a mut dyn Write,
+/// The first GitHub question's id: whether to put the game on GitHub.
+pub const GITHUB: &str = "github";
+/// The game's repository's visibility.
+pub const VISIBILITY: &str = "visibility";
+/// Whether to keep some files in a private repository.
+pub const KEEP_PRIVATE: &str = "keep-private";
+/// The kinds of files kept private.
+pub const PRIVATE: &str = "private";
+/// The developer's own folders kept private.
+pub const PRIVATE_FOLDER: &str = "private-folder";
+/// The private repository's visibility.
+pub const ASSETS_VISIBILITY: &str = "assets-visibility";
+
+/// What `github`'s [`Question::agent`] says.
+pub const GITHUB_AGENT: &str = "ask your user, and never answer yes yourself: --github makes \
+                                repositories, keys and secrets on their GitHub account; without \
+                                it new makes none";
+
+const YES_NO: [(&str, &str); 2] = [("yes", "yes"), ("no", "no")];
+
+fn ids(ids: &[&str]) -> Vec<String> {
+    ids.iter().map(|id| (*id).to_owned()).collect()
 }
 
-/// Whether `new` runs where someone can answer: stdin and stdout a
-/// terminal. Never in a test, whose stdin may be one.
-pub fn on_a_terminal() -> bool {
-    !cfg!(test) && io::stdin().is_terminal() && io::stdout().is_terminal()
-}
-
-/// Asks `question`, then on a line of its own the `choices` and what
-/// pressing Enter picks, `default`; until `parse` takes the line typed
-/// (trimmed; empty for the default), saying why it didn't each time. No
-/// line left is an error.
-fn ask<T>(
-    terminal: &mut Terminal<'_>,
-    question: &str,
-    choices: &str,
-    default: &str,
-    parse: impl Fn(&str) -> Result<T, String>,
-) -> io::Result<T> {
-    writeln!(terminal.out, "{question}")?;
-    loop {
-        write!(terminal.out, "  {choices}, or press Enter for {default}: ")?;
-        terminal.out.flush()?;
-        let mut line = String::new();
-        if terminal.input.read_line(&mut line)? == 0 {
-            writeln!(terminal.out)?;
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                format!("no answer to: {question}"),
-            ));
-        }
-        match parse(line.trim()) {
-            Ok(answer) => return Ok(answer),
-            Err(e) => writeln!(terminal.out, "  {e}")?,
-        }
-    }
-}
-
-/// Yes or no (or the start of either), `default` for an empty line.
-fn yes_or_no(default: bool) -> impl Fn(&str) -> Result<bool, String> {
-    move |line| {
-        let word = line.to_ascii_lowercase();
-        if word.is_empty() {
-            Ok(default)
-        } else if "yes".starts_with(&word) {
-            Ok(true)
-        } else if "no".starts_with(&word) {
-            Ok(false)
-        } else {
-            Err(format!("`{line}`: yes or no"))
-        }
-    }
-}
-
-/// Public or private (or their first two letters or more), `default` for
-/// an empty line.
-fn public_or_private(default: Visibility) -> impl Fn(&str) -> Result<Visibility, String> {
-    move |line| {
-        let word = line.to_ascii_lowercase();
-        if word.is_empty() {
-            Ok(default)
-        } else if word.len() >= 2 && "public".starts_with(&word) {
-            Ok(Visibility::Public)
-        } else if word.len() >= 2 && "private".starts_with(&word) {
-            Ok(Visibility::Private)
-        } else {
-            Err(format!("`{line}`: public or private"))
-        }
-    }
-}
-
-/// `yes` or `no`, as a default's name.
-fn word(yes: bool) -> &'static str {
-    if yes { "yes" } else { "no" }
-}
-
-/// The first question: whether to include the engine skills' worked
-/// examples, yes by default (ADR-0113).
-pub fn examples(terminal: &mut Terminal<'_>) -> io::Result<bool> {
-    ask(
-        terminal,
-        "Include the engine skills' worked examples (bots.rs, playtest.ron…)? They show each \
-         skill at work; a game runs without them.",
-        "yes or no",
-        "yes",
-        yes_or_no(true),
-    )
-}
-
-/// Question 1: whether to put the game `name` on GitHub; no by default
-/// when `gh` isn't installed.
-pub fn github(terminal: &mut Terminal<'_>, name: &str, gh: bool) -> io::Result<bool> {
-    let question = if gh {
+/// The first GitHub question: whether to put the game `name` on GitHub,
+/// `default` unless answered; it says when `gh` isn't installed.
+pub fn github_question(name: &str, gh: bool, default: bool) -> Question {
+    let text = if gh {
         format!("Put {name} on GitHub? It needs the GitHub CLI (gh), signed in.")
     } else {
         format!(
@@ -294,86 +225,169 @@ pub fn github(terminal: &mut Terminal<'_>, name: &str, gh: bool) -> io::Result<b
              installed (https://cli.github.com)."
         )
     };
-    ask(terminal, &question, "yes or no", word(gh), yes_or_no(gh))
-}
-
-/// Question 2: the game's repository `repo`'s visibility.
-pub fn game_visibility(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<Visibility> {
-    let question =
-        format!("Should {repo} be public or private? GitHub's CI is free on a public repository.");
-    ask(
-        terminal,
-        &question,
-        "public or private",
-        "public",
-        public_or_private(Visibility::Public),
-    )
-}
-
-/// Question 3: whether to keep some files in the private repository
-/// `repo`.
-pub fn private(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<bool> {
-    let question = format!(
-        "Keep some files in a second, private repository, {repo}, so they aren't in the public \
-         code?"
+    let mut question = engine_list(
+        GITHUB,
+        &text,
+        Takes::One,
+        &YES_NO,
+        ids(&[word(default)]),
+        "--github",
     );
-    ask(terminal, &question, "yes or no", "yes", yes_or_no(true))
+    question.agent = Some(GITHUB_AGENT.to_owned());
+    question
 }
 
-/// Question 4: which kinds of files to keep private, at least one.
-pub fn which_kinds(terminal: &mut Terminal<'_>) -> io::Result<Vec<String>> {
-    let mut question = String::from("Which kinds of files go there?");
-    for (at, (kind, holds)) in KINDS.iter().enumerate() {
-        // Writing to a `String` can't fail.
-        let _ = write!(
-            question,
-            "\n  {}. {:<16} {holds}",
-            at + 1,
-            format!("files/{kind}/")
-        );
+/// The game's repository `repo`'s visibility, `default` unless answered.
+pub fn visibility_question(repo: &str, default: Visibility) -> Question {
+    engine_list(
+        VISIBILITY,
+        &format!("Should {repo} be public or private? GitHub's CI is free on a public repository."),
+        Takes::One,
+        &[("public", "public"), ("private", "private")],
+        ids(&[default.name()]),
+        "--visibility",
+    )
+}
+
+/// Whether to keep some files in the private repository `repo`.
+pub fn keep_question(repo: &str, default: bool) -> Question {
+    engine_list(
+        KEEP_PRIVATE,
+        &format!(
+            "Keep some files in a second, private repository, {repo}, so they aren't in the \
+             public code?"
+        ),
+        Takes::One,
+        &YES_NO,
+        ids(&[word(default)]),
+        "--private",
+    )
+}
+
+/// Which kinds of files to keep private ([`KINDS`]), `default` unless
+/// answered.
+pub fn kinds_question(default: &[String]) -> Question {
+    let shown: Vec<(String, String)> = KINDS
+        .iter()
+        .map(|(kind, holds)| ((*kind).to_owned(), format!("files/{kind}/: {holds}")))
+        .collect();
+    let answers: Vec<(&str, &str)> = shown
+        .iter()
+        .map(|(id, text)| (id.as_str(), text.as_str()))
+        .collect();
+    engine_list(
+        PRIVATE,
+        "Which kinds of files go there?",
+        Takes::Many,
+        &answers,
+        default.to_vec(),
+        "--private",
+    )
+}
+
+/// The developer's own folders under `files/` to keep private.
+pub fn folders_question(default: &[String]) -> Question {
+    engine_text(
+        PRIVATE_FOLDER,
+        "Any other folders under files/ to keep there? Several with commas (levels, maps), or \
+         none.",
+        &default.join(","),
+        "--private-folder",
+    )
+}
+
+/// The private repository `repo`'s visibility, `default` unless answered.
+pub fn assets_visibility_question(repo: &str, default: Visibility) -> Question {
+    engine_list(
+        ASSETS_VISIBILITY,
+        &format!("Should {repo} be private or public? Public makes these files anyone's."),
+        Takes::One,
+        &[("private", "private"), ("public", "public")],
+        ids(&[default.name()]),
+        "--assets-visibility",
+    )
+}
+
+/// The GitHub questions for the game of crate `krate` named `name`, as
+/// `flags` and `input` answer them so far, for `--questions`: each at the
+/// answer it takes with nothing asked, the repositories' after `github`
+/// skipped unless `--github`.
+pub fn github_questions(name: &str, krate: &str, input: &NewInput, flags: &Flags) -> Vec<Question> {
+    let owner = flags.owner.as_deref().unwrap_or("<owner>");
+    let repo = format!("{owner}/{krate}");
+    let url = input
+        .private_url
+        .clone()
+        .unwrap_or_else(|| private_url(owner, krate));
+    let assets = Slug::of_url(&url).map_or_else(|| format!("{owner}/{krate}-assets"), |s| s.path());
+    let github = flags.github == Some(true);
+    let keep = match (&flags.private, set_private(input)) {
+        (Some(kinds), _) => !kinds.is_empty(),
+        (None, Some(private)) => private,
+        (None, None) => true,
+    };
+    let kinds = flags
+        .private
+        .clone()
+        .filter(|kinds| !kinds.is_empty())
+        .unwrap_or_else(|| DEFAULT_FOLDERS.map(str::to_owned).to_vec());
+    let mut questions = vec![
+        github_question(name, true, github),
+        visibility_question(&repo, flags.visibility.unwrap_or(Visibility::Public)),
+        keep_question(&assets, keep),
+        kinds_question(&kinds),
+        folders_question(flags.folders.as_deref().unwrap_or_default()),
+        assets_visibility_question(
+            &assets,
+            flags.assets_visibility.unwrap_or(Visibility::Private),
+        ),
+    ];
+    for (at, question) in questions.iter_mut().enumerate().skip(1) {
+        question.skipped = if !github {
+            Some("asked only when the game goes on GitHub (--github)".to_owned())
+        } else if at > 2 && !keep {
+            Some("no files are kept private (--private none)".to_owned())
+        } else {
+            None
+        };
     }
-    ask(
-        terminal,
-        &question,
-        "numbers or names, several with commas",
-        "all five",
-        |line| {
-            if line.is_empty() {
-                return Ok(DEFAULT_FOLDERS.map(str::to_owned).to_vec());
-            }
-            match kinds(line)? {
-                picked if picked.is_empty() => Err(
-                    "pick one kind at least: to keep none, answer no to the question before"
-                        .to_owned(),
-                ),
-                picked => Ok(picked),
-            }
-        },
-    )
+    questions
 }
 
-/// Question 5: the developer's own folders under `files/`.
-pub fn other_folders(terminal: &mut Terminal<'_>) -> io::Result<Vec<String>> {
-    ask(
-        terminal,
-        "Any other folders under files/ to keep there?",
-        "folders, several with commas (levels, maps)",
-        "none",
-        own_folders,
-    )
+/// Whether the yes-or-no question `question` is answered yes through
+/// `prompter`.
+fn yes(prompter: &mut dyn Prompter, question: &Question) -> io::Result<bool> {
+    Ok(pick(prompter, question)? == ["yes"])
 }
 
-/// Question 6: the private repository `repo`'s visibility.
-pub fn assets_visibility(terminal: &mut Terminal<'_>, repo: &str) -> io::Result<Visibility> {
-    let question =
-        format!("Should {repo} be private or public? Public makes these files anyone's.");
-    ask(
-        terminal,
-        &question,
-        "private or public",
-        "private",
-        public_or_private(Visibility::Private),
-    )
+/// The visibility question `question` answered through `prompter`.
+fn visibility(prompter: &mut dyn Prompter, question: &Question) -> io::Result<Visibility> {
+    Ok(if pick(prompter, question)? == ["private"] {
+        Visibility::Private
+    } else {
+        Visibility::Public
+    })
+}
+
+/// The kinds of files kept private, asked through `prompter` until one is
+/// ticked at least.
+fn which_kinds(prompter: &mut dyn Prompter) -> io::Result<Vec<String>> {
+    let question = kinds_question(&DEFAULT_FOLDERS.map(str::to_owned));
+    loop {
+        let picked = pick(prompter, &question)?;
+        if !picked.is_empty() {
+            return Ok(picked);
+        }
+        prompter.say("Tick one kind at least: to keep none, answer no to the question before.")?;
+    }
+}
+
+/// The developer's own folders kept private, typed through `prompter`.
+fn other_folders(prompter: &mut dyn Prompter) -> io::Result<Vec<String>> {
+    let question = folders_question(&[]);
+    let check = |line: &str| own_folders(line).map(|_| ());
+    let line = prompter.text(&question.text, "", &check)?;
+    own_folders(&line).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
 }
 
 /// What `new` made, and what `repos` did after it.
@@ -463,36 +477,15 @@ fn flag_examples(input: &mut NewInput, flag: Option<bool>) -> Result<(), Refused
     Ok(())
 }
 
-/// Asks the examples question on `terminal` unless `input`'s answers (from
-/// `cwd`) give it, and writes the answer into its `set`. Answers that make
-/// no game (an unknown short name, a missing file) ask nothing: `new` says
-/// what is wrong.
-fn ask_examples(
-    cwd: &Path,
-    input: &mut NewInput,
-    terminal: &mut Terminal<'_>,
-) -> Result<(), Refused> {
-    let unanswered = template::built_in().is_ok_and(|template| {
-        answers_of(cwd, &template, input).is_ok_and(|a| !a.0.contains_key(EXAMPLES))
-    });
-    if unanswered {
-        let answer = word(asked(examples(terminal))?);
-        input
-            .set
-            .0
-            .insert(EXAMPLES.to_owned(), vec![answer.to_owned()]);
-    }
-    Ok(())
-}
-
-/// Settles the questions, asking on `terminal` those no flag answers, and
-/// sets `input`'s private part: what `repos` is to make, if anything.
+/// Settles the questions, asking through `prompter` those no flag
+/// answers (the wizard's, [`prompts::ask`], then the GitHub ones), and sets
+/// `input`'s private part: what `repos` is to make, if anything.
 fn settle(
     cwd: &Path,
     input: &mut NewInput,
     flags: &Flags,
     json: bool,
-    mut terminal: Option<Terminal<'_>>,
+    mut prompter: Option<&mut dyn Prompter>,
     host: &mut dyn Host,
 ) -> Result<Option<GitHub>, Refused> {
     let refused = |e: &str| (codes::WRONG_ARGUMENTS, e.to_owned());
@@ -514,28 +507,28 @@ fn settle(
         ));
     }
     if json {
-        terminal = None;
+        prompter = None;
     }
     flag_examples(input, flags.examples)?;
+    if let Some(prompter) = prompter.as_deref_mut() {
+        asked(prompts::ask(cwd, input, prompter))?;
+    }
     // A name that makes no game: `new` says so, with no question first.
     let Ok((name, krate)) = name_of(cwd, input) else {
         return Ok(None);
     };
-    if let Some(terminal) = terminal.as_mut() {
-        ask_examples(cwd, input, terminal)?;
-    }
-    let github = match (flags.github, terminal.as_mut()) {
+    let github = match (flags.github, prompter.as_deref_mut()) {
         (Some(github), _) => github,
-        (None, Some(terminal)) => {
+        (None, Some(prompter)) => {
             let gh = host
                 .run("gh", &["--version"], cwd, None)
                 .is_ok_and(|ran| ran.ok);
-            asked(github(terminal, &name, gh))?
+            asked(yes(prompter, &github_question(&name, gh, gh)))?
         }
         (None, None) => false,
     };
     if !github {
-        if flags.github.is_some() || terminal.is_none() {
+        if flags.github.is_some() || prompter.is_none() {
             let given = [
                 ("--owner", flags.owner.is_some()),
                 ("--visibility", flags.visibility.is_some()),
@@ -559,9 +552,12 @@ fn settle(
         Some(owner) => owner.clone(),
         None => login(host, cwd)?,
     };
-    let visibility = match (flags.visibility, terminal.as_mut()) {
+    let visibility = match (flags.visibility, prompter.as_deref_mut()) {
         (Some(visibility), _) => visibility,
-        (None, Some(terminal)) => asked(game_visibility(terminal, &format!("{owner}/{krate}")))?,
+        (None, Some(prompter)) => asked(self::visibility(
+            prompter,
+            &visibility_question(&format!("{owner}/{krate}"), Visibility::Public),
+        ))?,
         (None, None) => Visibility::Public,
     };
     let url = input
@@ -569,11 +565,11 @@ fn settle(
         .clone()
         .unwrap_or_else(|| private_url(&owner, &krate));
     let assets = Slug::of_url(&url).map_or_else(|| format!("{owner}/{krate}-assets"), |s| s.path());
-    let keep = match (&flags.private, set_private(input), terminal.as_mut()) {
+    let keep = match (&flags.private, set_private(input), prompter.as_deref_mut()) {
         (Some(kinds), _, _) => !kinds.is_empty(),
         (None, Some(private), _) => private,
         (None, None, _) if flags.folders.is_some() => true,
-        (None, None, Some(terminal)) => asked(private(terminal, &assets))?,
+        (None, None, Some(prompter)) => asked(yes(prompter, &keep_question(&assets, true)))?,
         (None, None, None) => true,
     };
     let mut args = repos::Args {
@@ -583,7 +579,7 @@ fn settle(
         ..repos::Args::default()
     };
     if keep {
-        (args.folders, args.assets_visibility) = kept(flags, &mut terminal, &assets)?;
+        (args.folders, args.assets_visibility) = kept(flags, prompter, &assets)?;
         input
             .set
             .0
@@ -594,26 +590,29 @@ fn settle(
 }
 
 /// The private repository `assets`' folders under `files/` (the kinds,
-/// then the developer's own) and its visibility, asking on `terminal` what
-/// no flag answers.
+/// then the developer's own) and its visibility, asking through `prompter`
+/// what no flag answers.
 fn kept(
     flags: &Flags,
-    terminal: &mut Option<Terminal<'_>>,
+    mut prompter: Option<&mut dyn Prompter>,
     assets: &str,
 ) -> Result<(Vec<String>, Visibility), Refused> {
-    let mut folders = match (&flags.private, terminal.as_mut()) {
+    let mut folders = match (&flags.private, prompter.as_deref_mut()) {
         (Some(kinds), _) => kinds.clone(),
-        (None, Some(terminal)) => asked(which_kinds(terminal))?,
+        (None, Some(prompter)) => asked(which_kinds(prompter))?,
         (None, None) => DEFAULT_FOLDERS.map(str::to_owned).to_vec(),
     };
-    let own = match (&flags.folders, terminal.as_mut()) {
+    let own = match (&flags.folders, prompter.as_deref_mut()) {
         (Some(own), _) => own.clone(),
-        (None, Some(terminal)) => asked(other_folders(terminal))?,
+        (None, Some(prompter)) => asked(other_folders(prompter))?,
         (None, None) => Vec::new(),
     };
-    let visibility = match (flags.assets_visibility, terminal.as_mut()) {
+    let visibility = match (flags.assets_visibility, prompter) {
         (Some(visibility), _) => visibility,
-        (None, Some(terminal)) => asked(assets_visibility(terminal, assets))?,
+        (None, Some(prompter)) => asked(self::visibility(
+            prompter,
+            &assets_visibility_question(assets, Visibility::Private),
+        ))?,
         (None, None) => Visibility::Private,
     };
     for folder in own {
@@ -622,6 +621,21 @@ fn kept(
         }
     }
     Ok((folders, visibility))
+}
+
+/// Whether `new` runs where someone can answer: stdin, stdout and stderr
+/// (where the prompts are drawn) a terminal. Never in a test, whose stdin
+/// may be one.
+pub fn on_a_terminal() -> bool {
+    !cfg!(test)
+        && io::stdin().is_terminal()
+        && io::stdout().is_terminal()
+        && io::stderr().is_terminal()
+}
+
+/// `yes` or `no`, as an answer's id.
+fn word(yes: bool) -> &'static str {
+    if yes { "yes" } else { "no" }
 }
 
 /// How to finish what a failed `repos` left: the command to run in the
@@ -650,18 +664,18 @@ fn finish(command: &str, dir: &str, args: &repos::Args) -> String {
     )
 }
 
-/// `new` from the command line: settles the questions (asking on
-/// `terminal` those no flag answers), makes the game under `cwd`, then,
+/// `new` from the command line: settles the questions (asking through
+/// `prompter` those no flag answers), makes the game under `cwd`, then,
 /// with `--github`, runs `repos` in its folder through `host`.
 pub fn new_with(
     cwd: &Path,
     mut input: NewInput,
     flags: &Flags,
     json: bool,
-    terminal: Option<Terminal<'_>>,
+    prompter: Option<&mut dyn Prompter>,
     host: &mut dyn Host,
 ) -> Made {
-    let github = match settle(cwd, &mut input, flags, json, terminal, host) {
+    let github = match settle(cwd, &mut input, flags, json, prompter, host) {
         Ok(github) => github,
         Err((code, e)) => {
             return Made {
@@ -704,26 +718,28 @@ pub fn new_with(
 }
 
 /// `new <dir> --questions`: the questions for the answers `input` and
-/// `flags` give so far, from `cwd` ([`super::wizard::listed`]); nothing is
-/// asked or made.
+/// `flags` give so far, from `cwd` ([`super::wizard::listed`]), then the
+/// GitHub questions ([`github_questions`]); nothing is asked or made.
 pub fn listed(cwd: &Path, mut input: NewInput, flags: &Flags) -> Answer<Questions> {
-    match flag_examples(&mut input, flags.examples) {
-        Ok(()) => super::wizard::listed(cwd, &input),
-        Err((code, e)) => Answer::failed(Op::New, code, e),
+    if let Err((code, e)) = flag_examples(&mut input, flags.examples) {
+        return Answer::failed(Op::New, code, e);
     }
+    let mut listed = super::wizard::listed(cwd, &input);
+    if let (Some(questions), Ok((name, krate))) = (listed.result.as_mut(), name_of(cwd, &input)) {
+        questions
+            .questions
+            .extend(github_questions(&name, &krate, &input, flags));
+    }
+    listed
 }
 
 /// `new` on this machine, from the command line: prints what it made
 /// as `json` says, then `repos`' report; the exit code.
 pub fn main(cwd: &Path, input: NewInput, flags: &Flags, json: bool) -> Made {
-    let stdin = io::stdin();
-    let mut lock = stdin.lock();
-    let mut stdout = io::stdout();
-    let terminal = (!json && !flags.no_input && on_a_terminal()).then_some(Terminal {
-        input: &mut lock,
-        out: &mut stdout,
-    });
-    new_with(cwd, input, flags, json, terminal, &mut repos::ThisMachine)
+    let mut terminal = prompts::Terminal::new();
+    let prompter =
+        (!json && !flags.no_input && on_a_terminal()).then_some(&mut terminal as &mut dyn Prompter);
+    new_with(cwd, input, flags, json, prompter, &mut repos::ThisMachine)
 }
 
 /// `repos`' part of `made`, for people: its report, its error and how to

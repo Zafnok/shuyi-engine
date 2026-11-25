@@ -47,10 +47,10 @@ the files made, the parts, the modules turned on, the stages, the skills
 part serves, but a question's default, which adds nothing by design:
 `private-files` = `no`).
 
-In a terminal, `shuyi new` first asks whether to include the engine
-skills' worked examples (the template's `examples` question, below),
-unless `--examples`, `--no-examples`, `--set examples=…` or the answers
-file answers it. It then asks whether
+In a terminal, `shuyi new` asks the wizard's questions (below) that
+nothing given answers, the engine skills' worked examples among the
+template's (`examples`, below; `--examples`, `--no-examples`, `--set
+examples=…` or the answers file answer it). It then asks whether
 to put the game on GitHub (with `gh`, signed in), each repository's
 visibility, and which kinds of files go in a private repository
 (`files/text`, `files/sprites`, `files/sounds`, `files/music`,
@@ -119,6 +119,15 @@ schemas. The answers given change what is asked, so an agent asks the
 perspectives first, lists again with `--perspective`, then asks the
 rest. Without `--json` it prints the same for people.
 
+The GitHub questions follow the targets: `github` (`--github` or
+`--no-github`), `visibility`, `keep-private` (no is `--private none`),
+`private` (the kinds), `private-folder` and `assets-visibility`, each
+asked by the engine. Those after `github` are skipped unless `--github`
+is given. `github`'s `agent` field says what an agent does with it: ask
+its user, and never answer `yes` itself, since `--github` makes
+repositories, keys and secrets on their account. No other question has
+an `agent`.
+
 At the end, `new` prints the one command that makes the same game again
 with nothing asked, also its answer's `command`: `shuyi new <dir>
 --no-input --name <name>`, `--id` if given, each concern's answers by
@@ -149,8 +158,29 @@ A picked answer that is a module (its `by` is a crate) turns the module
 on as `shuyi add` does, through a part that names it or, with none, by
 the composer itself. `shuyi.ron`'s `targets` are the template's parts'
 until 2504: a target picked beside them is a limit. Asking the questions
-in a terminal, as lists to pick from, is 3423. Today a terminal gets the
-examples and GitHub questions below.
+In a terminal, each is asked that nothing given answers (a flag, `--set`,
+the short name or the answers file), in the order above, then the GitHub
+questions:
+
+- the name and the id are a line of text, checked as `new` checks them
+  (the id as `app-info` does) when Enter is pressed; Enter alone takes
+  the default shown;
+- a question taking one answer is a list to pick from (the arrows move,
+  Enter picks), and one taking many a list to tick (space ticks, Enter
+  ends), its default picked or ticked; a help line under each list names
+  the keys;
+- only `ready` answers are in a list: the `planned` and `parked` ones
+  are under it, greyed, each with its status and tickets, and can't be
+  picked;
+- the perspectives come first, and the questions are listed again with
+  them, so a concern skipped for them isn't asked; a question that isn't
+  asked isn't shown, and takes its default (`--questions` lists every
+  question, each skipped one with why: the view to check their wording
+  in);
+- Esc stops at a question, and nothing is made.
+
+The answers go into the game as their flags would, so the command `new`
+prints at the end makes the same game with nothing asked.
 
 An answers file maps each question to the ids of its answers:
 

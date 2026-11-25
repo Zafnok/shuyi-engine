@@ -1,0 +1,191 @@
+// The docs map's rows as checked rules (ticket 3534, ADR-0149): a change to
+// a rule's `triggers` changes one of its `homes` in the same PR, or the done
+// ticket of a `[NNNN] …` PR has a line starting with its `mark` in its
+// `## Completion notes` saying why not (`Skills: none, <why>`). `cargo xtask
+// docs-rules` checks it, and CI's `tickets` job runs it on every PR.
+//
+// Each rule is one row of docs/README.md, read as "update it on a change
+// that …", as far as a PR's paths can show the change. What the paths can't
+// show (a rule a game keeps, which chapter) stays the `document` skill's.
+// The public API's rule for the book is CI's `api` job (`book_rule`,
+// ticket 2815), not one here: a listing diff, not a path, says it changed.
+//
+// A glob is a path whose segments may hold `*` (any characters but `/`),
+// or be `**` (any number of segments, none included). Every glob matches
+// at least one tracked file, or the check fails: a folder that moves takes
+// its rule with it, not silently.
+//
+// Each rule:
+// - `name`: what the failure names;
+// - `changes`: what a change to `triggers` is, as a sentence's subject;
+// - `triggers`: the paths whose change asks for the rule;
+// - `homes`: the paths one of which changes with them;
+// - `home` and `part`: the home as a whole, and the piece of it to change,
+//   for the failure's words ("change the skill the docs map names");
+// - `mark`: the start of the waiver line in the ticket's notes.
+(
+    rules: [
+        (
+            name: "contract-skills",
+            changes: "An operation or a field of the contract",
+            triggers: ["crates/cli/schemas/**"],
+            homes: ["skills/**"],
+            home: "the skill pack",
+            part: "the skill",
+            mark: "Skills:",
+        ),
+        (
+            name: "contract-book",
+            changes: "An operation or a field of the contract",
+            triggers: ["crates/cli/schemas/**"],
+            homes: ["site/content/learn/**", "site/snippets/**"],
+            home: "the book",
+            part: "the chapter",
+            mark: "Book:",
+        ),
+        (
+            name: "contract-prose",
+            changes: "An operation or a field of the contract",
+            triggers: ["crates/cli/schemas/**"],
+            homes: ["docs/contract.md"],
+            home: "the contract's prose",
+            part: "the operation's section",
+            mark: "Contract:",
+        ),
+        (
+            name: "template-skills",
+            changes: "What a new game starts with (the template)",
+            triggers: ["templates/**"],
+            homes: ["skills/**"],
+            home: "the skill pack",
+            part: "the skill",
+            mark: "Skills:",
+        ),
+        (
+            name: "template-book",
+            changes: "What a new game starts with (the template)",
+            triggers: ["templates/**"],
+            homes: ["site/content/learn/**", "site/snippets/**", "site/tutorial/**"],
+            home: "the book",
+            part: "the chapter or the project's step",
+            mark: "Book:",
+        ),
+        (
+            name: "template-format",
+            changes: "The template format or the composer",
+            triggers: ["crates/cli/src/template.rs", "crates/cli/src/template/*.rs", "templates/*/template.ron"],
+            homes: ["docs/templates.md"],
+            home: "docs/templates.md",
+            part: "the section",
+            mark: "Templates:",
+        ),
+        (
+            name: "format-skills",
+            changes: "A format or the registry",
+            triggers: ["docs/formats.md", "crates/assets/src/format.rs", "crates/assets/src/**/formats.rs"],
+            homes: ["skills/**"],
+            home: "the skill pack",
+            part: "the skill",
+            mark: "Skills:",
+        ),
+        (
+            name: "format-book",
+            changes: "A format or the registry",
+            triggers: ["docs/formats.md", "crates/assets/src/format.rs", "crates/assets/src/**/formats.rs"],
+            homes: ["site/content/learn/**", "site/snippets/**"],
+            home: "the book",
+            part: "the chapter",
+            mark: "Book:",
+        ),
+        (
+            name: "format-doc",
+            changes: "A format or the registry",
+            triggers: ["crates/assets/src/format.rs", "crates/assets/src/**/formats.rs"],
+            homes: ["docs/formats.md"],
+            home: "docs/formats.md",
+            part: "the format's section",
+            mark: "Formats:",
+        ),
+        (
+            name: "problem-code-skills",
+            changes: "A problem code",
+            triggers: ["crates/cli/errors/**"],
+            homes: ["skills/**"],
+            home: "the skill pack",
+            part: "the skill",
+            mark: "Skills:",
+        ),
+        (
+            name: "platform-boundary",
+            changes: "The platform boundary",
+            triggers: ["crates/platform/src/platform.rs", "crates/platform/src/app.rs"],
+            homes: ["docs/platform-backends.md"],
+            home: "docs/platform-backends.md",
+            part: "the section",
+            mark: "Backends:",
+        ),
+        (
+            name: "crash-reports",
+            changes: "The panic hook or the crash report",
+            triggers: ["crates/platform/src/crash.rs", "crates/app/src/crash.rs"],
+            homes: ["docs/crash-reports.md"],
+            home: "docs/crash-reports.md",
+            part: "the section",
+            mark: "Crash:",
+        ),
+        (
+            name: "playdate",
+            changes: "The Playdate exporter or backend",
+            triggers: ["crates/playdate/**", "crates/cli/src/export/playdate.rs", "crates/cli/src/export/playdate/**"],
+            homes: ["docs/targets/playdate.md", "crates/playdate/README.md"],
+            home: "the Playdate's page",
+            part: "the section",
+            mark: "Playdate:",
+        ),
+        (
+            name: "desktop",
+            changes: "A desktop exporter",
+            triggers: ["crates/cli/src/export/desktop.rs"],
+            homes: ["docs/targets/desktop.md"],
+            home: "docs/targets/desktop.md",
+            part: "the section",
+            mark: "Desktop:",
+        ),
+        (
+            name: "web-shell",
+            changes: "The web shell or its check",
+            triggers: ["crates/cli/web/**", "crates/cli/src/export/web.rs", "tools/web-check/*.py"],
+            homes: ["crates/cli/web/README.md"],
+            home: "crates/cli/web/README.md",
+            part: "the section",
+            mark: "Web:",
+        ),
+        (
+            name: "eval",
+            changes: "The agent eval's grader or tasks",
+            triggers: ["crates/xtask/src/eval.rs", "crates/xtask/src/eval/**", "evals/tasks/**"],
+            homes: ["evals/README.md", "crates/xtask/src/eval/task.rs"],
+            home: "the eval's README",
+            part: "the section",
+            mark: "Evals:",
+        ),
+        (
+            name: "site-build",
+            changes: "How the site is built, checked or published",
+            triggers: [".github/workflows/pages.yml", "crates/xtask/src/llms.rs"],
+            homes: ["site/README.md"],
+            home: "site/README.md",
+            part: "the section",
+            mark: "Site:",
+        ),
+        (
+            name: "sound-parity",
+            changes: "The sound parity gates",
+            triggers: ["tools/sound-parity/capture.py", "crates/xtask/src/sound_parity.rs", "crates/xtask/src/sound_parity/**"],
+            homes: ["tools/sound-parity/README.md", "tools/sound-parity/budget.ron"],
+            home: "the sound parity gates' README",
+            part: "the section",
+            mark: "Sound parity:",
+        ),
+    ],
+)
