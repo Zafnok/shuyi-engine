@@ -94,7 +94,12 @@ pub fn mend(repo_root: &Path) -> Result<Vec<String>, String> {
                      again, commit only the resolution, then commit the rest on its own"
                 )
             })?;
-            let clean = remerged.lines().next().unwrap_or_default().trim().to_owned();
+            let clean = remerged
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_owned();
             let merge = commit_tree(repo_root, &clean, &new_parents, &info, &info.message)?;
             new_merges.push(merge.clone());
             let split_message = format!(
@@ -117,17 +122,29 @@ pub fn mend(repo_root: &Path) -> Result<Vec<String>, String> {
 
     let new_head = made.get(&head).cloned().unwrap_or_else(|| head.clone());
     if rev(repo_root, &format!("{new_head}^{{tree}}"))? != rev(repo_root, "HEAD^{tree}")? {
-        return Err("the mended branch's last tree differs from HEAD's; nothing changed".to_owned());
+        return Err(
+            "the mended branch's last tree differs from HEAD's; nothing changed".to_owned(),
+        );
     }
     for merge in &new_merges {
         let errors = check_merge(repo_root, merge);
         if !errors.is_empty() {
-            return Err(format!("the remade merge is still refused, so nothing changed: {}", errors.join("; ")));
+            return Err(format!(
+                "the remade merge is still refused, so nothing changed: {}",
+                errors.join("; ")
+            ));
         }
     }
     git(
         repo_root,
-        &["update-ref", "-m", "mend-merges (ticket 3532)", &branch, &new_head, &head],
+        &[
+            "update-ref",
+            "-m",
+            "mend-merges (ticket 3532)",
+            &branch,
+            &new_head,
+            &head,
+        ],
     )?;
     report.push(format!(
         "{} is now {}, with the same files; push it as usual",
@@ -163,7 +180,9 @@ fn parents(repo_root: &Path, commit: &str) -> Result<Vec<String>, String> {
 
 /// The full id of `name`.
 fn rev(repo_root: &Path, name: &str) -> Result<String, String> {
-    Ok(git(repo_root, &["rev-parse", "--verify", name])?.trim().to_owned())
+    Ok(git(repo_root, &["rev-parse", "--verify", name])?
+        .trim()
+        .to_owned())
 }
 
 /// What a commit keeps when it is made again.
@@ -176,7 +195,10 @@ struct Info {
 
 impl Info {
     fn of(repo_root: &Path, commit: &str) -> Result<Self, String> {
-        let out = git(repo_root, &["log", "-1", "--format=%an%x00%ae%x00%aD%x00%B", commit])?;
+        let out = git(
+            repo_root,
+            &["log", "-1", "--format=%an%x00%ae%x00%aD%x00%B", commit],
+        )?;
         let mut parts = out.splitn(4, '\0');
         let mut next = || parts.next().unwrap_or_default().to_owned();
         Ok(Self {
@@ -267,8 +289,14 @@ mod tests {
         let subjects = git(&dir, &["log", "--format=%s", "-3"]).expect("log");
         let subjects: Vec<&str> = subjects.lines().collect();
         assert_eq!(subjects[0], "a commit after the merge");
-        assert!(subjects[1].starts_with("Split out of merge "), "{subjects:?}");
-        assert!(subjects[2].starts_with("Merge branch 'main'"), "{subjects:?}");
+        assert!(
+            subjects[1].starts_with("Split out of merge "),
+            "{subjects:?}"
+        );
+        assert!(
+            subjects[2].starts_with("Merge branch 'main'"),
+            "{subjects:?}"
+        );
         let status = git(&dir, &["status", "--porcelain"]).expect("status");
         assert_eq!(status, "");
         let _ = std::fs::remove_dir_all(&dir);
@@ -279,7 +307,10 @@ mod tests {
         let dir = diverged("mend-clean");
         git(&dir, &["merge", "-q", "--no-edit", "main"]).expect("merge");
         let head = rev(&dir, "HEAD").expect("head");
-        assert_eq!(mend(&dir).expect("mend"), vec!["no merge to mend".to_owned()]);
+        assert_eq!(
+            mend(&dir).expect("mend"),
+            vec!["no merge to mend".to_owned()]
+        );
         assert_eq!(rev(&dir, "HEAD").expect("head"), head);
         let _ = std::fs::remove_dir_all(&dir);
     }
