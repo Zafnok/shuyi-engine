@@ -119,6 +119,11 @@ that changes more than resolving its parents needs (ticket 2065).
     repository, and stays so until a release of the dependency fixes it
     on its own. No ticket plans a PR or an issue upstream, or waits on
     one.
+13. **An optional dependency that makes games bigger is a toggle**
+    ([decision of 2026-11-24](docs/decisions.md#2026-11-24-an-optional-dependency-that-makes-games-bigger-is-a-toggle)).
+    A new dependency a game doesn't strictly need, and that adds to a
+    shipped game's size, comes behind a cargo feature a game can turn
+    off. The ticket says its default and how much bigger a game gets.
 
 ## Working with the game repository
 

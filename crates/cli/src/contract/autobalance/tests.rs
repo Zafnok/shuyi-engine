@@ -41,7 +41,7 @@ fn found(game: &Fake, input: &AutobalanceInput) -> AutobalanceOutput {
 fn walk_won(report: &PlaytestReport) -> u32 {
     match report.checks[0].found {
         Found::Rate { successes, .. } => successes,
-        Found::Median { .. } => panic!("{report:?}"),
+        _ => panic!("{report:?}"),
     }
 }
 

@@ -61,7 +61,7 @@ None.
     libX11, libX11-xcb, libXcursor, libXi, libxcb, libxkbcommon,
     libxkbcommon-x11, libwayland-client, libvulkan.so.1 and libEGL.so.1.
   - Check every remaining entry against `cargo tree` (alsa for
-    `shuyi-sound-out`, udev for gilrs).
+    `shuyi-sound-out`; udev for gilrs, until 2402 replaces it with SDL3).
   - **Either order with 3071:** if 3071 is done, check
     `crates/cli/export/libraries.ron` for every target against what
     winit and wgpu load (ADR-0136 §14), and update it; if not, nothing
@@ -81,7 +81,7 @@ None.
 
 **Out (do not do):**
 - quad-snd, gilrs and the sound path: 3079 removed quad-snd, and the
-  controllers are 2903's.
+  controllers are 2402's and 2403's (ADR-0147).
 
 **Estimated size:** about 1,100 lines, most of them removed (code 700,
 CI and scripts 150, docs 250).

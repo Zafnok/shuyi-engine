@@ -942,6 +942,43 @@ fn each_run_kept_carries_the_builds_stamp_and_older_lines_still_read() {
 }
 
 #[test]
+fn a_run_kept_before_the_interval_still_reads_and_says_what_it_was() {
+    let root = scratch("unsure");
+    let game = fake(FakePlaytest::default());
+    let both = input(2, |i| i.history = Some("kept".to_owned()));
+    assert!(kept(&game, &root, &both).ok);
+    let file = root.join("kept").join("stage-walk+run.jsonl");
+    // The line as a run kept it before rates had an interval.
+    let mut line: serde_json::Value =
+        serde_json::from_str(std::fs::read_to_string(&file).unwrap().trim()).unwrap();
+    let mut stripped = 0;
+    for check in line["output"]["report"]["checks"].as_array_mut().unwrap() {
+        // `get_mut`, not indexing, which would add a `Rate` to a median.
+        let rate = check.get_mut("found").and_then(|f| f.get_mut("Rate"));
+        if let Some(rate) = rate.and_then(serde_json::Value::as_object_mut) {
+            stripped += usize::from(rate.remove("interval").is_some());
+        }
+    }
+    assert_eq!(stripped, 2, "{line}");
+    std::fs::write(&file, format!("{line}\n")).unwrap();
+    let last = history::last(&file).unwrap();
+    assert!(
+        last.output.report.checks.iter().all(|j| !matches!(
+            j.found,
+            Found::Rate {
+                interval: Some(_),
+                ..
+            }
+        )),
+        "{:?}",
+        last.output.report.checks
+    );
+    let next = kept(&game, &root, &both).result.unwrap();
+    assert_eq!(next[0].entrants[0].was.as_deref(), Some("was 2/2 succeed"));
+    std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn an_entrant_with_no_rate_check_was_its_first_summary_item() {
     let game = fake(FakePlaytest::default());
     let mut now = playtest(&game, &input(3, |_| {})).result.unwrap().remove(0);

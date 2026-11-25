@@ -2,7 +2,16 @@
 //! K times from the same seeds, the game measures every try
 //! ([`Measure`]), and data-file [`Check`]s say per bot whether it
 //! succeeded about as often as the designer wants: ✓, ✗ too hard or
-//! ⚠ too easy.
+//! ⚠ too easy, or ~ maybe one of those.
+//!
+//! On 100 tries a share carries about ±10 points of noise, so a rate is
+//! judged with its 95% interval ([`Band::interval`], a Wilson score
+//! interval in whole percents): ✗ or ⚠ only when the whole interval is
+//! out of the band, ~ when the share is out but the interval still
+//! reaches it. A rate's floor, which blocks the run, is still judged on
+//! the share itself. A [`Check::Gap`] says one bot's share is at most so
+//! many points over another's (the best deck wins at most 15 points more
+//! often than the starter deck); it never blocks a run.
 //!
 //! [`run`] does it all. It is two halves, [`play_tries`] and [`judge`], so
 //! a caller with threads can play seed ranges on threads of its own and
@@ -12,8 +21,10 @@
 //! for `replay` ([`Entrant::record`]).
 //!
 //! Every number is an integer, so a report is the same on every machine:
-//! a band compares `successes * 100` with `min * count`, and the median
-//! of an even count is the lower middle value.
+//! a band compares `successes * 100` with `min * count`, the interval is
+//! found by a score test in integers, a gap compares `successes × 100 ×
+//! than_count` with the other side's, and the median of an even count is
+//! the lower middle value.
 //!
 //! The checks are a flat list, or come from [`Targets`]: what each
 //! entrant should achieve on a stage of each of the game's tiers, said
@@ -21,8 +32,9 @@
 //! [`Targets::checks`] gives that stage's checks, and
 //! [`Targets::checks_of`] those of a stage of kinds the game names too:
 //! each kind's bands lie over the tier's, and a kind can leave the medians
-//! out (a hold lasts its turns however it is played). A game reads the
-//! file itself (the core does no I/O), over its own tier type:
+//! out (a hold lasts its turns however it is played), never the gaps. A
+//! game reads the file itself (the core does no I/O), over its own tier
+//! type:
 //!
 //! ```ron
 //! (
@@ -39,6 +51,7 @@
 //!     kinds: {
 //!         "hold": (bands: {Hard: {"casual": (min: 40, max: 60)}}, medians: false),
 //!     },
+//!     gaps: [(entrant: "expert", than: "casual", success: [(measure: "won", min: Some(1))], most: 15)],
 //! )
 //! ```
 
@@ -57,7 +70,7 @@ use crate::rng::SimRng;
 
 mod targets;
 
-pub use targets::{KindTargets, MedianTarget, Targets};
+pub use targets::{GapTarget, KindTargets, MedianTarget, Targets};
 
 /// The game's measures of one try, by name. A success or a loss is a
 /// measure too (`"won"` 1 or 0), so every check reads measures only.
@@ -250,28 +263,77 @@ pub struct Band {
     pub max: u32,
 }
 
-/// Where a share of tries falls against a [`Band`].
+/// Where a share of tries falls against a [`Band`], judged with its 95%
+/// interval ([`Band::interval`]). More verdicts may come (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub enum RateVerdict {
-    /// Under the band: too hard (✗).
+    /// The whole interval is under the band: too hard (✗).
     Below,
     /// In the band (✓).
     Within,
-    /// Over the band: too easy (⚠).
+    /// The whole interval is over the band: too easy (⚠).
     Above,
+    /// Under the band, but its interval reaches it: maybe too hard (~).
+    MaybeBelow,
+    /// Over the band, but its interval reaches it: maybe too easy (~).
+    MaybeAbove,
 }
 
+/// z² of a 95% interval, 1.96², in ten-thousandths.
+const Z_SQUARED: u128 = 38_416;
+
 impl Band {
-    /// Where `successes` of `count` tries fall, compared in integers.
+    /// Where `successes` of `count` tries fall, compared in integers:
+    /// [`Within`](RateVerdict::Within) when the share is in the band;
+    /// [`Below`](RateVerdict::Below) or [`Above`](RateVerdict::Above) when
+    /// the whole of its [`interval`](Self::interval) is out on that side;
+    /// otherwise [`MaybeBelow`](RateVerdict::MaybeBelow) or
+    /// [`MaybeAbove`](RateVerdict::MaybeAbove).
     pub fn verdict(self, successes: u32, count: u32) -> RateVerdict {
+        let interval = Self::interval(successes, count);
         if below(successes, count, self.min) {
-            RateVerdict::Below
+            match interval {
+                Some((_, high)) if high < self.min => RateVerdict::Below,
+                _ => RateVerdict::MaybeBelow,
+            }
         } else if self.distance(successes, count) > 0 {
-            RateVerdict::Above
+            match interval {
+                Some((low, _)) if low > self.max => RateVerdict::Above,
+                _ => RateVerdict::MaybeAbove,
+            }
         } else {
             RateVerdict::Within
         }
+    }
+
+    /// The 95% Wilson score interval of `successes` of `count` tries, in
+    /// whole percents: the lowest and the highest `k` in `0..=100` that
+    /// pass the score test `(100·s − k·n)² · 10 000 ≤ 38 416 · n · k ·
+    /// (100 − k)` (z² = 3.8416), in integers. 44 of 100 gives 35–53.
+    ///
+    /// `None` for 0 tries. If no whole percent passes (only with thousands
+    /// of tries, when the interval lies between two), the share's own
+    /// percent, rounded down, both ends. More successes than tries count
+    /// as all of them.
+    pub fn interval(successes: u32, count: u32) -> Option<(u32, u32)> {
+        if count == 0 {
+            return None;
+        }
+        let s = u128::from(successes.min(count));
+        let n = u128::from(count);
+        // The passing `k` form one run around the share, so the first and
+        // the last that pass are its ends.
+        let passes = |k: &u32| {
+            let k128 = u128::from(*k);
+            let off = (100 * s).abs_diff(k128 * n);
+            off * off * 10_000 <= Z_SQUARED * n * k128 * (100 - k128)
+        };
+        let low = (0..=100).find(passes);
+        let high = (0..=100).rev().find(passes);
+        let own = || u32::try_from(100 * s / n).unwrap_or(100);
+        Some((low.unwrap_or_else(own), high.unwrap_or_else(own)))
     }
 
     /// How far `successes` of `count` tries lie outside the band, 0
@@ -357,6 +419,22 @@ pub enum Check {
         /// The entrant compared with.
         than: String,
     },
+    /// The share of `entrant`'s tries that meet every `success` condition
+    /// is at most `most` percentage points over the same share of entrant
+    /// `than`'s, compared in integers. It never blocks the run: a miss is
+    /// ✗ in the report only.
+    #[non_exhaustive]
+    Gap {
+        /// The entrant checked.
+        entrant: String,
+        /// The entrant compared with.
+        than: String,
+        /// What a success is, for both.
+        success: Vec<Condition>,
+        /// The most `entrant`'s share may be over `than`'s, in percentage
+        /// points.
+        most: u32,
+    },
 }
 
 impl Check {
@@ -390,6 +468,23 @@ impl Check {
         }
     }
 
+    /// A [`Gap`](Check::Gap): the share of `entrant`'s tries that meet
+    /// every `success` condition is at most `most` percentage points over
+    /// entrant `than`'s.
+    pub fn gap(
+        entrant: impl Into<String>,
+        than: impl Into<String>,
+        success: Vec<Condition>,
+        most: u32,
+    ) -> Self {
+        Check::Gap {
+            entrant: entrant.into(),
+            than: than.into(),
+            success,
+            most,
+        }
+    }
+
     /// The check with its floor `floor`, if it is a rate; any other check
     /// as it was.
     #[must_use]
@@ -415,14 +510,55 @@ impl Check {
     pub fn entrants(&self) -> Vec<&str> {
         match self {
             Check::Rate { entrant, .. } => alloc::vec![entrant.as_str()],
-            Check::Median { entrant, than, .. } => alloc::vec![entrant.as_str(), than.as_str()],
+            Check::Median { entrant, than, .. } | Check::Gap { entrant, than, .. } => {
+                alloc::vec![entrant.as_str(), than.as_str()]
+            }
+        }
+    }
+
+    /// The entrant it checks, first of [`entrants`](Self::entrants).
+    fn entrant(&self) -> &str {
+        match self {
+            Check::Rate { entrant, .. }
+            | Check::Median { entrant, .. }
+            | Check::Gap { entrant, .. } => entrant,
         }
     }
 }
 
-/// What a check found.
+/// How a gap between two entrants' shares compares with its most
+/// ([`Check::Gap`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub enum GapVerdict {
+    /// At most the most (✓).
+    Within,
+    /// Over it (✗).
+    Over,
+}
+
+/// Whether `successes` of `count` tries are at most `most` percentage
+/// points over `than_successes` of `than_count`: `successes × 100 ×
+/// than_count − than_successes × 100 × count ≤ most × count × than_count`,
+/// in integers. With no try on either side, it holds.
+fn gap_verdict(
+    (successes, count): (u32, u32),
+    (than_successes, than_count): (u32, u32),
+    most: u32,
+) -> GapVerdict {
+    let (s, n) = (u128::from(successes), u128::from(count));
+    let (ts, tn) = (u128::from(than_successes), u128::from(than_count));
+    if s * 100 * tn <= ts * 100 * n + u128::from(most) * n * tn {
+        GapVerdict::Within
+    } else {
+        GapVerdict::Over
+    }
+}
+
+/// What a check found. More kinds may come (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub enum Found {
     /// A [`Check::Rate`]'s numbers.
     Rate {
@@ -434,6 +570,10 @@ pub enum Found {
         verdict: RateVerdict,
         /// Whether it is under the floor.
         blocked: bool,
+        /// Its 95% interval in whole percents ([`Band::interval`]); `None`
+        /// for 0 tries, and in a report kept before it was measured.
+        #[serde(default)]
+        interval: Option<(u32, u32)>,
     },
     /// A [`Check::Median`]'s numbers.
     Median {
@@ -443,6 +583,19 @@ pub enum Found {
         than: Option<i64>,
         /// How they compare.
         verdict: MedianVerdict,
+    },
+    /// A [`Check::Gap`]'s numbers.
+    Gap {
+        /// The entrant's tries that succeeded.
+        successes: u32,
+        /// The entrant's tries.
+        count: u32,
+        /// The other entrant's tries that succeeded.
+        than_successes: u32,
+        /// The other entrant's tries.
+        than_count: u32,
+        /// How the gap compares with its most.
+        verdict: GapVerdict,
     },
 }
 
@@ -679,6 +832,16 @@ fn median_of(tries: &[Tried], measure: &str, among: &[Condition]) -> Option<i64>
     )
 }
 
+/// How many of `tries` meet every `success` condition, and how many
+/// there are.
+fn succeeded(tries: &[Tried], success: &[Condition]) -> (u32, u32) {
+    let successes = tries.iter().filter(|t| meets(success, &t.measures)).count();
+    (
+        u32::try_from(successes).unwrap_or(u32::MAX),
+        u32::try_from(tries.len()).unwrap_or(u32::MAX),
+    )
+}
+
 /// The tries of every entrant (its name and its tries, in any seed
 /// order, in any number of parts) judged by `checks`.
 pub fn judge(
@@ -716,16 +879,14 @@ pub fn judge(
                     band,
                     floor,
                 } => {
-                    let tries = of(entrant);
-                    let count = u32::try_from(tries.len()).unwrap_or(u32::MAX);
-                    let successes = tries.iter().filter(|t| meets(success, &t.measures)).count();
-                    let successes = u32::try_from(successes).unwrap_or(u32::MAX);
+                    let (successes, count) = succeeded(of(entrant), success);
                     let blocked = floor.is_some_and(|floor| below(successes, count, floor));
                     Found::Rate {
                         successes,
                         count,
                         verdict: band.verdict(successes, count),
                         blocked,
+                        interval: Band::interval(successes, count),
                     }
                 }
                 Check::Median {
@@ -747,6 +908,26 @@ pub fn judge(
                         median,
                         than: other,
                         verdict,
+                    }
+                }
+                Check::Gap {
+                    entrant,
+                    than,
+                    success,
+                    most,
+                } => {
+                    let (successes, count) = succeeded(of(entrant), success);
+                    let (than_successes, than_count) = succeeded(of(than), success);
+                    Found::Gap {
+                        successes,
+                        count,
+                        than_successes,
+                        than_count,
+                        verdict: gap_verdict(
+                            (successes, count),
+                            (than_successes, than_count),
+                            *most,
+                        ),
                     }
                 }
             };
@@ -820,14 +1001,23 @@ impl PlaytestReport {
                     count,
                     verdict,
                     blocked,
+                    interval,
                 },
             ) => {
                 let mark = match verdict {
                     RateVerdict::Within => "✓",
                     RateVerdict::Below => "✗ too hard",
                     RateVerdict::Above => "⚠ too easy",
+                    RateVerdict::MaybeBelow => "~ maybe too hard",
+                    RateVerdict::MaybeAbove => "~ maybe too easy",
                 };
-                let mut how = format!("band {}–{}%   {mark}", band.min, band.max);
+                let mut how = format!("band {}–{}%", band.min, band.max);
+                if let Some((low, high)) = interval {
+                    // Writing to a `String` can't fail.
+                    let _ = write!(how, " · 95% {low}–{high}%");
+                }
+                how.push_str("   ");
+                how.push_str(mark);
                 if *blocked {
                     // Writing to a `String` can't fail.
                     let _ = write!(how, " · blocked: under the {}% floor", floor.unwrap_or(0));
@@ -869,6 +1059,33 @@ impl PlaytestReport {
                     format!("{want} {mark}"),
                 )
             }
+            (
+                Check::Gap {
+                    entrant,
+                    than: other,
+                    most,
+                    ..
+                },
+                Found::Gap {
+                    successes,
+                    count,
+                    than_successes,
+                    than_count,
+                    verdict,
+                },
+            ) => {
+                let mark = match verdict {
+                    GapVerdict::Within => "✓",
+                    GapVerdict::Over => "✗",
+                };
+                (
+                    format!(
+                        "{entrant:<width$} · {successes}/{count} succeed \
+                         ({other} {than_successes}/{than_count})"
+                    ),
+                    format!("at most {most} points over {mark}"),
+                )
+            }
             // A check with another check's numbers: only a hand-made report.
             (check, found) => (format!("{check:?}"), format!("{found:?}")),
         }
@@ -895,11 +1112,7 @@ impl PlaytestReport {
         let width = self
             .checks
             .iter()
-            .map(|j| match &j.check {
-                Check::Rate { entrant, .. } | Check::Median { entrant, .. } => {
-                    entrant.chars().count()
-                }
-            })
+            .map(|j| j.check.entrant().chars().count())
             .max()
             .unwrap_or(0);
         let lines: Vec<(String, String)> =
