@@ -194,6 +194,20 @@ Handoff: 3426 (MCP's `new` lists the questions) gains a **From 3430
 (done)** line: `NewInput::storage` reaches MCP as `id` does, and
 `contract::VERSION` is 61 after this.
 
+Breaking: shuyi-cli: `contract::new::wizard::Named` gains `storage`: code that builds a `Named` with a struct literal builds it with `Named::new` instead
+
+```migration
+since: 0.1.0
+what: The wizard's Named gains the saves' folder, storage; build it with Named::new, which defaults storage to the id.
+old: Named { dir, name, id }
+new: Named::new(dir, name, id, storage)
+before: |
+  let named = Named { dir, name, id };
+after: |
+  let named = Named::new(dir, name, id, None);
+find: ["Named { dir"]
+```
+
 Game: nothing to adopt, the game calls no `NewInput` and makes no game
 with `shuyi new` (searched `gh search code --repo Zafnok/visions-of-shuyi
 'NewInput'`: only `docs/engine/pins.md` saying so).
