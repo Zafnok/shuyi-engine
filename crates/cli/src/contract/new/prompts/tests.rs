@@ -251,7 +251,8 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
         asked,
         [
             "What is the game called?",
-            "What is its reverse-DNS id, which its saves are kept under?",
+            "A unique id for the game, like io.github.yourname.moon-garden: app stores ask for \
+             one, and the game's saves are kept under it.",
             "Which perspectives?",
             "How are the rules written?",
             "Include the engine skills' worked examples (bots.rs, playtest.ron…)?",

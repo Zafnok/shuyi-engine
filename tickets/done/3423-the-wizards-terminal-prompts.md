@@ -228,3 +228,12 @@ its copies of the skill pack, which the pin's skill sync updates).
 Nick input: sign-off pending: run `shuyi new` in a terminal, answer the
 questions, and say whether the wording is clear and whether anything
 expected is missing.
+
+Nick's sign-off, in progress (2026-11-25): he found the id question
+("What is its reverse-DNS id, which its saves are kept under?")
+confusing and Java-looking, and asked whether it really names the save
+folder. It does, by default (ADR-0059: the id is unique, so two games
+of one name don't share saves). He agreed to the wording "A unique id
+for the game, like io.github.yourname.<crate name>: app stores ask for
+one, and the game's saves are kept under it.", which the question now
+says.

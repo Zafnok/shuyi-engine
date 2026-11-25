@@ -414,7 +414,7 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
         .filter(|line| !line.contains("(not asked: "))
         .collect();
     let starts = [
-        "What is its reverse-DNS id",
+        "A unique id for the game, like io.github.yourname.moon-garden:",
         "Which perspectives?",
         "How are the rules written?",
         "Include the engine skills' worked examples",

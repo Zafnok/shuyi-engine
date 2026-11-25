@@ -346,6 +346,7 @@ pub fn questions(
     named: &Named,
     given: &Answers,
 ) -> Vec<Question> {
+    let krate = super::crate_name(&named.name).unwrap_or_else(|_| "game".to_owned());
     let mut out = vec![
         text_question(DIR, "Which folder is the game made in?", None, &named.dir),
         text_question(
@@ -356,7 +357,10 @@ pub fn questions(
         ),
         text_question(
             ID,
-            "What is its reverse-DNS id, which its saves are kept under?",
+            &format!(
+                "A unique id for the game, like io.github.yourname.{krate}: app stores ask for \
+                 one, and the game's saves are kept under it."
+            ),
             Some("--id"),
             &named.id,
         ),
