@@ -174,5 +174,7 @@ Deviations:
   *Reproduce* sections, beside the pointer, and in the roadmap's row and
   the decision, which name the folder without linking the repository.
 
+Size: 19,574 counted lines, nearly all the deletion of `tools/research/` (its results JSON most of all); the folder leaves whole, and its copy is in the new repository.
+
 Book: none, no public API, contract, format or chapter changed; the book
 never named the research scripts.
