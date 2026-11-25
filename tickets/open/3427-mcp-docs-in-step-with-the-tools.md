@@ -89,8 +89,7 @@ None.
 
 - the `new` tool's description and its `questions` (3426);
 - making any CLI-only command a tool;
-- checking that every CLI flag reaches the op's input (a parser
-  comparison; write a ticket if the session finds a cheap way).
+- checking that every CLI flag reaches the op's input (3429).
 
 ## Implementation steps
 

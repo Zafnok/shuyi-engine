@@ -893,6 +893,16 @@ checks that would have caught them.
 | 3428 | The skill pack catches up on the formats, the audio manifest, the log file, a target's scale and the bots' seed |
 | 3533 | Each crate's doc names every `pub mod`, checked by `cargo xtask check-docs` |
 
+And so it doesn't drift again, the checks and the process the gaps
+showed were missing:
+
+| Ticket | What |
+| ------ | ---- |
+| 3534 | A docs gate over the changed paths: a contract, template or format change updates the book and the skill pack, or its ticket's `Book:` and `Skills:` lines say why not |
+| 3429 | Every flag of an operation's CLI is a field of its input or is listed as the CLI's alone, so MCP gets what the CLI gets |
+| 2852 | `cargo xtask check-book` fails a term the book defines that has no glossary row |
+| 3535 | The `document` skill names the homes sessions miss, and every retro checks the docs against what merged |
+
 ### The website shows the engine at work
 
 On 2026-10-28 Nick asked for pictures in the book, a playground, and a
