@@ -398,7 +398,8 @@ is done.
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
 | 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
 | 2277 (done) | `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files |
-| 2853 | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how (after 2277) |
+| 2853 (done) | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how |
+| 2279 | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
 
 **Text and languages:**
 

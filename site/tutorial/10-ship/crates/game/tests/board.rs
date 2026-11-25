@@ -2,7 +2,7 @@
 //! read the board's state. Key names here are the Harness's test-script
 //! names, input to a test, not game code.
 
-use game::board::Board;
+use game::board::{Board, PUSH, WIN};
 use game::levels::LevelMenu;
 use shuyi::core::Pos;
 use shuyi::core::TurnRules;
@@ -66,6 +66,27 @@ fn a_box_against_a_wall_stays_and_so_does_the_player() {
     h.keys("Up");
     assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
 }
+
+// ANCHOR: test_sounds
+#[test]
+fn a_push_plays_its_sound_a_walk_none_and_the_winning_push_the_win() {
+    let mut h = on_board();
+    // The level menu's own: Enter chose the first level.
+    assert_eq!(h.sounds(), ["ui_select"]);
+    h.clear_audio();
+    // Up, Down: a walk, and back.
+    h.keys("Up Down");
+    assert!(h.sounds().is_empty(), "{:?}", h.sounds());
+    h.keys("Right");
+    assert_eq!(h.sounds(), [PUSH]);
+    // An undo plays nothing.
+    h.keys("u");
+    assert_eq!(h.sounds(), [PUSH]);
+    // The push again, then the one onto the target.
+    h.keys("Right Right");
+    assert_eq!(h.sounds(), [PUSH, PUSH, WIN]);
+}
+// ANCHOR_END: test_sounds
 
 // ANCHOR: test_undo
 #[test]

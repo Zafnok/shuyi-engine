@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2277"]
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 2853 — The book's box pusher plays a sound on a push and on a win, made with `shuyi sfx`, and chapter 08 says how
@@ -106,14 +106,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Steps 08 to 10 play a sound on a push and on a win, and their
+- [x] Steps 08 to 10 play a sound on a push and on a win, and their
       menus' cues: each step's test checks the cues are in its manifest
       and `format_problem` accepts what `audio::playable` gives for each
       file, and a board test checks which cue each move plays.
-- [ ] Each step builds and passes its tests with `--locked`, and its
+- [x] Each step builds and passes its tests with `--locked`, and its
       exercises pass (`cargo xtask exercises`).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -121,4 +121,51 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Done.** Steps `08-polish`, `09-test` and `10-ship` play `push` on a
+  push and `win` on the move that wins, through `ctx.audio.play_sound`
+  in `Board::send`, which now takes the `Ctx` (`update` passes its own).
+  The sounds are `files/sfx/push.sfx.ron` (from the preset `hit`, made
+  lower and shorter: noise from 1,200 to 300 Hz, 100 ms) and
+  `files/sfx/win.sfx.ron` (the preset `power_up` as it is, 550 ms),
+  with their cues in `files/audio.ron`. Each step has the tests the
+  ticket asks: `every_sound_the_board_and_the_menus_play_is_in_the_manifest_and_plays`
+  (`tests/it/main.rs`, the template's test with `PUSH` and `WIN` added)
+  and `a_push_plays_its_sound_a_walk_none_and_the_winning_push_the_win`
+  (`tests/board.rs`). Chapter 08 has a section *Sounds* after the moves
+  counter, its file table's rows, a quick check and the glossary's new
+  row **Cue** (and step 8 on *Sound effect*).
+- **2850 was not done**, so this took the clause's *if not* branch:
+  steps 08–10 also get the template's four menu sounds
+  (`files/sfx/{move,select,cancel,cursor}.sfx.ron` and their cues), the
+  `sfx` feature of `shuyi-assets` in the game crate's `Cargo.toml` and
+  the workspace's `shuyi-assets` line, as the template writes them.
+  2850's clause now says so ("**From 2853 (done):** …"), and it brings
+  steps 01–07 up to them.
+- **Deviations.**
+  - The move that wins plays `win` alone, not `push` and then `win`:
+    one sound a move, and the win's says more. The chapter's check asks
+    which a reader hears.
+  - The chapter starts the two files from `hit` and `power_up` (the
+    ticket's step 2), not from `coin` as its Scope's example command
+    had it.
+  - The chapter says a reader's game already has the menu sounds, which
+    is true of a game `shuyi new` makes today; the book's steps 01–07
+    don't yet (2850).
+  - New anchors, changing nothing else in the steps: `sounds` and
+    `steps` in step 08's `board.rs`, `board` in its `audio.ron`
+    (`sounds` in 09 and 10 too). `send` stays one whole item.
+  - Listening: the session can't hear, so each file was checked with
+    the MCP `sfx` tool (`--wav`): its length (100 ms, 550 ms), its peak
+    and no problems. Nick may want to play them once.
+- **Follow-up:** 2279, `sfx::to_text` writes CRLF line ends on Windows
+  (`ron`'s `PrettyConfig` default), so `shuyi sfx --out` there writes a
+  file of mixed line ends; found while making these files, which were
+  written by hand with LF.
+- `site/tutorial/tries.toml`'s pictures don't change (sound isn't
+  drawn).
+- No break: the engine's code is unchanged; only the book's steps,
+  chapter and glossary change.
+- Book: chapter 08 (`site/content/learn/book/box-pusher/08-polish.md`)
+  and the glossary.
+- Skills: none, no schema, template, format or problem code changed;
+  the `shuyi-new-game` skill's *Sounds* already says how.

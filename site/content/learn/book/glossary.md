@@ -31,7 +31,7 @@ as the notes in the pages say.
 | Outcome | Making games | How a game ends: a question asked of the state | [Step 4](@/learn/book/box-pusher/04-push.md#winning), [chapter 5](@/learn/book/rules-as-commands.md#turnrules) |
 | Tween, ease curve | Making games | A value moving from one place to another over time; how fast it goes on the way | [Chapter 2](@/learn/book/frame-and-skins.md#things-that-move) |
 | Pixel | Making games | One dot of a picture | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
-| Sound effect | Making games | A sound written as a few numbers in a `.sfx.ron` file: a wave, a pitch, how loud | [Chapter 3](@/learn/book/assets-and-formats.md) |
+| Sound effect | Making games | A sound written as a few numbers in a `.sfx.ron` file: a wave, a pitch, how loud | [Step 8](@/learn/book/box-pusher/08-polish.md#sounds), [chapter 3](@/learn/book/assets-and-formats.md) |
 | Dither | Making games | Turn colors into patterns of black and white dots | [Chapter 3](@/learn/book/assets-and-formats.md#a-target-s-own-files) |
 | Bot | Making games | A player made of code | [Step 9](@/learn/book/box-pusher/09-test.md#a-bot), [chapter 8](@/learn/book/testing.md#bots) |
 | Test | Programming | A small program that plays part of your game and checks what happened | [Step 1](@/learn/book/box-pusher/01-new.md#run-it), [chapter 8](@/learn/book/testing.md) |
@@ -92,6 +92,7 @@ as the notes in the pages say.
 | `SaveFormat`, `SaveHeader` | Shuyi | A save's name and version; reading only that version | [Step 7](@/learn/book/box-pusher/07-save.md#what-is-kept), [chapter 7](@/learn/book/saves-and-settings.md#a-save) |
 | Save bundle | Shuyi | Several entries of the storage packed into one text file | [Chapter 7](@/learn/book/saves-and-settings.md#bundles) |
 | Harness | Shuyi | Plays your game with no window, for tests | [Step 1](@/learn/book/box-pusher/01-new.md#a-test), [chapter 8](@/learn/book/testing.md#the-harness) |
+| Cue | Shuyi | A sound's name in `files/audio.ron`, which says its file and how loud; the game plays a sound by it | [Step 8](@/learn/book/box-pusher/08-polish.md#sounds), [chapter 3](@/learn/book/assets-and-formats.md) |
 | `GameTools` | Shuyi | What connects a game to the engine's tools | [Step 9](@/learn/book/box-pusher/09-test.md#the-game-s-own-tools), [chapter 10](@/learn/book/tools-for-agents.md#one-value-of-the-game) |
 | Snapshot | Shuyi | A frame as text | [Step 9](@/learn/book/box-pusher/09-test.md#a-frame), [chapter 8](@/learn/book/testing.md#a-look) |
 | Session | Shuyi | A game the tools start and play, a step at a time | [Chapter 10](@/learn/book/tools-for-agents.md#the-mcp-server) |

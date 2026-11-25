@@ -17,7 +17,16 @@ use crate::Data;
 use crate::action::Action;
 use crate::level::TERRAIN_NAMES;
 use crate::levels::LevelWon;
-use crate::rules::{Command, Puzzle};
+use crate::rules::{Command, Event, Puzzle};
+
+// ANCHOR: sounds
+/// The cue a push plays, in `files/audio.ron`.
+// check-text: not player text, a sound's id
+pub const PUSH: &str = "push";
+/// The cue the move that wins plays.
+// check-text: not player text, a sound's id
+pub const WIN: &str = "win";
+// ANCHOR_END: sounds
 
 // ANCHOR: skin
 /// The cells a level is shown in: all but the top and bottom rows.
@@ -207,10 +216,18 @@ impl Board {
     }
 
     // ANCHOR: send
-    /// Sends `command` to the rules. A refused one changes nothing.
-    fn send(&mut self, command: Command) {
-        if self.puzzle.apply(&command).is_ok() {
-            self.history.push(command);
+    /// Sends `command` to the rules, and plays its sound: the win's on the
+    /// move that wins, a push's on another push, none on a walk. A refused
+    /// one changes nothing and plays nothing.
+    fn send(&mut self, ctx: &mut Ctx<Data>, command: Command) {
+        let Ok(events) = self.puzzle.apply(&command) else {
+            return;
+        };
+        self.history.push(command);
+        if self.puzzle.outcome().is_some() {
+            ctx.audio.play_sound(WIN);
+        } else if events.iter().any(|e| matches!(e, Event::Pushed { .. })) {
+            ctx.audio.play_sound(PUSH);
         }
     }
     // ANCHOR_END: send
@@ -244,13 +261,15 @@ impl Screen<Data> for Board {
     }
 
     // ANCHOR: update
-    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
         for &action in &input.actions {
             match action {
-                Action::Up => self.send(Command::Step(Dir::Up)),
-                Action::Down => self.send(Command::Step(Dir::Down)),
-                Action::Left => self.send(Command::Step(Dir::Left)),
-                Action::Right => self.send(Command::Step(Dir::Right)),
+                // ANCHOR: steps
+                Action::Up => self.send(ctx, Command::Step(Dir::Up)),
+                Action::Down => self.send(ctx, Command::Step(Dir::Down)),
+                Action::Left => self.send(ctx, Command::Step(Dir::Left)),
+                Action::Right => self.send(ctx, Command::Step(Dir::Right)),
+                // ANCHOR_END: steps
                 Action::Undo => self.undo(),
                 // ANCHOR: won
                 Action::Confirm if self.puzzle.outcome().is_some() => {
