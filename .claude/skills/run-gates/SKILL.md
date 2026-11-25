@@ -43,7 +43,14 @@ tutorial's steps, the wasm32 golden run, the API check).
 
 The pre-push hook, `scripts/git-hooks/pre-push`, runs `cargo xtask gates
 --fast` (fmt, typos, the ticket lint, the engine lint when Rust changed)
-and refuses the push when one fails. Set it up once per clone:
+and `cargo xtask check-merges` over what each ref pushes, and refuses the
+push when one fails. The post-commit hook, `scripts/git-hooks/post-commit`,
+runs `cargo xtask mend-merges` after each merge commit: a merge that
+changes more than resolving its parents is split into the merge alone and
+a commit of its own changes, with the same files, among commits no remote
+has yet (ticket 3532). If the pre-push hook refuses a merge anyway, run
+`cargo xtask mend-merges` and push again; never force-push. Set them up
+once per clone:
 
 ```bash
 git config core.hooksPath scripts/git-hooks
@@ -499,6 +506,7 @@ cargo xtask check-devcontainers   # the book's dev container builds every step o
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
 cargo xtask check-merges  # no merge commit in origin/main..HEAD changes a file or line beyond resolving its parents (ticket 2065); CI: --base HEAD^1 --head HEAD^2
+cargo xtask mend-merges   # splits each such merge no remote has yet into the merge and a commit of its own changes, same files (ticket 3532); the post-commit hook runs it
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
 

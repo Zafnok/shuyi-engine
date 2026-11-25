@@ -306,6 +306,15 @@ the PR.
   alone runs.
 - If the game must change too (a pin bump, a call site), write or link
   the game ticket. Say in both PRs which merges first: the engine's.
+- **Merging `main` into the branch:** commit the merge with only its
+  conflicts' resolution. A renumbering, a lint fix or a clause updated
+  for what `main` brought is a commit of its own after it: CI's
+  `check-merges` (ticket 2065) refuses a merge that carries one. The
+  post-commit hook splits out what slips in (`cargo xtask mend-merges`,
+  ticket 3532), and the pre-push hook refuses what it couldn't. Never
+  force-push, and don't replace a PR for this: before the push,
+  `cargo xtask mend-merges` fixes it. Why: ten of the eleven PRs closed
+  unmerged from 2026-11-17 to 2026-11-24 were replaced only for this.
 - **After the last merge of `main`** into the branch, re-read the PR
   body and the completion notes for every ADR number, ticket id and
   contract version (`contract::VERSION`) they name. A parallel PR may

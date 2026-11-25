@@ -168,8 +168,12 @@ that changes more than resolving its parents needs (ticket 2065).
 - Set git's hooks once per clone: `git config core.hooksPath
   scripts/git-hooks` (`setup-linux.sh` does it on Linux). Its pre-push
   hook runs `cargo xtask gates --fast` (fmt, typos, the ticket lint, the
-  engine lint) and refuses a push that fails one; git runs it, whatever
-  the harness. Its post-checkout hook, on Windows, compresses a new
+  engine lint) and `cargo xtask check-merges`, and refuses a push that
+  fails one; git runs it, whatever the harness. Its post-commit hook
+  splits a merge commit that carries changes of its own into the merge
+  and a commit of those changes (`cargo xtask mend-merges`, ticket 3532),
+  so a merge of `main` never needs a force-push or a new PR. Its
+  post-checkout hook, on Windows, compresses a new
   worktree's `target/` with NTFS (about half the disk, no slower), and
   `cargo xtask gates` compresses one that lacks it. A passing full
   `cargo xtask gates` then deletes the incremental caches of the other,

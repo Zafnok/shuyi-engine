@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3532 — A merge that carries edits of its own is split before it's pushed
@@ -97,20 +97,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] In a temporary repository, a merge that edits a file outside its
+- [x] In a temporary repository, a merge that edits a file outside its
       conflict is split by `mend-merges` into a merge `check-merges`
       passes and a commit with the edit; the branch's last tree is the
       same, and commits after the merge keep their trees and messages.
-- [ ] A clean history is left unchanged.
-- [ ] A refused merge that a remote-tracking branch has is refused by
+- [x] A clean history is left unchanged.
+- [x] A refused merge that a remote-tracking branch has is refused by
       `mend-merges`, changing nothing.
-- [ ] A rename or delete conflict is refused with the steps to split it
+- [x] A rename or delete conflict is refused with the steps to split it
       by hand, changing nothing.
-- [ ] The post-commit hook splits a bad merge when it is committed, and
+- [x] The post-commit hook splits a bad merge when it is committed, and
       does nothing after any other commit.
-- [ ] The pre-push hook refuses a push with a refused merge, naming
+- [x] The pre-push hook refuses a push with a refused merge, naming
       `cargo xtask mend-merges`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -120,5 +120,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **`cargo xtask mend-merges`** (`crates/xtask/src/merges/mend.rs`): over
+  `git rev-list HEAD --not --remotes`, each merge `check-merges` refuses
+  is made again from the same parents with `git merge-tree --write-tree
+  -X ours` (which changes nothing outside a conflict), and a commit on
+  top holds the original merge's tree. Later commits are made again with
+  `git commit-tree`, keeping their trees, authors and messages. It checks
+  that the last tree is unchanged and that every remade merge passes
+  before it moves the branch (`git update-ref` with the old value), so
+  the working copy and the index are untouched. It refuses, changing
+  nothing, off a branch, during a merge, rebase or cherry-pick, when a
+  refused merge is already on a remote, and on a rename or delete
+  conflict (with the steps to split it by hand).
+- **Hooks:** a new `scripts/git-hooks/post-commit` runs it after each
+  merge commit and never fails the commit; `scripts/git-hooks/pre-push`
+  now also runs `check-merges` from the remote's commit (or
+  `origin/main`) to each pushed commit, naming `mend-merges` when it
+  refuses.
+- `check-merges`'s errors name `mend-merges`. `AGENTS.md`, the `run-gates`
+  skill and the `work-ticket` skill (a step on merging `main`) say how it
+  works; `xtask`'s usage text lists the command.
+- **Tests:** four in temporary repositories (a merge with edits split
+  and the last tree kept, a later commit carried; a clean history left
+  alone; a pushed bad merge refused; a delete conflict left to be split
+  by hand).
+- **The hooks, by hand** (a scratch clone of this branch, 2026-11-24):
+  a merge that resolved its conflict and also edited `README.md` was
+  split by the post-commit hook as it was committed, and `check-merges`
+  passed. With that hook off, the pre-push hook refused the push to a
+  local bare repository, naming `mend-merges`; after it ran, the same
+  push went through with no force.
+
+Notes for Nick: the hooks run from `core.hooksPath`, which on your
+machine points at the main checkout's `scripts/git-hooks`, so they start
+working there once the main checkout pulls this. No game change: the
+engine's own tooling only.
+
+Book: none, this repository's own git tooling; no engine API, format or
+rule a game sees changes.
+
+Game: nothing to adopt, the engine's repository tooling only.
+
+No break. No behaviour change a game sees.
