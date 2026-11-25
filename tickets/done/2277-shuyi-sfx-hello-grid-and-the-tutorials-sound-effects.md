@@ -178,6 +178,9 @@ chapter into a new ticket blocked by this one.
   files` row and the golden session's content stamp moved with the
   example's own files, which `shuyi_assets::golden` says needs no line.
   `check --baked` passes; the web build ran in `cargo xtask gates`.
+  Its `shuyi.ron`'s `disclosure` allows the four in the pack, and their
+  Playdate names (`audio/sfx/move.sfx.pda`: the baked name keeps the
+  file's stem, `without_extension`), found by CI's `export` jobs.
 - **`shuyi sfx`** (`crates/cli/src/contract/sfx.rs`): `SfxInput { source,
   seed, out, wav }` and `SfxOutput { presets, text, length_ms, samples,
   peak, problems, written }`. A source ending in `.ron` is a file, from
