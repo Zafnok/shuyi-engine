@@ -82,8 +82,7 @@ pub struct ReplayRun {
     /// How the game ended, in the game's words, if it did.
     pub outcome: Option<String>,
     /// What made the record, if it says: the game's `replay` passes on
-    /// its record's stamp ([`turns`] leaves it `None`, [`ticks`] gives
-    /// the [`TickRecord`]'s).
+    /// its record's stamp ([`turns`] leaves it `None`).
     #[serde(default)]
     pub made: Option<Made>,
 }

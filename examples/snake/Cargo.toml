@@ -21,8 +21,10 @@ required-features = ["window"]
 
 [[example]]
 # The game's tool program: `cargo shuyi <command>` runs it (`shuyi.ron`'s
-# `game`).
-name = "tools"
+# `game`). Not `tools`: Hello, Grid's has that name in this workspace, and
+# two examples of one name build one file.
+name = "snake-tools"
+path = "examples/tools.rs"
 required-features = ["tools"]
 
 [features]

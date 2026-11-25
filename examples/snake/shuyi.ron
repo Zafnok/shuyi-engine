@@ -15,7 +15,7 @@
     // The game's tool program, for the commands that run the game:
     // `frame-png`, `lang-status` and the contract's `check`, `run`,
     // `scene` and `replay`.
-    game: (package: "snake", example: "tools", features: ["tools"]),
+    game: (package: "snake", example: "snake-tools", features: ["tools"]),
 
     // The folder of its files, which `cargo shuyi run --watch` lays over the
     // embedded ones.
