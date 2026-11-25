@@ -64,6 +64,9 @@ None.
   `contract::VERSION` and `versions.json` move if the rule asks.
 - `answers` is made absolute from the session's folder, as `dir` is, in
   `Server::absolute`.
+- **Either order with 3429:** if 3429 is done, take `--questions` off
+  its list of the CLI's own flags, so its test checks the field; if not,
+  nothing to do (3429's test finds the field in the input).
 - The `new` tool's description: `dir` from the session's folder; the
   fields it takes, in one line; `questions` to list the questions first;
   that the answer gives `command` and keeps the answers in `shuyi.ron`.

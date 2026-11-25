@@ -61,7 +61,10 @@ None.
   (check each against the glossary's rule in `docs/README.md`: each word
   links the step that first uses it and the chapter that says more), in
   the glossary's order and voice. A word the book uses only in passing
-  gets no row; say which in the completion notes.
+  gets no row; say which in the completion notes. **Either order with
+  2852:** if 2852 is done, mark each new term as `site/README.md` then
+  says and let its check confirm the rows; if not, nothing more to do
+  (2852 marks the terms and writes any row still missing).
 
 **Out (do not do):**
 
