@@ -22,6 +22,7 @@
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt`, `export-report.json` and `exposure-report.json`; with `--plan`, what each target's exporters build and where, in CI | [`export`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
+//! | `sfx <preset \| file>` | a sound effect from a preset or a `.sfx.ron` file: its text, length and peak; with `--out` its text written, with `--wav` the sound | [`sfx`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
 //! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
 //!
@@ -62,6 +63,7 @@ pub mod playtest;
 pub mod replay;
 pub mod run;
 pub mod session;
+pub mod sfx;
 pub mod target;
 
 use std::fmt::Write as _;
@@ -75,7 +77,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 59;
+pub const VERSION: u32 = 60;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -110,6 +112,8 @@ pub enum Op {
     Bake,
     /// The toolchain checked.
     Doctor,
+    /// A sound effect from a preset or a file.
+    Sfx,
     /// A problem code's page.
     Explain,
     /// A running build reached over the live link.
@@ -151,6 +155,7 @@ impl Op {
         Op::Bake,
         Op::Export,
         Op::Doctor,
+        Op::Sfx,
         Op::Explain,
         Op::Attach,
     ];
@@ -185,6 +190,7 @@ impl Op {
             Op::Import => "import",
             Op::Bake => "bake",
             Op::Doctor => "doctor",
+            Op::Sfx => "sfx",
             Op::Explain => "explain",
             Op::Attach => "attach",
             Op::Export => "export",
@@ -467,6 +473,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(op, name),
         (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(op, name),
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op, name),
+        (Op::Sfx, _) => pair::<sfx::SfxInput, sfx::SfxOutput>(op, name),
         (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(op, name),
         (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(op, name),
         (Op::Export, _) => pair::<export::ExportInput, export::ExportResult>(op, name),

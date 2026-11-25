@@ -86,14 +86,18 @@ shuyi-cli = { path = "../../crates/cli", optional = true }
 # The macroquad backend, already under `shuyi`, named for its `link` and
 # `capture` features.
 shuyi-app = { path = "../../crates/app", optional = true }
+# The engine's assets, already under `shuyi`, for their `sfx` feature: the
+# sounds in `files/sfx/` are sound effects written as a few numbers
+# (`.sfx.ron`), rendered as the game reads them (ADR-0144).
+shuyi-assets = { path = "../../crates/assets", default-features = false, features = ["sfx"] }
 serde.workspace = true
 ron.workspace = true
 # The shapes of the rules' types, for the tools (the `tools` feature).
 schemars = { workspace = true, optional = true }
 
 [package.metadata.cargo-machete]
-# Named for its features (`link`, `capture`), not its code.
-ignored = ["shuyi-app"]
+# Named for their features (`link`, `capture`; `sfx`), not their code.
+ignored = ["shuyi-app", "shuyi-assets"]
 
 [dev-dependencies]
 # The Harness and the tools for the tests in tests/, without the window:

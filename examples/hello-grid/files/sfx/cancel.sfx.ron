@@ -1,0 +1,8 @@
+// Backing out: a lower blip.
+(
+    wave: Sine,
+    hz: 440,
+    hold_ms: 20,
+    fade_ms: 60,
+    volume: 37,
+)

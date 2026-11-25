@@ -52,7 +52,7 @@ stops.
 {% end %}
 
 The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
-`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain` and
+`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `sfx`, `explain` and
 `attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
 
 {{ snippet(file="src/tools.rs", anchor="contract") }}

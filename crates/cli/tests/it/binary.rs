@@ -377,7 +377,7 @@ fn new_doctor_explain_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 50);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 52);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -431,6 +431,91 @@ fn new_doctor_explain_and_schema_need_no_project() {
     let output = shuyi(&dir, &["explain", "SH9999", "--json"]);
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(json(&output)["code"], "SH0001");
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The schema `name` of `schemas/` (`sfx.output`).
+fn schema(name: &str) -> serde_json::Value {
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("schemas/{name}.json"));
+    serde_json::from_str(&fs::read_to_string(file).unwrap()).unwrap()
+}
+
+#[test]
+fn sfx_writes_a_preset_and_its_sound_as_its_schema_says_with_no_project() {
+    let dir = scratch("sfx");
+    let output = shuyi(
+        &dir,
+        &[
+            "sfx",
+            "coin",
+            "--out",
+            "x.sfx.ron",
+            "--wav",
+            "x.wav",
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    let answer = json(&output);
+    let schema = schema("sfx.output");
+    assert_eq!(
+        unknown_fields(&schema, &schema, &answer, "answer"),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        (answer["op"].as_str(), answer["ok"].as_bool()),
+        (Some("sfx"), Some(true))
+    );
+    assert_eq!(
+        answer["result"]["written"],
+        serde_json::json!(["x.sfx.ron", "x.wav"])
+    );
+    // The file reads back to the preset's numbers, and the WAV is its
+    // render.
+    let coin = shuyi_assets::sfx::preset("coin", 0).unwrap();
+    let text = fs::read_to_string(dir.join("x.sfx.ron")).unwrap();
+    assert_eq!(
+        shuyi_assets::sfx::from_source("x.sfx.ron", &text),
+        Ok(coin.clone())
+    );
+    let wav = fs::read(dir.join("x.wav")).unwrap();
+    assert_eq!(
+        wav,
+        shuyi_assets::sfx::to_wav(&shuyi_assets::sfx::render(&coin))
+    );
+    assert_eq!(answer["result"]["samples"], (wav.len() - 44) / 2);
+
+    // A seed, then the file read back, for people.
+    let output = shuyi(&dir, &["sfx", "coin", "--seed", "2"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(stdout(&output).contains("seed 2"), "{}", stdout(&output));
+    let output = shuyi(&dir, &["sfx", "x.sfx.ron"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(stdout(&output).contains(" ms, "), "{}", stdout(&output));
+
+    // A broken file fails with its line; an unknown name lists the presets.
+    let bad = "(\n    wave: Sine,\n    hz: 5,\n    to_hz: 400,\n    hold_ms: 9,\n    fade_ms: 9,\n    volume: 9,\n)\n";
+    fs::write(dir.join("bad.sfx.ron"), bad).unwrap();
+    let output = shuyi(&dir, &["sfx", "bad.sfx.ron", "--json"]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    let answer = json(&output);
+    assert_eq!(answer["ok"], false);
+    assert_eq!(answer["result"]["problems"][0]["file"], "bad.sfx.ron");
+    assert_eq!(answer["result"]["problems"][0]["line"], 3, "{answer}");
+    let output = shuyi(&dir, &["sfx", "nope", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    let answer = json(&output);
+    assert_eq!(answer["code"], "SH0001");
+    assert!(
+        answer["error"]
+            .as_str()
+            .unwrap()
+            .contains("blip, tick, select, cancel, coin"),
+        "{answer}"
+    );
+    let output = shuyi(&dir, &["sfx"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).contains("usage: shuyi sfx <preset | file.sfx.ron>"));
     fs::remove_dir_all(&dir).unwrap();
 }
 

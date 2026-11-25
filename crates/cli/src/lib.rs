@@ -150,6 +150,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
                                      it, with NOTICES.txt, export-report.json and
                                      exposure-report.json
   doctor                             check the toolchain and say how to fix it
+  sfx <preset | file.sfx.ron> [--seed N] [--out <file.sfx.ron>] [--wav <file.wav>]
+                                     a sound effect from a preset or a file: its text,
+                                     length and peak; --out writes it, --wav renders it
   explain [<code>]                   every problem code (SH2003), or one code's page
   attach <host:port> --token <t> [steps] [--screenshot <file.png>]
                                      a running debug build over the live link: play steps

@@ -1,0 +1,8 @@
+// The highlight moving: a soft sine blip that fades out.
+(
+    wave: Sine,
+    hz: 660,
+    hold_ms: 10,
+    fade_ms: 40,
+    volume: 37,
+)
