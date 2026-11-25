@@ -129,7 +129,7 @@ as they are. If you miss one, a debug build stops and names the key it couldn't 
 
 The `Up` in that test wraps round from the top of the menu to its last item, Options.
 
-Run it, and open **Options**, then **Key bindings**:
+Run it, and open *Options*, then *Key bindings*:
 
 {{ try_it(name="key-bindings") }}
 

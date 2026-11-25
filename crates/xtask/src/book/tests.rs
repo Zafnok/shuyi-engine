@@ -720,3 +720,34 @@ fn a_wrong_rust_tab_fails_on_its_line() {
     assert!(has(&no_step, "is for a project step"), "{no_step:#?}");
     let _ = fs::remove_dir_all(folder);
 }
+
+#[test]
+fn the_book_s_terms_are_checked_against_its_glossary() {
+    let glossary = page(
+        "| Word | New to | What it means | Where |\n| ---- | ------ | ------------- | ----- |\n| Seed | Making games | Luck | [Chapter 5](a.md) |\n",
+    );
+    let chapter = page("A **seed** and a **stream**.\n\n**A bad key.** A heading.\n");
+    let pages = |chapter_at: &str| {
+        vec![
+            (
+                "site/content/learn/book/glossary.md".to_string(),
+                glossary.clone(),
+            ),
+            (chapter_at.to_string(), chapter.clone()),
+        ]
+    };
+    let errors = check_pages(&pages("site/content/learn/book/luck.md"));
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(errors[0].starts_with("site/content/learn/book/luck.md:4: the term **stream**"));
+    // The front pages aren't the book's pages, and without its glossary
+    // nothing is checked.
+    assert_eq!(
+        check_pages(&pages("site/content/learn/book/_index.md")),
+        Vec::<String>::new()
+    );
+    let alone = [(
+        "site/content/learn/book/luck.md".to_string(),
+        chapter.clone(),
+    )];
+    assert_eq!(check_pages(&alone), Vec::<String>::new());
+}

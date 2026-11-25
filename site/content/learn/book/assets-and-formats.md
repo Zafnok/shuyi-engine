@@ -171,7 +171,7 @@ the key, not a line:
 `cargo shuyi font-atlas files-src/ter-u16n.bdf crates/game/files/font` remakes it: it
 runs the game, and keeps every character its text uses that the font has.
 
-Japanese and Chinese characters are twice as wide as a letter: each takes **two cells**
+Japanese and Chinese characters are twice as wide as a letter: each takes *two cells*
 of the screen. They come from a second font, twice as wide (16 × 16 pixels beside
 8 × 16), given with `--wide`:
 
@@ -185,7 +185,7 @@ narrow font lacks, and of the characters `shuyi.ron`'s `font_atlas.wide_glyphs` 
 
 Japanese and Chinese write many of the same characters with one code point but each in
 its own shape (直, 骨, 角). A game in both gives a wide font for each, as a named
-**set**:
+*set*:
 
 ```text
 cargo shuyi font-atlas --wide ja=files-src/ja-16.bdf --wide zh-Hans=files-src/zh-16.bdf files-src/ter-u16n.bdf crates/game/files/font

@@ -17,7 +17,7 @@ This is the step where it becomes a game. You'll push a box, and win:
 
 {{ try_it(name="solved") }}
 
-Here's the pay-off from step 3. **All of the game's new behaviour goes in the rules**. The screen
+Here's the pay-off from step 3. *All of the game's new behaviour goes in the rules*. The screen
 barely changes, because it was already sending commands and showing whatever the state says.
 
 | File | What changes |

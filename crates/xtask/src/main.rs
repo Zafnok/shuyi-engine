@@ -111,7 +111,8 @@ usage:
   cargo xtask check-book
       Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
       audience of the four, a topic, closed, not nested, on lines of their
-      own, and no callout left in the old form (`> **Rust:**`).
+      own, and no callout left in the old form (`> **Rust:**`); and that each
+      term the book bolds has a row in its glossary (ticket 2852).
   cargo xtask next-id ticket <block>
   cargo xtask next-id adr
       Print the next ticket id in <block> (its two digits, tickets/README.md)
