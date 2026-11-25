@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 3535 — The `document` skill names the homes sessions miss, and every retro checks the docs against what merged
@@ -80,12 +80,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The `document` skill lists the easy-to-miss homes, each linking
+- [x] The `document` skill lists the easy-to-miss homes, each linking
       its row in the map.
-- [ ] The `retro` skill runs a docs-drift theme every time, with what it
+- [x] The `retro` skill runs a docs-drift theme every time, with what it
       reads and reports.
-- [ ] `scripts/sync-agent-skills.ps1 -Check` passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `scripts/sync-agent-skills.ps1 -Check` passes.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -93,4 +93,23 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- The `document` skill has *Homes that are easy to miss* under step 2:
+  five one-line items (template → the book's project, contract op or
+  field → the MCP tool's description and input, format → the skill that
+  teaches it, new term → the glossary, new `pub mod` → the crate doc),
+  each naming its row in the map's *People making games* table and
+  linking that table. The map's rows have no anchors of their own, so
+  each item links the table and names the row by its fact.
+- The `retro` skill's §2 now always runs seven themes; the seventh,
+  *docs drift*, says what it reads (each PR of the window that changed
+  something public, against the homes the map names) and what it
+  reports (each home left behind, with the PR and `file:line`, as
+  proposed tickets).
+- Deviation: the MCP tools' descriptions have no row of their own in the
+  map; the item points at the contract's row and names
+  `crates/cli/src/mcp.rs`. No ticket: 3427 keeps them in step with the
+  tools mechanically, so a row would only repeat the code.
+- `sync-agent-skills.ps1` rewrote no loader (the skills' names and
+  descriptions are unchanged); `-Check` passes.
+- Docs: the change is to two of this repository's skills, whose home is
+  `.claude/skills/` itself; the map needs no new row.
