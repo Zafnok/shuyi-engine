@@ -159,5 +159,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0145](0145-the-tactics-order-one-strike-per-piece-first-and-spare-steps.md) | The tactics order: one strike per piece first, and steps kept out of the rest | Accepted; extends ADR-0044 |
 | [0146](0146-long-runs-flat-memory-and-sounds-and-equal-hashes.md) | Long runs: the heap and the sounds alive stay flat over hundreds of thousands of frames, and a second run hashes the same | Accepted; extends ADR-0081 |
 | [0147](0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md) | Desktop pads through SDL3, with our own start-up for Switch 2 pads | Accepted; resolves ADR-0021's controllers choice, narrows its §4 and §6 |
+| [0149](0149-the-docs-maps-rows-as-checked-rules-with-a-waiver-line.md) | The docs map's rows as checked rules, with a waiver line | Accepted; extends ADR-0038's `api` job |
 
 Template: [`0000-template.md`](0000-template.md).

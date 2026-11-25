@@ -232,7 +232,22 @@ the PR.
    CI's `api` job fails such a change with neither. The better answer is
    usually the book's chapter the docs map names for the item.
 
-   Under each such line, add a `migration` block: how a game moves over
+   The other rows of the docs map that a PR's paths can show are rules in
+   `tools/docs-rules.ron`, and `cargo xtask docs-rules` (CI's `tickets`
+   job, on every PR) holds them the same way (ticket 3534, ADR-0149). A
+   change to a schema, the template, a format or a problem code changes
+   the skill pack (`skills/`), or the notes say why not:
+
+   ```text
+   Skills: none, <why>
+   ```
+
+   A schema or template change does the same for the book (`Book:`), and
+   each other rule has its own mark (`Contract:`, `Formats:`, …): the
+   failure names the rule, the files and the line to write. Run it before
+   pushing; locally it only warns.
+
+   Under each `Breaking:` line, add a `migration` block: how a game moves over
    the break, written in YAML in a fenced block (the fields are in
    `tickets/README.md`, *Breaking changes*). The changelog's migration
    guide is made from it (`cargo xtask changelog`, ticket 2804).
