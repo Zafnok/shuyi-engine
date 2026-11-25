@@ -96,6 +96,11 @@ becomes an item of the system menu, titled by the text key
 `system_menu.<action>`, or its name. A required action only on the crank
 shows a hint while the crank is docked, by the text key `crank.unfold`.
 
+The language the player set in the device's Settings is the system's
+language a new player starts in (`FirstLanguage::System`): English gives
+`en` and Japanese `ja`, when the game has a pack for it. A build that
+ships one language starts in it with `FirstLanguage::Fixed` instead.
+
 ## The game's stack
 
 The device gives the C stack about 10 KB, and a game's load or search can go

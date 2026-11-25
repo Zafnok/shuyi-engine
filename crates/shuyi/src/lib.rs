@@ -16,6 +16,11 @@
 //!   the game installs once.
 //! - `script` (feature `script`): `shuyi-script`, rules from scripts,
 //!   which the game's rules call.
+//! - `system-languages` (feature, on by default): the macroquad backend
+//!   reads the system's preferred languages on a desktop (`sys-locale`),
+//!   so a new player starts in the system's language when the game has
+//!   it. Off, a desktop game starts in its source language until the
+//!   player picks one; the web reads the browser's either way.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

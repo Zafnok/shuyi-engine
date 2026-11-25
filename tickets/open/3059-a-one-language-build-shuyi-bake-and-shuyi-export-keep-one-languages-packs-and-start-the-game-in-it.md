@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
-blocked_by: ["2226", "2349", "3004"]
+blocked_by: ["2226", "2349", "2278", "3004"]
 nick_input: none
 completed:
 ---
@@ -21,8 +21,8 @@ completed:
   starting in its language. Its bundle per language "uses the engine's
   language layers". It isn't a blocker: the game's ticket waits for
   this one.
-- **The promise.** 2349 (the player's language) gives a pack's folder
-  its own copies of files (`lang/<tag>/files/<path>`), and
+- **The promise.** 2278 gives a pack's folder its own copies of files
+  (`lang/<tag>/files/<path>`), and 2349 (the player's language, done)
   `FirstLanguage::Fixed` for a build that ships one language. It says a
   one-language build "ships a layer without the other packs' folders".
   Its Out left making that layer (a `--lang` flag on `shuyi bake`, or a
@@ -232,7 +232,7 @@ in a store, are the game's.
 ## Implementation steps
 
 1. Read 2349's result (`FirstLanguage`, `GameData::first_language`,
-   `languages_offered`, a pack's `files/`); 2226's `Lang::chain`,
+   `languages_offered`) and 2278's (a pack's `files/`); 2226's `Lang::chain`,
    `Lang::source_lang` and `LangCode::parse`; and 3004's `export`
    operation, its `Exporter` trait (only the Playdate's `prepare`
    bakes a pack into a package). Read `crates/cli/src/contract/bake.rs`,

@@ -78,6 +78,11 @@ void pd_buttons(unsigned int* current, unsigned int* pushed)
 float pd_crank_change(void) { return pd->system->getCrankChange(); }
 int pd_crank_docked(void) { return pd->system->isCrankDocked(); }
 
+// --- the system's language --------------------------------------------------
+
+// The language the player set in Settings: 0 English, 1 Japanese.
+int pd_language(void) { return (int)pd->system->getLanguage(); }
+
 // --- the system menu --------------------------------------------------------
 
 // The SDK calls this when the player chooses one of the game's items;

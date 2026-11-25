@@ -170,12 +170,13 @@ None.
   `gamepad.js`*, and its list of files a line for `motion.js`. Other
   tickets add files to `SHELL` too; whichever lands later sets its
   length.
-- **Either order with 2349** (the system's languages): if it is done,
-  `motion.js` and `motion/web.rs` follow its `languages.js` and the web
-  half of its `languages.rs`, `index.html` loads `motion.js` beside
-  `languages.js`, and the comment on `unsafe_code` names its files and
-  this ticket's. If not, follow `gamepad.js` and `pads/web.rs`, and
-  2349 adds `languages.js` beside `motion.js` (its clause says so).
+- **From 2349 (done)** (the system's languages): `motion.js` and
+  `motion/web.rs` follow `crates/cli/web/languages.js` and
+  `crates/app/src/languages/web.rs` (a `PlatformFacts` field filled in
+  `Macroquad::new`, its tests in `crates/cli/src/web.rs`), `index.html`
+  loads `motion.js` beside `languages.js`, and the comment on
+  `unsafe_code` in `crates/app/Cargo.toml` names this ticket's files
+  beside `src/languages/web.rs`.
 - **From 3039 (done)** (the web build's notices): `motion.js` gets a
   row in `SHELL_NOTICES` (`crates/cli/src/web.rs`), the table of
   `SHELL`'s files, as the engine's own beside `gamepad.js` (its test
@@ -226,8 +227,8 @@ None.
    in `crates/ui/src/ctx.rs`, `OptionRow::restore_defaults`, and
    `crates/app/src/pads.rs`, `pads/web.rs` and
    `crates/cli/web/gamepad.js` with their tests in
-   `crates/cli/src/web.rs`. Check whether 2349 and 3052 are done,
-   for their clauses.
+   `crates/cli/src/web.rs`. Check whether 3052 is done, for its
+   clause.
 2. Add `PlatformFacts::reduced_motion`, `Ctx::default_motion` and
    `Ctx::default_settings`. Use them in `load_settings` and in Restore
    defaults, and check the order in `Setup::ctx`. With their tests.

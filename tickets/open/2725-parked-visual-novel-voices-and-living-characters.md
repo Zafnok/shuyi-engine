@@ -69,13 +69,11 @@ None.
     the one in use at run time, not `VoiceFiles::lang` fixed at build
     time, falling back along its chain (2226's `Lang::chain`: `pt-BR`,
     then `pt`, then the game's source language). The clips stay in
-    that folder beside the game, not in a pack's `files/` (2349's
+    that folder beside the game, not in a pack's `files/` (2278's
     `localized_path`);
-  - **Either order with 2349:** if it is done, the language in use is
-    the player's pick (`Settings::language`, through `Ctx::lang`), so
-    a voice follows the options row; if not, it is `Ctx::lang` as the
-    game sets it, and 2349 has nothing to do here (its Out leaves
-    voices per language to this ticket);
+  - **From 2349 (done):** the language in use is the player's pick
+    (`Settings::language`, through `Ctx::lang`), so a voice follows the
+    options row;
   - the `voice <line id>` direction (2721) overrides it, to reuse
     another line's voice;
   - a line with no voice is fine and plays silent;

@@ -1,20 +1,28 @@
 //! The player's settings: the engine's (how fast dialogue text is
 //! revealed, whether the game fills the screen, the color theme, the
-//! volume of each sound group ([`Volumes`]), the frame cap and the layout
-//! picked) and the
-//! game's own
+//! volume of each sound group ([`Volumes`]), the frame cap, the layout
+//! picked and the language picked) and the game's own
 //! ([`Settings::game`], a [`GameSettings`]). [`Ctx`](crate::Ctx) loads
 //! them with its storage, from one record under [`SETTINGS_KEY`] in the
 //! profile in use, whose form the game decides
 //! ([`GameSettings::to_ron`]); it saves them when they change
 //! ([`Ctx::change_settings`](crate::Ctx::change_settings)). Key bindings
 //! are saved apart.
+//!
+//! **The language.** [`Settings::language`] is the language the player
+//! picked, `None` until they pick one; until then the game's policy
+//! ([`GameData::first_language`](crate::GameData::first_language), a
+//! [`FirstLanguage`]) says which language a start shows, and that pick
+//! isn't saved. A saved form writes the tag as text
+//! ([`language_to_text`]) and reads it back with
+//! [`language_from_text`], text that isn't a tag reading as `None`.
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use core::fmt::Debug;
 
 use shuyi_assets::keymap::Layout;
+use shuyi_assets::lang::LangCode;
 
 use crate::audio::groups::{MUSIC, SFX, VOICE};
 use crate::frame::console::ScaleMode;
@@ -104,6 +112,36 @@ pub fn read_old_volumes(
             volumes.set_from_linear(group, percent);
         }
     }
+}
+
+/// The language a start shows while the player hasn't picked one
+/// ([`Settings::language`] is `None`): the game's policy,
+/// [`GameData::first_language`](crate::GameData::first_language). The pick
+/// isn't saved, so until the player picks, each start follows it again.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum FirstLanguage {
+    /// The game's language that fits the system's languages
+    /// ([`best_match`](shuyi_assets::lang::best_match) among the source and
+    /// the packs, never the debug language), else the source.
+    #[default]
+    System,
+    /// The source language.
+    Source,
+    /// This language: a build that ships one.
+    Fixed(LangCode),
+}
+
+/// The text a saved form writes for the language picked
+/// ([`Settings::language`]): its tag.
+pub fn language_to_text(language: Option<&LangCode>) -> Option<String> {
+    language.map(|code| code.as_str().to_owned())
+}
+
+/// The language a saved form wrote as `text` ([`language_to_text`]): text
+/// that isn't a tag reads as none picked.
+pub fn language_from_text(text: Option<&str>) -> Option<LangCode> {
+    text.and_then(|text| LangCode::parse(text).ok())
 }
 
 /// How fast dialogue text is revealed.
@@ -259,6 +297,7 @@ struct EngineOnly {
     voices: bool,
     frame_cap: FrameCap,
     layout: Option<String>,
+    language: Option<String>,
     #[serde(skip_serializing, deserialize_with = "old_volume")]
     music_volume: Option<u8>,
     #[serde(skip_serializing, deserialize_with = "old_volume")]
@@ -282,6 +321,7 @@ impl EngineOnly {
             voices: s.voices,
             frame_cap: s.frame_cap,
             layout: s.layout.map(|l| l.name().to_owned()),
+            language: language_to_text(s.language.as_ref()),
             music_volume: None,
             sound_volume: None,
             voice_volume: None,
@@ -310,6 +350,7 @@ impl GameSettings for () {
             voices: file.voices,
             frame_cap: file.frame_cap,
             layout: file.layout.as_deref().and_then(Layout::from_name),
+            language: language_from_text(file.language.as_deref()),
             ..Settings::default()
         })
     }
@@ -342,6 +383,13 @@ pub struct Settings<S: GameSettings> {
     /// by [`Ctx::choose_layout`](crate::Ctx::choose_layout), which also
     /// switches the keys.
     pub(crate) layout: Option<Layout>,
+    /// The language the player picked; `None` until they pick one (the
+    /// game's [`FirstLanguage`] then says which a start shows). Change it
+    /// through [`Ctx::preview_settings`](crate::Ctx::preview_settings) or
+    /// [`Ctx::change_settings`](crate::Ctx::change_settings): every screen
+    /// shows it at once. A language the game has no pack for shows
+    /// through its chain ([`Lang::chain`](shuyi_assets::lang::Lang::chain)).
+    pub language: Option<LangCode>,
     /// The game's own settings.
     pub game: S,
 }
@@ -356,6 +404,7 @@ impl<S: GameSettings> Default for Settings<S> {
             voices: true,
             frame_cap: S::DEFAULT_FRAME_CAP,
             layout: None,
+            language: None,
             game: S::default(),
         }
     }
@@ -383,11 +432,13 @@ impl<S: GameSettings> Settings<S> {
     }
 
     /// The defaults, keeping what isn't a preference with a default: the
-    /// layout picked (an options screen's "Restore defaults").
+    /// layout and the language picked (an options screen's "Restore
+    /// defaults" never switches a reader's language under them).
     #[must_use]
     pub fn restored(&self) -> Self {
         Self {
             layout: self.layout,
+            language: self.language.clone(),
             ..Self::default()
         }
     }
@@ -424,12 +475,18 @@ mod tests {
         assert!(s.voices);
         assert_eq!(s.frame_cap, FrameCap::Fps(60));
         assert_eq!(s.layout(), None);
+        assert_eq!(s.language, None);
         assert_eq!(s.game, Prefs::default());
     }
 
+    fn code(text: &str) -> LangCode {
+        LangCode::new(text).unwrap_or_else(|| panic!("{text}"))
+    }
+
     #[test]
-    fn restoring_keeps_only_the_layout() {
+    fn restoring_keeps_only_the_layout_and_the_language() {
         let mut s = Settings::default().with_layout(LEFT_HANDED);
+        s.language = Some(code("pt-BR"));
         s.text_speed = TextSpeed::Fast;
         s.fullscreen = true;
         s.theme = Theme::Night;
@@ -440,7 +497,45 @@ mod tests {
         s.frame_cap = FrameCap::Off;
         s.game.speed = 9;
         assert_eq!(s.layout(), Some(LEFT_HANDED));
-        assert_eq!(s.restored(), Settings::default().with_layout(LEFT_HANDED));
+        let mut kept = Settings::default().with_layout(LEFT_HANDED);
+        kept.language = Some(code("pt-BR"));
+        assert_eq!(s.restored(), kept);
+    }
+
+    #[test]
+    fn the_language_is_saved_as_its_tag_and_text_that_isnt_one_reads_as_none() {
+        assert_eq!(language_to_text(Some(&code("pt-BR"))), Some("pt-BR".into()));
+        assert_eq!(language_to_text(None), None);
+        assert_eq!(language_from_text(Some("pt_br")), Some(code("pt-BR")));
+        assert_eq!(language_from_text(Some("not a tag")), None);
+        assert_eq!(language_from_text(None), None);
+        assert_eq!(FirstLanguage::default(), FirstLanguage::System);
+        // The toy's saved form and the engine's.
+        let s = Settings {
+            language: Some(code("ja")),
+            ..Settings::default()
+        };
+        assert!(
+            s.to_ron().contains("language:Some(\"ja\")"),
+            "{}",
+            s.to_ron()
+        );
+        assert_eq!(Settings::from_ron(&s.to_ron()), Ok(s));
+        let e = super::Settings::<()> {
+            language: Some(code("pt-BR")),
+            ..super::Settings::default()
+        };
+        let text = e.to_ron();
+        assert!(text.contains("language:Some(\"pt-BR\")"), "{text}");
+        assert_eq!(super::Settings::from_ron(&text), Ok(e));
+        // Saves from before the language read as none picked, and so does
+        // one whose text isn't a tag.
+        let read = |text| Settings::from_ron(text).map(|s| s.language);
+        assert_eq!(read("Toy(speed: 1)"), Ok(None));
+        assert_eq!(read("Toy(language: Some(\"??\"))"), Ok(None));
+        let read = |text| super::Settings::<()>::from_ron(text).map(|s| s.language);
+        assert_eq!(read("(text_speed: Fast)"), Ok(None));
+        assert_eq!(read("(language: Some(\"de\"))"), Ok(Some(code("de"))));
     }
 
     #[test]

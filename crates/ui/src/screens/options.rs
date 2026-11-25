@@ -2,11 +2,15 @@
 //! cursor's left and right keys, and rows that do something (open a
 //! screen, ask a question). The game gives the rows ([`OptionRow`]), each
 //! a label key and a typed value: on or off ([`RowValue::Toggle`]), one of
-//! several ([`RowValue::Choice`]), a volume ([`RowValue::Volume`]), or
-//! something Confirm does ([`RowValue::Action`]). The engine's own
-//! settings come as rows ready made ([`OptionRow::text_speed`],
-//! [`OptionRow::fullscreen`], [`OptionRow::frame_cap`], a volume per sound
-//! group ([`OptionRow::volumes`]), [`OptionRow::restore_defaults`]).
+//! several text keys ([`RowValue::Choice`]) or of several names shown as
+//! written ([`RowValue::Names`]: the languages, each by its own name), a
+//! volume ([`RowValue::Volume`]), or something Confirm does
+//! ([`RowValue::Action`]). The engine's own settings come as rows ready
+//! made ([`OptionRow::text_speed`], [`OptionRow::fullscreen`],
+//! [`OptionRow::frame_cap`], a volume per sound group
+//! ([`OptionRow::volumes`]), [`OptionRow::language`],
+//! [`OptionRow::restore_defaults`]). A change of the language shows on
+//! every screen at once, and Discard puts it back.
 //!
 //! A change shows at once but is saved only when the player keeps it:
 //! leaving with anything changed asks whether to keep it, throw it away or
@@ -75,6 +79,8 @@ pub const HELP_LEAVE: &str = "options.help.leave";
 pub const HELP_OPEN: &str = "options.help.open";
 /// Text key of the Frame rate row's label ([`OptionRow::frame_cap`]).
 pub const FRAME_CAP_ROW: &str = "options.row.frame_cap";
+/// Text key of the Language row's label ([`OptionRow::language`]).
+pub const LANGUAGE_ROW: &str = "options.row.language";
 
 /// How far the cursor's left and right keys move a volume's slider.
 /// *Tunable.*
@@ -97,7 +103,8 @@ pub struct OptionRow<G: GameData> {
 
 /// What a row shows beside its label, and what changes it. Build it with
 /// [`RowValue::toggle`], [`choice`](RowValue::choice),
-/// [`volume`](RowValue::volume) or [`action`](RowValue::action): kinds of
+/// [`names`](RowValue::names), [`volume`](RowValue::volume) or
+/// [`action`](RowValue::action): kinds of
 /// row and their fields may come, and never break a game (ADR-0039).
 #[non_exhaustive]
 pub enum RowValue<G: GameData> {
@@ -123,6 +130,19 @@ pub enum RowValue<G: GameData> {
         /// What the row shows, if not the text of its value's key: a value
         /// with a number in it (the frame cap's "60 FPS").
         shown: Option<fn(&Ctx<G>) -> String>,
+    },
+    /// One of several names, shown as written rather than looked up as
+    /// text keys (ADR-0020: a label that is text, not a key): a language's
+    /// own name. It steps, previews and is put back as a
+    /// [`Choice`](Self::Choice) is.
+    #[non_exhaustive]
+    Names {
+        /// The names offered, in the order they step.
+        values: fn(&Ctx<G>) -> Vec<String>,
+        /// Which of them the row shows.
+        get: fn(&Ctx<G>) -> usize,
+        /// Puts value `i` in; whether anything changed.
+        set: fn(&mut Ctx<G>, usize) -> bool,
     },
     /// A volume, 0 to [`MAX_VOLUME`]: the keys move its slider by
     /// [`VOLUME_STEP`], Confirm opens a box to type the number.
@@ -183,6 +203,18 @@ impl<G: GameData> RowValue<G> {
             set,
             shown: Some(shown),
         }
+    }
+
+    /// A row of one of the names `values` gives, shown as written: `get`
+    /// says which it shows, `set` puts one in. A game that labels a
+    /// machine translation builds its own language row with it, on
+    /// [`Ctx::languages_offered`].
+    pub const fn names(
+        values: fn(&Ctx<G>) -> Vec<String>,
+        get: fn(&Ctx<G>) -> usize,
+        set: fn(&mut Ctx<G>, usize) -> bool,
+    ) -> Self {
+        RowValue::Names { values, get, set }
     }
 
     /// A volume row: `get` reads the volume, `set` sets it.
@@ -321,6 +353,40 @@ impl<G: GameData> OptionRow<G> {
                     ctx.preview_settings(|s| s.frame_cap = cap.unwrap_or(s.frame_cap))
                 },
                 |ctx| ctx.settings().frame_cap.name(ctx),
+            ),
+        )
+    }
+
+    /// The language screen text is shown in (in the settings), labelled
+    /// Language ([`LANGUAGE_ROW`]): it steps through the languages the
+    /// game offers, each by its own name ([`Ctx::languages_offered`]: the
+    /// source, then the packs; the debug language only with debug tools),
+    /// shows the language in use (the first tag of its chain that is
+    /// offered), and sets [`Settings::language`](crate::settings::Settings::language)
+    /// as a preview: every screen changes at once, and Discard puts it
+    /// back.
+    pub fn language() -> Self {
+        Self::new(
+            LANGUAGE_ROW,
+            RowValue::names(
+                |ctx| {
+                    let offered = ctx.languages_offered().into_iter();
+                    offered.map(|(_, name)| name).collect()
+                },
+                |ctx| {
+                    let offered = ctx.languages_offered();
+                    let chain = ctx.game.lang().chain(&ctx.lang);
+                    chain
+                        .iter()
+                        .find_map(|tag| offered.iter().position(|(code, _)| code == tag))
+                        .unwrap_or(0)
+                },
+                |ctx, i| {
+                    let Some((code, _)) = ctx.languages_offered().into_iter().nth(i) else {
+                        return false;
+                    };
+                    ctx.preview_settings(|s| s.language = Some(code))
+                },
             ),
         )
     }
@@ -464,7 +530,9 @@ impl<G: GameData> OptionRow<G> {
     /// The text key of the help line while it has the focus.
     fn help(&self, ctx: &Ctx<G>) -> &'static str {
         match &self.value {
-            RowValue::Toggle { .. } | RowValue::Choice { .. } => HELP_CHANGE,
+            RowValue::Toggle { .. } | RowValue::Choice { .. } | RowValue::Names { .. } => {
+                HELP_CHANGE
+            }
             RowValue::Volume { .. } => HELP_VOLUME,
             RowValue::Action { help, .. } => help(ctx),
         }
@@ -475,7 +543,7 @@ impl<G: GameData> OptionRow<G> {
     fn index(&self, ctx: &Ctx<G>) -> Option<usize> {
         match &self.value {
             RowValue::Toggle { get, .. } => Some(usize::from(get(ctx))),
-            RowValue::Choice { get, .. } => Some(get(ctx)),
+            RowValue::Choice { get, .. } | RowValue::Names { get, .. } => Some(get(ctx)),
             RowValue::Volume { get, .. } => Some(usize::from(get(ctx))),
             RowValue::Action { .. } => None,
         }
@@ -487,7 +555,7 @@ impl<G: GameData> OptionRow<G> {
             RowValue::Toggle { set, .. } => {
                 set(ctx, index == 1);
             }
-            RowValue::Choice { set, .. } => {
+            RowValue::Choice { set, .. } | RowValue::Names { set, .. } => {
                 set(ctx, index);
             }
             RowValue::Volume { set, .. } => {
@@ -496,6 +564,21 @@ impl<G: GameData> OptionRow<G> {
             RowValue::Action { .. } => {}
         }
     }
+}
+
+/// Steps a row of `n` values (a [`RowValue::Choice`] or
+/// [`RowValue::Names`]) whose `get` and `set` these are, one on
+/// (`forward`) or back, `wrap` going round: whether anything changed.
+fn step_values<G: GameData>(
+    ctx: &mut Ctx<G>,
+    n: usize,
+    get: fn(&Ctx<G>) -> usize,
+    set: fn(&mut Ctx<G>, usize) -> bool,
+    forward: bool,
+    wrap: bool,
+) -> bool {
+    let to = stepped_index(n, get(ctx), forward, wrap);
+    set(ctx, to)
 }
 
 /// `n` values' index one step after (`forward`) or before `current`,
@@ -761,6 +844,12 @@ impl<G: GameData> OptionsScreen<G> {
                     None => ValueView::None,
                 }
             }
+            RowValue::Names { values, get, .. } => {
+                let values = values(ctx);
+                // A name it says it has no such value of: its first.
+                let name = values.get(get(ctx)).or(values.first()).cloned();
+                name.map_or(ValueView::None, words)
+            }
             RowValue::Volume { get, .. } => ValueView::Volume {
                 level: get(ctx),
                 max: MAX_VOLUME,
@@ -826,8 +915,11 @@ impl<G: GameData> OptionsScreen<G> {
                 values, get, set, ..
             } => {
                 let n = values(ctx).len();
-                let to = stepped_index(n, get(ctx), forward, wrap);
-                set(ctx, to)
+                step_values(ctx, n, get, set, forward, wrap)
+            }
+            RowValue::Names { values, get, set } => {
+                let n = values(ctx).len();
+                step_values(ctx, n, get, set, forward, wrap)
             }
             RowValue::Volume { get, set } => {
                 let to = stepped_volume(get(ctx), forward);
@@ -944,7 +1036,9 @@ impl<G: GameData> OptionsScreen<G> {
                     ctx.audio.menu(MenuSound::Denied);
                 }
             },
-            RowValue::Toggle { .. } | RowValue::Choice { .. } => self.change(ctx, true, true),
+            RowValue::Toggle { .. } | RowValue::Choice { .. } | RowValue::Names { .. } => {
+                self.change(ctx, true, true);
+            }
         }
         Transition::None
     }

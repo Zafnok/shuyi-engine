@@ -633,7 +633,7 @@ jobs:
         run: |
           if git grep -I -E 'sound-parity|sound_parity|sound_probe|sound-probe|SoundProbeBackend|in-house-sound|shuyi-sound|shuyi_sound' \
             -- . ':!tickets' ':!docs/adr' ':!docs/research' ':!docs/decisions.md' ':!docs/ROADMAP.md' \
-            | grep -v -x -F               -e 'crates/app/Cargo.toml:in-house-sound = []'               -e 'crates/xtask/src/api.rs:        features: Features::Only(&["link", "capture", "in-house-sound"]),'               -e 'crates/xtask/src/api/tests.rs:    ("shuyi-app", &["link", "capture", "in-house-sound"]),'; then
+            | grep -v -x -F               -e 'crates/app/Cargo.toml:in-house-sound = []'               -e 'crates/xtask/src/api.rs:        features: Features::Only(&["link", "capture", "in-house-sound", "system-languages"]),'               -e 'crates/xtask/src/api/tests.rs:        &["link", "capture", "in-house-sound", "system-languages"],'; then
             echo "::error::Giving up left these behind"
             exit 1
           fi
