@@ -8,8 +8,8 @@
 //! `--bodies`…), and `--targets` takes the engine's target profiles
 //! ([`engine_targets`]), the template's always-on parts' targets by
 //! default ([`default_targets`]). A terminal asks them as lists to pick
-//! from ([`super::prompts`]), and the GitHub questions after them
-//! ([`super::questions`]).
+//! from (`new::prompts`), and the GitHub questions after them
+//! (`new::questions`).
 
 use std::fmt::Write as _;
 use std::path::Path;
