@@ -171,7 +171,7 @@ What was done:
   concern flags, `--examples`), and makes nothing; `wizard::text` prints
   it for people. Its schema is `crates/cli/schemas/new.questions.json`,
   after `export.exposure.json` in `contract::schemas()`, its `op` the
-  `new` const; `contract::VERSION` is 57.
+  `new` const; `contract::VERSION` is 58.
 - The skill `shuyi-new-game` says how an agent lists the questions, asks
   the perspectives first and lists again, shows planned and parked
   answers as coming, and passes the answers as flags with `--no-input`.
@@ -219,7 +219,7 @@ Breaking: none. The public API only gains `contract::new::wizard`'s
 question ids' consts, `questions`, `listed` and `text`; `Flags` is in a
 crate-private module.
 
-Behaviour: shuyi-cli: every contract answer carries `contract: 57`, and the schemas gain `new.questions.json` (`shuyi schema --out` writes 50 files).
+Behaviour: shuyi-cli: every contract answer carries `contract: 58`, and the schemas gain `new.questions.json` (`shuyi schema --out` writes 50 files).
 Behaviour: shuyi-cli: `shuyi new` takes `--questions`, which lists the questions and makes nothing; its usage names it.
 
 Searched the game (`gh search code --repo Zafnok/visions-of-shuyi
