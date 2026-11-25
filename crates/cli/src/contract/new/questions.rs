@@ -40,12 +40,13 @@ pub const KINDS: [(&str, &str); 5] = [
 /// `new`'s options taking a value, whose value is never one of [`Flags`]'.
 /// The wizard's flags of the catalog's concerns take one too
 /// ([`super::wizard::concern_flag`]).
-const TAKES_A_VALUE: [&str; 9] = [
+const TAKES_A_VALUE: [&str; 10] = [
     "--template",
     "--answers",
     "--set",
     "--name",
     "--id",
+    "--storage",
     "--targets",
     "--engine-rev",
     "--engine-path",

@@ -73,8 +73,14 @@ only with `--private-url`, and the examples are in unless `examples` is
 order:
 
 1. the engine's: the game's folder, its name (`--name`, the folder's
-   name without) and its reverse-DNS id (`--id`, checked as `app-info`
-   checks it; `com.example.<crate name>` without), which `{{id}}` fills;
+   name without), its reverse-DNS id (`--id`, checked as `app-info`
+   checks it; `com.example.<crate name>` without), which `{{id}}` fills,
+   and the name of the folder its saves are kept in (`--storage`, checked
+   as `app-info` checks `storage`; the id without, and the id as it was
+   answered is its default). A storage other than the id is merged into
+   `shuyi.ron`'s `app` as `storage`, and `app_info.rs` is written as
+   `app-info` writes it for that `app`; a storage equal to the id is none,
+   and the game is as without it, byte for byte;
 2. the perspectives, the catalog's `perspective` concern;
 3. one question per concern of the catalog, [`modules.ron`](modules.ron),
    in its order: each concern's `question`, taking one answer or many
@@ -130,7 +136,8 @@ an `agent`.
 
 At the end, `new` prints the one command that makes the same game again
 with nothing asked, also its answer's `command`: `shuyi new <dir>
---no-input --name <name>`, `--id` if given, each concern's answers by
+--no-input --name <name>`, `--id` if given, `--storage` if given and not
+the id, each concern's answers by
 its flag (none as `--set <id>=`), `--targets`, `--examples` or
 `--no-examples`, `--set` for the template's other questions, the engine
 (`--engine-rev`, `--engine-path`) and `--private-url`. Each word is
@@ -162,9 +169,10 @@ In a terminal, each is asked that nothing given answers (a flag, `--set`,
 the short name or the answers file), in the order above, then the GitHub
 questions:
 
-- the name and the id are a line of text, checked as `new` checks them
-  (the id as `app-info` does) when Enter is pressed; Enter alone takes
-  the default shown;
+- the name, the id and the saves' folder are a line of text, checked as
+  `new` checks them (the id and the folder as `app-info` does) when Enter
+  is pressed; Enter alone takes the default shown, which for the saves'
+  folder is the id just answered;
 - a question taking one answer is a list to pick from (the arrows move,
   Enter picks), and one taking many a list to tick (space ticks, Enter
   ends), its default picked or ticked; a help line under each list names

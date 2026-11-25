@@ -71,7 +71,7 @@
       "description": "Who asks a question.",
       "oneOf": [
         {
-          "description": "The engine: the folder, the name, the id, the perspectives and the\ntargets.",
+          "description": "The engine: the folder, the name, the id, the saves' folder, the\nperspectives and the targets.",
           "type": "string",
           "const": "engine"
         },
@@ -156,7 +156,7 @@
           ]
         },
         "id": {
-          "description": "Its id: the engine's (`dir`, `name`, `id`, `perspective`,\n`targets`), a concern's (`bodies`) or the template's\n(`private-files`).",
+          "description": "Its id: the engine's (`dir`, `name`, `id`, `storage`, `perspective`,\n`targets`), a concern's (`bodies`) or the template's\n(`private-files`).",
           "type": "string"
         },
         "skipped": {
