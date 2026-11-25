@@ -18,6 +18,9 @@ shuyi-cli = { path = "../../../crates/cli" }
 # The macroquad backend, already under `shuyi`, named for its `link`
 # feature (the game crate's).
 shuyi-app = { path = "../../../crates/app" }
+# The engine's assets, already under `shuyi`, named for the `sfx` feature
+# (the game crate's).
+shuyi-assets = { path = "../../../crates/assets" }
 # Its own part of the data, and its rules' state, are plain data.
 serde = { version = "1", default-features = false, features = ["derive", "std"] }
 

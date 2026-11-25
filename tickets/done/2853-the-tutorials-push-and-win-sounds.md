@@ -142,6 +142,13 @@ None.
   2850's clause now says so ("**From 2853 (done):** …"), and it brings
   steps 01–07 up to them.
 - **Deviations.**
+  - Steps 01–07 get the two Cargo lines too (the `sfx` feature and the
+    workspace's `shuyi-assets` line), and their locks follow, though the
+    ticket's **Out** left those steps to 2850: `cargo xtask
+    check-devcontainers` (2839) fails a step that resolves `shuyi-assets`
+    with other features than step 01, as the book's Codespace would
+    build the engine twice. Their files and sounds stay 2850's, which
+    now says the feature is there.
   - The move that wins plays `win` alone, not `push` and then `win`:
     one sound a move, and the win's says more. The chapter's check asks
     which a reader hears.
