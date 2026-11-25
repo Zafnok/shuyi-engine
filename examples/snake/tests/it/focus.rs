@@ -12,6 +12,9 @@ fn a_run_that_loses_focus_opens_its_pause_menu_and_doesnt_move() {
     let mut h = at_title(1);
     h.act(UiAction::Confirm);
     h.wait(0.2);
+    // Another of the system's events opens no menu.
+    h.system(SystemEvent::LowBattery);
+    assert_eq!(h.screens(), ["title", "stage"]);
     let steps = stage(&h).snake.steps();
     let body = stage(&h).snake.body().to_vec();
     h.system(SystemEvent::FocusLost);
