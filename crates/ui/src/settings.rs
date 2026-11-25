@@ -511,16 +511,20 @@ mod tests {
         assert_eq!(language_from_text(None), None);
         assert_eq!(FirstLanguage::default(), FirstLanguage::System);
         // The toy's saved form and the engine's.
-        let mut s = Settings::default();
-        s.language = Some(code("ja"));
+        let s = Settings {
+            language: Some(code("ja")),
+            ..Settings::default()
+        };
         assert!(
             s.to_ron().contains("language:Some(\"ja\")"),
             "{}",
             s.to_ron()
         );
         assert_eq!(Settings::from_ron(&s.to_ron()), Ok(s));
-        let mut e = super::Settings::<()>::default();
-        e.language = Some(code("pt-BR"));
+        let e = super::Settings::<()> {
+            language: Some(code("pt-BR")),
+            ..super::Settings::default()
+        };
         let text = e.to_ron();
         assert!(text.contains("language:Some(\"pt-BR\")"), "{text}");
         assert_eq!(super::Settings::from_ron(&text), Ok(e));

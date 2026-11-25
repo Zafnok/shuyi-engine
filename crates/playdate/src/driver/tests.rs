@@ -233,12 +233,12 @@ fn the_facts_hold_the_devices_language_japanese_english_or_none() {
         facts
             .languages
             .iter()
-            .map(|tag| tag.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<_>>()
     };
     assert_eq!(tags(Some("ja")), ["ja"]);
     assert_eq!(tags(Some("en")), ["en"]);
-    assert!(tags(None).is_empty());
+    assert_eq!(tags(None), Vec::<String>::new());
 }
 
 #[test]
@@ -252,7 +252,7 @@ fn the_facts_are_the_profiles() {
     assert_eq!(facts.device, Some(Device::Pad(PadKind::Playdate)));
     let tags = |facts: &shuyi_ui::PlatformFacts| -> Vec<String> {
         let tags = facts.languages.iter();
-        tags.map(|tag| tag.to_string()).collect()
+        tags.map(ToString::to_string).collect()
     };
     assert_eq!(tags(&facts), ["en"]);
     let display = platform.display();

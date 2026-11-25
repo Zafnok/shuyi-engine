@@ -138,7 +138,10 @@ fn the_language_row_switches_every_screens_text_at_once_and_keeps_it() {
     let h = relaunch(h);
     assert_eq!(h.ctx().text("home.greeting"), "HELLO, {name}");
     let picked = h.ctx().settings().language.clone();
-    assert_eq!(picked.as_ref().map(|code| code.as_str()), Some("dbg"));
+    assert_eq!(
+        picked.as_ref().map(shuyi_assets::lang::LangCode::as_str),
+        Some("dbg")
+    );
 }
 
 #[test]

@@ -572,7 +572,8 @@ impl<G: GameData> OptionRow<G> {
 fn step_values<G: GameData>(
     ctx: &mut Ctx<G>,
     n: usize,
-    (get, set): (fn(&Ctx<G>) -> usize, fn(&mut Ctx<G>, usize) -> bool),
+    get: fn(&Ctx<G>) -> usize,
+    set: fn(&mut Ctx<G>, usize) -> bool,
     forward: bool,
     wrap: bool,
 ) -> bool {
@@ -918,11 +919,11 @@ impl<G: GameData> OptionsScreen<G> {
                 values, get, set, ..
             } => {
                 let n = values(ctx).len();
-                step_values(ctx, n, (get, set), forward, wrap)
+                step_values(ctx, n, get, set, forward, wrap)
             }
             RowValue::Names { values, get, set } => {
                 let n = values(ctx).len();
-                step_values(ctx, n, (get, set), forward, wrap)
+                step_values(ctx, n, get, set, forward, wrap)
             }
             RowValue::Volume { get, set } => {
                 let to = stepped_volume(get(ctx), forward);

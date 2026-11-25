@@ -437,7 +437,7 @@ mod tests {
     #[test]
     fn the_systems_languages_are_read_as_tags_and_written_as_text() {
         let facts = PlatformFacts::default();
-        assert!(facts.languages.is_empty());
+        assert_eq!(facts.languages, Vec::<LangCode>::new());
         let text = ron::to_string(&facts).unwrap_or_else(|e| panic!("{e}"));
         assert!(!text.contains("languages"), "{text}");
         let said = facts.with_languages(&["pt_BR.UTF-8", "C", "en-US", "not a tag"]);

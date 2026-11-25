@@ -434,7 +434,7 @@ fn the_language_row_steps_through_the_languages_by_their_own_names() {
     assert_eq!(sounds(&mut c), ["ui_move"]);
     // It stops at the end; Confirm goes round.
     press(&mut s, &mut c, &[CursorRight]);
-    assert!(sounds(&mut c).is_empty());
+    assert_eq!(sounds(&mut c), Vec::<String>::new());
     press(&mut s, &mut c, &[Confirm]);
     assert_eq!(focused_value(&s, &c).text(), Some("English"));
     press(&mut s, &mut c, &[CursorRight]);

@@ -8,6 +8,7 @@ use alloc::format;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
+use shuyi_assets::lang::LangCode;
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::Gain;
 use shuyi_ui::frame::console::ScaleMode;
@@ -606,7 +607,12 @@ fn the_load_picks_the_language_from_the_systems() {
         let _ = app.frame(&mut p, Millis(0));
         let _ = app.frame(&mut p, Millis(16));
         let ctx = running(&app).ctx();
-        let system: Vec<&str> = ctx.platform.languages.iter().map(|t| t.as_str()).collect();
+        let system: Vec<&str> = ctx
+            .platform
+            .languages
+            .iter()
+            .map(LangCode::as_str)
+            .collect();
         (system.join(" "), ctx.lang.as_str().to_owned())
     };
     assert_eq!(
