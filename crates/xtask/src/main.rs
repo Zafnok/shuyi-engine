@@ -5,6 +5,7 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-paths`
 //! - `cargo xtask check-merges [--base <rev>] [--head <rev>]`
+//! - `cargo xtask mend-merges`
 //! - `cargo xtask check-book`
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
@@ -102,6 +103,11 @@ usage:
       more than resolving its two parents needs (`git show --remerge-diff`):
       a file git merged without a conflict, or a line outside a conflict,
       fails, named (ticket 2065).
+  cargo xtask mend-merges
+      Split each merge check-merges refuses, among the branch's commits no
+      remote has, into the merge alone and a commit of its own changes, with
+      the same files at the end, so a plain push follows (ticket 3532). The
+      post-commit hook runs it after every merge.
   cargo xtask check-book
       Check the marks saying who a passage of Learn is for (ADR-0090 §5): an
       audience of the four, a topic, closed, not nested, on lines of their
@@ -326,6 +332,7 @@ fn main() -> ExitCode {
         }
         Some("check-paths") if args.len() == 1 => report("check-paths", &paths::run(&root), &[]),
         Some("check-merges") => check_merges(&root, &args[1..]),
+        Some("mend-merges") => mend_merges(&root),
         Some("check-book") if args.len() == 1 => report("check-book", &book::run(&root), &[]),
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
@@ -442,6 +449,19 @@ fn check_merges(root: &Path, args: &[String]) -> ExitCode {
         }
     }
     report("check-merges", &merges::run(root, base, head), &[])
+}
+
+fn mend_merges(root: &Path) -> ExitCode {
+    match merges::mend(root) {
+        Ok(lines) => {
+            for line in lines {
+                eprintln!("{line}");
+            }
+            eprintln!("mend-merges: ok");
+            ExitCode::SUCCESS
+        }
+        Err(e) => report("mend-merges", &[e], &[]),
+    }
 }
 
 fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
