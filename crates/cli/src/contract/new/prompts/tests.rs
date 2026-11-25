@@ -129,10 +129,7 @@ fn a_list_with_nothing_ready_says_so_and_keeps_its_default() {
     );
     let mut script = Scripted::default();
     assert_eq!(pick(&mut script, &question).unwrap(), Vec::<String>::new());
-    assert_eq!(
-        script.shown,
-        ["Which one? none (not asked: none of its answers is ready)"]
-    );
+    assert!(script.shown.is_empty(), "{:?}", script.shown);
 }
 
 #[test]
@@ -154,20 +151,6 @@ fn a_text_prompt_takes_its_default_or_a_line_and_asks_again_until_checked() {
     let none = Scripted::default().text("Id?", "", &check).unwrap_err();
     assert_eq!(none.kind(), io::ErrorKind::UnexpectedEof);
     assert_eq!(none.to_string(), "no answer to: Id?");
-}
-
-#[test]
-fn a_skipped_question_prints_its_answer_and_why() {
-    let mut question = rules();
-    question.skipped = Some("nothing to pick between".to_owned());
-    assert_eq!(
-        skipped_line(&question),
-        "Which one? none: rules in Rust (not asked: nothing to pick between)"
-    );
-    question.default.clear();
-    assert_eq!(shown_default(&question), "none");
-    question.default = vec!["gone".to_owned()];
-    assert_eq!(shown_default(&question), "gone");
 }
 
 #[test]
@@ -241,12 +224,9 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
     ]);
     ask(&scratch.0, &mut input, &mut script).unwrap();
     assert!(script.steps.is_empty());
-    let asked: Vec<&str> = script
-        .shown
-        .iter()
-        .map(String::as_str)
-        .filter(|line| !line.contains("(not asked: "))
-        .collect();
+    // Only the questions asked are shown: those with nothing to pick
+    // between, and the private files the GitHub questions answer, aren't.
+    let asked: Vec<&str> = script.shown.iter().map(String::as_str).collect();
     assert_eq!(
         asked,
         [
@@ -290,22 +270,6 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
             .collect()
         )
     );
-    // A concern with nothing to pick between prints its line; the private
-    // files, which the GitHub questions answer, print none.
-    assert!(
-        script
-            .shown
-            .iter()
-            .any(|line| line.starts_with("How do players play online? none (not asked: only")),
-        "{:#?}",
-        script.shown
-    );
-    assert!(
-        !script
-            .shown
-            .iter()
-            .any(|line| line.contains("private repository"))
-    );
 }
 
 #[test]
@@ -314,21 +278,12 @@ fn the_wizard_asks_again_for_the_perspectives_picked_and_not_what_is_given() {
     let mut input = NewInput::new("demo");
     input.id = Some("org.example.demo".to_owned());
     input.set = Answers::parse("set", r#"{ "scripting": ["none"], "examples": ["yes"] }"#).unwrap();
-    // No perspective: the questions listed again say so.
+    // No perspective: the questions are listed again for none.
     let mut script = Scripted::new([typed("demo"), picked(&[]), Step::Enter]);
     ask(&scratch.0, &mut input, &mut script).unwrap();
     assert_eq!(
         script.shown[..2],
         ["What is the game called?", "Which perspectives?"]
-    );
-    assert!(
-        script
-            .shown
-            .iter()
-            .any(|line| line.starts_with("How do bodies move?")
-                && line.ends_with("and none is picked)")),
-        "{:#?}",
-        script.shown
     );
     assert_eq!(
         script.shown.last().unwrap(),

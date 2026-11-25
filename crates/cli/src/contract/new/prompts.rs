@@ -3,7 +3,8 @@
 //! one answer from, a list to tick any number of. A question's `ready`
 //! answers are its list; its `planned` and `parked` ones are shown under
 //! it, greyed, each with its status and tickets, and can't be picked. A
-//! question that isn't asked prints one line: its answer, and why.
+//! question that isn't asked isn't shown: `shuyi new <dir> --questions`
+//! lists every question, each skipped one with why (Nick, 2026-11-25).
 //!
 //! Each prompt goes through a [`Prompter`], one method per kind, so a test
 //! answers them from a script; a terminal's is [`Terminal`], `dialoguer`'s.
@@ -24,7 +25,7 @@ use dialoguer::theme::{ColorfulTheme, Theme};
 use dialoguer::{Input, MultiSelect, Select};
 
 use super::wizard::{self, DIR, ID, NAME, Named, Question, Takes};
-use super::{NewInput, PRIVATE_FILES, answers_of, check_name, crate_name, default_id, folder_name};
+use super::{NewInput, answers_of, check_name, crate_name, default_id, folder_name};
 use crate::catalog::Status;
 use crate::template;
 
@@ -64,8 +65,7 @@ pub trait Prompter {
     /// first.
     fn many(&mut self, list: &List, ticked: &[bool]) -> io::Result<Vec<usize>>;
 
-    /// A line said, not asked: a skipped question's, or why an answer
-    /// was asked again.
+    /// A line said, not asked: why an answer is asked again.
     fn say(&mut self, line: &str) -> io::Result<()>;
 }
 
@@ -98,49 +98,12 @@ pub fn list(question: &Question) -> List {
     }
 }
 
-/// What `question` takes as it stands: its default's answers by their
-/// text, joined by commas; `none` for none.
-pub fn shown_default(question: &Question) -> String {
-    let shown: Vec<&str> = question
-        .default
-        .iter()
-        .map(|id| {
-            question
-                .answers
-                .iter()
-                .find(|a| &a.id == id)
-                .map_or(id.as_str(), |a| a.text.as_str())
-        })
-        .filter(|text| !text.is_empty())
-        .collect();
-    if shown.is_empty() {
-        "none".to_owned()
-    } else {
-        shown.join(", ")
-    }
-}
-
-/// The line a question that isn't asked prints: its answer, and why.
-pub fn skipped_line(question: &Question) -> String {
-    format!(
-        "{} {} (not asked: {})",
-        question.text,
-        shown_default(question),
-        question.skipped.as_deref().unwrap_or("its answer is given")
-    )
-}
-
 /// The ids `question`, a list, is answered with through `prompter`: one
 /// for [`Takes::One`], any for [`Takes::Many`]. With nothing ready to pick,
-/// it says so and keeps its default.
+/// it asks nothing and keeps its default.
 pub fn pick(prompter: &mut dyn Prompter, question: &Question) -> io::Result<Vec<String>> {
     let list = list(question);
     if list.choices.is_empty() {
-        prompter.say(&format!(
-            "{} {} (not asked: none of its answers is ready)",
-            question.text,
-            shown_default(question)
-        ))?;
         return Ok(question.default.clone());
     }
     let id = |at: usize| list.choices[at].0.clone();
@@ -199,8 +162,8 @@ fn check_game_name(name: &str) -> Result<(), String> {
 /// then the questions asked again for them (so a concern skipped for the
 /// perspectives picked isn't asked), the template's and the targets. Each
 /// answer goes into `input` as its flag would put it. A question that
-/// isn't asked prints its line ([`skipped_line`]). An input that makes no
-/// game asks nothing: `new` says what is wrong.
+/// isn't asked takes its default unseen. An input that makes no game asks
+/// nothing: `new` says what is wrong.
 pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io::Result<()> {
     let (Ok(template), Ok(catalog), Ok(targets)) = (
         template::built_in(),
@@ -236,12 +199,9 @@ pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io:
             ID => id_given,
             id => given.0.contains_key(id),
         };
-        // The GitHub questions that follow answer `private-files`.
-        if answered || question.id == PRIVATE_FILES {
-            continue;
-        }
-        if question.skipped.is_some() {
-            prompter.say(&skipped_line(&question))?;
+        // A skipped question takes its default unseen; `--questions` shows
+        // it, with why.
+        if answered || question.skipped.is_some() {
             continue;
         }
         let default = question.default.first().cloned().unwrap_or_default();

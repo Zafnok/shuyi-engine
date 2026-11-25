@@ -174,7 +174,9 @@ questions:
   picked;
 - the perspectives come first, and the questions are listed again with
   them, so a concern skipped for them isn't asked; a question that isn't
-  asked prints one line, its answer and why;
+  asked isn't shown, and takes its default (`--questions` lists every
+  question, each skipped one with why: the view to check their wording
+  in);
 - Esc stops at a question, and nothing is made.
 
 The answers go into the game as their flags would, so the command `new`

@@ -407,12 +407,8 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
     assert_eq!(made.exit_code(), 0);
     assert!(made.finish.is_none());
     // The wizard's questions (the name is given), then the GitHub ones, in
-    // order; the concerns with nothing to pick between say why on a line.
-    let asked: Vec<&str> = shown
-        .iter()
-        .map(String::as_str)
-        .filter(|line| !line.contains("(not asked: "))
-        .collect();
+    // order; the concerns with nothing to pick between aren't shown.
+    let asked: Vec<&str> = shown.iter().map(String::as_str).collect();
     let starts = [
         "A unique id for the game, like io.github.yourname.moon-garden:",
         "Which perspectives?",
@@ -430,13 +426,6 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
     for (asked, start) in asked.iter().zip(starts) {
         assert!(asked.starts_with(start), "{asked}");
     }
-    assert!(
-        shown.iter().any(|line| line
-            == "How do bodies move? none (not asked: its answers are for the perspectives \
-                top-down, isometric, side-view, first-person, third-person, top-down-3d, and the \
-                game's are top-down-grid)"),
-        "{shown:#?}"
-    );
     // Enter took the examples: the game has them, as before.
     assert!(
         scratch
@@ -488,12 +477,8 @@ fn no_github_asks_nothing_and_makes_only_the_folder() {
     let (made, shown) = scratch.run(&items, Some(Scripted::default()), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     assert!(made.repos.is_none());
-    // Every question answered by a flag: only the lines of the concerns
-    // with nothing to pick between.
-    assert!(
-        shown.iter().all(|line| line.contains("(not asked: ")),
-        "{shown:#?}"
-    );
+    // Every question answered by a flag, or with nothing to pick: none shown.
+    assert!(shown.is_empty(), "{shown:#?}");
     assert_eq!(fake.calls.len(), 0);
     assert!(!scratch.shuyi_ron().contains("private_assets"));
 }
@@ -567,10 +552,7 @@ fn chosen_kinds_and_own_folders_are_all_the_private_repository_holds() {
     let (made, shown) = scratch.run(&items, Some(Scripted::enters(2)), &mut fake);
     assert!(made.repos.as_ref().unwrap().ok, "{:?}", made.repos);
     // Only what no flag answered was asked: the two visibilities.
-    let asked: Vec<&String> = shown
-        .iter()
-        .filter(|line| !line.contains("(not asked: "))
-        .collect();
+    let asked = &shown;
     assert_eq!(asked.len(), 2, "{shown:#?}");
     assert!(asked[0].starts_with("Should you/moon-garden be public"));
     assert!(asked[1].starts_with("Should you/moon-garden-assets be private or public?"));
@@ -811,10 +793,7 @@ fn a_no_to_the_examples_question_leaves_them_out_and_a_flag_or_set_asks_nothing(
         items.extend_from_slice(extra);
         let (made, shown) = scratch.run(&items, Some(Scripted::default()), &mut fake);
         assert!(made.answer.ok, "{items:?}: {:?}", made.answer);
-        assert!(
-            shown.iter().all(|line| line.contains("(not asked: ")),
-            "{items:?}: {shown:#?}"
-        );
+        assert!(shown.is_empty(), "{items:?}: {shown:#?}");
         assert_eq!(has_examples(&scratch), has, "{items:?}");
     }
     // Off a terminal (and so with --json and through the MCP tool), the

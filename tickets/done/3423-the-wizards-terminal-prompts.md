@@ -151,7 +151,8 @@ What was done:
   (`prompts::scripted`). `prompts::ask` asks `wizard::questions` that
   nothing given answers, listing them again after each answer, so the
   name sets the id's default and the perspectives what the catalog
-  asks; a skipped question prints one line, its answer and why.
+  asks; a skipped question isn't shown (Nick's call, below; `--questions`
+  lists it, with why).
   `prompts::pick` asks any list question: only `ready` answers are
   choices, so a planned one can't be picked. Esc stops with nothing
   made.
@@ -189,6 +190,9 @@ Deviations:
 
 - 2848 isn't done, so the license question was left to it (its clause
   now says where it goes and how).
+- The ticket's "a skipped question prints one line" became "a skipped
+  question isn't shown" at Nick's sign-off (`docs/decisions.md`,
+  2026-11-25); `--questions` keeps every question's why.
 - The folder isn't asked: it is `new`'s first word, always given. A
   name that makes no crate (a folder named `9`) is now asked again in a
   terminal rather than refused.
@@ -236,4 +240,8 @@ folder. It does, by default (ADR-0059: the id is unique, so two games
 of one name don't share saves). He agreed to the wording "A unique id
 for the game, like io.github.yourname.<crate name>: app stores ask for
 one, and the game's saves are kept under it.", which the question now
-says.
+says. He then asked that a question with nothing to pick not be shown
+in a terminal, while staying visible somewhere for checking its
+wording: the terminal no longer prints a skipped question's line, and
+`--questions` lists every question, each skipped one with why. Both are
+in `docs/decisions.md` (2026-11-25).
