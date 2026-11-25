@@ -94,7 +94,8 @@ fn cancel_pauses_the_run_and_the_menu_resumes_it_or_goes_back_to_the_title() {
     h.act(UiAction::Up);
     h.act(UiAction::Confirm);
     assert_eq!(h.screens(), ["title", "stage"]);
-    assert!(stage(&h).snake.turns().is_empty());
+    let waiting = stage(&h).snake.turns();
+    assert!(waiting.is_empty(), "{waiting:?}");
     h.wait(0.1);
     assert!(stage(&h).snake.steps() > steps);
     // Down to "Back to the title".

@@ -100,8 +100,10 @@ fn a_board_needs_one_start_with_floor_under_the_snake_and_to_fit() {
 #[test]
 fn it_moves_one_tile_each_time_its_timer_fires() {
     let mut snake = Snake::new(&board(OPEN), tuning(3), 0).unwrap_or_else(|e| panic!("{e}"));
-    assert!(snake.step(&idle()).is_empty());
-    assert!(snake.step(&idle()).is_empty());
+    for _ in 0..2 {
+        let events = snake.step(&idle());
+        assert!(events.is_empty(), "{events:?}");
+    }
     let events = snake.step(&idle());
     assert_eq!(
         events,
@@ -140,7 +142,8 @@ fn a_press_turns_it_at_its_next_move_and_two_quick_presses_both_count() {
         snake.step(&idle());
     }
     assert_eq!((snake.head(), snake.heading()), (Pos::new(2, 3), Dir::Left));
-    assert!(snake.turns().is_empty());
+    let waiting = snake.turns();
+    assert!(waiting.is_empty(), "{waiting:?}");
 }
 
 #[test]
@@ -205,7 +208,8 @@ fn a_wall_ends_the_run_and_nothing_moves_after() {
     assert_eq!(events, [Event::Died]);
     assert_eq!(snake.outcome(), Some(Outcome::Died { step: 1, length: 3 }));
     assert_eq!(snake.head(), Pos::new(3, 1));
-    assert!(snake.step(&press(&[UiAction::Up])).is_empty());
+    let events = snake.step(&press(&[UiAction::Up]));
+    assert!(events.is_empty(), "{events:?}");
     assert_eq!(snake.steps(), 1);
 }
 
