@@ -28,6 +28,12 @@ fn the_seed_is_1_unless_said_and_a_wrong_option_is_named() {
 }
 
 #[test]
+fn its_one_option_is_the_seed() {
+    let flags: Vec<&str> = tools().frame_options().iter().map(|o| o.flag).collect();
+    assert_eq!(flags, ["--seed"]);
+}
+
+#[test]
 fn the_tools_stamp_is_the_builds() {
     assert_eq!(tools().made(), Some(snake::made()));
 }

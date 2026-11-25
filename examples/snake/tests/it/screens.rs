@@ -123,5 +123,8 @@ fn a_turn_pressed_before_a_step_ran_is_dropped_by_the_pause() {
         run.events
     );
     let _ = run.record();
-    assert!(h.screen::<Stage>().is_some());
+    // A test may reach the run to change it (`Screen::as_any_mut`).
+    let game = h.app_mut().game_mut().unwrap_or_else(|| panic!("no game"));
+    let found = game.screen_mut::<Stage>().map(|stage| stage.seed);
+    assert_eq!(found, Some(1));
 }
