@@ -223,9 +223,9 @@ fn split_args(list: &str) -> Vec<String> {
             None => {}
         }
     }
-    let last = list[start..].trim();
-    if !last.is_empty() {
-        args.push(last.to_string());
+    let tail = list[start..].trim();
+    if !tail.is_empty() {
+        args.push(tail.to_string());
     }
     args
 }
