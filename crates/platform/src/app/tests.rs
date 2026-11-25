@@ -8,6 +8,7 @@ use alloc::format;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
+use shuyi_assets::lang::LangCode;
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::Gain;
 use shuyi_ui::frame::console::ScaleMode;
@@ -588,6 +589,38 @@ fn the_load_hands_the_platforms_facts_to_the_game() {
     assert_eq!(ctx.platform.target, "steam-deck");
     assert_eq!(ctx.platform.keyboard, Keyboard::Absent);
     assert!(!ctx.platform.windowed);
+}
+
+/// The system's languages reach the game's context before its settings
+/// load, and pick the language it starts in: never the debug language.
+#[test]
+fn the_load_picks_the_language_from_the_systems() {
+    let start_on = |system: &[&str]| {
+        let start = Start::new(
+            Card::text("A toy"),
+            |toy: &Toy| toy.look(),
+            |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
+        );
+        let mut app = App::new(start);
+        let facts = PlatformFacts::default().with_languages(system);
+        let mut p = HeadlessPlatform::new().with_facts(facts);
+        let _ = app.frame(&mut p, Millis(0));
+        let _ = app.frame(&mut p, Millis(16));
+        let ctx = running(&app).ctx();
+        let system: Vec<&str> = ctx
+            .platform
+            .languages
+            .iter()
+            .map(LangCode::as_str)
+            .collect();
+        (system.join(" "), ctx.lang.as_str().to_owned())
+    };
+    assert_eq!(
+        start_on(&["en_GB.UTF-8", "de"]),
+        ("en-GB de".into(), "en".into())
+    );
+    assert_eq!(start_on(&[toy::DEBUG_LANG]), ("dbg".into(), "en".into()));
+    assert_eq!(start_on(&[]), (String::new(), "en".into()));
 }
 
 /// The window's shortcut flips the Fullscreen setting in a window, and

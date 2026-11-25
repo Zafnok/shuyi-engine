@@ -2225,6 +2225,27 @@ Source: Nick, in the session that planned the next example game:
   - 1140, 1141, 1143–1150, 2529, 2550, 2551, 2601, 2603–2608, 2720 and 2774–2775 stay parked. Some are amended to build on the new work.
   - This does not answer the game's 0053: nothing networked reaches Visions of Shuyi through this decision (ADR-0006 §10).
 
+## 2026-11-25: the research scripts move to a repository of their own
+
+Source: Nick, in a Claude Code session, rescoping 2093 (remove the
+reverse-engineering research scripts, after 3083):
+
+> "since i dont wanna do [2611] for a while which means [3083] wont be
+> done for a while if at all but if I ever do resume it after say
+> getting funding I dont want stuff to be lost so lets organize it into
+> a new repo and link to it if its ever necessary. Just link w/in
+> tickets + research docs. Dont link inside of documentation and such."
+
+**Rules:**
+
+- **2093 is unparked and no longer waits for 3083.** It moves
+  `tools/research/` with its history to a public repository of its own
+  and removes it from the engine.
+- **Only tickets and the research reports link that repository.** The
+  book, the README and the other docs don't.
+- 2611 and 3083 stay as they were; 3083 takes what it needs from the
+  new repository when it starts.
+
 ## 2026-11-25: shuyi new's prompts show only what can be answered
 
 Source: Nick, signing off ticket 3423 (the wizard's prompts in a
@@ -2255,7 +2276,16 @@ terminal), on the id question, then on a skipped question's line:
   > saves under and pre-filled with the id used from prev answer. Then
   > they can overwrite that."
 - **The save folder is a question of its own, right after the id**,
-  prefilled with the id the developer just gave (ticket 3430).
+  prefilled with the id the developer just gave (ticket 3430). At 3430's
+  sign-off, the same day, it doesn't call the id a good name:
+  > "id rather it not suggest the id is a good name. Just prefill with
+  > id and mention its the default bc its nearly guaranteed to be
+  > unique. But its not player friendly so I wouldnt say its "a good
+  > name""
+
+  It reads: "Which folder are the game's saves kept in, on the player's
+  computer? The id is the default, since it is nearly sure to be
+  unique."
 - **A question with nothing to pick is not shown** in a terminal: it
   takes its default unseen.
 - **`shuyi new <dir> --questions` is the view that shows them all**,

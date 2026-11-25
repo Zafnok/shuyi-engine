@@ -353,8 +353,9 @@ launches.
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
-(game#1013, mod tables merged by id), and 2226, 2253 and 2349
-(game#0825, the language option). 2342 (game#0826, the voices' volume)
+(game#1013, mod tables merged by id), 2226, 2253 and 2349
+(game#0825, the language option; 2349 done), and 2278 (game#0831, a
+language's own pictures). 2342 (game#0826, the voices' volume)
 is done.
 
 **Seeing what players see:**
@@ -409,7 +410,8 @@ is done.
 | 3218 (done) | Typed text arguments: screen text and tips choose their words |
 | 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
-| 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
+| 2349 (done) | The player's language: a setting per profile, an options row, the system's languages at first start |
+| 2278 | A language's own copies of files: a pack's `files/`, `localized_path` and `Ctx::localized` (game#0831, after 2349) |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |
@@ -981,7 +983,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
 | 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609; done 2026-11-23) |
 | 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
-| 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
+| 2093 | Move the research scripts under `tools/research/` to a repository of their own and keep their reports (unparked 2026-11-25; done 2026-11-25) |
 
 ## Parked
 

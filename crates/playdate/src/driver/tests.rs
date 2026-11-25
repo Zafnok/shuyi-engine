@@ -225,6 +225,23 @@ fn the_first_frames_help_names_the_playdates_buttons() {
 }
 
 #[test]
+fn the_facts_hold_the_devices_language_japanese_english_or_none() {
+    let tags = |language| {
+        let sdk = FakeSdk::default();
+        sdk.set_language(language);
+        let facts = Playdate::new(sdk).facts();
+        facts
+            .languages
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(tags(Some("ja")), ["ja"]);
+    assert_eq!(tags(Some("en")), ["en"]);
+    assert_eq!(tags(None), Vec::<String>::new());
+}
+
+#[test]
 fn the_facts_are_the_profiles() {
     let platform = Playdate::new(FakeSdk::default());
     let facts = platform.facts();
@@ -233,6 +250,11 @@ fn the_facts_are_the_profiles() {
     assert!(!facts.pointer && !facts.touch);
     assert_eq!(facts.keyboard, Keyboard::Absent);
     assert_eq!(facts.device, Some(Device::Pad(PadKind::Playdate)));
+    let tags = |facts: &shuyi_ui::PlatformFacts| -> Vec<String> {
+        let tags = facts.languages.iter();
+        tags.map(ToString::to_string).collect()
+    };
+    assert_eq!(tags(&facts), ["en"]);
     let display = platform.display();
     assert_eq!((display.width, display.height), (400, 240));
     assert_eq!(display.color, shuyi_platform::platform::Color::OneBit);

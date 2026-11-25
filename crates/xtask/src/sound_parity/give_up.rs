@@ -34,11 +34,11 @@ pub(crate) const KEPT: [(&str, &str); 3] = [
     ("crates/app/Cargo.toml", "in-house-sound = []"),
     (
         "crates/xtask/src/api.rs",
-        r#"        features: Features::Only(&["link", "capture", "in-house-sound"]),"#,
+        r#"        features: Features::Only(&["link", "capture", "in-house-sound", "system-languages"]),"#,
     ),
     (
         "crates/xtask/src/api/tests.rs",
-        r#"    ("shuyi-app", &["link", "capture", "in-house-sound"]),"#,
+        r#"        &["link", "capture", "in-house-sound", "system-languages"],"#,
     ),
 ];
 

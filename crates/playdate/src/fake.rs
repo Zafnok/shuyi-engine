@@ -61,6 +61,7 @@ struct State {
     buttons: VecDeque<(u32, u32)>,
     crank: VecDeque<f32>,
     docked: bool,
+    language: Option<&'static str>,
     frame: Box<Frame>,
     marked: Vec<(i32, i32)>,
     texts: Vec<(String, bool)>,
@@ -102,6 +103,7 @@ impl Default for State {
             buttons: VecDeque::new(),
             crank: VecDeque::new(),
             docked: false,
+            language: Some("en"),
             frame: Box::new([0; FRAME_BYTES]),
             marked: Vec::new(),
             texts: Vec::new(),
@@ -167,6 +169,12 @@ impl FakeSdk {
     /// Whether the crank is docked.
     pub fn set_docked(&self, docked: bool) {
         self.0.borrow_mut().docked = docked;
+    }
+
+    /// The language the device's Settings say (`getLanguage`): `en`
+    /// until set.
+    pub fn set_language(&self, language: Option<&'static str>) {
+        self.0.borrow_mut().language = language;
     }
 
     /// The rows marked since the last call.
@@ -456,6 +464,10 @@ impl Sdk for FakeSdk {
 
     fn crank_docked(&self) -> bool {
         self.0.borrow().docked
+    }
+
+    fn language(&self) -> Option<&'static str> {
+        self.0.borrow().language
     }
 
     fn add_menu_item(&self, title: &str, slot: u8) -> bool {

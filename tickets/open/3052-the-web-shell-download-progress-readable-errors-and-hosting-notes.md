@@ -106,9 +106,9 @@ What is planned:
 - 3039 (done) added `NOTICES.txt` beside the page, 3066 (done) added a
   `rel="license"` link to it, and 3049 (After MVP) the game's icons and
   title.
-- 3043, 2522, 2519 and 2349 (After MVP) add `lifecycle.js`, `net.js`,
-  `download.js` (since 3309, done, `player-files.js`) and `languages.js`
-  to `SHELL`.
+- 3043, 2522 and 2519 (After MVP) add `lifecycle.js`, `net.js` and
+  `download.js` (since 3309, done, `player-files.js`) to `SHELL`;
+  2349 (done) added `languages.js`.
 - 3046 (After MVP) leaves "the web page showing an error over a stopped
   canvas" to this ticket.
 - 3330 (parked, from 3034's research) moves the web build to
@@ -320,8 +320,10 @@ None.
 - **From 2519 (done):** `download.js` is in `SHELL`, and stays in the
   page between the bundle and `load(...)`; 3309 (done) renamed it
   `player-files.js`, loaded after `sapp_jsutils.js`.
-- **Either order with 3043, 2522, 2349 and 2377:** they add
-  `lifecycle.js`, `net.js`, `languages.js` and
+- **From 2349 (done):** `languages.js` is in `SHELL` and loads
+  between the bundle and `load(...)`; keep it there.
+- **Either order with 3043, 2522 and 2377:** they add
+  `lifecycle.js`, `net.js` and
   `motion.js` to `SHELL` and load them between the bundle and
   `load(...)`. `load("%WASM%")` stays in the page, so their tests hold
   either way; whichever lands later sets `SHELL`'s length.
@@ -382,7 +384,7 @@ None.
 
 1. Read `crates/cli/web/` (the page, the README, the bundle's `load`
    and `init_webgl`), and `crates/cli/src/web.rs` with its tests. Check
-   whether 2019, 2349, 2519, 2522, 2528, 3043 and 3049 are done,
+   whether 2019, 2519, 2522, 2528, 3043 and 3049 are done,
    and read `index.html` and `SHELL` as they left them.
 2. Write `shell.js`, then the panel's markup and CSS and the last call
    in `index.html`.

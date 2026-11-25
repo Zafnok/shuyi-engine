@@ -48,7 +48,7 @@ Found by an analysis of the engine for areas that do the same job twice
   language has" again; the folder name's check is one function,
   `pack_code` (2226), called from both. Both already parse through the
   shared `pack_from_files`, so only this check is doubled. 2229 and
-  2349 each change it in both places.
+  2278 each change it in both places.
 
 ## Nick input
 
@@ -99,10 +99,10 @@ None.
   settings file is neither a pack file nor an error, and 2229's tests
   (`a_settings_file_in_a_language_pack_is_no_error`,
   `a_settings_file_among_the_languages_is_no_error`) pass unchanged.
-- **Either order with 2349:** if 2349 is done, both readers accept a
+- **Either order with 2278:** if 2278 is done, both readers accept a
   pack's `files/` folder: move that into `is_pack_file` (a path under
-  `files/` is a pack file, never read as text), and 2349's tests pass
-  unchanged; if not, nothing to do (2349 adds it once, to
+  `files/` is a pack file, never read as text), and 2278's tests pass
+  unchanged; if not, nothing to do (2278 adds it once, to
   `is_pack_file`).
 - **From 2348 (done):** `Lang::text_in` and `Lang::data_text_in` hold
   the lookups that `text` and `data_text` are built on: they test an

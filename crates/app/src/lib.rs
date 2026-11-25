@@ -183,6 +183,7 @@ mod focus;
 mod folder;
 mod image_textures;
 pub mod keys;
+mod languages;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
 pub mod log_sink;

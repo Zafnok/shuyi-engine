@@ -12,7 +12,8 @@ repository.workspace = true
 # because one differs and Cargo can't override a single inherited lint:
 # `unsafe_code` is `deny` here instead of `forbid`, so the web build's
 # plugins can declare the JS functions they import (`src/pads/web.rs`,
-# `src/storage/web.rs`, `src/page.rs` and the other web plugins', the only
+# `src/storage/web.rs`, `src/page.rs`, `src/languages/web.rs` with
+# `crates/cli/web/languages.js`, and the other web plugins', the only
 # `#[allow(unsafe_code)]` with the Windows calls; game ADR-0034, and
 # game ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
 # keeps the rest equal to the workspace's.
@@ -35,6 +36,16 @@ todo = "warn"
 print_stdout = "warn"
 
 [features]
+default = ["system-languages"]
+# `system-languages`: the system's preferred languages on Windows, macOS and
+# Linux, read with `sys-locale` (ticket 2349), so a new player starts in the
+# system's language when the game has it (`FirstLanguage::System`). On by
+# default (decision of 2026-11-24): it adds about 3 KB to a stripped
+# release game (hello-grid on Windows, ticket 2349). Off, a desktop game
+# hears no system language and starts in its source language until the
+# player picks one. The web reads the browser's languages through
+# `crates/cli/web/languages.js` either way.
+system-languages = ["dep:sys-locale"]
 # `link`: the live link's listener (ADR-0047), so `shuyi attach` reaches the
 # running game: with debug tools compiled in and `SHUYI_LINK=<port>` set,
 # the game listens on 127.0.0.1. On the web it builds and does nothing
@@ -99,6 +110,11 @@ ron = { workspace = true, features = ["std"] }
 # directory by hand (see storage/native.rs) rather than pulling in the
 # `directories` crate, which drags in MPL-2.0 (denied by game ADR-0013).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The system's preferred languages (the `system-languages` feature, ticket
+# 2349): MIT OR Apache-2.0, no dependencies on Windows, macOS or Linux, and
+# no default features. Never its `js` feature: that pulls `wasm-bindgen`,
+# which the web build can't use (the web has its own plugin).
+sys-locale = { version = "0.3.2", default-features = false, optional = true }
 # Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
 # build reads the browser's Gamepad API through `crates/cli/web/gamepad.js` instead.
 gilrs = "0.11.2"

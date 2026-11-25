@@ -39,6 +39,11 @@ itself. Through MCP, which makes no repository, pass `Flags::default()`:
 the GitHub questions are listed with `github` at `no` and the rest
 skipped, and `contract::VERSION` is 60 after it.
 
+**From 3430 (done):** the wizard asks `storage` (the saves' folder,
+`--storage`, the id by default) right after `id`, and `NewInput` has
+`storage`, so MCP's `new` takes it as it takes `id`; `wizard::listed`
+lists it with the rest. `contract::VERSION` is 61 after 3430.
+
 `docs/contract.md`'s `new` row (about line 16) presents `--questions` as
 part of the operation and doesn't say MCP lacks it. Everything else the
 wizard takes does reach MCP (its flags through `set`, `answers`, `engine`,

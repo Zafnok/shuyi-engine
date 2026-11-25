@@ -148,22 +148,28 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
     // which is what the semver check's own choice comes to without it.
     ApiCrate {
         name: "shuyi-app",
-        features: Features::Only(&["link", "capture", "sound-probe"]),
+        features: Features::Only(&["link", "capture", "sound-probe", "system-languages"]),
     },
 "##,
             // Ticket 2091: the kept feature does nothing and builds anywhere, so
             // the semver check chooses it and holds its name.
             with: r##"    ApiCrate {
         name: "shuyi-app",
-        features: Features::Only(&["link", "capture", "in-house-sound"]),
+        features: Features::Only(&["link", "capture", "in-house-sound", "system-languages"]),
     },
 "##,
         ),
         Replace(
             file: "crates/xtask/src/api/tests.rs",
-            find: r##"    ("shuyi-app", &["link", "capture", "sound-probe"]),
+            find: r##"    (
+        "shuyi-app",
+        &["link", "capture", "sound-probe", "system-languages"],
+    ),
 "##,
-            with: r##"    ("shuyi-app", &["link", "capture", "in-house-sound"]),
+            with: r##"    (
+        "shuyi-app",
+        &["link", "capture", "in-house-sound", "system-languages"],
+    ),
 "##,
         ),
         Replace(
@@ -503,8 +509,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL: [(&str, &str); 9] = [",
-            with: "const SHELL: [(&str, &str); 8] = [",
+            find: "const SHELL: [(&str, &str); 10] = [",
+            with: "const SHELL: [(&str, &str); 9] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -513,8 +519,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL_NOTICES: [(&str, Origin); 9] = [",
-            with: "const SHELL_NOTICES: [(&str, Origin); 8] = [",
+            find: "const SHELL_NOTICES: [(&str, Origin); 10] = [",
+            with: "const SHELL_NOTICES: [(&str, Origin); 9] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -547,8 +553,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",
-            find: "const WEB_FILES: [&str; 12] = [",
-            with: "const WEB_FILES: [&str; 11] = [",
+            find: "const WEB_FILES: [&str; 13] = [",
+            with: "const WEB_FILES: [&str; 12] = [",
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",

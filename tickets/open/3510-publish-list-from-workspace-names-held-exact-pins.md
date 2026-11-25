@@ -96,8 +96,8 @@ engine crate names are held*), which also answered 3528's question 3.
   the workspace is listed once, in `API_CRATES`, as today. No other
   hand-written list of crates.
 - **Every other member says `publish = false` itself**: `xtask`,
-  `examples/*`, `crates/embed/fixture`, `tools/research/2912/fixture`,
-  `tools/research/2914/web-fixture` (`site/snippets` already does).
+  `examples/*` and `crates/embed/fixture` (`site/snippets` already
+  does; 2093 took the two research fixtures out of the workspace).
   Today they inherit `publish.workspace = true`, so 2005's flip of the
   workspace's `publish` would make them publishable.
 - **Exact pins through `[workspace.dependencies]`.** Each engine crate

@@ -49,7 +49,7 @@ std = ["shuyi/std", "serde/std", "ron/std"]
 # `window`: the binary, which opens the game in macroquad's window.
 # Without it the library builds for a target that has none, as the
 # golden test does under WASI (`tests/golden.rs`).
-window = ["std", "shuyi/app"]
+window = ["std", "shuyi/app", "shuyi/system-languages"]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
 # for its tool program and its tests; the rules' types describe their
 # shapes for `scene --shape` (ADR-0084 §2).
