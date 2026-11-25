@@ -464,7 +464,6 @@ Source: Nick, in a Claude Code session on 2026-10-19.
   (2507), then the graph panel (2508). It stays a view over text files:
   agents and git read the same files a person edits in it.
 
-
 ## 2026-10-19: a frame cap of 60 by default
 
 Source: Nick, in a Claude Code session on 2026-10-19.
@@ -2225,3 +2224,39 @@ Source: Nick, in the session that planned the next example game:
 - **The rest of networking stays parked.**
   - 1140, 1141, 1143–1150, 2529, 2550, 2551, 2601, 2603–2608, 2720 and 2774–2775 stay parked. Some are amended to build on the new work.
   - This does not answer the game's 0053: nothing networked reaches Visions of Shuyi through this decision (ADR-0006 §10).
+
+## 2026-11-25: shuyi new's prompts show only what can be answered
+
+Source: Nick, signing off ticket 3423 (the wizard's prompts in a
+terminal), on the id question, then on a skipped question's line:
+
+> "this is a very confusing question and I also wonder if this is the
+> folder an end user would have their saves for?? its a little weird
+> this would be the save folder. And does Rust namespace this way? looks
+> Java centric"
+
+> "I think probably these questions shouldn't be listed at all from a
+> regular user using the prompt if there are no options available
+> however for debugging its good for me to be able to see them skipped
+> so I can check the wording"
+
+**Rules:**
+
+- **The id question says what the id is for**, in plain words, with an
+  example from the game's name: "A unique id for the game, like
+  io.github.yourname.<crate name>: app stores ask for one." The id
+  still names the save folder by default
+  ([ADR-0059](adr/0059-a-games-identity-once-in-shuyi-ron-written-as-a-rust-constant-checked-like-generated-files-and-the-storage-name-following-the-id.md)),
+  but the question doesn't say so: then
+  > "since we said they can modify the save folder locaiton manually,
+  > it should be a followup question. Rather than say here the saves
+  > will be under com.example.doom it should be just the unique id in
+  > this question. Next question should be what folder name are game's
+  > saves under and pre-filled with the id used from prev answer. Then
+  > they can overwrite that."
+- **The save folder is a question of its own, right after the id**,
+  prefilled with the id the developer just gave (ticket 3430).
+- **A question with nothing to pick is not shown** in a terminal: it
+  takes its default unseen.
+- **`shuyi new <dir> --questions` is the view that shows them all**,
+  each skipped one with why, so their wording can still be checked.
