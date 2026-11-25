@@ -523,7 +523,15 @@ Deviations:
 6. **Not in CI's `export` job**: its check wants a packed build, a
    `disclosure` part, and file lists that name Hello, Grid's program and
    its extras. 3533 adds snake to the job.
-7. **The golden table has no asset rows**, only `step NNN` and `outcome`,
+7. **The eval grades snake inside the engine's workspace**, so its
+   `Gates` run the whole workspace's `fmt`, `clippy` and `test`, with the
+   eval's shared `CARGO_TARGET_DIR`. One engine test assumed none
+   (`mcp_ready_builds_what_the_server_needs_and_exits`, in
+   `crates/cli/tests/it/binary.rs`): its tiny game now builds without it.
+   `cargo xtask eval-reference snake` here passes every check but `Export
+   linux`, which builds on Linux only (CI's `eval` job runs in the sniper
+   image). No ticket: CI's `eval` job is the measure of the cost.
+8. **The golden table has no asset rows**, only `step NNN` and `outcome`,
    as the ticket said; Hello, Grid's has both.
 
 Follow-up tickets: 2787 (the arcade template part, its question, CI
