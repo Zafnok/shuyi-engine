@@ -45,19 +45,19 @@ over that of a fixed reference build on the same runner, not seconds.
 You don't need to do anything for this: it comes with a new game. It is in the root
 `Cargo.toml`, whose comments say the same, and you can read on if you want to change it.
 
-- **No debug info in `dev` builds** (`debug = false`). `dev` is the build `cargo run`
+- *No debug info in `dev` builds* (`debug = false`). `dev` is the build `cargo run`
   makes, and **debug info** is the extra data a debugger reads. Leaving it out takes about
   a third off each rebuild. A panic still names its file and line; set `debug =
   "line-tables-only"` for lines in backtraces, the list of what was running when it
   stopped, or `true` for a debugger.
-- **The engine and every other crate built optimized** (`opt-level = 2` for `"*"`), so the
+- *The engine and every other crate built optimized* (`opt-level = 2` for `"*"`), so the
   game runs at speed in a debug build. They rarely change, so you pay for that once. Level
   1 makes no rebuild faster.
 - **The linker Rust picks.** On Linux, Rust's own `rust-lld` has been the default since
   Rust 1.90, and `mold` is no faster. On Windows with the GNU toolchain, `rust-lld` can't
   read the import libraries a game links, so MSYS2's linker stays; with MSVC, `rust-lld` is
   no faster than `link.exe`.
-- **Incremental builds** of the game's own crates, cargo's default for `dev`, which reuse
+- *Incremental builds* of the game's own crates, cargo's default for `dev`, which reuse
   what didn't change: without them a rebuild takes 10 to 50 % longer.
 
 Linking the engine as one dynamic library, a file loaded when the program starts, as Bevy's

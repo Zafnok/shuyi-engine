@@ -133,7 +133,7 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
                     json,
                     Op::Doctor,
                     "no arguments",
-                    &format!("usage: {command} doctor [--json]"),
+                    &doctor::usage(command),
                 ));
             }
             let input = doctor::DoctorInput::default();
@@ -285,7 +285,7 @@ pub fn modules_or_add(project: &Project, name: &str, args: &[String]) -> u8 {
 
 /// `replay`'s input from `args` (without `--json`): one or two records,
 /// and `--any-stamp` anywhere; `None` for anything else.
-fn replay_args(args: &[String]) -> Option<replay::ReplayInput> {
+pub(super) fn replay_args(args: &[String]) -> Option<replay::ReplayInput> {
     let any_stamp = args.iter().any(|a| a == "--any-stamp");
     let records: Vec<&String> = args.iter().filter(|a| *a != "--any-stamp").collect();
     let (record, other) = match records.as_slice() {
@@ -366,8 +366,7 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         }
         "replay" => {
             let Some(input) = replay_args(&args) else {
-                let usage =
-                    format!("usage: {command} replay <record> [<other>] [--any-stamp] [--json]");
+                let usage = replay::usage(command);
                 return wrong(json, Op::Replay, "one or two records", &usage);
             };
             print(
@@ -426,12 +425,7 @@ pub fn import(
             }
             print(json, &answer, import::text)
         }
-        Err(e) => wrong(
-            json,
-            Op::Import,
-            &e,
-            &format!("usage: {command} import <file> [--kind KIND] [--print] [--json]"),
-        ),
+        Err(e) => wrong(json, Op::Import, &e, &import::usage(command)),
     }
 }
 

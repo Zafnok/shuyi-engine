@@ -77,7 +77,7 @@ stage has one to read.
 
 ## One value of the game
 
-A stage's scene carries its **data**: the stage's whole state, written by serde, the same derive that
+A stage's scene carries its *data*: the stage's whole state, written by serde, the same derive that
 writes its state hash, so your game writes no code to show it. `scene --path` reads one value of it by a
 **JSON Pointer**, a path of keys from the top, and `scene --shape` answers its **JSON Schema**, every key
 it may hold:

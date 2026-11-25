@@ -130,6 +130,14 @@ python -m http.server --directory public 1111
   did, and its row goes in the one glossary, `book/glossary.md`, with the
   newcomer who needs it (*New to*), linking the step that first uses it and
   the chapter that says more.
+- In a page of the book (a chapter, an appendix, a step of the project),
+  **bold is for a term**: write a word in bold where the page explains it,
+  and it is a word of a glossary row (one of the words of its first cell,
+  case and a plural aside, so `Update, draw` covers **draws**). A bold that
+  ends with `.`, `:`, `?` or `!` is a run-in heading (`**A bad key.**`),
+  not a term. Anything else stressed, a button's name or a list's label,
+  is in *italics*. `cargo xtask check-book` fails a term with no row,
+  naming the page, the line and the word.
 - A passage that only a newcomer needs is marked with who it is for
   ([Marking a passage](#marking-a-passage)), a new one too.
 - Every chapter and every step of a project ends with two or more quick
@@ -714,9 +722,9 @@ its budget fails before the merge. The API docs aren't built there, so
 their links are checked by `pages.yml`.
 
 `cargo xtask check-book` checks the newcomers' marks ([Marking a
-passage](#marking-a-passage)). `zola check` checks the `@/` links and their
-anchors. `check-build.sh`
-fails on a fenced Rust block in the book, on a code block of a project's
+passage](#marking-a-passage)), and that each term the book bolds has its
+row in the glossary ([The rules](#the-rules)). `zola check` checks the
+`@/` links and their anchors. `check-build.sh` fails on a fenced Rust block in the book, on a code block of a project's
 that isn't `bash`, and on an engine crate with no row in `data/api.toml`;
 then it builds the site with two base URLs, fails if either output names
 the other's or lacks a page, if a step's page doesn't link its `play/` or

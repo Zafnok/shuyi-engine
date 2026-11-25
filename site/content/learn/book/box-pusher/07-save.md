@@ -52,7 +52,7 @@ each text, just as a key names each line of your words.
 ## What is kept
 
 {% newcomer(to="games", topic="a save's version") %}
-Always write the **version** of your save's format into the save. Some day you'll change
+Always write the *version* of your save's format into the save. Some day you'll change
 what a save holds, and a player will still have an old one. A later build has to be able to tell what it's
 reading, or it will read it wrong.
 {% end %}

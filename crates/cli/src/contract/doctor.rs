@@ -424,6 +424,11 @@ pub fn doctor(probe: &dyn Probe, _input: &DoctorInput) -> Answer<DoctorOutput> {
     }
 }
 
+/// `doctor`'s usage, with `command` as the tool's name.
+pub fn usage(command: &str) -> String {
+    format!("usage: {command} doctor [--json]")
+}
+
 /// What `doctor` found, for people.
 pub fn text(output: &DoctorOutput) -> String {
     let mut out = format!(

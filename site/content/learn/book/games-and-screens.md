@@ -239,7 +239,7 @@ typo would mean a rebuild.
 {% end %}
 
 The text is in the game's language file, `files/en.ron`, each line with a name,
-called its **key**:
+called its **text key**:
 
 {{ snippet(file="files/en.ron", anchor="title", language="ron") }}
 
@@ -294,7 +294,7 @@ two lines.
 
 ## A preview for your writer
 
-A writer who doesn't program can't run your source. Hand them a **dialogue preview**
+A writer who doesn't program can't run your source. Hand them a *dialogue preview*
 instead: a small program, built from your game's code, that lists the scenes of the
 `.dlg` files in a folder and plays the one they pick in your own dialogue screen. They
 save a file in their editor, and a second later it plays again from the same text box.
@@ -473,11 +473,11 @@ A capitalized name in braces is a key, and lowercase is a value the screen passe
 
 The short path's parts grow one at a time, and the game's start stays as it is:
 
-- **actions of its own**: an action set of the game's in place of `UiAction`
+- *actions of its own*: an action set of the game's in place of `UiAction`
   ([chapter 4](@/learn/book/actions.md#actions-of-a-game-s-own));
-- **a part of its own**: a map, a table of rules, read by the function
+- *a part of its own*: a map, a table of rules, read by the function
   `BasicGame::with_own` takes ([chapter 3](@/learn/book/assets-and-formats.md));
-- **tools of its own**: a scene, records and bots, through a `GameTools` of its own
+- *tools of its own*: a scene, records and bots, through a `GameTools` of its own
   ([chapter 10](@/learn/book/tools-for-agents.md)).
 
 You can leave this section until you need it. A game whose data needs more than

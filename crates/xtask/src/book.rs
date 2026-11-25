@@ -43,6 +43,9 @@
 //! step's folder (`site/tutorial/<step>/`), there, and listed once, on a
 //! project step with playground files (`extra.files`).
 //!
+//! And the book's terms (ticket 2852, [`terms`]): each bold in a page of the
+//! book that isn't a run-in heading is a word of a row of its glossary.
+//!
 //! [`parts`] splits a page at its marks, checks and exercises for
 //! `llms.rs`, which writes each passage in the twins as a blockquote under
 //! its label, and each check and exercise as text.
@@ -52,6 +55,7 @@ use std::path::{Path, PathBuf};
 
 use crate::llms;
 
+pub mod terms;
 #[cfg(test)]
 mod tests;
 
@@ -196,6 +200,24 @@ pub fn check_pages(pages: &[(String, String)]) -> Vec<String> {
         places.extend(right_places(shown, text));
     }
     errors.extend(spread(&places));
+    errors.extend(term_problems(pages));
+    errors
+}
+
+/// Each term of the book's pages that no row of the glossary defines
+/// (ticket 2852); nothing when `pages` has no glossary.
+fn term_problems(pages: &[(String, String)]) -> Vec<String> {
+    let glossary = format!("{LEARN}/{}", terms::GLOSSARY);
+    let Some((_, text)) = pages.iter().find(|(shown, _)| *shown == glossary) else {
+        return Vec::new();
+    };
+    let words = terms::glossary_words(text);
+    let mut errors = Vec::new();
+    for (shown, text) in pages.iter().filter(|(shown, _)| terms::is_book_page(shown)) {
+        if let Ok(front) = front_matter(shown, text) {
+            errors.extend(terms::check(shown, front.body, front.first_line, &words));
+        }
+    }
     errors
 }
 

@@ -26,7 +26,7 @@ handheld.
 
 A game's **id** says which game it is, written like a web address back to front:
 `io.github.yourname.box-pusher`. The player's saves are kept under it. A new game's is a placeholder, and two games
-with one id share their saves, so set your own before you hand out a build, **and never change it after**, as players
+with one id share their saves, so set your own before you hand out a build, *and never change it after*, as players
 would lose their progress.
 
 In `shuyi.ron`'s `app`, change the `id`. If you have a GitHub account, use your name there:
@@ -53,11 +53,11 @@ cargo shuyi lint
 cargo test --workspace
 ```
 
-- **`check --target all`** holds the game to each target in `shuyi.ron`: that its frame fits the screen, that its text can
+- *`check --target all`* holds the game to each target in `shuyi.ron`: that its frame fits the screen, that its text can
   be read, and that every screen's controls exist there. This is why every screen had to go on the list in `stages.rs`.
-- **`lint`** reads your code for what breaks Shuyi's rules, like a key named in text, and words written in code and not in
+- *`lint`* reads your code for what breaks Shuyi's rules, like a key named in text, and words written in code and not in
   `en.ron`.
-- **`test`** runs everything you wrote, and everything `shuyi new` gave you.
+- *`test`* runs everything you wrote, and everything `shuyi new` gave you.
 
 Each problem comes with a code, like `SH2101`. `cargo shuyi explain SH2101` says what it means and how to fix it, and so do the
 [problem code pages](@/learn/errors/_index.md).

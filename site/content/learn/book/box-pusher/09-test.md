@@ -17,8 +17,8 @@ The game plays and looks just as it did in the last step. So why is this a step 
 you'll keep it working. As a game grows, a change here breaks something over there, and no one can replay
 every level by hand after every change. So you teach the game to test itself.
 
-Everything in this step is possible because of step 3. The rules are deterministic, so **a game can be tested
-by playing it**, and the same play always gives the same result.
+Everything in this step is possible because of step 3. The rules are deterministic, so *a game can be tested
+by playing it*, and the same play always gives the same result.
 
 | File | What changes |
 | ---- | ------------ |
@@ -141,7 +141,7 @@ A **record** is a level and its commands, and nothing more. Since the rules are 
 
 {{ snippet(step="09-test", file="crates/game/src/tools.rs", anchor="record") }}
 
-The `replay` tool plays a record **twice** and compares a hash of the state at every step.
+The `replay` tool plays a record *twice* and compares a hash of the state at every step.
 
 {% newcomer(to="programming", topic="a hash") %}
 A **hash** is a short number worked out from all of a value, so if any of it changes, the number will too.
