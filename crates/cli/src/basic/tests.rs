@@ -158,6 +158,30 @@ fn a_session_plays_the_game_and_paints_it() {
 }
 
 #[test]
+fn its_harness_pauses_and_hears_the_system_as_the_game_says() {
+    use shuyi_platform::SystemEvent;
+    use shuyi_ui::settings::Background;
+
+    let files = Layer::table("files", GOOD);
+    let app = shuyi_platform::AppInfo::new("Demo", "com.example.demo", "0.1.0");
+    let game = BasicGame::new(app, files, |_| Box::new(Hello))
+        .background(Background::KEEP_RUNNING.paused())
+        .on_system(|game, event| {
+            if event == SystemEvent::FocusLost {
+                game.act(UiAction::Cancel);
+            }
+        });
+    let mut h = BasicTools::new(game)
+        .harness()
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(h.app().background(), Background::KEEP_RUNNING.paused());
+    h.system(SystemEvent::FocusLost);
+    assert!(h.app().is_paused());
+    // The hook handed Hello a Cancel, which quits it.
+    assert!(h.quit_requested());
+}
+
+#[test]
 fn the_controls_are_the_keymap_and_the_first_screen() {
     let profiles = crate::contract::target::engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
     let controls = tools(GOOD)

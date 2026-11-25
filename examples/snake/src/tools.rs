@@ -141,12 +141,13 @@ impl Tools {
         BasicTools::new(self.game)
     }
 
-    /// The game in the Harness, at its title, its first run seeded `seed`.
+    /// The game in the Harness, at its title, its first run seeded `seed`,
+    /// pausing without focus and opening its pause menu as on a device.
     pub fn harness(&self, seed: u64) -> Result<Harness<Data>, String> {
         let mut ctx = self.game.ctx()?;
         ctx.game.own.seed = seed;
         let game = self.game.game(ctx).map_err(|e| e.to_string())?;
-        Ok(Harness::new(game))
+        Ok(self.game.harness_on(game))
     }
 
     /// The skin's palette and its pattern map: its look on a one-bit

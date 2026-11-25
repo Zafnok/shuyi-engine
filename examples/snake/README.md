@@ -10,6 +10,11 @@ and every five points it moves a step sooner. A wall or its own body ends
 the run. A title, the board, a pause menu (Cancel) and a screen that says
 how the run ended (Confirm plays again).
 
+Without focus the game pauses (`BasicGame::background`), and a run that
+loses it waits in the pause menu (`BasicGame::on_system`, on
+`SystemEvent::FocusLost`), as it does back from a suspend: the snake never
+moves while the player is elsewhere.
+
 ![Snake: a run starts, the snake turns down and heads for the bottom wall](preview.png)
 
 ```
@@ -19,7 +24,7 @@ cargo shuyi web --release            # from this folder: the page in dist/web/
 cargo test -p snake                  # the tests
 ```
 
-Its own code is 908 lines without its tests and data (`cargo xtask
+Its own code is 937 lines without its tests and data (`cargo xtask
 template-lines examples/snake`).
 
 ## Real time on a grid
@@ -47,7 +52,7 @@ food, painted by the grid kit's glyph skin.
 | `shuyi.ron` | The project file of the engine's tools |
 | `long/` | A long run, `cargo shuyi bench --long`: runs lost and started again for a million frames, its heap and sounds kept flat |
 | `tests/golden.rs`, `tests/golden/`, `tests/records/` | The golden table: the playthrough's record's hash at every step and its outcome. It builds without the window (`--no-default-features`), so it runs under wasmtime too |
-| `tests/it/` | The playthrough through actions only, 30 and 60 frames a second, the pause menu, the tool contract and the replay of the playthrough's record, the rules under random input, and pictures as snapshots |
+| `tests/it/` | The playthrough through actions only, 30 and 60 frames a second, the pause menu and the lost focus, the tool contract and the replay of the playthrough's record, the rules under random input, and pictures as snapshots |
 
 ## Its tools
 

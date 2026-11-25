@@ -5,6 +5,7 @@
 
 mod contract;
 mod files;
+mod focus;
 mod frames;
 mod playthrough;
 mod props;

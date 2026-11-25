@@ -27,6 +27,9 @@ Budget(
     // some lowers it. 143: 146 less `quad-storage`, `quad-storage-sys`,
     // `nanoserde`, `nanoserde-derive` and `lazy_static`, gone with the
     // in-house web saves (ticket 3033), plus 2 for `getrandom` in
-    // `reveal commit` (ticket 2816); set by ticket 2080.
-    dependencies: 143,
+    // `reveal commit` (ticket 2816); set by ticket 2080. 149: plus 6 for
+    // `shuyi new`'s prompts in a terminal (ticket 3423): `dialoguer`,
+    // `console`, `shell-words`, `encode_unicode`, `unicode-width` and the
+    // `windows-sys` `console` builds on, in the game's tools only.
+    dependencies: 149,
 )
