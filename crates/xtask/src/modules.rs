@@ -68,7 +68,7 @@ const NOT_MODULES: [&str; 4] = ["shuyi", "xtask", "shuyi-sound", "shuyi-sound-ou
 const BACKENDS: &str = "## Platform backends";
 
 /// The features of the front door that are the default engine's, no modules.
-const ENGINE_FEATURES: [&str; 4] = ["default", "std", "app", "schema"];
+const ENGINE_FEATURES: [&str; 5] = ["default", "std", "app", "schema", "system-languages"];
 
 /// `docs/modules.ron`, as the check reads it (`shuyi_cli::catalog` reads
 /// all of it).

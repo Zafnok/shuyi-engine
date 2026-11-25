@@ -10,6 +10,7 @@
 
 use crate::prelude::*;
 
+use shuyi_assets::lang::LangCode;
 use shuyi_assets::target::{Color, TargetProfile};
 pub use shuyi_assets::target::{GraphicsTier, Quit};
 
@@ -85,6 +86,35 @@ pub struct PlatformFacts {
     /// record made before it reads as [`GraphicsTier::Full`].
     #[serde(default, skip_serializing_if = "GraphicsTier::is_full")]
     pub graphics: GraphicsTier,
+    /// The system's preferred languages, most preferred first: what a game
+    /// picks its first language from
+    /// ([`FirstLanguage::System`](crate::settings::FirstLanguage::System)).
+    /// The backend says them ([`with_languages`](Self::with_languages)); a
+    /// profile doesn't, and [`from_profile`](Self::from_profile) and the
+    /// default give none, as a session record made before it does. Written
+    /// as tags; one that no longer reads as a tag is dropped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty", with = "tags")]
+    pub languages: Vec<LangCode>,
+}
+
+/// [`PlatformFacts::languages`] as text: each tag as it is written.
+mod tags {
+    use crate::prelude::*;
+    use shuyi_assets::lang::LangCode;
+
+    pub(super) fn serialize<S: serde::Serializer>(
+        tags: &[LangCode],
+        to: S,
+    ) -> Result<S::Ok, S::Error> {
+        to.collect_seq(tags.iter().map(LangCode::as_str))
+    }
+
+    pub(super) fn deserialize<'de, D: serde::Deserializer<'de>>(
+        from: D,
+    ) -> Result<Vec<LangCode>, D::Error> {
+        let texts = <Vec<String> as serde::Deserialize>::deserialize(from)?;
+        Ok(texts.iter().filter_map(|t| LangCode::new(t)).collect())
+    }
 }
 
 /// The colours a screen shows ([`PlatformFacts::screen`]).
@@ -188,7 +218,21 @@ impl PlatformFacts {
                 ScreenColor::Color
             },
             graphics: profile.graphics,
+            languages: Vec::new(),
         }
+    }
+
+    /// The same facts on a system whose preferred languages are
+    /// `languages`, most preferred first, as the system writes them
+    /// (`pt_BR.UTF-8`, `en-US`): each read as a tag
+    /// ([`LangCode::parse`]), dropping what doesn't read.
+    #[must_use]
+    pub fn with_languages<T: AsRef<str>>(mut self, languages: &[T]) -> Self {
+        self.languages = languages
+            .iter()
+            .filter_map(|text| LangCode::parse(text.as_ref()).ok())
+            .collect();
+        self
     }
 
     /// The same facts at the graphics tier `tier`
@@ -274,6 +318,7 @@ impl Default for PlatformFacts {
             file_picker: FilePicker::Absent,
             screen: ScreenColor::Color,
             graphics: GraphicsTier::Full,
+            languages: Vec::new(),
         }
     }
 }
@@ -387,6 +432,25 @@ mod tests {
         assert!(text.contains("graphics:Reduced"), "{text}");
         let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, reduced);
+    }
+
+    #[test]
+    fn the_systems_languages_are_read_as_tags_and_written_as_text() {
+        let facts = PlatformFacts::default();
+        assert_eq!(facts.languages, Vec::<LangCode>::new());
+        let text = ron::to_string(&facts).unwrap_or_else(|e| panic!("{e}"));
+        assert!(!text.contains("languages"), "{text}");
+        let said = facts.with_languages(&["pt_BR.UTF-8", "C", "en-US", "not a tag"]);
+        let tags: Vec<&str> = said.languages.iter().map(LangCode::as_str).collect();
+        assert_eq!(tags, ["pt-BR", "en-US"]);
+        let text = ron::to_string(&said).unwrap_or_else(|e| panic!("{e}"));
+        assert!(text.contains("languages:[\"pt-BR\",\"en-US\"]"), "{text}");
+        let back: PlatformFacts = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, said);
+        // A record whose tag no longer reads drops it.
+        let odd = text.replace("en-US", "en_US");
+        let back: PlatformFacts = ron::from_str(&odd).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back.languages.len(), 1);
     }
 
     #[test]

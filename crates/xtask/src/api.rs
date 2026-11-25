@@ -152,7 +152,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     // which is what the semver check's own choice comes to without it.
     ApiCrate {
         name: "shuyi-app",
-        features: Features::Only(&["link", "capture", "sound-probe"]),
+        features: Features::Only(&["link", "capture", "sound-probe", "system-languages"]),
     },
     ApiCrate {
         name: "shuyi-cli",
@@ -160,7 +160,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi",
-        features: Features::Only(&["std", "app", "schema", "script"]),
+        features: Features::Only(&["std", "app", "schema", "script", "system-languages"]),
     },
     ApiCrate {
         name: "shuyi-sound",

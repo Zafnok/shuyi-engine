@@ -22,7 +22,7 @@ use shuyi_assets::dialogue::LineId;
 use shuyi_assets::font::CellWidths;
 use shuyi_assets::hot::Reload;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, Layout};
-use shuyi_assets::lang::{Lang, LangCode};
+use shuyi_assets::lang::{Lang, LangCode, best_match};
 use shuyi_assets::message;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{ClipVariant, Playable};
@@ -44,7 +44,7 @@ use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
 use crate::platform_facts::{PlatformFacts, ScreenColor};
 use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
-use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
+use crate::settings::{FirstLanguage, GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::system_keyboard::SystemKeyboard;
 use crate::text::{Args, StyledText, ToArg};
@@ -124,6 +124,15 @@ pub trait GameData: Debug + Sized + 'static {
     /// the game has one: without debug tools it is English.
     fn debug_lang(&self) -> Option<&str> {
         None
+    }
+
+    /// Which language a start shows while the player hasn't picked one
+    /// ([`Settings::language`] is `None`): by default the game's language
+    /// that fits the system's ([`FirstLanguage::System`]). A game that asks
+    /// at first launch opens its own screen while the setting is `None`,
+    /// and saves the answer with [`Ctx::change_settings`].
+    fn first_language(&self) -> FirstLanguage {
+        FirstLanguage::System
     }
 
     /// The text of a `{name}` placeholder that names a key
@@ -411,8 +420,14 @@ pub struct Ctx<G: GameData> {
     /// the Steam Deck), if the platform has one: absent here, and the
     /// platform's `App` says so before every frame.
     pub system_keyboard: SystemKeyboard,
-    /// The language screen text is shown in: the game's source language
-    /// ([`Lang::source_lang`]) until the player picks another. The game's
+    /// The language screen text is shown in: the one the player picked
+    /// ([`Settings::language`]), else the game's pick at start
+    /// ([`GameData::first_language`]: by default the game's language that
+    /// fits the system's, [`PlatformFacts::languages`], else the source,
+    /// [`Lang::source_lang`]). It is set again when the settings load,
+    /// when the language in them changes and when the system's languages
+    /// arrive ([`set_system_languages`](Self::set_system_languages)); a
+    /// change to another setting leaves it as a tool set it. The game's
     /// debug language ([`GameData::debug_lang`]) counts only with
     /// [`debug_tools`](Self::debug_tools) on; anywhere else it is the
     /// source.
@@ -490,8 +505,14 @@ impl<G: GameData> Ctx<G> {
     ///
     /// [`effective_lang`]: Self::effective_lang
     pub fn widths(&self) -> &CellWidths {
+        let lang = self.effective_lang();
         self.lang_widths
-            .get(self.effective_lang())
+            .get(lang)
+            .or_else(|| {
+                // A language with no pack of its own: its chain's.
+                let chain = self.game.lang().chain(lang);
+                chain.iter().find_map(|code| self.lang_widths.get(code))
+            })
             .unwrap_or(&self.widths)
     }
 
@@ -687,11 +708,65 @@ impl<G: GameData> Ctx<G> {
     /// game's source language for its debug language without
     /// [`debug_tools`](Self::debug_tools).
     pub fn effective_lang(&self) -> &LangCode {
-        let debug = self.game.debug_lang();
-        if debug == Some(self.lang.as_str()) && !self.debug_tools {
+        if self.is_debug_lang(&self.lang) && !self.debug_tools {
             return &self.game.lang().source_lang().code;
         }
         &self.lang
+    }
+
+    /// Whether `code` is the game's debug language ([`GameData::debug_lang`]).
+    fn is_debug_lang(&self, code: &LangCode) -> bool {
+        self.game.debug_lang() == Some(code.as_str())
+    }
+
+    /// The languages a language row offers, each with its own name: the
+    /// source ([`SourceLang::name`](shuyi_assets::lang::SourceLang::name)),
+    /// then every pack in tag order
+    /// ([`LangInfo::name`](shuyi_assets::lang::LangInfo::name)). The
+    /// debug language only with [`debug_tools`](Self::debug_tools). A game
+    /// that labels a machine translation builds its own row on it
+    /// ([`RowValue::names`](crate::screens::options::RowValue::names)).
+    pub fn languages_offered(&self) -> Vec<(LangCode, String)> {
+        let lang = self.game.lang();
+        let source = lang.source_lang();
+        let packs = lang
+            .codes()
+            .filter(|code| self.debug_tools || !self.is_debug_lang(code))
+            .filter_map(|code| Some((code.clone(), lang.pack(code)?.info.name.clone())));
+        core::iter::once((source.code.clone(), source.name.clone()))
+            .chain(packs)
+            .collect()
+    }
+
+    /// Takes the system's preferred languages, most preferred first
+    /// ([`PlatformFacts::languages`]), and sets the language in use again
+    /// ([`lang`](Self::lang)): while the player hasn't picked one, the
+    /// game's pick follows them.
+    pub fn set_system_languages(&mut self, languages: Vec<LangCode>) {
+        self.platform.languages = languages;
+        self.pick_lang();
+    }
+
+    /// Sets [`lang`](Self::lang): the language the player picked, else the
+    /// game's pick at start ([`GameData::first_language`]).
+    fn pick_lang(&mut self) {
+        if let Some(picked) = &self.settings.language {
+            self.lang = picked.clone();
+            return;
+        }
+        let lang = self.game.lang();
+        let source = &lang.source_lang().code;
+        self.lang = match self.game.first_language() {
+            FirstLanguage::System => {
+                // Never the debug language: only a developer picks it.
+                let packs = lang.codes().filter(|code| !self.is_debug_lang(code));
+                let offered: Vec<LangCode> =
+                    core::iter::once(source).chain(packs).cloned().collect();
+                best_match(&self.platform.languages, &offered).unwrap_or_else(|| source.clone())
+            }
+            FirstLanguage::Fixed(code) => code,
+            FirstLanguage::Source => source.clone(),
+        };
     }
 
     /// What help text names keys from: the active bindings on the device
@@ -1184,6 +1259,9 @@ impl<G: GameData> Ctx<G> {
         if before.voices && !self.settings.voices {
             self.stop_voice();
         }
+        if self.settings.language != before.language {
+            self.pick_lang();
+        }
         self.game.apply_settings(&self.settings, Some(&before));
         if self.settings.theme != before.theme {
             self.apply_theme();
@@ -1375,6 +1453,7 @@ impl<G: GameData> Ctx<G> {
     /// or (with a warning) if they can't be read. A volume saved at its
     /// group's default is dropped, so it is the default. A layout saved under the
     /// game's old key is taken over ([`saved_layout`](Self::saved_layout)).
+    /// The language in use is set from them ([`lang`](Self::lang)).
     fn load_settings(&mut self) {
         let cap_before = self.settings.frame_cap;
         let loaded = match self.storage.read(SETTINGS_KEY) {
@@ -1403,6 +1482,7 @@ impl<G: GameData> Ctx<G> {
         if self.settings.frame_cap != cap_before {
             self.next_frame_cap_serial();
         }
+        self.pick_lang();
         self.game.apply_settings(&self.settings, None);
         self.apply_theme();
     }
@@ -1555,5 +1635,7 @@ fn numbered_profile(lang: &Lang, n: u32) -> String {
     crate::text::fill_values(text, code, &[("n", &n)])
 }
 
+#[cfg(test)]
+mod lang_tests;
 #[cfg(test)]
 mod tests;

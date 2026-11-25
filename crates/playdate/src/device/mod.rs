@@ -31,6 +31,7 @@ unsafe extern "C" {
     fn pd_buttons(current: *mut c_uint, pushed: *mut c_uint);
     fn pd_crank_change() -> c_float;
     fn pd_crank_docked() -> c_int;
+    fn pd_language() -> c_int;
     fn pd_add_menu_item(title: *const c_char, slot: c_int) -> c_int;
     fn pd_set_refresh_rate(rate: c_float);
     fn pd_frame() -> *mut u8;
@@ -196,6 +197,16 @@ impl Sdk for Device {
 
     fn crank_docked(&self) -> bool {
         unsafe { pd_crank_docked() != 0 }
+    }
+
+    /// `getLanguage`: `kPDLanguageEnglish` (0) or `kPDLanguageJapanese`
+    /// (1); anything else is none.
+    fn language(&self) -> Option<&'static str> {
+        match unsafe { pd_language() } {
+            0 => Some("en"),
+            1 => Some("ja"),
+            _ => None,
+        }
     }
 
     fn add_menu_item(&self, title: &str, slot: u8) -> bool {

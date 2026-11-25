@@ -474,7 +474,16 @@ the window reaches the game (`file_drops`: the backend's to say with
 prefix) and whether a file picker opens (`file_picker`, with
 `with_file_picker`: `Opens` on the web alone), and how much motion it shows
 (`graphics`, the profile's `GraphicsTier`; `shuyi-app` shows another in a
-debug build when `SHUYI_GRAPHICS` names one, with `with_graphics`). Read them from the target's
+debug build when `SHUYI_GRAPHICS` names one, with `with_graphics`), and the
+system's preferred languages, most preferred first (`languages`, with
+`with_languages`, as the system writes them: each read as a tag, what
+doesn't read dropped; a profile has none). A game picks its first language
+from them (`FirstLanguage::System`), so a backend that can ask the system
+says them: `shuyi-app` reads `sys-locale` on a desktop (its
+`system-languages` feature, on by default) and `navigator.languages` on the
+web (`languages.js`), and `shuyi-playdate` the device's `getLanguage`
+(`en` or `ja`). One that can't leaves them empty, and the game starts in
+its source language. Read them from the target's
 profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
 embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
@@ -916,7 +925,9 @@ one side, the engine's types on the other.
       `shuyi-assets`), with the device's SDK behind it.
 - [ ] Each method above, and the loop calling `App::frame`.
 - [ ] `facts` from its target's profile: the profile's id, read with
-      `PlatformFacts::from_profile`, never the desktop's default.
+      `PlatformFacts::from_profile`, never the desktop's default; and the
+      system's languages with `with_languages`, where the device says
+      them.
 - [ ] The frame cap applied and reported (`App::set_pacing`), or the
       device's fixed rate reported as the cap applied.
 - [ ] Its storage passes the conformance suite.

@@ -353,8 +353,9 @@ launches.
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
-(game#1013, mod tables merged by id), and 2226, 2253 and 2349
-(game#0825, the language option). 2342 (game#0826, the voices' volume)
+(game#1013, mod tables merged by id), 2226, 2253 and 2349
+(game#0825, the language option; 2349 done), and 2278 (game#0831, a
+language's own pictures). 2342 (game#0826, the voices' volume)
 is done.
 
 **Seeing what players see:**
@@ -410,7 +411,8 @@ is done.
 | 3218 (done) | Typed text arguments: screen text and tips choose their words |
 | 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
-| 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
+| 2349 (done) | The player's language: a setting per profile, an options row, the system's languages at first start |
+| 2278 | A language's own copies of files: a pack's `files/`, `localized_path` and `Ctx::localized` (game#0831, after 2349) |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |

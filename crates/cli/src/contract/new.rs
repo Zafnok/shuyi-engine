@@ -39,7 +39,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,11 @@ pub struct NewInput {
     /// `app-info` checks it; `com.example.<crate name>` if none.
     #[serde(default)]
     pub id: Option<String>,
+    /// The name of the folder its saves are kept in (`shuyi.ron`'s
+    /// `app.storage`), checked as `app-info` checks it; the id if none, and
+    /// none if the same as the id.
+    #[serde(default)]
+    pub storage: Option<String>,
     /// Where it gets the engine from.
     #[serde(default)]
     pub engine: Engine,
@@ -141,6 +146,7 @@ impl NewInput {
             set: Answers::default(),
             name: None,
             id: None,
+            storage: None,
             engine: Engine::Main,
             force: false,
             private_url: None,
@@ -471,8 +477,12 @@ fn plan_with(
         crate::app_info::check_id(id).map_err(|e| refused(format!("--id: {e}")))?;
         fill.id.clone_from(id);
     }
-    let plan = template::compose(template, &answers, &catalog, &fill)
+    let storage = storage_of(input, &fill.id).map_err(refused)?;
+    let mut plan = template::compose(template, &answers, &catalog, &fill)
         .map_err(|e| (code_of(&e), e.to_string()))?;
+    if let Some(storage) = storage {
+        with_storage(&mut plan.files, storage).map_err(|e| (codes::FILE, e))?;
+    }
     limits.extend(plan.limits.iter().cloned());
     let picked = plan.answers.0.get(TARGETS).cloned().unwrap_or_default();
     if picked != plan.targets {
@@ -497,6 +507,46 @@ fn plan_with(
         ));
     }
     Ok((plan, limits, catalog))
+}
+
+/// The name of the folder `input`'s game keeps its saves in, if it isn't
+/// its id `id` (a `--storage` equal to the id is none); or why `--storage`
+/// can't name one.
+fn storage_of<'a>(input: &'a NewInput, id: &str) -> Result<Option<&'a str>, String> {
+    let Some(storage) = input.storage.as_deref() else {
+        return Ok(None);
+    };
+    crate::app_info::check_storage(storage).map_err(|e| format!("--storage: {e}"))?;
+    Ok((storage != id).then_some(storage))
+}
+
+/// `files`, a planned game's, with `shuyi.ron`'s `app` keeping its saves
+/// under `storage`, and the Rust file of that `app` as `app-info` writes it
+/// (so `app-info --check` passes on the new game). Fails when the template
+/// makes no `shuyi.ron` with an `app`.
+fn with_storage(files: &mut BTreeMap<PathBuf, Vec<u8>>, storage: &str) -> Result<(), String> {
+    let file = crate::project::FILE;
+    let text = files
+        .get(Path::new(file))
+        .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+        .ok_or_else(|| format!("the template makes no {file}: --storage has nowhere to go"))?;
+    let quoted = ron::to_string(storage).map_err(|e| e.to_string())?;
+    let part = format!(
+        "(\n    app: (\n        // The name of the folder its saves are kept in, in place of\n        \
+         // the id.\n        storage: {quoted},\n    ),\n)\n"
+    );
+    let merged = template::ron_merge::merge(&text, &part)
+        .map_err(|(at, message)| format!("{file}: {at}: {message}"))?;
+    let config = crate::project::Config::parse(&merged).map_err(|e| format!("{file}: {e}"))?;
+    let app = config.app.as_ref().ok_or_else(|| {
+        format!("the template's {file} has no `app`: --storage has nowhere to go")
+    })?;
+    if let Some(code) = &app.code {
+        let rust = crate::app_info::rust(app, config.command());
+        files.insert(PathBuf::from(code), rust.into_bytes());
+    }
+    files.insert(PathBuf::from(file), merged.into_bytes());
+    Ok(())
 }
 
 /// `answers` with the targets checked against the engine's profiles, or
@@ -617,7 +667,8 @@ pub fn usage(command: &str) -> String {
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
          \x20          [--perspective IDS] [--bodies IDS] [--online ID] [--world-drawing IDS]\n\
          \x20          [--kind IDS] [--scripting ID] [--targets IDS] [--no-input] [--questions]\n\
-         \x20          [--name NAME] [--id ID] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
+         \x20          [--name NAME] [--id ID] [--storage NAME]\n\
+         \x20          [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
          \x20          [--force] [--json] [--examples | --no-examples]\n\
          \x20          [--github | --no-github] [--owner LOGIN] [--visibility public|private]\n\
          \x20          [--assets-visibility private|public] [--private KINDS | --private none]\n\
@@ -627,7 +678,8 @@ pub fn usage(command: &str) -> String {
          then --answers' file, then each --set and each flag of the catalog's concerns\n\
          (--perspective, --bodies…: answer ids, several with commas) and --targets. A\n\
          question nothing answers takes its default, and a planned or parked answer is\n\
-         refused. --id is the game's reverse-DNS id (com.example.<crate name> without).\n\
+         refused. --id is the game's reverse-DNS id (com.example.<crate name> without),\n\
+         --storage the name of the folder its saves are kept in (the id without).\n\
          --questions lists the questions for the answers given so far and makes nothing;\n\
          at the end, new prints the one command that makes the same game again.\n\
          The game depends on the engine's repository\n\
@@ -670,6 +722,7 @@ pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
             }
             "--name" => input.name = Some(value()?),
             "--id" => input.id = Some(value()?),
+            "--storage" => input.storage = Some(value()?),
             "--targets" => {
                 let (_, targets) = Answers::parse_set(&format!("{TARGETS}={}", value()?))?;
                 set.insert(TARGETS.to_owned(), targets);

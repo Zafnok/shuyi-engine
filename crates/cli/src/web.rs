@@ -5,7 +5,8 @@
 //! vendored JS loaders (`web/mq_js_bundle.js`, and `web/sapp_jsutils.js`
 //! for the JS objects some plugins hand across) and the engine's own
 //! plugins (`web/storage.js` for `localStorage`, `web/gamepad.js` for
-//! controllers, `web/page-files.js` for the files the page hands the game,
+//! controllers, `web/languages.js` for the system's languages,
+//! `web/page-files.js` for the files the page hands the game,
 //! and the rest). The shell is built into this tool; see
 //! `web/README.md`, which also says how a game's binary gets the link
 //! argument these plugins need. Each `--<feature>` turns on a feature of
@@ -38,12 +39,13 @@ use crate::project::Web;
 /// The shell's files: name and contents. `index.html` has `%TITLE%`,
 /// `%WASM%` and `%PACK%` in it, for the game's title, its binary and the
 /// pack beside it (empty for a build that embeds its files).
-const SHELL: [(&str, &str); 9] = [
+const SHELL: [(&str, &str); 10] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
     ("storage.js", include_str!("../web/storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
+    ("languages.js", include_str!("../web/languages.js")),
     ("sound.js", include_str!("../web/sound.js")),
     ("player-files.js", include_str!("../web/player-files.js")),
     ("page-files.js", include_str!("../web/page-files.js")),
@@ -60,12 +62,13 @@ enum Origin {
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
-const SHELL_NOTICES: [(&str, Origin); 9] = [
+const SHELL_NOTICES: [(&str, Origin); 10] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
     ("storage.js", Origin::Engine),
     ("gamepad.js", Origin::Engine),
+    ("languages.js", Origin::Engine),
     ("sound.js", Origin::Engine),
     ("player-files.js", Origin::Engine),
     ("page-files.js", Origin::Engine),
@@ -790,6 +793,8 @@ mod tests {
 
     /// The Rust side of `web/gamepad.js`: the engine's web pads.
     const PADS_WEB: &str = include_str!("../../app/src/pads/web.rs");
+    /// The Rust side of `web/languages.js`: the system's languages.
+    const LANGUAGES_WEB: &str = include_str!("../../app/src/languages/web.rs");
     /// The Rust side of `web/storage.js`: the engine's web saves.
     const STORAGE_WEB: &str = include_str!("../../app/src/storage/web.rs");
     /// The error codes `web/storage.js` answers.
@@ -1055,6 +1060,7 @@ mod tests {
             ),
             ("storage.js", ""),
             ("gamepad.js", ""),
+            ("languages.js", ""),
             ("sound.js", ""),
             ("player-files.js", ""),
             ("page-files.js", ""),
@@ -1712,6 +1718,48 @@ mod tests {
         assert!(js.contains("version: VERSION"));
         assert!(js.contains(r#"name: "shuyi_gamepad""#));
         assert!(PADS_WEB.contains("fn shuyi_gamepad_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn languages_js_provides_exactly_the_functions_the_app_imports() {
+        // A function missing on either side only shows up in the browser,
+        // as a warning and a game that never hears the system's languages.
+        let js = shell("languages.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_lang_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(LANGUAGES_WEB, "safe fn shuyi_lang_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
+        assert_eq!(imported, ["shuyi_lang_char", "shuyi_lang_count"]);
+        assert_eq!(provided, imported);
+    }
+
+    #[test]
+    fn languages_js_version_matches_the_app() {
+        let js = shell("languages.js");
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(LANGUAGES_WEB, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_languages""#));
+        assert!(LANGUAGES_WEB.contains("fn shuyi_languages_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn index_html_loads_languages_js_between_the_bundle_and_the_game() {
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
+        let languages = at(r#"<script src="languages.js">"#);
+        let load = at(r#"load("%WASM%")"#);
+        assert!(bundle < languages && languages < load);
     }
 
     #[test]

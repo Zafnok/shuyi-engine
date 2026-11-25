@@ -2176,6 +2176,7 @@ fn the_prompts_game_is_the_printed_commands_game() {
     let mut script = Scripted::new([
         typed("Nick's Moon"),
         typed("org.example.moon"),
+        typed("Moon Saves"),
         Step::Enter,
         picked(&["none"]),
         picked(&["no"]),
@@ -2198,6 +2199,13 @@ fn the_prompts_game_is_the_printed_commands_game() {
     assert_eq!(output.answers.0["targets"], ["desktop", "playdate"]);
     let mut words = shell_words(&output.command);
     assert_eq!(words[..4], ["shuyi", "new", "prompted", "--no-input"]);
+    assert!(
+        output
+            .command
+            .contains(" --id org.example.moon --storage 'Moon Saves' "),
+        "{}",
+        output.command
+    );
     words[2] = "prompted-again".to_owned();
     let again = made_from(&dir, &words[2..]);
     assert!(again.ok, "{again:?}");
@@ -2207,6 +2215,71 @@ fn the_prompts_game_is_the_printed_commands_game() {
         "{}",
         output.command
     );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn storage_names_the_saves_folder_and_the_printed_command_makes_the_same_game() {
+    let dir = scratch("storage");
+    let args = |words: &[&str]| -> Vec<String> { words.iter().map(|w| (*w).to_owned()).collect() };
+    let made = made_from(&dir, &args(&["saves", "--storage", "Demo Saves"]));
+    assert!(made.ok, "{made:?}");
+    let output = made.result.unwrap();
+    let game = dir.join("saves");
+    let project = crate::project::Project::load(&game).unwrap_or_else(|e| panic!("{e}"));
+    let app = project.config.app.as_ref().unwrap();
+    assert_eq!(app.storage.as_deref(), Some("Demo Saves"));
+    assert_eq!(app.id, "com.example.saves");
+    let text = fs::read_to_string(game.join("shuyi.ron")).unwrap();
+    assert!(
+        text.contains("        storage: \"Demo Saves\",\n"),
+        "{text}"
+    );
+    // `app-info --check` passes: the Rust file is the `app`'s.
+    crate::app_info::run(app, &game, project.config.command(), true)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let rust = fs::read_to_string(game.join("crates/game/src/app_info.rs")).unwrap();
+    assert!(rust.contains(".with_storage(\"Demo Saves\")"), "{rust}");
+    // The printed command names it, and makes the same bytes elsewhere.
+    assert!(
+        output.command.contains(" --storage 'Demo Saves'"),
+        "{}",
+        output.command
+    );
+    let mut words = shell_words(&output.command);
+    words[2] = "saves-again".to_owned();
+    let again = made_from(&dir, &words[2..]);
+    assert!(again.ok, "{again:?}");
+    assert_eq!(tree(&game), tree(&dir.join("saves-again")));
+
+    // A storage equal to the id is none: the same game as without, byte
+    // for byte, and a command without it.
+    for cwd in ["a", "b"] {
+        fs::create_dir_all(dir.join(cwd)).unwrap();
+    }
+    let plain = made_from(&dir.join("a"), &args(&["plain"]));
+    let same = made_from(
+        &dir.join("b"),
+        &args(&["plain", "--storage", "com.example.plain"]),
+    );
+    assert!(plain.ok && same.ok, "{plain:?} {same:?}");
+    assert_eq!(same.result.unwrap().command, plain.result.unwrap().command);
+    assert_eq!(tree(&dir.join("a/plain")), tree(&dir.join("b/plain")));
+    let plain_ron = fs::read_to_string(dir.join("a/plain/shuyi.ron")).unwrap();
+    assert!(!plain_ron.contains("storage: \""), "{plain_ron}");
+
+    // A name `check_storage` refuses is refused, with its reason.
+    let refused = made_from(&dir, &args(&["bad", "--storage", ".bad"]));
+    assert_eq!(refused.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    let message = refused.error.unwrap();
+    assert_eq!(
+        message,
+        format!(
+            "--storage: {}",
+            crate::app_info::check_storage(".bad").unwrap_err()
+        )
+    );
+    assert!(!dir.join("bad").exists());
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -2257,11 +2330,26 @@ fn the_questions_listed_make_nothing_and_follow_the_answers_given() {
     let questions = listed.result.unwrap();
     assert_eq!(questions.template, "shuyi-default");
     let ids: Vec<&str> = questions.questions.iter().map(|q| q.id.as_str()).collect();
-    assert_eq!(ids[..4], ["dir", "name", "id", "perspective"]);
+    assert_eq!(ids[..5], ["dir", "name", "id", "storage", "perspective"]);
     assert_eq!(ids.last(), Some(&"targets"));
     assert!(!ids.contains(&"time"));
     let id = questions.questions.iter().find(|q| q.id == "id").unwrap();
     assert_eq!(id.default, ["com.example.moon"]);
+    // The saves' folder follows the id, given or not, unless given itself.
+    let storage = |input: &NewInput| {
+        let listed = wizard::listed(&dir, input).result.unwrap();
+        let question = listed.questions.into_iter().find(|q| q.id == "storage");
+        let question = question.unwrap();
+        assert_eq!(question.flag.as_deref(), Some("--storage"));
+        question.default
+    };
+    assert_eq!(storage(&input), ["com.example.moon"]);
+    input.id = Some("org.example.moon".into());
+    assert_eq!(storage(&input), ["org.example.moon"]);
+    input.storage = Some("Moon Saves".into());
+    assert_eq!(storage(&input), ["Moon Saves"]);
+    input.id = None;
+    input.storage = None;
     // The perspectives given are the default, as `--perspective` gives them.
     input.set = Answers::parse("set", "{ \"perspective\": [] }").unwrap();
     let listed = wizard::listed(&dir, &input).result.unwrap();

@@ -1,6 +1,6 @@
 //! The player's settings: the engine's (the text speed, fullscreen, the
-//! sound groups' volumes, the frame cap) and the game's own, the map's
-//! look; saved as one RON record.
+//! sound groups' volumes, the frame cap, the language picked) and the
+//! game's own, the map's look; saved as one RON record.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -8,6 +8,7 @@ use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use shuyi::ui::frame_cap::FrameCap;
 use shuyi::ui::settings::{GameSettings, Settings, TextSpeed, Volumes, read_old_volumes};
+use shuyi::ui::settings::{language_from_text, language_to_text};
 
 /// How the stage is drawn: which of the engine's skins.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ struct File {
     fullscreen: bool,
     volumes: Volumes,
     frame_cap: FrameCap,
+    language: Option<String>,
     #[serde(skip_serializing, deserialize_with = "shuyi::ui::settings::old_volume")]
     music_volume: Option<u8>,
     #[serde(skip_serializing, deserialize_with = "shuyi::ui::settings::old_volume")]
@@ -69,6 +71,7 @@ impl File {
             fullscreen: s.fullscreen,
             volumes: s.volumes.clone(),
             frame_cap: s.frame_cap,
+            language: language_to_text(s.language.as_ref()),
             music_volume: None,
             sound_volume: None,
         }
@@ -92,6 +95,7 @@ impl GameSettings for Prefs {
         s.volumes = file.volumes;
         read_old_volumes(&mut s.volumes, file.music_volume, file.sound_volume, None);
         s.frame_cap = file.frame_cap;
+        s.language = language_from_text(file.language.as_deref());
         Ok(s)
     }
 }
@@ -110,6 +114,7 @@ mod tests {
         s.volumes.set(MUSIC, 3);
         s.volumes.set(SFX, 7);
         s.frame_cap = FrameCap::Off;
+        s.language = shuyi::assets::lang::LangCode::new("ja");
         let saved = Prefs::to_ron(&s);
         assert_eq!(Prefs::from_ron(&saved), Ok(s));
         assert_eq!(
@@ -120,6 +125,12 @@ mod tests {
         // A save from before the frame cap reads the default.
         let old = Prefs::from_ron("Settings(look: Tiles)").map(|s| s.frame_cap);
         assert_eq!(old, Ok(FrameCap::Fps(60)));
+        // A save from before the language, or with text that isn't a tag,
+        // picks none.
+        let none = Prefs::from_ron("Settings(look: Tiles)").map(|s| s.language);
+        assert_eq!(none, Ok(None));
+        let odd = Prefs::from_ron("Settings(language: Some(\"?\"))").map(|s| s.language);
+        assert_eq!(odd, Ok(None));
     }
 
     /// A save from before the loudness curve: its linear volumes are read

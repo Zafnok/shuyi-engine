@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2226", "2253", "2511"]
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 2349 — The player's language
@@ -234,7 +234,8 @@ engine gives the pieces and a default, and the game chooses.
   - **Either order with 2351** (the engine's own English): if it is
     done, `options.row.language`'s English goes in its engine file; if
     not, it goes in the toy's `en.ron`, and 2351 moves it.
-- **A language's own copies of files.**
+- **A language's own copies of files.** Split to 2278 by the *Size*
+  clause below; it holds this part now, as written here.
   - A pack's folder may hold `files/<path>`: that language's copy of the
     game's file at `<path>`, as in Unreal's `L10N/<culture>/<path>`.
     Both readers (`from_files`, `LangPackRon::decode`) accept `files/`
@@ -244,10 +245,8 @@ engine gives the pieces and a default, and the game chooses.
     readers already skip a settings file (`is_settings_file`): add the
     `files/` exception beside that skip in the same two loops, and test
     a pack holding `files/x.png` and `files/x.png.meta` in both.
-  - **Either order with 2238:** if 2238 is done, accept `files/` once,
-    in `is_pack_file` (`crates/assets/src/lang.rs`), which both readers
-    call; if not, accept it in both readers, and 2238 moves it into
-    `is_pack_file`.
+  - With 2238 (one check of a language folder's files): 2278's clause
+    says where `files/` is accepted.
   - `shuyi_assets::lang::localized_path(languages: &str, chain:
     &[LangCode], path: &str, has: impl Fn(&str) -> bool) -> String`,
     pure: the first `<languages>/<tag>/files/<path>` along the chain
@@ -343,39 +342,40 @@ follows this one. It builds game#0825 on `Settings::language` (an
 
 ## Acceptance criteria
 
-- [ ] On the toy, the language row shows `English`, then `Debug` (the
+- [x] On the toy, the language row shows `English`, then `Debug` (the
       debug pack's own name). Stepping to `Debug` makes
       `ctx.text("home.greeting")` give `HELLO, {name}` at once; Keep
       and a relaunch from the same storage keep it; Discard gives back
       `Hello, {name}` (Harness test in `crates/ui/tests/it/screens.rs`).
-- [ ] Old toy settings without `language` load as `None`;
+- [x] Old toy settings without `language` load as `None`;
       `Settings::restored` keeps the language; each profile keeps its
       own (unit tests).
-- [ ] A change to another setting (the text speed) leaves `Ctx::lang`
+- [x] A change to another setting (the text speed) leaves `Ctx::lang`
       as a test set it (unit test).
-- [ ] With no pick: `System` gives `pt` for the system's `[pt-BR,
+- [x] With no pick: `System` gives `pt` for the system's `[pt-BR,
       en-US]` over a `pt` pack, and the source for `[de]`; `Source`
       gives the source; `Fixed` gives its language (unit tests on
       `Ctx`, and one through `App` on
       `HeadlessPlatform::with_languages`).
-- [ ] The debug language is never picked from the system, and the row
+- [x] The debug language is never picked from the system, and the row
       offers it only with debug tools (unit tests).
-- [ ] The toy's options screen with the language row is a committed
+- [x] The toy's options screen with the language row is a committed
       snapshot, reviewed with `frame-png`.
-- [ ] `localized_path` finds `lang/pt/files/x.png` for `pt-BR`, prefers
+- [x] ~~`localized_path` finds `lang/pt/files/x.png` for `pt-BR`, prefers
       `lang/pt-BR/files/x.png` when that exists, and gives `x.png`
       otherwise. With `lang/pt/` left out of the bundle, it gives
       `x.png`. A copy read back from a pack equals the loose one (unit
-      tests).
-- [ ] A pack with `files/` passes both readers (unit tests).
-- [ ] The functions `languages.js` provides equal the app's imports,
+      tests).~~ (not done: split to 2278 by the *Size* clause)
+- [x] ~~A pack with `files/` passes both readers (unit tests).~~ (not
+      done: split to 2278 by the *Size* clause)
+- [x] The functions `languages.js` provides equal the app's imports,
       its version equals the app's, and `index.html` loads it between
       the bundle and the game (tests in `crates/cli/src/web.rs`); the
       web build passes.
-- [ ] `cargo deny check` passes with `sys-locale`, and `cargo tree -p
+- [x] `cargo deny check` passes with `sys-locale`, and `cargo tree -p
       shuyi-app --target wasm32-unknown-unknown` shows neither it nor
       `wasm-bindgen`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -391,5 +391,111 @@ follows this one. It builds game#0825 on `Settings::language` (an
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `Settings::language: Option<LangCode>`, kept by `Settings::restored`,
+  and `FirstLanguage` (`System`, the default; `Source`; `Fixed`) with
+  `GameData::first_language`, in `crates/ui/src/settings.rs`. The saved
+  forms write it through `language_to_text` and read it with
+  `language_from_text` (text that isn't a tag reads as `None`).
+- `Ctx` sets `Ctx::lang` when the settings load (a launch, a profile
+  switch), when `Settings::language` changes in `preview_settings`, and
+  in `Ctx::set_system_languages`; another setting's change leaves it.
+  The system pick is `best_match` over the source and the packs, never
+  the debug language. `Ctx::widths` follows a tag with no pack along
+  its chain. `Ctx::languages_offered` gives the source and the packs by
+  their own names, the debug language only with debug tools.
+- The system's languages are `PlatformFacts::languages` (with
+  `with_languages`, serialized as text in a session record):
+  `shuyi-app` fills them in `Macroquad::new` from the new
+  `crates/app/src/languages.rs` (`sys-locale` on native; on the web
+  the new `crates/cli/web/languages.js` plugin, in `SHELL`,
+  `SHELL_NOTICES`, `index.html` and the web README, with the three
+  tests); `shuyi-playdate` from a new `Sdk::language` over
+  `system->getLanguage()` (shim, device, fake, and a fake-SDK test).
+  `Setup::ctx` puts the facts in before the settings load.
+- `RowValue::Names` and `RowValue::names`, sharing `Choice`'s
+  stepping, preview and put-back; `OptionRow::language` and
+  `LANGUAGE_ROW`; the toy's row after Key bindings and its key in
+  `toy/en.ron`.
+- Tests: the saved forms (the engine's `()`, the toy's, hello-grid's),
+  `crates/ui/src/ctx/lang_tests.rs` (the order, per profile, the chain,
+  the debug language, another setting's change, the languages
+  arriving, `languages_offered`), the row's own test in
+  `screens/options/tests.rs`, two Harness tests and the snapshot
+  `it__screens__options_with_the_language_row` in
+  `crates/ui/tests/it/screens.rs`, an `App` test on the headless
+  backend's facts, and the facts' serde test.
+
+**Deviations.**
+
+- **Step 6 split to 2278**, by the ticket's *Size* clause (this PR is
+  past 600 lines; `cargo xtask pr-size` counts 1,163). 2278 holds a
+  pack's `files/`, `localized_path` and `Ctx::localized`; 2238's
+  clause and 2725's line now name 2278, and 3059 (whose tests read a
+  pack's `files/`) is blocked by 2278 too. 3007's line on
+  `Ctx::localized` was already gone (3007 is done). Had the PR needed
+  to split further, step 4 (the backends: `shuyi-app`'s native and
+  web reads, the Playdate's) would have gone apart cleanly.
+- **No `Platform::languages`, `Setup::languages` or
+  `HeadlessPlatform::with_languages`**: 3053 (done) made the system's
+  facts one `PlatformFacts`, so they are `PlatformFacts::languages`,
+  and the headless backend takes them through `with_facts`. 3053
+  planned that the facts *hold* them; this ticket added the field.
+  `Setup::ctx` needed no call of its own: it already sets
+  `ctx.platform` before `with_storage`, which picks the language.
+- **Three saved forms, not four**: the grid template's `settings.rs`
+  no longer exists (the template is `templates/shuyi-default`, on the
+  engine's `()` form).
+- **A toggle for `sys-locale`** (the decision of 2026-11-24, after
+  this ticket was written): `shuyi-app`'s `system-languages` feature,
+  on by default, and the facade's, in its defaults
+  (`shuyi-app?/system-languages`; the facade now takes `shuyi-app`
+  with `default-features = false`). hello-grid and snake, which pick
+  the facade's features, turn it on in their `window` feature.
+  `cargo xtask check-modules` counts it as an engine feature, and the
+  API gate's lists name it. A stripped release hello-grid on
+  Windows is 3 KB bigger with it (5,424,128 bytes against 5,421,056,
+  measured on this branch). Off, a desktop game hears no system
+  language and starts in its source language until the player picks;
+  the web reads the browser's either way (our own plugin, no
+  dependency).
+- The `frame-png` review: the toy has no font atlas, so its picture is
+  boxes on its test palette (as its lobby is); it shows the Language
+  row in place and focused. The words are reviewed in the text
+  snapshot, which shows `Language ◄ Debug ►` and the help line already
+  in the debug language.
+
+**Either-order clauses.** 2110, 2351, 2353, 2377 and 3052 now say what
+holds from 2349 (done); the parked 3037 too (its clause only). Not done
+when this landed: 2110 (its version 1 will hold `language`), 2353,
+2351 (`options.row.language` is in the toy's `en.ron`; 2351 moves it),
+3052 and 2377.
+
+**Follow-ups.** 2278 (a language's own copies of files).
+
+Game: game#0825 (a saved language and an Options row, on
+`Settings::language` and `OptionRow::language`) adopts it in the game's
+PR that moves the pin; game#0831 waits on 2278, game#1049 on 3059.
+
+Searched the game at its pin `b69585ee`: `gh search code --repo
+Zafnok/visions-of-shuyi 'ctx.lang'` (its language tests set it on a
+Harness after the launch), `'debug_lang'` (its debug language is its
+`test` pack) and its `assets/lang/` (only `en` and `test`): on any
+system the game starts in English as before, since its only pack is the
+debug language, which the system never picks. It takes `shuyi-app` with
+its default features, so it gets the `system-languages` read.
+
+Behaviour: shuyi-ui: `Ctx::lang` is set again when the settings load (`with_storage`, a profile switch) and when `Settings::language` changes: a tool that set `ctx.lang` before those sees the player's pick or the game's start pick instead. A change to another setting leaves it.
+Behaviour: shuyi-ui: a game with a pack that fits the system's languages starts in it while the player hasn't picked (`FirstLanguage::System`, the default of `GameData::first_language`); answer `FirstLanguage::Source` to keep starting in the source.
+Behaviour: shuyi-ui: Restore defaults (`Settings::restored`) keeps the language picked, as it keeps the layout.
+Behaviour: shuyi-app, shuyi-playdate: `PlatformFacts::languages` holds the system's languages (sys-locale on a desktop, `navigator.languages` on the web, the Playdate's `getLanguage`), so a session record carries them.
+Behaviour: shuyi, shuyi-app: a new default feature, `system-languages`; a game that takes the facade with `default-features = false` gets no system language on a desktop until it adds `shuyi/system-languages`.
+
+Sound parity: none, the gates themselves didn't change: the give-up's
+kept lines (`give_up::KEPT`, the footprint and `ci.yml`) follow the API
+gate's `shuyi-app` feature list, which now names `system-languages`.
+
+Book: `site/content/learn/book/saves-and-settings.md` (*Settings*) says
+what the language setting is, the three first-language policies and the
+row.

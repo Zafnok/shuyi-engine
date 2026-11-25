@@ -327,6 +327,10 @@ fn new_lists_its_questions_as_its_schema_says_and_makes_nothing() {
         .iter()
         .map(|q| q["id"].as_str().unwrap())
         .collect();
+    // The saves' folder right after the id, the id its default.
+    assert_eq!(ids[..4], ["dir", "name", "id", "storage"]);
+    assert_eq!(questions[3]["default"], questions[2]["default"]);
+    assert_eq!(questions[3]["flag"], "--storage");
     // Every concern of the catalog but `time`, each answer with its status
     // and, if it isn't ready, its tickets.
     let catalog = shuyi_cli::catalog::Concerns::embedded().unwrap();

@@ -50,8 +50,9 @@ per-frame pump or the overlay. So one `steam` module in `shuyi-app`
 owns them, written here or in 1144, whichever is done first, and
 everything else takes its handle. 3036's ADR records the rule.
 
-2349 adds the system's languages (`Platform::languages`) and leaves
-Steam's game language to this ticket, which waits for it. 3054 builds
+2349 (done) added the system's languages (`PlatformFacts::languages`,
+filled in `Macroquad::new` from `crates/app/src/languages.rs`) and left
+Steam's game language to this ticket. 3054 builds
 leaderboards with no store in them; Steam's boards come with whichever
 of 3054 and this ticket is done second.
 
