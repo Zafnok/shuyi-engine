@@ -58,13 +58,13 @@ impl Source {
             .gamepads()
             .map(|(id, pad)| {
                 let held = BUTTONS.iter().filter(|(theirs, _)| pad.is_pressed(*theirs));
-                let state = PadState::new(
-                    held.map(|&(_, ours)| ours).collect(),
-                    // gilrs sticks are up-positive; the game's are
-                    // down-positive.
-                    (pad.value(Axis::LeftStickX), -pad.value(Axis::LeftStickY)),
-                    (pad.value(Axis::RightStickX), -pad.value(Axis::RightStickY)),
-                );
+                // gilrs sticks are up-positive; the game's are down-positive.
+                let state = PadState::new(held.map(|&(_, ours)| ours).collect())
+                    .with_left_stick((pad.value(Axis::LeftStickX), -pad.value(Axis::LeftStickY)))
+                    .with_right_stick((
+                        pad.value(Axis::RightStickX),
+                        -pad.value(Axis::RightStickY),
+                    ));
                 let kind =
                     PadKind::from_ids(pad.vendor_id().unwrap_or(0), pad.product_id().unwrap_or(0));
                 (id.into(), kind, state)

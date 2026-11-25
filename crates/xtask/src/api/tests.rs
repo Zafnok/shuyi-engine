@@ -2610,3 +2610,88 @@ fn unreadable_metadata_with_dependencies_is_an_error() {
     );
     let _ = fs::remove_dir_all(&root);
 }
+
+// -- constructors that take two neighbouring numbers (ticket 3503) --
+
+/// A run in which the head's `shuyi-assets` has `MusicSwitch::new(u32, u32,
+/// bool)` on a `#[non_exhaustive]` type, as the base has, and an exhaustive
+/// type's constructor of two numbers.
+fn constructor_run(root: &Path) -> Fake {
+    let listing = "pub mod shuyi_assets\n\
+                   #[non_exhaustive] pub struct shuyi_assets::audio::MusicSwitch\n\
+                   pub const fn shuyi_assets::audio::MusicSwitch::new(u32, u32, bool) -> Self\n\
+                   pub const fn shuyi_assets::audio::MusicSwitch::with_overlap(self, bool) -> Self\n\
+                   pub struct shuyi_assets::ImageRect\n\
+                   pub const fn shuyi_assets::ImageRect::new(u32, u32, u32, u32) -> Self\n";
+    Fake::new(root)
+        .with_tools()
+        .with_base("abc123")
+        .with_base_packages(&catalog_names())
+        .with_listing("base", "shuyi-assets", listing)
+        .with_listing("head", "shuyi-assets", listing)
+}
+
+#[test]
+fn a_run_with_a_constructor_of_two_neighbouring_numbers_fails_and_names_it() {
+    let root = temp_root("constructors");
+    let outcome = run(&root, &Options::default(), &constructor_run(&root));
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    let error = &outcome.errors[0];
+    assert!(
+        error.contains("`shuyi_assets::audio::MusicSwitch::new` takes two neighbouring integers"),
+        "{error}"
+    );
+    assert!(!error.contains("ImageRect"), "{error}");
+    assert!(
+        outcome.summary.contains(
+            "**Constructors, fail:**\n\n- shuyi-assets: `shuyi_assets::audio::MusicSwitch::new`"
+        ),
+        "{}",
+        outcome.summary
+    );
+    // The listing didn't change: this is no break, and the label says so.
+    assert_eq!(outcome.label, Some(Label::None));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_passes_once_the_file_lists_the_constructor() {
+    let root = temp_root("constructors-listed");
+    fs::create_dir_all(root.join("tools")).unwrap();
+    fs::write(
+        root.join(constructors::FILE),
+        "(allowed: [(path: \"shuyi_assets::audio::MusicSwitch::new\", why: \"a fade out, \
+         then a fade in\")])",
+    )
+    .unwrap();
+    let outcome = run(&root, &Options::default(), &constructor_run(&root));
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(
+        !outcome.summary.contains("Constructors, fail"),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_fails_a_stale_entry() {
+    let root = temp_root("constructors-stale");
+    fs::create_dir_all(root.join("tools")).unwrap();
+    fs::write(
+        root.join(constructors::FILE),
+        "(allowed: [\n\
+         (path: \"shuyi_assets::audio::MusicSwitch::new\", why: \"fades\"),\n\
+         (path: \"shuyi_assets::ImageRect::new\", why: \"exhaustive: never a constructor here\"),\n\
+         ])",
+    )
+    .unwrap();
+    let outcome = run(&root, &Options::default(), &constructor_run(&root));
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0].contains("`shuyi_assets::ImageRect::new` is listed in"),
+        "{:?}",
+        outcome.errors
+    );
+    let _ = fs::remove_dir_all(&root);
+}

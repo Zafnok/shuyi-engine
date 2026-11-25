@@ -78,10 +78,13 @@ None.
   a new exhaustive public type is listed in the file with its kind.
 - **From 2095 (done):** `FontAtlasDef`, `FontInk`, `Sound` and
   `DoctorInput` are `#[non_exhaustive]` and stay out of the file.
-- **Either order with 3503:** if 3503 is done, reuse its parser of
-  listing lines (`api/constructors.rs`) for the struct and enum lines;
-  if not, write the parser here, in `api/exhaustive.rs`, and 3503 reuses
-  it.
+- **From 3503 (done):** reuse its reading of listing lines
+  (`api/constructors.rs`): `type_header` reads a `pub struct` or `pub
+  enum` line and whether it is `#[non_exhaustive]`, and `without_generics`
+  takes a path's generic arguments out. Make them `pub(super)` here, and
+  keep the two files and their error kinds apart. Its `CrateApi` keeps
+  the head's constructors (`constructors`); keep the head's listing beside
+  it the same way if this check needs it.
 - **From 2090 (done):** its outside-crate check and this one both read
   the head's listing in `compare_crates` (its `unlisted_outside`, fed by
   `reached_outside`). Keep the two checks and their errors apart.

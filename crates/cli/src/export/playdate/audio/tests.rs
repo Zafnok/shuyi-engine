@@ -276,7 +276,7 @@ fn manifest(sounds: &[&str]) -> AudioManifest {
         let cue = SoundCue::new(vec![(*file).to_owned()], 100, CreditRef::Own);
         m.sounds.insert(format!("cue{at}"), cue);
     }
-    let track = MusicCue::new("theme.ogg".into(), 100, 1000, CreditRef::Own);
+    let track = MusicCue::new("theme.ogg".into(), 1000, CreditRef::Own);
     m.music.insert("theme".into(), track);
     m
 }

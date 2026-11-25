@@ -480,7 +480,9 @@ pub fn splitmix64(seed: u64) -> u64 {
 /// reports what really sounds (a track starts only once its file has
 /// loaded); [`Game::set_music_playing`](crate::Game::set_music_playing)
 /// turns that into this. A view (ADR-0039, kind 3): build it with
-/// [`MusicClock::new`] or [`MusicClock::from_elapsed`].
+/// [`MusicClock::new`] and [`with_position`](MusicClock::with_position), or
+/// [`MusicClock::from_elapsed`] (no constructor takes both times, which a
+/// call could swap: ADR-0150).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct MusicClock {
@@ -497,14 +499,21 @@ pub struct MusicClock {
 }
 
 impl MusicClock {
-    /// The clock of `cue`, `position` seconds into a track `length`
-    /// seconds long, taken as given.
-    pub fn new(cue: impl Into<String>, position: f32, length: f32) -> Self {
+    /// The clock of `cue` at the start of a track `length` seconds long,
+    /// taken as given.
+    pub fn new(cue: impl Into<String>, length: f32) -> Self {
         Self {
             cue: cue.into(),
-            position,
+            position: 0.0,
             length,
         }
+    }
+
+    /// The same clock, `position` seconds into the track, taken as given.
+    #[must_use]
+    pub fn with_position(mut self, position: f32) -> Self {
+        self.position = position;
+        self
     }
 
     /// The clock of `cue`, which started `elapsed` seconds ago (a negative
@@ -1000,7 +1009,7 @@ mod tests {
             }
         );
         assert_eq!(
-            MusicClock::new("theme", 1.5, 10.0),
+            MusicClock::new("theme", 10.0).with_position(1.5),
             MusicClock {
                 cue: "theme".into(),
                 position: 1.5,
@@ -1322,7 +1331,7 @@ mod tests {
 
     #[test]
     fn a_fade_in_starts_at_silence_and_rises_once_the_track_sounds() {
-        let mut m = MusicState::with_switch(MusicSwitch::new(500, 1000, false));
+        let mut m = MusicState::with_switch(MusicSwitch::after_fade(500).with_in_ms(1000));
         assert_eq!(
             frame(&mut m, &[play("title")], 0.5),
             [load("title"), start_at("title", 0.0)]
@@ -1342,7 +1351,7 @@ mod tests {
     #[test]
     fn without_overlap_the_new_track_fades_in_after_the_old_one_stops() {
         let mut m = sounding("title");
-        let switch = play_with("battle", MusicSwitch::new(500, 1000, false));
+        let switch = play_with("battle", MusicSwitch::after_fade(500).with_in_ms(1000));
         assert_eq!(
             frame(&mut m, core::slice::from_ref(&switch), 0.25),
             [load("battle"), gain("title", 0.5)]
@@ -1359,7 +1368,7 @@ mod tests {
         // A track waiting to start doesn't count the load wait: after a
         // fade-out as long as the wait, it still waits to sound.
         let mut m = sounding("title");
-        let switch = play_with("battle", MusicSwitch::new(3000, 1000, false));
+        let switch = play_with("battle", MusicSwitch::after_fade(3000).with_in_ms(1000));
         frame(&mut m, &[switch], 0.0);
         assert_eq!(frame(&mut m, &[], 1.5), [gain("title", 0.5)]);
         assert_eq!(
@@ -1443,7 +1452,7 @@ mod tests {
         assert_eq!(frame(&mut m, &[], 0.125), []);
         // With no fade-in it is back at full gain at once.
         let mut m = crossfading(0.25);
-        let back = play_with("title", MusicSwitch::new(500, 0, true));
+        let back = play_with("title", MusicSwitch::after_fade(500).with_overlap(true));
         assert_eq!(
             frame(&mut m, &[back], 0.0),
             [gain("title", 1.0), gain("battle", 0.25)]
@@ -1718,7 +1727,7 @@ mod tests {
 
     /// A track of `cue`, `looped` or not, `length_ms` long.
     fn track(cue: &str, looped: bool, length_ms: u32) -> MusicCue {
-        MusicCue::new(format!("{cue}.ogg"), 100, length_ms, CreditRef::Own).with_looped(looped)
+        MusicCue::new(format!("{cue}.ogg"), length_ms, CreditRef::Own).with_looped(looped)
     }
 
     #[test]
@@ -1866,8 +1875,12 @@ mod tests {
 
     fn step() -> impl proptest::strategy::Strategy<Value = Step> {
         use proptest::prelude::*;
-        let switch = (0u32..1500, 0u32..1500, any::<bool>())
-            .prop_map(|(out_ms, in_ms, overlap)| MusicSwitch::new(out_ms, in_ms, overlap));
+        let switch =
+            (0u32..1500, 0u32..1500, any::<bool>()).prop_map(|(out_ms, in_ms, overlap)| {
+                MusicSwitch::after_fade(out_ms)
+                    .with_in_ms(in_ms)
+                    .with_overlap(overlap)
+            });
         prop_oneof![
             (0usize..4, proptest::option::of(switch)).prop_map(|(c, s)| Step::Play(c, s)),
             Just(Step::Stop),
@@ -1888,7 +1901,7 @@ mod tests {
             steps in proptest::collection::vec(step(), 0..80),
         ) {
             const CUES: [&str; 4] = ["a", "b", "c", "d"];
-            let mut m = MusicState::with_switch(MusicSwitch::new(default.0, default.1, default.2));
+            let mut m = MusicState::with_switch(MusicSwitch::after_fade(default.0).with_in_ms(default.1).with_overlap(default.2));
             let mut loaded: alloc::collections::BTreeSet<String> = alloc::collections::BTreeSet::new();
             let mut out = Vec::new();
             for step in steps {

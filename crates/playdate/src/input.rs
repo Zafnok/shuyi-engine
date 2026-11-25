@@ -51,7 +51,7 @@ fn state(bits: u32) -> PadState {
         .filter(|&&(bit, _)| bits & bit != 0)
         .map(|&(_, button)| button)
         .collect();
-    PadState::new(buttons, (0.0, 0.0), (0.0, 0.0))
+    PadState::new(buttons)
 }
 
 /// Degrees in a whole turn.

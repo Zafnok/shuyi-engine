@@ -256,8 +256,8 @@ Add the input since the last call, in the order it happened:
   key's `Down`;
 - controller buttons by position: read every pad's state, with the
   platform's own number for the pad (`PadId`, stable while it is plugged
-  in; 0 on a device with one pad), as a `PadState::new(buttons,
-  left_stick, right_stick)`, and give it to
+  in; 0 on a device with one pad), as a `PadState::new(buttons)` with
+  `with_left_stick` and `with_right_stick`, and give it to
   `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`. It holds the
   rules (sticks as directions, the Switch-style swap) and gives each
   pad's own events with its id: every pad's releases, then

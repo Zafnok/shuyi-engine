@@ -306,16 +306,18 @@ pub struct Budgets {
 }
 
 impl Display {
-    /// A screen of any size (no `sizes`), in `color`, whose text is an
-    /// error under `min_text_px` and a warning under `good_text_px`, with
-    /// no safe area, always full screen. Assign the other fields.
+    /// A screen of any size (no `sizes`), in `color`, with no text size
+    /// checked (both at 0), no safe area, always full screen. Set the text
+    /// sizes with [`with_min_text_px`](Self::with_min_text_px) and
+    /// [`with_good_text_px`](Self::with_good_text_px), and assign the other
+    /// fields.
     #[must_use]
-    pub const fn new(color: Color, min_text_px: u16, good_text_px: u16) -> Self {
+    pub const fn new(color: Color) -> Self {
         Self {
             sizes: Vec::new(),
             color,
-            min_text_px,
-            good_text_px,
+            min_text_px: 0,
+            good_text_px: 0,
             safe_area: Insets {
                 top: 0,
                 right: 0,
@@ -324,6 +326,20 @@ impl Display {
             },
             windowed: false,
         }
+    }
+
+    /// The same screen, where text shorter than `min_text_px` is an error.
+    #[must_use]
+    pub const fn with_min_text_px(mut self, min_text_px: u16) -> Self {
+        self.min_text_px = min_text_px;
+        self
+    }
+
+    /// The same screen, where text shorter than `good_text_px` is a warning.
+    #[must_use]
+    pub const fn with_good_text_px(mut self, good_text_px: u16) -> Self {
+        self.good_text_px = good_text_px;
+        self
     }
 }
 
@@ -672,7 +688,12 @@ pub(crate) mod tests {
             safe_area: Insets::default(),
             windowed: false,
         };
-        assert_eq!(Display::new(Color::OneBit, 8, 10), display);
+        assert_eq!(
+            Display::new(Color::OneBit)
+                .with_min_text_px(8)
+                .with_good_text_px(10),
+            display
+        );
         let frame_rate = FrameRate {
             target: 30,
             floor: 30,

@@ -127,20 +127,20 @@ impl AudioManifest {
     /// switch: the manifest's fade-out, fade-in and overlap.
     #[must_use]
     pub const fn music_switch(&self) -> MusicSwitch {
-        MusicSwitch::new(
-            self.music_fade_ms,
-            self.music_fade_in_ms,
-            self.music_overlap,
-        )
+        MusicSwitch::after_fade(self.music_fade_ms)
+            .with_in_ms(self.music_fade_in_ms)
+            .with_overlap(self.music_overlap)
     }
 }
 
 /// How one music track gives way to the next (ADR-0054): the old one
 /// fades out over `out_ms`, and the new one fades in over `in_ms`,
 /// starting as the old one begins to fade (`overlap`, a crossfade) or once
-/// it has stopped. Build it with [`new`](Self::new),
-/// [`after_fade`](Self::after_fade) or [`crossfade`](Self::crossfade)
-/// (ADR-0039).
+/// it has stopped. Build it with [`after_fade`](Self::after_fade) or
+/// [`crossfade`](Self::crossfade), and change it with
+/// [`with_in_ms`](Self::with_in_ms) and [`with_overlap`](Self::with_overlap)
+/// (ADR-0039; no constructor takes both lengths, which a call could swap:
+/// ADR-0150).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct MusicSwitch {
@@ -155,28 +155,38 @@ pub struct MusicSwitch {
 }
 
 impl MusicSwitch {
-    /// A fade-out of `out_ms`, a fade-in of `in_ms`, overlapping or not.
-    #[must_use]
-    pub const fn new(out_ms: u32, in_ms: u32, overlap: bool) -> Self {
-        Self {
-            out_ms,
-            in_ms,
-            overlap,
-        }
-    }
-
     /// The old track fades out over `out_ms`, then the new one starts at
     /// full gain: the engine's switch before crossfades.
     #[must_use]
     pub const fn after_fade(out_ms: u32) -> Self {
-        Self::new(out_ms, 0, false)
+        Self {
+            out_ms,
+            in_ms: 0,
+            overlap: false,
+        }
     }
 
     /// A crossfade: the new track fades in over `ms` while the old one
     /// fades out over the same time.
     #[must_use]
     pub const fn crossfade(ms: u32) -> Self {
-        Self::new(ms, ms, true)
+        Self::after_fade(ms).with_in_ms(ms).with_overlap(true)
+    }
+
+    /// The same switch, with the new track fading in over `in_ms` (0: it
+    /// starts at full gain).
+    #[must_use]
+    pub const fn with_in_ms(mut self, in_ms: u32) -> Self {
+        self.in_ms = in_ms;
+        self
+    }
+
+    /// The same switch, with the new track starting as the old one begins
+    /// to fade (`true`, a crossfade) or once it has stopped.
+    #[must_use]
+    pub const fn with_overlap(mut self, overlap: bool) -> Self {
+        self.overlap = overlap;
+        self
     }
 }
 
@@ -396,14 +406,15 @@ impl LoopRegion {
 }
 
 impl MusicCue {
-    /// The track `file`, at `volume` percent, `length_ms` long, made by
-    /// `credit`, looped, in the `music` group, round the whole track (or
-    /// the region its file names).
+    /// The track `file`, `length_ms` long, made by `credit`, at full
+    /// volume (100 percent: [`with_volume`](Self::with_volume) changes it),
+    /// looped, in the `music` group, round the whole track (or the region
+    /// its file names).
     #[must_use]
-    pub const fn new(file: String, volume: u8, length_ms: u32, credit: CreditRef) -> Self {
+    pub const fn new(file: String, length_ms: u32, credit: CreditRef) -> Self {
         Self {
             file,
-            volume,
+            volume: 100,
             looped: true,
             length_ms,
             credit,
@@ -411,6 +422,13 @@ impl MusicCue {
             loop_start_ms: None,
             loop_end_ms: None,
         }
+    }
+
+    /// The same track, at `volume` percent (0–100).
+    #[must_use]
+    pub const fn with_volume(mut self, volume: u8) -> Self {
+        self.volume = volume;
+        self
     }
 
     /// The same track, looping round `region` after its intro.
@@ -1138,7 +1156,7 @@ pub(crate) mod tests {
     #[test]
     fn a_music_cues_constructor_builds_what_a_literal_built() {
         assert_eq!(
-            MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own),
+            MusicCue::new("a.ogg".into(), 1000, CreditRef::Own).with_volume(80),
             MusicCue {
                 file: "a.ogg".into(),
                 volume: 80,
@@ -1150,7 +1168,8 @@ pub(crate) mod tests {
                 loop_end_ms: None,
             }
         );
-        let once = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own)
+        let once = MusicCue::new("a.ogg".into(), 1000, CreditRef::Own)
+            .with_volume(80)
             .with_looped(false)
             .with_group("weather");
         assert_eq!(
@@ -1158,8 +1177,11 @@ pub(crate) mod tests {
             (false, Some("weather"))
         );
         let region = LoopRegion::new(250, 750);
-        let looped =
-            region.map(|r| MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own).with_loop(r));
+        let looped = region.map(|r| {
+            MusicCue::new("a.ogg".into(), 1000, CreditRef::Own)
+                .with_volume(80)
+                .with_loop(r)
+        });
         assert_eq!(
             looped.map(|m| (m.loop_start_ms, m.loop_end_ms, m.loop_region())),
             Some((Some(250), Some(750), region))
@@ -1188,7 +1210,7 @@ pub(crate) mod tests {
 
     #[test]
     fn a_cue_naming_one_end_has_no_region() {
-        let mut m = MusicCue::new("a.ogg".into(), 80, 1000, CreditRef::Own);
+        let mut m = MusicCue::new("a.ogg".into(), 1000, CreditRef::Own).with_volume(80);
         m.loop_start_ms = Some(10);
         assert_eq!(m.loop_region(), None);
         m.loop_end_ms = Some(10);
@@ -1345,21 +1367,22 @@ pub(crate) mod tests {
         );
         let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
         assert_eq!((m.music_fade_in_ms, m.music_overlap), (300, true));
-        assert_eq!(m.music_switch(), MusicSwitch::new(800, 300, true));
+        assert_eq!(
+            m.music_switch(),
+            MusicSwitch::after_fade(800)
+                .with_in_ms(300)
+                .with_overlap(true)
+        );
     }
 
     #[test]
     fn the_switch_constructors_set_its_three_fields() {
-        let s = MusicSwitch::new(1, 2, true);
+        let s = MusicSwitch::after_fade(1).with_in_ms(2).with_overlap(true);
         assert_eq!((s.out_ms, s.in_ms, s.overlap), (1, 2, true));
-        assert_eq!(
-            MusicSwitch::after_fade(500),
-            MusicSwitch::new(500, 0, false)
-        );
-        assert_eq!(
-            MusicSwitch::crossfade(750),
-            MusicSwitch::new(750, 750, true)
-        );
+        let after = MusicSwitch::after_fade(500);
+        assert_eq!((after.out_ms, after.in_ms, after.overlap), (500, 0, false));
+        let cross = MusicSwitch::crossfade(750);
+        assert_eq!((cross.out_ms, cross.in_ms, cross.overlap), (750, 750, true));
     }
 
     #[test]

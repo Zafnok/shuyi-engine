@@ -1354,7 +1354,9 @@ mod tests {
         m.sounds
             .insert("broken".into(), sound(&["sfx/broken.wav"], 100));
         let track = |file: &str, volume, looped| {
-            MusicCue::new(file.into(), volume, 60_000, CreditRef::Own).with_looped(looped)
+            MusicCue::new(file.into(), 60_000, CreditRef::Own)
+                .with_volume(volume)
+                .with_looped(looped)
         };
         m.music.insert("title".into(), track("title.ogg", 80, true));
         m.music
