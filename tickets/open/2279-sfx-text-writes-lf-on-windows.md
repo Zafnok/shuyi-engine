@@ -22,9 +22,9 @@ Found while working 2853 (the book's box pusher's push and win sounds).
 `shuyi sfx coin --out crates/game/files/sfx/coin.sfx.ron` (2277,
 `crates/cli/src/contract/sfx.rs`) writes a file whose first line, the
 one naming the preset, ends in `\n` and every other in `\r\n`, and the
-contract's `text` field carries the same mix: the MCP `sfx` tool gave
-`"// The engine's preset `hit` (`shuyi sfx hit`).\n(\r\n    wave: Noise,\r\n…`
-on Nick's machine. The repository keeps text files LF (`.gitattributes`:
+contract's `text` field carries the same mix: on Nick's machine the
+MCP `sfx` tool's `text` for `hit` had `\n` after its first line and
+`\r\n` after each other. The repository keeps text files LF (`.gitattributes`:
 `* text=auto eol=lf`), the engine's other RON writers set
 `.new_line("\n")` (`crates/ui/src/storage/bundle.rs`,
 `crates/platform/src/session.rs`, `crates/cli/src/font_atlas.rs`), and a
