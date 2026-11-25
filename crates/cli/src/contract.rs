@@ -51,6 +51,8 @@ pub mod explain;
 pub mod export;
 #[cfg(test)]
 pub(crate) mod fake;
+#[cfg(test)]
+mod flags;
 pub mod import;
 pub mod lint;
 pub mod modules;

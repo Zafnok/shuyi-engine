@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 3429 — Every flag of an operation's CLI is a field of its input or is listed as the CLI's alone, checked by a test
@@ -79,12 +79,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The test covers every op in `Op::ALL`, and fails on a flag that
+- [x] The test covers every op in `Op::ALL`, and fails on a flag that
       is in neither the input nor the CLI-only list.
-- [ ] Every CLI-only flag has a reason beside it.
-- [ ] `docs/contract.md` lists the CLI-only flags or links where they
+- [x] Every CLI-only flag has a reason beside it.
+- [x] `docs/contract.md` lists the CLI-only flags or links where they
       are.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -92,4 +92,43 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **How the flags are listed: the usage text, and a test that drives
+  the parser.** An op's flags are the ones its usage text names
+  (`contract::flags::usage`, which calls each op's `usage`). The test
+  checks that each op's parser takes each of them: alone or with a
+  value, it doesn't answer what it answers a flag it doesn't know. A
+  `const` slice that the parser also reads would have meant rebuilding
+  a dozen match-arm parsers, and some flags aren't fixed: `run`,
+  `playtest` and `autobalance` take the game's start options, and `new`
+  takes the catalog's concerns. The usage is what people read, so it
+  is the one list. The cost: a flag the parser takes and the usage
+  doesn't name isn't checked. Two were like that, and this PR adds
+  them to the usage: `run`/`scene --drop` and `attach --crank`.
+- `crates/cli/src/contract/flags.rs` (compiled for tests only) holds:
+  - `CLI_ONLY` (op, flag, why);
+  - `RENAMED` (op, flag, field): `--entrant` to `entrants`, the steps
+    to `script`/`steps`, `new`'s wizard flags and `--examples` to
+    `set`, `--engine-rev`/`--engine-path` to `engine`, `attach --for`
+    to `follow_for`, `--any-stamp` to `session`;
+  - `BEFORE_THE_PARSER`: `run --watch`, which `lib.rs` reads before
+    `run`'s parser sees it;
+  - its tests: the parity test over `Op::ALL`, the parser test, a
+    test that the tables name only real flags and fields, the name
+    mapping's unit test and the usage scraper's unit test.
+
+  Checked by hand: a `bake --made-up` added to the parser and the usage
+  failed the parity test, with its message.
+- The test found no flag that should reach MCP and doesn't, other than
+  `--questions` (3426's). It is in `CLI_ONLY` as "3426 moves it into
+  the input", and 3426's clause now says to take it off the list.
+- `doctor`, `replay` and `import` had their usage inline in `cli.rs`.
+  Each now has a `usage` function, so every op's usage is in one.
+- Docs: `docs/contract.md`, *The MCP server*, lists the CLI's own flags
+  and links `flags.rs`.
+- The ticket was written today; nothing in it had gone stale.
+
+No break.
+
+Book: none, three `usage` functions are added beside the ones the other ops already have. The book never names an op's usage function.
+
+Behaviour: shuyi-cli: the usage of `run` and `scene` names `--drop`, and the usage of `attach` names `--crank`. Searched the game for `let that many seconds pass` and `usage(`: no hit.

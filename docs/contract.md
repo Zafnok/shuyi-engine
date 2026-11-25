@@ -511,6 +511,18 @@ game's folder from the session's folder (the session folder's own
 project if it is left out). `lint` runs in the server, not the game's
 tool program.
 
+Every flag of an operation is a field of its input, the tool's too
+(`--any-stamp` is `any_stamp`; `--entrant` is `entrants`, a step such as
+`--keys` is one of `script`'s, a wizard's flag of `new` one of `set`'s),
+except the CLI's own flags, which MCP never gets:
+[`contract/flags.rs`](../crates/cli/src/contract/flags.rs) lists them
+with why, and its test fails on a flag that is in neither (ticket 3429).
+They are `--json` (an MCP tool always answers JSON); `playtest`'s
+`--report` and `--brief` (output only); `run --watch` (the game in its
+window, not headless); and `new`'s `--no-input`, `--questions`, and its
+repository step (`--github`, `--no-github`, `--owner`, `--visibility`,
+`--assets-visibility`, `--private`, `--private-folder`), which MCP refuses.
+
 The **session's folder** is the client's first root: a client that
 declares `roots` in `initialize` gets a `roots/list` request after
 `notifications/initialized` (Claude Code lists the session's working

@@ -281,7 +281,8 @@ pub fn usage(command: &str) -> String {
          --keys \"Enter Up\"    press and release each key chord in turn (or --script)\n  \
          --pad \"South\"        press and release each controller button in turn\n  \
          --act Confirm        press the game's action by its key, or else its button\n  \
-         --wait 0.5           let that many seconds pass, in the build's frames (60 a second)\n\n\
+         --wait 0.5           let that many seconds pass, in the build's frames (60 a second)\n  \
+         --crank -30          wind the crank that many degrees in one frame\n\n\
          --frames N           then let N frames pass\n  \
          --screenshot <file>  write the window's picture there, as a PNG\n  \
          --log-since N        the log's lines from number N (the last answer's log_next)\n  \
