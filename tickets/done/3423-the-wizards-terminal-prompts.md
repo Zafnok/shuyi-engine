@@ -129,8 +129,8 @@ asked is missing.
 - [x] Off a terminal, or with `--no-input`, nothing is asked.
 - [x] `--questions --json` lists the GitHub questions, with the field
       about `github: yes`, and matches its schema.
-- [ ] Nick's sign-off is recorded in the Completion notes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~Nick's sign-off is recorded in the Completion notes.~~ (not done: asked in the PR, recorded here before it merges)
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
