@@ -38,7 +38,7 @@ to change the game from outside, or copy what the screen does.
 
 So Shuyi games are built another way.
 
-The state changes in **only one way**: by a **command**.
+The state changes in *only one way*: by a **command**.
 A command is plain data saying what the player is asking for: "take one step right". The rules
 take a command and either change the state, or refuse and change nothing. The same state and
 the same command always give the same result, on every computer.
@@ -87,7 +87,7 @@ ones you just wrote.
 
 `Outcome` is how a game ends. For now, nothing ends it, so it's `()`.
 
-**`check`** answers "would this command be allowed?", without changing anything. It finds where
+*`check`* answers "would this command be allowed?", without changing anything. It finds where
 the step leads, and refuses if there's a wall or a box there. `self.player.step(dir)` is the engine's
 way of saying "one tile that way from here".
 
@@ -96,16 +96,16 @@ way of saying "one tile that way from here".
 say".
 {% end %}
 
-**`apply`** does it. It calls `check` first, and that `?` is doing a job here: if `check` refuses,
-`apply` returns the refusal at once, before anything has changed. This is what's meant by **all or
-nothing**: a refused command changes nothing, not even part of the state.
+*`apply`* does it. It calls `check` first, and that `?` is doing a job here: if `check` refuses,
+`apply` returns the refusal at once, before anything has changed. This is what's meant by *all or
+nothing*: a refused command changes nothing, not even part of the state.
 
 {% newcomer(to="rust", topic="`&mut self` and `&self`") %}
 Rust helps you here, as
 `&mut self` says this one may change the puzzle, and `check`'s `&self` says that one may not.
 {% end %}
 
-**`legal_commands`** lists everything allowed right now. Bots will use it. It tries all four
+*`legal_commands`* lists everything allowed right now. Bots will use it. It tries all four
 directions, and keeps those that `check` accepts.
 
 {% newcomer(to="rust", topic="an iterator chain") %}

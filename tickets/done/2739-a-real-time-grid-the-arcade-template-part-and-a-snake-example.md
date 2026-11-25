@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2137", "2115", "2501", "2511"]
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 2739 — A real-time grid: the arcade template part and a snake example
@@ -125,9 +125,9 @@ None.
     `legal_commands` would see time as a move, and agents would learn a
     path that 2137 makes legacy.
 - **A tick replay in the contract:**
-  `shuyi_cli::contract::replay::ticks(file, initial, record, outcome) ->
-  Result<ReplayRun, String>` beside `turns`, over 2137's `TickSim` and
-  `TickRecord`:
+  `shuyi_cli::contract::replay::ticks::<A, _>(file, initial, record,
+  outcome) -> ReplayRun` beside `turns`, over 2137's `TickSim` and
+  `TickRecord`, `A` the game's actions, which name each step's input:
   - `initial` is the state the caller built from the record's seed;
     `outcome` is a function `Fn(&S) -> Option<String>`, because 2137's
     `TickSim` has no `outcome()` (the snake passes its own);
@@ -180,8 +180,8 @@ None.
     `GameSettings::BACKGROUND` is `Background::KEEP_RUNNING.paused()`
     (`shuyi_ui::settings`, built by 3093).
   - **the actions:** `Up`, `Down`, `Left`, `Right`, `Confirm` and
-    `Cancel`, the grid template's six
-    (`templates/grid/crates/game/src/action.rs`). `files/keymap.ron` has
+    `Cancel`, the short path's six (`UiAction`, in `shuyi::prelude`;
+    the grid template's own `action.rs` went with 2501). `files/keymap.ron` has
     a table for the Playdate (the d-pad, A and B) and one for the Steam
     Deck, as hello-grid's does. `shuyi.ron` has a `check_keys` section
     as the grid template's has. Nothing names a key (the `input-actions`
@@ -388,32 +388,34 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The ADR is written, ADR-0013's `Status:` line says which of its
+- [x] The ADR is written, ADR-0013's `Status:` line says which of its
       sentences it supersedes, and `docs/adr/README.md` has both rows.
-- [ ] The contract's `replay` on the playthrough's record lists step 0
+- [x] The contract's `replay` on the playthrough's record lists step 0
       and one step per tick, and finds no difference between its two
       runs.
-- [ ] The snake's golden table passes natively and on wasm32 in CI's
+- [x] The snake's golden table passes natively and on wasm32 in CI's
       `determinism` job.
-- [ ] The Harness playthrough eats the first food, grows, dies on a wall
+- [x] The Harness playthrough eats the first food, grows, dies on a wall
       and starts again, through actions only.
-- [ ] With no input, the snake moves the same number of tiles in a
+- [x] With no input, the snake moves the same number of tiles in a
       second at 30 and at 60 frames a second.
-- [ ] The property test passes.
-- [ ] `cargo shuyi check`, `check --target all` (`desktop`, `web`,
+- [x] The property test passes.
+- [x] `cargo shuyi check`, `check --target all` (`desktop`, `web`,
       `steam-deck` and `playdate`) and `check-keys` pass on the example,
       and its `frame-png` pictures are checked in.
-- [ ] Pages publishes the web build at `/examples/snake/`, and `/snake/`
-      redirects there.
-- [ ] `shuyi new` with the `arcade` short name makes a game whose gates
+- [x] ~~Pages publishes the web build at `/examples/snake/`, and `/snake/`
+      redirects there.~~ (not done: Pages runs on `main` after the merge;
+      the card and `pages.yml`'s loop are in place)
+- [x] ~~`shuyi new` with the `arcade` short name makes a game whose gates
       pass in the `templates` job, and its test passes at 30 and 60
-      frames a second.
-- [ ] The example's README states its own lines, and the engine's README
+      frames a second.~~ (not done: moved to 2787, deviation 3)
+- [x] The example's README states its own lines, and the engine's README
       claims the style.
-- [ ] The skill is in `skills/shuyi-stage-arcade/`, passing
-      `check-skills`, CI's `skills` job runs its worked example, and
-      the eval's snake task has `examples/snake` as its reference.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~The skill is in `skills/shuyi-stage-arcade/`, passing
+      `check-skills`, and CI's `skills` job runs its worked example~~ (not
+      done: moved to 2787, deviation 3); the eval's snake task has
+      `examples/snake` as its reference.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -431,4 +433,124 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-11-24.
+
+What was done:
+
+- **ADR-0148**, "A grid stage may run in real time": it supersedes ADR-0013
+  §1's two sentences on the time concern, and says how a grid tick stage
+  is built (a `TickSim` in tile coordinates, moves timed with `Every`,
+  stepped by `TickDriver`, drawn through `MapScene`, replayed by
+  `replay::ticks`). ADR-0013's `Status:` line names it, and so do
+  ADR-0003's (§2) and ADR-0009's (§2), which it extends; the index has
+  the new row and the three changed ones.
+- **`shuyi_cli::contract::replay::ticks`** beside `turns`, and
+  `input_in_words` (a step's input as `pressed Up; held Up`, another seat
+  after its number); a unit test replays a four-step record of two
+  seats. `docs/contract.md`'s `replay` row and `GameTools::replay`'s doc
+  name it.
+- **`examples/snake`**, on the short path (`BasicGame`, `run_game`,
+  `UiAction`): its rules (`src/rules.rs`, a `TickSim`, pure, with a
+  float ban), the title, the board, a pause menu and the end of a run
+  (`src/screens.rs`), its own part of the data (`files/board.map`, 25 ×
+  14, and `files/tuning.ron` through `Ron<Tuning>`), its tools (`check`,
+  `run`/`scene` with `length`, `score` and `over` in the scene's data,
+  `replay` through `ticks`, `controls`, `one_bit`, `bake`), two sounds
+  from the presets `coin` and `explosion`, the font copied from Hello,
+  Grid's, a README stating its 908 lines of code (`cargo xtask
+  template-lines examples/snake`) and its preview.
+- **Tests:** 12 unit tests of the rules (a move, a turn, two queued, a
+  turn back ignored, eating and growing at the next move, the speed-up
+  and its floor, death on a wall and on the body, filling the board, food
+  never on the body with `ScriptedRng`, the same seed and inputs); in
+  `tests/it/`, the playthrough of seed 1 through `act` and `wait` (eats,
+  grows, dies on a wall, starts again on Confirm), the pause menu, a
+  resume after a suspend, 30 and 60 frames a second (7 tiles in 60 steps
+  both), `check` and `check --target all` through the contract, the
+  scene's data, the contract's `replay` of the playthrough's record
+  (step 0 and one step per tick, no difference), two property tests
+  (3 000 random steps keep the body whole and on the floor; a record
+  replays to the same hashes twice), the preview, and two `frame-png`
+  pictures as snapshots. The golden table `tests/golden/snake.ron`
+  (81 steps and the outcome) of `tests/records/seed-1.ron`, which a test
+  keeps equal to the playthrough's record; it passes natively and on
+  wasm32 under wasmtime (run here).
+- **CI and Pages:** the `wasm` job now loops over every example with a
+  `web` section (`check --target all`, `web --release`, the notices, one
+  artifact `examples-web`), as `pages.yml` and `web-render` already did;
+  the `determinism` job runs snake's golden table on wasm32; the gates'
+  `wasm` gate builds snake too, and the `run-gates` skill's web steps
+  loop. The card `site/content/examples/snake.md` puts it at
+  `/examples/snake/`, `/snake/` redirecting there.
+- **The long run** `examples/snake/long/lose-and-again.long.ron`: 1,032,000
+  frames, flat heap (159,131 bytes) and same hashes twice here;
+  `long-run.yml` runs it beside Hello, Grid's and posts both tables.
+- **The eval:** `evals/tasks/snake.ron`'s reference is
+  `Project("examples/snake")`, its `waits_for` gone, `playdate` among its
+  targets (the prompt says so), and its Playdate build `unmeasured` on
+  3353. `crates/xtask/src/eval/tests.rs` lists it as graded.
+- **The engine's README** claims a grid in real time, linking the
+  example and ADR-0148; the top-down grid guide's planned section points
+  at it.
+
+Deviations:
+
+1. **The ticket was older than 7 days and two of its paths were gone**:
+   `templates/grid` and `templates/blank` are `templates/shuyi-default`
+   since 2501, and the grid template's `action.rs` is the prelude's
+   `UiAction`. The Scope says so now.
+2. **`replay::ticks` returns `ReplayRun`, not `Result`**, and takes the
+   game's action type (`ticks::<UiAction, _>`): nothing in it can fail
+   (the hash is the sim's own), and the actions are what names a step's
+   input in words. The Scope says so now.
+3. **The template part, its CI entry, the guide's section and the skill
+   moved to 2787**, as the ticket's **Out** says past about 600 lines:
+   the PR was past 2,800 before them. The eval keeps the `blank`
+   template, which 2787 sets to `arcade`; 2004's and 3093's mentions of
+   2739 for those pieces name 2787 (and 3245), and 2776, which makes its
+   example from the arcade part, is blocked by 2787 too.
+4. **The short path can't set `GameSettings::BACKGROUND` or a system
+   hook**: `BasicData`'s settings are `()`, and `run_game` builds its own
+   `Start`. So snake keeps running while unfocused and has no `FocusLost`
+   hook; it opens its pause menu after a suspend instead
+   (`FrameInput::resumed`). 3245 adds `BasicGame::background` and
+   `BasicGame::on_system`, and snake adopts both.
+5. **No Playdate build yet**: the short path has no one-bit look and
+   reads no pack without `std`. Snake lists `playdate`, has its buttons
+   and its `palette@onebit.ron`, and passes `check --target playdate`,
+   but `shuyi export playdate` can't build it, so the Simulator wasn't
+   tried. 3353 builds it.
+6. **Not in CI's `export` job**: its check wants a packed build, a
+   `disclosure` part, and file lists that name Hello, Grid's program and
+   its extras. 3536 adds snake to the job.
+7. **The eval grades snake inside the engine's workspace**, where its
+   `Gates` ran the whole workspace's `clippy` and `test`: in CI's
+   sniper image 8 of `shuyi-cli`'s `private_assets` tests failed there
+   (git as root), and one engine test assumed no shared
+   `CARGO_TARGET_DIR` (`mcp_ready_builds_what_the_server_needs_and_exits`,
+   now building its tiny game without it). The grader now runs a game's
+   gates on its own package when its folder is a member of a workspace
+   rooted elsewhere (`eval::grade::member_package` and `scoped`, with a
+   test, and a limit in the result saying so): `cargo clippy -p snake`
+   and `cargo test -p snake`. `cargo xtask eval-reference snake` here
+   passes every check but `Export linux`, which builds on Linux only.
+8. **The golden table has no asset rows**, only `step NNN` and `outcome`,
+   as the ticket said; Hello, Grid's has both.
+
+Follow-up tickets: 2787 (the arcade template part, its question, CI
+entry, guide section and skill), 3245 (a short-path game's background
+and system hook), 3353 (a short-path game on the Playdate, and snake's
+build), 3536 (snake in CI's export job).
+
+What changes for the game: nothing. `ticks` and `input_in_words` are
+new, `turns` keeps its signature, and the CI artifact `hello-grid-web`
+is now `examples-web`, which nothing reads (`gh search code --repo
+Zafnok/visions-of-shuyi 'hello-grid-web'` finds only the game's done
+ticket 1118; `'replay::turns'` finds its skills' mentions, which stay
+true).
+
+No break.
+
+Book: none, `replay::ticks` is for a game's tools, and the book's project is a turn game.
+
+Size: 3,552 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.

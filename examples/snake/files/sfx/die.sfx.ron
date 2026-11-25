@@ -1,0 +1,11 @@
+// The snake hits a wall or itself (the engine's preset `explosion`): a
+// long low rumble of noise that dies away.
+(
+    wave: Noise,
+    hz: 1200,
+    to_hz: 120,
+    attack_ms: 5,
+    hold_ms: 150,
+    fade_ms: 500,
+    volume: 60,
+)

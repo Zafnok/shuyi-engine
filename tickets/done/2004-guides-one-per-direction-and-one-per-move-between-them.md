@@ -54,7 +54,8 @@ say whether a new developer would know where to start.
     `shuyi_core::timer`'s `Countdown` and `Every`, never with `dt`.
     2739 replaces the section with the full one. If
     2739 is done first, the file already has its full section: keep
-    it and write the rest around it;
+    it and write the rest around it. **From 2739 (done):** the section
+    names `examples/snake`, and its full form moved to 2787;
   - `top-down-free.md`, `isometric.md` and `side-view.md`, as planned
     pages: one paragraph, the parked tickets, and what not to use
     meanwhile. **Either order with 1125, 1126 and 1127:** if one of

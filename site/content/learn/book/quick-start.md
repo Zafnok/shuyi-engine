@@ -12,7 +12,7 @@ This chapter installs what you need, makes a game, and runs it, both in a window
 and with no window at all. Then it reads the code a new game starts with, so that
 nothing in the later chapters comes from nowhere.
 
-The game this book talks about is **Moon Garden**: you walk along a row of plots
+The game this book talks about is *Moon Garden*: you walk along a row of plots
 and plant seeds, some of which grow. When every plot grows you win, and when the
 seeds run out you lose. It looks like this:
 
@@ -47,7 +47,7 @@ Codespace of its own: [open the book's project in a
 Codespace](https://codespaces.new/Zafnok/shuyi-engine?devcontainer_path=.devcontainer/book/devcontainer.json&machine=basicLinux32gb).
 It opens this book in the editor's preview, beside the project's folder, and each
 step's game there is your own build of that step, built again each time you save a
-change to its files. If the preview isn't open, the editor's **Ports** tab opens
+change to its files. If the preview isn't open, the editor's *Ports* tab opens
 the book in a tab of your browser, on port 4000. [The project's first
 page](@/learn/book/box-pusher/_index.md) says how to use it.
 
@@ -107,8 +107,8 @@ cd moon-garden
 ```
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
-it. In a terminal it first asks whether to include the engine skills' **worked
-examples**, files that show each skill at work (`bots.rs`, `playtest.ron`…): yes keeps
+it. In a terminal it first asks whether to include the engine skills' *worked
+examples*, files that show each skill at work (`bots.rs`, `playtest.ron`…): yes keeps
 them for you and your coding agent to read, no leaves only the skills, and the game runs
 the same either way (`--examples` or `--no-examples` answers it). Then it asks whether to
 put the game on GitHub too: each question says what pressing Enter picks, or answer no
@@ -355,10 +355,10 @@ The rest of the folder:
 
 ## When it goes wrong
 
-- **``error: no such command: `shuyi` ``** after `cargo shuyi`: you aren't in your
+- *``error: no such command: `shuyi` ``* after `cargo shuyi`: you aren't in your
   game's folder. `cd` into it. `cargo shuyi` is defined by the game's own
   `.cargo/config.toml`, so it only works there.
-- **``linker `cc` not found``**, or a linker error full of `.a` or `.lib` files: the
+- *``linker `cc` not found``*, or a linker error full of `.a` or `.lib` files: the
   C linker is missing or isn't on your `PATH`. [Install Rust](#install-rust) again,
   then run `shuyi doctor`.
 - **A red `error[E0425]` or the like from `cargo run`:** that's Rust's compiler, and

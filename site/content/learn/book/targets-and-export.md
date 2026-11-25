@@ -551,7 +551,7 @@ cargo shuyi export windows --release --recipient press-jane --label "Jane, Examp
 ```
 
 The export makes the ordinary package first, the same one a release publishes. Then it copies it
-into `dist/recipients/press-jane/windows/` and writes the recipient's **code** (8 characters, such
+into `dist/recipients/press-jane/windows/` and writes the recipient's *code* (8 characters, such
 as `7K2Q9MXA`) into three places, each holding the whole code:
 
 - the program, which reserves a field for it: `shuyi::app::recipient()` gives the code in a copy

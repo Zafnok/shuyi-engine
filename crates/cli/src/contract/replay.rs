@@ -6,7 +6,8 @@
 //!
 //! What a record is belongs to the game (for a turn game: its seed and
 //! its commands, ADR-0003 §2). [`turns`] re-runs one over any
-//! [`TurnRules`].
+//! [`TurnRules`], and [`ticks`] a [`TickRecord`] over any [`TickSim`]
+//! (ADR-0148).
 //!
 //! A record stamped with what made it ([`ReplayRun::made`]) is checked
 //! against this build's stamp ([`GameTools::made`]) before anything is
@@ -20,7 +21,10 @@ use std::path::Path;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_core::{Made, TurnRules, state_hash};
+use shuyi_assets::keymap::ActionSet;
+use shuyi_core::tick::{ActionId, SeatInput, TickInput, TickRecord, TickSim};
+use shuyi_core::{Made, StateHash, TurnRules, state_hash};
+use shuyi_ui::tick::ActionIds;
 
 use super::codes::{self, Code};
 use super::{Answer, Op};
@@ -173,6 +177,92 @@ where
     })
 }
 
+/// One seat's input of a step in words, its actions named as `A` names
+/// them: `pressed Up`, `released Up`, `held Right`, joined by `; `. `None`
+/// when it did nothing.
+fn seat_in_words<A: ActionSet>(seat: &SeatInput) -> Option<String> {
+    let name = |id: &ActionId| {
+        A::from_id(*id).map_or_else(|| format!("#{}", id.0), |a| a.name().to_owned())
+    };
+    let parts: Vec<String> = [
+        ("pressed", &seat.pressed),
+        ("released", &seat.released),
+        ("held", &seat.held),
+    ]
+    .into_iter()
+    .filter(|(_, ids)| !ids.is_empty())
+    .map(|(what, ids)| {
+        let names: Vec<String> = ids.iter().map(name).collect();
+        format!("{what} {}", names.join(", "))
+    })
+    .collect();
+    (!parts.is_empty()).then(|| parts.join("; "))
+}
+
+/// A step's input in words (`pressed Up; held Up`): seat 0's as it is, each
+/// other seat's after its number (`seat 2: pressed Up`), joined by ` · `.
+/// `None` when no seat did anything.
+pub fn input_in_words<A: ActionSet>(input: &TickInput) -> Option<String> {
+    let seats: Vec<String> = (0..)
+        .zip(&input.seats)
+        .filter_map(|(n, seat)| {
+            let words = seat_in_words::<A>(seat)?;
+            Some(if n == 0 {
+                words
+            } else {
+                format!("seat {n}: {words}")
+            })
+        })
+        .collect();
+    (!seats.is_empty()).then(|| seats.join(" · "))
+}
+
+/// Re-runs `record` from `initial`, the state the caller built from the
+/// record's seed, by the rules of a tick game (ADR-0148), hashing the state
+/// before the first step and after each: the run of the record `file`.
+/// Each step's `command` is its input in words, its actions named as `A`
+/// names them ([`input_in_words`]), none for a step with no input; its
+/// `hash` is [`TickSim::hash`] in sixteen hex digits; a step is never
+/// refused. `outcome` says how the game ended, in its words, if it has;
+/// the run carries the record's stamp, which `replay` checks.
+pub fn ticks<A, S>(
+    file: &str,
+    initial: S,
+    record: &TickRecord,
+    outcome: impl Fn(&S) -> Option<String>,
+) -> ReplayRun
+where
+    A: ActionSet,
+    S: TickSim,
+    S::Event: Debug,
+{
+    let mut sim = initial;
+    let hash = |sim: &S| StateHash(sim.hash()).to_string();
+    let mut steps = vec![ReplayStep {
+        step: 0,
+        command: None,
+        hash: hash(&sim),
+        events: Vec::new(),
+        refused: None,
+    }];
+    for (step, input) in (1..).zip(record.inputs()) {
+        let events = sim.step(input);
+        steps.push(ReplayStep {
+            step,
+            command: input_in_words::<A>(input),
+            hash: hash(&sim),
+            events: events.iter().map(|e| format!("{e:?}")).collect(),
+            refused: None,
+        });
+    }
+    ReplayRun {
+        record: file.to_owned(),
+        steps,
+        outcome: outcome(&sim),
+        made: Some(record.made().clone()),
+    }
+}
+
 /// The first step where `a` and `b` differ, if they do.
 pub fn first_difference(a: &ReplayRun, b: &ReplayRun) -> Option<Difference> {
     let longest = a.steps.len().max(b.steps.len());
@@ -278,6 +368,11 @@ fn stamps(now: Option<&Made>, runs: &[ReplayRun], any_stamp: bool) -> Result<Vec
         }
     }
     Ok(limits)
+}
+
+/// `replay`'s usage, with `command` as the tool's name.
+pub fn usage(command: &str) -> String {
+    format!("usage: {command} replay <record> [<other>] [--any-stamp] [--json]")
 }
 
 /// What `replay` found, for people.
@@ -409,6 +504,78 @@ mod tests {
         assert_eq!(run.steps[4].hash, hash(3));
         assert_eq!(run.outcome.as_deref(), Some("\"Done\""));
         assert_eq!(turns("r", Counter(0), &[]).unwrap().outcome, None);
+    }
+
+    /// A tick game that counts the steps its first action was held, and
+    /// says so each step it is.
+    #[derive(Debug, Default)]
+    struct Held(u64);
+
+    impl TickSim for Held {
+        type Event = &'static str;
+
+        fn step(&mut self, input: &TickInput) -> Vec<&'static str> {
+            let held = input.is_held(0, ActionId(0));
+            self.0 += u64::from(held);
+            if held { vec!["held"] } else { Vec::new() }
+        }
+
+        fn hash(&self) -> u64 {
+            self.0
+        }
+    }
+
+    #[test]
+    fn ticks_hashes_the_state_before_the_first_step_and_after_each() {
+        use shuyi_assets::keymap::UiAction;
+
+        let made = stamp("0.1.0", "snake", ContentHash(7));
+        let mut record = TickRecord::new(made.clone(), 1);
+        // Up (action 0) pressed and held, still held, then let go; another
+        // seat presses Confirm in the last step.
+        let up = UiAction::Up.id();
+        record.push(TickInput::one(SeatInput::new(vec![up], vec![up], vec![])));
+        record.push(TickInput::one(SeatInput::new(vec![], vec![up], vec![])));
+        let confirm = UiAction::Confirm.id();
+        record.push(TickInput::new(vec![
+            SeatInput::new(vec![], vec![], vec![up]),
+            SeatInput::new(vec![confirm], vec![], vec![]),
+        ]));
+        record.push(TickInput::default());
+        let run = ticks::<UiAction, _>("r.ron", Held(0), &record, |held| {
+            (held.0 >= 2).then(|| format!("held {} steps", held.0))
+        });
+        assert_eq!(run.record, "r.ron");
+        let shown: Vec<(u32, Option<&str>, &str)> = (run.steps.iter())
+            .map(|s| (s.step, s.command.as_deref(), s.hash.as_str()))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                (0, None, "0000000000000000"),
+                (1, Some("pressed Up; held Up"), "0000000000000001"),
+                (2, Some("held Up"), "0000000000000002"),
+                (
+                    3,
+                    Some("released Up · seat 1: pressed Confirm"),
+                    "0000000000000002"
+                ),
+                (4, None, "0000000000000002"),
+            ]
+        );
+        assert_eq!(run.steps[1].events, ["\"held\""]);
+        let found = &run.steps[3].events;
+        assert!(found.is_empty(), "{found:?}");
+        assert!(run.steps.iter().all(|s| s.refused.is_none()));
+        assert_eq!(run.outcome.as_deref(), Some("held 2 steps"));
+        // It carries the record's stamp, which `replay` checks.
+        assert_eq!(run.made, Some(made));
+        // An id past the game's actions is named by its number.
+        let stray = TickInput::one(SeatInput::new(vec![ActionId(99)], vec![], vec![]));
+        assert_eq!(
+            input_in_words::<UiAction>(&stray).as_deref(),
+            Some("pressed #99")
+        );
     }
 
     fn run_of(hashes: &[&str]) -> ReplayRun {

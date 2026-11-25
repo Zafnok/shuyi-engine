@@ -257,7 +257,7 @@ height. This one leaves the top and bottom rows free for text:
 {{ snippet(step="02-board", file="crates/game/src/board.rs", anchor="looks") }}
 
 Each row here is one terrain, in the order `level.rs` numbered them. Each tile takes up
-**two cells**, side by side, because a cell is twice as tall as it is wide, so two make a
+*two cells*, side by side, because a cell is twice as tall as it is wide, so two make a
 square. Floor is two spaces, a wall is two blocks, and a target is `<>`. Then come two
 names from the palette, for the text color and the background.
 
@@ -426,7 +426,7 @@ cargo run
 ```
 
 {% newcomer(to="programming", topic="reading the compiler's errors") %}
-If the compiler has complaints, read them from the **top** down, as one mistake can cause
+If the compiler has complaints, read them from the *top* down, as one mistake can cause
 many later messages. Fix the first and run it again.
 {% end %}
 
@@ -510,7 +510,7 @@ Add a second box to level 1, and a target for it to go on.
 
 Hint: A box is a feature, like the one there: `(3, 2): Box`. Add another, on a floor tile,
 then turn one more `.` into an `o`. Every box needs a target, so the game refuses a level
-with more boxes than targets, and says so under **Problems**.
+with more boxes than targets, and says so under *Problems*.
 {% end %}
 
 {% exercise(check="blue-walls", file="palette.ron") %}

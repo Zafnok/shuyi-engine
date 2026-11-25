@@ -379,9 +379,11 @@ pub const GATES: &[Gate] = &[
     ]),
     gate("wasm", "wasm", CODE).steps(&[
         "examples/hello-grid: cargo shuyi check --target all",
+        "examples/snake: cargo shuyi check --target all",
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings",
         "cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings",
         "examples/hello-grid: cargo shuyi web --release",
+        "examples/snake: cargo shuyi web --release",
     ]),
     // The demo games are made fresh each run and never edited, so their
     // one target folder keeps no incremental cache: half its disk, and no

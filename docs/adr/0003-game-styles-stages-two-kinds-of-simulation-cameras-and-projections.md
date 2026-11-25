@@ -1,6 +1,6 @@
 # ADR-0003: Game styles: stages, two kinds of simulation, cameras and projections
 
-- **Status:** Accepted (Nick chose plan B, 2026-10-14; see `docs/decisions.md`). First proposed as the game repository's ADR-0064 (game ticket 1101). Its "without 3D" is lifted by ADR-0011 (Nick, 2026-10-17). §8 amended by ADR-0134 (pointing at UI and grid maps is turn-game input; only the pointer in `TickInput` and stick axes stay real time)
+- **Status:** Accepted (Nick chose plan B, 2026-10-14; see `docs/decisions.md`). First proposed as the game repository's ADR-0064 (game ticket 1101). Its "without 3D" is lifted by ADR-0011 (Nick, 2026-10-17). §8 amended by ADR-0134 (pointing at UI and grid maps is turn-game input; only the pointer in `TickInput` and stick axes stay real time). §2 extended by ADR-0148 (a grid stage may run on tick rules)
 - **Date:** 2026-10-14
 - **Related tickets:** 1114 (turn rules), 1119–1125 (real time, the first
   free-movement example), 1126 (isometric), 1127 (side view), 0060 (free

@@ -1,0 +1,23 @@
+// A long run (`cargo shuyi bench --long`, ticket 3509): a run started from
+// the title and left to hit the wall, started again from the end screen
+// and lost again, then back to the title, and round again: each run seeded
+// the next, so the food lands somewhere new each time. 516 frames a loop,
+// 2,000 loops, 1,032,000 frames (about 4.8 hours of play at 60 frames a
+// second). The live heap and the sounds alive must stay flat after the
+// warm-up, and with `--twice` a second run must hash every sample the
+// same.
+(
+    format_version: 1,
+    about: "a run lost on the wall, again from the end screen, and back to the title, looped",
+    script: (steps: [
+        keys("Enter"),
+        wait(4.0),
+        keys("Enter"),
+        wait(4.0),
+        keys("Backspace"),
+        wait(0.5),
+    ]),
+    repeat: 2000,
+    warm_up: 20000,
+    sample_every: 5000,
+)

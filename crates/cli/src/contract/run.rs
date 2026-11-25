@@ -547,7 +547,8 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
          --script \"Enter Up\"  press and release each key chord in turn (or --keys)\n  \
          --pad \"South\"        press and release each controller button in turn\n  \
          --act Confirm        press the game's action by its key, or else its button\n  \
-         --wait 0.5           let that many seconds pass (60 frames a second, rounded up)\n\n\
+         --wait 0.5           let that many seconds pass (60 frames a second, rounded up)\n  \
+         --drop a.txt         drop that file, from the game's folder, on the window\n\n\
          --frames N           then run N frames (1/60 s each) with no input\n\n\
          --session <file>     start from a session record, from the project's folder,\n                     \
          played to its end or the first frame that differs; no start options\n\

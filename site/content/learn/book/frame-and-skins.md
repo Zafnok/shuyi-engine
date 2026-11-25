@@ -129,7 +129,7 @@ it in the frame like any other:
 {{ snippet(file="src/frame.rs", anchor="plasma") }}
 
 The frame keeps its pictures from one frame to the next, by name. Each
-has a **revision**, a count that goes up whenever its pixels are written,
+has a *revision*, a count that goes up whenever its pixels are written,
 and the window sends a picture to the graphics card again only when its
 revision moved. `update` puts the picture in only if it differs from the
 one already there, so a plasma painted afresh at every frame costs
@@ -190,8 +190,8 @@ look in a test.
 ## Things that move
 
 A sprout that pops up, a menu that slides in, a title that bobs: the skin shows a change
-over time, and the rules never wait for it. The engine draws such a motion from **the
-time alone**. A **tween** is a value going from one end to another over a time, along an
+over time, and the rules never wait for it. The engine draws such a motion from *the
+time alone*. A **tween** is a value going from one end to another over a time, along an
 **ease curve** that says how it speeds up and slows down, and its value at a moment is
 worked out from how long it has run. Nothing steps it along from the frame before, so
 it looks the same at any frame rate, and a test can ask for any moment:

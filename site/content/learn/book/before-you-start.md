@@ -51,7 +51,7 @@ this loop drawing a slightly different picture 60 times a second.
 Every game needs that loop, and also a window, a way of reading the keyboard and
 of drawing letters, somewhere to keep saves, and much more. A **game engine** is
 a set of code that already does those things, so you write only what makes your
-game your game. **Shuyi Engine** is the engine you will use. It does the loop,
+game your game. *Shuyi Engine* is the engine you will use. It does the loop,
 and you hand it your game's screens and rules.
 
 {% newcomer(to="shuyi", topic="glyphs") %}
@@ -137,22 +137,22 @@ exactly as it should be when you finish that step. If your game won't build,
 open the file you changed and compare it with that copy, line by line. Every
 programmer does this.
 
-**Code boxes that show a change** look like this. A line starting with `-` is
+*Code boxes that show a change* look like this. A line starting with `-` is
 what the file says now, and a line starting with `+` is what to change it to.
 You don't type the `-` or the `+`.
 
 {{ try_it(name="title-blue") }}
 
-**Before and After** pictures show what such a change does, taken from a real
+*Before and After* pictures show what such a change does, taken from a real
 copy of the game with that change made, so what you see is what you will get.
-**Things to try are optional, and you should put them back afterwards,** because
+*Things to try are optional, and you should put them back afterwards,* because
 later steps assume the game as the page left it. An easy way is to press undo in
 your editor, or to keep a copy of the folder.
 
-**Words in `this font`** are code, or names of files or commands, exactly as you
+*Words in `this font`* are code, or names of files or commands, exactly as you
 would type them.
 
-**Notes for newcomers** come up throughout, each set off by a line at its side,
+*Notes for newcomers* come up throughout, each set off by a line at its side,
 under a label saying who it is for and what it explains:
 
 - **New to programming?** what a program, a file or a terminal is;

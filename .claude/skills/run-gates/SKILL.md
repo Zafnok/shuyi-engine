@@ -180,14 +180,14 @@ The web build of the examples, from each example's folder (CI's `wasm`
 job; the page goes to its `dist/web/`):
 
 ```bash
-cd examples/hello-grid && cargo shuyi web --release
+for dir in examples/*/; do (cd "$dir" && cargo shuyi web --release); done
 ```
 
 Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
 §1; CI's `wasm` job), from its folder:
 
 ```bash
-cd examples/hello-grid && cargo shuyi check --target all
+for dir in examples/*/; do (cd "$dir" && cargo shuyi check --target all); done
 ```
 
 The script runtime builds for the web (CI's `wasm` job, ticket 2101):
@@ -356,7 +356,8 @@ Their tests have `golden` in their names. They run:
 - natively in the `test` job, on x64 (Windows, Linux) and ARM64 (macOS);
 - on wasm32 under wasmtime in the `determinism` job, with every unit and
   integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
-  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's `golden` test.
+  `shuyi-platform` and `shuyi-sound`, and Hello, Grid's and Snake's
+  `golden` tests.
 
 A table's test that fails prints the rows that moved and the new table.
 Bless it, which runs the golden tests, writes each table they print and
@@ -387,6 +388,7 @@ repository root):
 export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
 cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast -p snake --no-default-features --test golden -- --nocapture
 ```
 
 On Windows only `-- golden` passes in the first: the snapshot tests open

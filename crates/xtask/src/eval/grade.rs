@@ -19,7 +19,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::task::{After, Planned, Task};
-use crate::script::{self, Runner, Verdict};
+use crate::script::{self, Runner, Step, Verdict};
 
 /// The result file, by default, in the current folder.
 pub const OUT: &str = "eval-result.json";
@@ -193,6 +193,41 @@ pub fn to_file(
     Ok(outcome)
 }
 
+/// The package of the game in `game` when its folder is a member of a
+/// workspace rooted elsewhere, as an example of the engine's own workspace
+/// is (`examples/snake`): its `Cargo.toml` has a `[package]` and no
+/// `[workspace]`. `None` for a game that is its own workspace, as every game
+/// `shuyi new` makes is, or whose `Cargo.toml` doesn't read.
+pub fn member_package(game: &Path) -> Option<String> {
+    let text = fs::read_to_string(game.join("Cargo.toml")).ok()?;
+    let manifest: toml::Table = toml::from_str(&text).ok()?;
+    if manifest.contains_key("workspace") {
+        return None;
+    }
+    let package = manifest.get("package")?.as_table()?;
+    package.get("name")?.as_str().map(str::to_owned)
+}
+
+/// `plan` with each `cargo … --workspace` step on `package` alone (`-p
+/// <package>`), and its name saying so: the gates of a game that is a member
+/// of a larger workspace are its own, never every crate's beside it.
+pub fn scoped(plan: Vec<Planned>, package: &str) -> Vec<Planned> {
+    let one = format!("-p {package}");
+    plan.into_iter()
+        .map(|mut planned| {
+            planned.name = planned.name.replace("--workspace", &one);
+            for step in &mut planned.steps {
+                if let Step::Cargo { args, .. } = step
+                    && let Some(at) = args.iter().position(|a| a == "--workspace")
+                {
+                    args.splice(at..=at, ["-p".to_owned(), package.to_owned()]);
+                }
+            }
+            planned
+        })
+        .collect()
+}
+
 /// Grades `game` against `task` with `runner`'s commands, its steps'
 /// files saved in `scratch`; counts its lines over `base` if there is one;
 /// `engine` is the engine's commit.
@@ -204,11 +239,21 @@ pub fn grade(
     scratch: &Path,
     runner: &dyn Runner,
 ) -> Outcome {
+    let package = member_package(game);
+    let plan = match &package {
+        Some(package) => scoped(task.plan(scratch), package),
+        None => task.plan(scratch),
+    };
     let graded: Vec<Verdict> = (1..)
-        .zip(task.plan(scratch))
+        .zip(plan)
         .map(|(i, planned)| run_check(i, &planned, game, runner))
         .collect();
     let mut limits = Vec::new();
+    if let Some(package) = package {
+        limits.push(format!(
+            "a member of a larger workspace: its gates ran on its package `{package}` alone"
+        ));
+    }
     let lines = if let Some(base) = base {
         if base.over == Over::GamesFiles {
             limits.push(

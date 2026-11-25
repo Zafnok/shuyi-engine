@@ -1,0 +1,45 @@
+---
+source: examples/snake/tests/it/screens.rs
+expression: h.snapshot()
+---
+ Score 0                                 Length 3 
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · ·┌──────────────────────────────────┐ · · ▓▓
+▓▓· · ·│              Paused              │ · · ▓▓
+▓▓· · ·│                                  │ · · ▓▓
+▓▓· · ·│              Resume              │ · · ▓▓
+▓▓· · ·│        Back to the title         │ · · ▓▓
+▓▓· · ·│ Enter choose · Backspace resume  │ · · ▓▓
+▓▓· · ·└──────────────────────────────────┘ · · ▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+--- colours ---
+abbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacccccccca
+dddddddddddddddddddddddddddddddddddddddddddddddddd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeffffffffffffffffffffffffffffffffffffeeeeedd
+ddeeeeefaaaaaaaaaaaaaabbbbbbaaaaaaaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaaaaaaaaggggggaaaaaaaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaacccccccccccccccccaaaaaaaaafeeeeedd
+ddeeeeefahhhhhiiiiiiiiiihhhhhhhhhiiiiiiiaafeeeeedd
+ddeeeeeffffffffffffffffffffffffffffffffffffeeeeedd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+dddddddddddddddddddddddddddddddddddddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+c = fg:text bg:panel
+d = fg:wall_fg bg:wall_bg
+e = fg:floor_fg bg:panel
+f = fg:border bg:panel
+g = fg:panel bg:focus
+h = fg:key bg:panel
+i = fg:text_dim bg:panel

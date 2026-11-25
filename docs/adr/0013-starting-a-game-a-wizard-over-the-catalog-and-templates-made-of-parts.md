@@ -1,6 +1,6 @@
 # ADR-0013: Starting a game: a wizard over the catalog, and templates made of parts
 
-- **Status:** Accepted
+- **Status:** Accepted; its §1 sentences on the time concern are superseded by ADR-0148
 - **Date:** 2026-10-17
 - **Related tickets:** 2501 (templates as data and the composer), 2502
   (the wizard), 2503 (several perspectives in one game), 2504 (targets in
