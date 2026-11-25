@@ -98,7 +98,7 @@ answer in `docs/decisions.md`.
   runners would do instead; never require MSVC locally.
 - **The mapping**: how each EOS service fits the engine's planned
   traits, piece by piece:
-  - P2P and relays onto 1140's `Transport`: EOS P2P is weighed as a
+  - P2P and relays onto 2613's `Transport`: EOS P2P is weighed as a
     backend behind `shuyi-net`'s `Transport`, beside 2605's
     `RelayTransport` (our own self-hosted UDP path with NAT traversal).
     2605 leaves EOS P2P to this ticket;

@@ -69,9 +69,10 @@ and Unreal 5.8.
   to `lang-status` (`crates/cli/src/lang_status.rs`).
 - Invites and joins are not this ticket's. They are small additions to
   the session tickets: the Steam overlay's invite dialog, Steam's join
-  callbacks and `+connect_lobby` (1144); a join token and join requests
-  (1145); a join link in the browser (1142). This ticket shows a status,
-  and carries a join token's text when a session gives one.
+  callbacks and `+connect_lobby` (1144); a join token, join requests
+  and the join link in the browser (1145, which took the link over
+  from 1142). This ticket shows a status, and carries a join token's
+  text when a session gives one.
 
 **Steam's rules** (its `ISteamFriends` documentation, *SetRichPresence*
 and *Rich Presence Localization*):

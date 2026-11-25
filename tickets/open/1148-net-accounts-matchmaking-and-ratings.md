@@ -14,6 +14,7 @@ completed:
 # 1148 — Accounts, matchmaking, ratings, verified results
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0053 picks an online mode. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> Still parked after Nick's decision of 2026-11-25, which unparked the online trails example: trails plays black-box quick play (2615) with no accounts, ratings or personal data.
 
 ## Context
 
@@ -32,6 +33,15 @@ Glicko-2 is public domain and is implemented by `skillratings`
 This brings the first stored personal data: account ids, names and match
 history. That means a privacy policy and a decision on where the data
 lives.
+
+Black-box quick play without accounts or ratings is 2615: a `Director`
+in `shuyi-net` seats a player in any room with a free seat, and 2616's
+`shuyi-server` runs its rooms over WebSocket. The trails example
+(2788-2790) keeps no accounts and no personal data (Nick's decision of
+2026-11-25), so nothing here is needed for it. This ticket's ranked
+queue is the other path: it picks who plays whom by rating, then hands
+the match to a room server, either 2615's `Director` in 2616's server
+(a real-time tick game) or 1146's referee (a turn game).
 
 ## Nick input
 
@@ -69,7 +79,11 @@ our game without 0053.
     Steam ticket, and the online check before matchmaking; if not,
     nothing to do (2920 adds them to this scope when it lands).
   - **Matchmaking queue.** Rating ranges that widen while waiting.
-    Matches are handed to a referee.
+    Matches are handed to a referee (1146) for a turn game, or, for a
+    tick game, to 2615's `Director` running in 2616's server, as a
+    room with the matched peers' seats reserved. Reserving seats for
+    named peers is new to the director: add it here, beside quick
+    play's seating, which stays as 2615 built it.
     **Either order with 2606:** if 2606 is done, the queue pools players
     by their `Made`, takes its `Accepts` list, hands each match to the
     referee process of its build, and its example declares accounts as
@@ -105,6 +119,8 @@ our game without 0053.
 - the `Leaderboards` trait, local high-score tables and Steam's boards
   (3054);
 - chat (1149);
+- quick play's seating, room cap and handshake (2615), and the room
+  server itself (2616);
 - running a public instance;
 - anything in our game.
 

@@ -252,12 +252,10 @@ None.
   - with 2528 (`shuyi web --serve`): if it is done, `shuyi web --serve
     --link` also starts the bridge and opens the page with its hash.
     If not, 2528 adds that (its clause says so);
-  - with 1142 (parked): if 1142 is done, `net.js` and `web_socket.rs`
-    exist already, with binary messages and the page's query string.
-    Add only what this list has and they lack (the hash functions,
-    `SHELL`, `index.html`'s order, the tests), keep their binary
-    messages, and write no second plugin. If not, write them here, and
-    1142 extends them (its own clause says so);
+  - with 1142 (unparked on 2026-11-25, and blocked by this ticket):
+    write `net.js` and `web_socket.rs` here; 1142 extends them with
+    binary messages, close and error events and the page's query
+    string, and writes no second plugin;
   - with 2601 (parked, HTTP requests): its web backend's `http.js`
     follows `net.js`'s queue and its limit on queued bytes, or the
     `net.js` list above if `net.js` isn't written yet. So if 2601 is
@@ -286,7 +284,7 @@ None.
 - TLS (`wss://`), and the link across the internet;
 - finding builds on the LAN by themselves (mDNS, broadcast). 1143
   (parked) finds games to play, not builds;
-- binary messages and `WsTransport` (1141 and 1142, parked);
+- binary messages and the web `Transport` (1142, after this ticket);
 - a `web` part in the templates (2777);
 - the Playdate (2521's ADR notes it);
 - phones' browsers (2407, parked).

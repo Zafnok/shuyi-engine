@@ -45,9 +45,16 @@ What Shuyi has today:
 
 What is planned:
 
-- 1140 (parked): `MemoryNetwork` with seeded loss, delay, reordering
-  and duplicates, `Transport::stats()`, and `LockstepSession` with
-  desync detection. Only Rust tests reach them.
+- 2613 (unparked by Nick's decision of 2026-11-25, for the online
+  example trails): `shuyi-net`, `Transport::stats()`, and
+  `MemoryNetwork` with seeded loss, delay, reordering and duplicates
+  (`Faults`, in per-mille, replaceable between steps). 1140 (parked):
+  `LockstepSession` with desync detection, on 2613's crate. Only Rust
+  tests reach them.
+- 2614 and 2615 (unparked with 2613): a server-authoritative tick
+  `Room` with bots in empty seats, its `RoomClient`, and a quick-play
+  `Director`, all sans-IO over any `Transport`, with a state hash every
+  15 steps checked by each client.
 - 1145 (parked): two Harness `hello-grid` games and a relay in one
   process, as a Rust integration test. ADR-0006's Consequences: "Two
   Harness games play a match against each other in CI."
@@ -127,7 +134,9 @@ None.
     duplicate: u8 }`: `loss`, `reorder` and `duplicate` in whole
     percent (0 to 100), `delay` in frames (one network step a frame, at
     most 600). The default is a perfect network with seed 0. No floats.
-  - `NetStats`: what 1140's `Transport::stats()` gives, copied field by
+    2613's `Faults` are in per-mille, so the contract's percent is
+    multiplied by 10 when the network is built.
+  - `NetStats`: what 2613's `Transport::stats()` gives, copied field by
     field into a contract type with `JsonSchema`. Whole numbers only.
   - `Seat { peer: u32, count: u32 }`: which peer a game is starting.
   - `PeersInput::check`: 2 to `MAX_PEERS` (8) peers, every step's
@@ -211,17 +220,25 @@ None.
   dev-dependency on `shuyi-ui` with `toy` for the integration test),
   with `shuyi_net::tools::MemoryPeers<G: GameData>`:
   - `MemoryPeers::start(count, net, peer, hashes)`, where `peer: impl
-    Fn(Seat, MemoryTransport) -> Result<Headless<G>, String>` starts
+    Fn(Seat, MemoryEndpoint) -> Result<Headless<G>, String>` starts
     one peer's game with its transport (the game decides from the seat
     who hosts), and `hashes: impl Fn(&Harness<G>) -> Vec<StateHash>`
     reads the game's `LockstepSession` hashes (for example through
     `Harness::screen`);
-  - it builds one `MemoryNetwork` from `NetConditions` (1140's fault
+  - it builds one `MemoryNetwork` from `NetConditions` (2613's fault
     settings) and implements `Peers` over it. Nothing in `tools` uses
     floats;
   - `tools/layers.ron` (2015's `check-layers`): `shuyi-net`'s `engine`
     list gains `ui`, `platform` and `cli`;
   - `crates/net/README.md` names the feature.
+- **Rooms in a run (2614, 2615).** Peers in one headless run may also
+  be the `RoomClient`s of a tick game, with 2614's `Room` (or 2615's
+  `Director`) on one more endpoint of the same `MemoryNetwork`, so an
+  agent checks a room game such as trails (2789) the way it checks
+  lockstep. The desync report reuses the room's hash check: each
+  client's hash at every 15th step against the room's, compared with
+  `replay::first_differing`, naming the peer and the first differing
+  step.
 - **MCP, over 1133's session** (`shuyi mcp`; the last step, see *Size
   and the split*):
   - the `peers` operation is an MCP tool like every operation (1133),
@@ -252,7 +269,8 @@ None.
   (`--net`, `--peer`, the desync answer, and the MCP tools if step 9
   keeps them) and `MemoryPeers`. If 1145 is done too, `waits_for` is
   then empty: drop it, and write the skill's worked example,
-  `skills/shuyi-net/example.ron` (two `hello-grid` peers through
+  `skills/shuyi-net/example-lockstep.ron` (beside 2855's
+  `example.ron` for rooms; two `hello-grid` peers through
   `peers`, with a seeded loss, which CI's `skills` job runs). The
   runner, `crates/xtask/src/skills.rs`, makes a fresh `shuyi new` game
   for each example, and this one runs on `hello-grid`: give `Example`
@@ -263,8 +281,8 @@ None.
     `peers` row in *What a game gives*, and a short *Peers* section
     (rounds, the network's faults, the desync, the limits, and the MCP
     tools if step 9 adds them);
-  - `docs/net.md` (1140's page): how a game offers peers, with
-    `MemoryPeers`.
+  - the networking page the docs map names (`docs/README.md`): how a
+    game offers peers, with `MemoryPeers`.
 - **For the game:** additive. `GameTools` gains a defaulted method, so
   the game's tools still build. `Op` gains a variant and the `Op::ALL`
   slice an entry. **From 2086 (done):** `Op` is `#[non_exhaustive]`,
@@ -287,8 +305,8 @@ None.
   this ticket.
 - Tick games: rollback (1147) and command turns (2720) build their own
   sessions, and neither ticket adds them to `peers`. `peers` drives
-  turn games' lockstep only; a tick game in `peers` is a follow-up if
-  a game asks.
+  turn games' lockstep and 2614's tick rooms (In) only; another tick
+  game in `peers` is a follow-up if a game asks.
 - The `net` channel drawn in the debug view (round trip, loss, bytes
   per channel, the lockstep turn, hash agreement). It comes with the
   networking module, over 2315's debug view (1140 adds it).

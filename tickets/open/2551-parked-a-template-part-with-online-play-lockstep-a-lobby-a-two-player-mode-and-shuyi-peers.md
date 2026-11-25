@@ -57,6 +57,20 @@ Why it matters:
 - **The game first.** Visions of Shuyi isn't made from the template,
   so nothing changes for it.
 
+### Rooms on a server, since 2026-11-25
+
+Nick's decision of 2026-11-25 (`docs/decisions.md`) starts a second way
+online, for real-time games: a server that steps the game and seats
+players in rooms, bots in the empty seats, and quick play
+(2614–2616, ADR-0150). 2855 adds a `server` answer to the catalog's
+`online` question and teaches it in the `shuyi-net` skill. This ticket
+stays parked and still builds the `lockstep` part only. When it is
+unparked, its part sits beside a `server` choice: a game made with
+`server` copies the trails example (2788–2790: the rules, `impl
+RoomGame`, its server binary and its online screens), not this part's
+lobby. A template part for `server` is not this ticket's; write its
+ticket when a game asks for one.
+
 ### The design, in short
 
 - **A part, `online-lockstep`,** of the built-in template
@@ -240,8 +254,10 @@ None.
   it first.
 
 **Out (do not do):**
-- Parts for the catalog's other online answers, `rollback` and
-  `referee`. Nothing plans them; a game that asks gets a ticket then.
+- Parts for the catalog's other online answers, `rollback`, `referee`
+  and `server` (2855's answer; trails, 2788–2790, is its model to
+  copy). Nothing plans their parts; a game that asks gets a ticket
+  then.
 - Online play over any other stage. The part applies with the top-down
   grid stage only; another turn stage that wants it writes its own
   part.

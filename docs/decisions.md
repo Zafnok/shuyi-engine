@@ -464,7 +464,6 @@ Source: Nick, in a Claude Code session on 2026-10-19.
   (2507), then the graph panel (2508). It stays a view over text files:
   agents and git read the same files a person edits in it.
 
-
 ## 2026-10-19: a frame cap of 60 by default
 
 Source: Nick, in a Claude Code session on 2026-10-19.
@@ -2180,6 +2179,51 @@ support a toggle because SDL3 adds about 1.8 MB to a game:
 - The ticket that adds such a dependency says how much bigger a game
   gets, measured on a stripped release build, and what turning it off
   costs the game.
+
+## 2026-11-25: the next example is an online light-trail arena, served free with bots in empty seats
+
+Source: Nick, in the session that planned the next example game:
+
+> "our next example game should be an .io style, tron style game … the
+> one with the bikes … it can be a simple style but the idea is to
+> introduce networking / multiplayer … lets use an always free infra for
+> hosting. Capped room sizes. And under a max room size we introduce
+> bots, where players can drop in / drop out … this would be still grid
+> style, still top down … Find what always free infra can support say 10
+> rooms at any time, allowing players to join into them until they're
+> full. And bots running on them until a player joins, or replacing a
+> player if they drop. Also file or amend tickets which support real time
+> mp on a server + blackbox matchmaking."
+
+**Rules:**
+
+- **The next example is "trails", an original light-trail arena.**
+  - It is a grid, top-down, real-time game on TickSim, after the snake example (2739).
+  - It is never named or styled after Tron or any other existing game, its look or its marks.
+  - It plays offline against bots first, then online.
+- **Its online play is real-time rooms on a server that decides everything.**
+  - The server runs the simulation. Clients send their inputs and follow the server's steps.
+  - Rooms have a capped number of seats, 8 for trails. Bots ride every empty seat.
+  - A joining player takes over a bot's seat (drop in). A player who leaves or goes silent is replaced by a bot (drop out).
+  - Rounds restart without end.
+- **Matchmaking is a black box.**
+  - The player presses "Play online" and the server picks a room with a free seat, or opens one, up to about 10 rooms.
+  - There are no accounts, ratings, room browser, invite codes, player names or chat.
+  - No personal data is kept: addresses are held only in memory, for rate limits.
+- **Hosting must be always free.**
+  - Oracle Cloud's Always Free tier is the host.
+  - Nick does every account step himself: signup, the card Oracle asks for to verify identity, two-step sign-in, a $1 budget alert, creating the VM and opening its ports. Agents never do these.
+  - The rule of 2026-11-23 still holds: anything that costs money waits for Nick. That includes upgrading to Pay As You Go (reported to stop idle reclaim, possibly with a temporary card hold), a domain for a Cloudflare fallback, and a paid host such as Fly.io or Hetzner.
+  - If the free tier changes or the VM is reclaimed, the server is rebuilt from the repository's setup script, and Nick is told before any money is spent.
+- **This unparks, for the example only:**
+  - 1142 (WebSocket in the web build);
+  - the new tickets 2612–2619 (seats, `shuyi-net`, rooms, quick play, `shuyi-server`, the native client, the host and its watch);
+  - 2788–2791 (the trails example, its server, its online client, its load test);
+  - 2854–2856 (the book's online chapter, the skill pack, the hosting page).
+  - 2522 was already ready.
+- **The rest of networking stays parked.**
+  - 1140, 1141, 1143–1150, 2529, 2550, 2551, 2601, 2603–2608, 2720 and 2774–2775 stay parked. Some are amended to build on the new work.
+  - This does not answer the game's 0053: nothing networked reaches Visions of Shuyi through this decision (ADR-0006 §10).
 
 ## 2026-11-25: the research scripts move to a repository of their own
 
