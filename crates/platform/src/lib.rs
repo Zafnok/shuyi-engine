@@ -121,9 +121,10 @@ pub mod prelude {
     pub use shuyi_ui::frame::{ConsoleSpec, EngineColor, Rgb};
     pub use shuyi_ui::module::{Hook, Install, Module};
     pub use shuyi_ui::screens::print_centred;
+    pub use shuyi_ui::settings::Background;
     pub use shuyi_ui::{
         BasicData, Ctx, FrameInput, Game, GameData, GameHooks, Screen, ScreenResult, Transition,
     };
 
-    pub use crate::{AppInfo, BasicGame, Card, Look, Setup, Start};
+    pub use crate::{AppInfo, BasicGame, Card, Look, Setup, Start, SystemEvent};
 }

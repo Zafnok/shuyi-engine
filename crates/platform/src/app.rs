@@ -339,6 +339,9 @@ pub struct Start<G: GameData> {
     pub state_hash: Option<GameHash<G>>,
     /// The game's record of its play, for a crash report.
     pub crash_record: Option<CrashRecord<G>>,
+    /// What the game does without focus, in place of its settings'
+    /// [`GameSettings::BACKGROUND`], if it says.
+    pub background: Option<Background>,
 }
 
 impl<G: GameData> Start<G> {
@@ -380,7 +383,18 @@ impl<G: GameData> Start<G> {
             made: None,
             state_hash: None,
             crash_record: None,
+            background: None,
         }
+    }
+
+    /// The same start with `policy` what the game does without focus, in
+    /// place of its settings' [`GameSettings::BACKGROUND`]: a game whose
+    /// settings aren't its own (one on the short path, whose settings are
+    /// `()`) says its policy here.
+    #[must_use]
+    pub fn background(mut self, policy: Background) -> Self {
+        self.background = Some(policy);
+        self
     }
 
     /// The same start with the game's hook for the system's events.
@@ -710,7 +724,7 @@ pub struct App<G: GameData> {
     suspended: bool,
     focused: bool,
     /// What the game does without focus: its settings'
-    /// [`GameSettings::BACKGROUND`].
+    /// [`GameSettings::BACKGROUND`], or its start's [`Start::background`].
     background: Background,
     quit: bool,
     lists: Lists<G::Voice>,
@@ -770,6 +784,7 @@ impl<G: GameData> App<G> {
             made,
             state_hash,
             crash_record,
+            background,
         } = start;
         let mut app = Self::in_phase(
             Phase::Loading {
@@ -783,6 +798,9 @@ impl<G: GameData> App<G> {
         app.made = made;
         app.game_hash = state_hash;
         app.crash_record = crash_record;
+        if let Some(policy) = background {
+            app.background = policy;
+        }
         app
     }
 
@@ -837,6 +855,18 @@ impl<G: GameData> App<G> {
             ticks: 0,
             load_ran: LoadRan::default(),
         }
+    }
+
+    /// Makes `policy` what the game does without focus, in place of its
+    /// settings' [`GameSettings::BACKGROUND`] ([`Start::background`]).
+    pub fn set_background(&mut self, policy: Background) {
+        self.background = policy;
+    }
+
+    /// What the game does without focus: its settings'
+    /// [`GameSettings::BACKGROUND`], or the policy put in its place.
+    pub fn background(&self) -> Background {
+        self.background
     }
 
     /// Gives the game `hook` for the system's events, in place of any it
