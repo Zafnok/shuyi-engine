@@ -206,7 +206,7 @@ Deviations:
   (`Which perspectives?` with the grid ticked and the parked answers
   greyed under it); answering it all is Nick's sign-off.
 
-Size: 2,244 counted lines, the terminal prompts replace the line prompts
+Size: 2,190 counted lines, the terminal prompts replace the line prompts
 in one place: 420 of the lines are the old prompts and their tests
 removed, and landing the lists without moving the examples and GitHub
 questions would ask the examples twice and mix two prompt styles in one
@@ -243,5 +243,10 @@ one, and the game's saves are kept under it.", which the question now
 says. He then asked that a question with nothing to pick not be shown
 in a terminal, while staying visible somewhere for checking its
 wording: the terminal no longer prints a skipped question's line, and
-`--questions` lists every question, each skipped one with why. Both are
-in `docs/decisions.md` (2026-11-25).
+`--questions` lists every question, each skipped one with why. Last, he
+asked that the id question say only what the id is (now "A unique id
+for the game, like io.github.yourname.<crate name>: app stores ask for
+one.") and that the save folder be a question of its own after it,
+prefilled with the id: that is a new question, flag and input field,
+so it is ticket 3430. All three are in `docs/decisions.md`
+(2026-11-25).

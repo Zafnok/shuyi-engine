@@ -2200,10 +2200,18 @@ terminal), on the id question, then on a skipped question's line:
 
 - **The id question says what the id is for**, in plain words, with an
   example from the game's name: "A unique id for the game, like
-  io.github.yourname.<crate name>: app stores ask for one, and the
-  game's saves are kept under it." (Nick agreed to this wording.) The
-  id still names the save folder by default
-  ([ADR-0059](adr/0059-a-games-identity-once-in-shuyi-ron-written-as-a-rust-constant-checked-like-generated-files-and-the-storage-name-following-the-id.md)).
+  io.github.yourname.<crate name>: app stores ask for one." The id
+  still names the save folder by default
+  ([ADR-0059](adr/0059-a-games-identity-once-in-shuyi-ron-written-as-a-rust-constant-checked-like-generated-files-and-the-storage-name-following-the-id.md)),
+  but the question doesn't say so: then
+  > "since we said they can modify the save folder locaiton manually,
+  > it should be a followup question. Rather than say here the saves
+  > will be under com.example.doom it should be just the unique id in
+  > this question. Next question should be what folder name are game's
+  > saves under and pre-filled with the id used from prev answer. Then
+  > they can overwrite that."
+- **The save folder is a question of its own, right after the id**,
+  prefilled with the id the developer just gave (ticket 3430).
 - **A question with nothing to pick is not shown** in a terminal: it
   takes its default unseen.
 - **`shuyi new <dir> --questions` is the view that shows them all**,

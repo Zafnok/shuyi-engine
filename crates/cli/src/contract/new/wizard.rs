@@ -359,7 +359,7 @@ pub fn questions(
             ID,
             &format!(
                 "A unique id for the game, like io.github.yourname.{krate}: app stores ask for \
-                 one, and the game's saves are kept under it."
+                 one."
             ),
             Some("--id"),
             &named.id,
