@@ -304,7 +304,7 @@ None.
     lists the template's own `time` question among the template's (its
     `asker` is `template`, after the catalog's concerns and before the
     targets; `wizard::questions` lists every question of
-    `template.ron`). 3423's prompts ask it;
+    `template.ron`), and the terminal's prompts (3423, done) ask it;
   - its test: with `Right` held for one second, the hero moves the same
     number of tiles in frames of 1/30 s (`Harness::frame`) as in frames
     of 1/60 s;

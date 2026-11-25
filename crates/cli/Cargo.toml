@@ -81,6 +81,11 @@ getrandom = { version = "0.4", default-features = false }
 # them to ADPCM. Readers, on the developer's machine (`tools/layers.ron`).
 lewton = "0.9"
 hound = "3.5"
+# `new`'s prompts in a terminal (ticket 3423): a line of text, a list to
+# pick one answer from, a list to tick any of. Without the defaults
+# `editor` (tempfile) and `password` (zeroize): only `Input`, `Select` and
+# `MultiSelect` are used. MIT; on `console`, already here.
+dialoguer = { version = "0.12", default-features = false }
 # `font-atlas`, with `jis`: a Japanese BDF font's JIS X 0208 code points
 # read as Unicode, through the EUC-JP decoder's table.
 encoding_rs = { version = "0.8.35", default-features = false, features = ["alloc"], optional = true }

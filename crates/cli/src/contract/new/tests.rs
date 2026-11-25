@@ -2169,6 +2169,48 @@ fn the_printed_command_makes_the_same_game_in_another_folder() {
 }
 
 #[test]
+fn the_prompts_game_is_the_printed_commands_game() {
+    use super::prompts::scripted::{Scripted, Step, picked, typed};
+    let dir = scratch("prompted");
+    // Every question asked, none at its default but the perspectives.
+    let mut script = Scripted::new([
+        typed("Nick's Moon"),
+        typed("org.example.moon"),
+        Step::Enter,
+        picked(&["none"]),
+        picked(&["no"]),
+        picked(&["desktop", "playdate"]),
+        picked(&["no"]),
+    ]);
+    let (input, flags) = questions::parse(&["prompted".to_owned()]).unwrap();
+    fs::create_dir_all(dir.join("temp")).unwrap();
+    let mut fake = crate::repos::fake::Fake::new(&dir.join("prompted"), &dir.join("temp"));
+    let made = questions::new_with(&dir, input, &flags, false, Some(&mut script), &mut fake);
+    assert!(script.steps.is_empty(), "{:?}", script.steps);
+    assert!(made.repos.is_none());
+    assert_eq!(fake.changes(), Vec::<String>::new());
+    let output = made
+        .answer
+        .result
+        .unwrap_or_else(|| panic!("{:?}", made.answer.error));
+    assert_eq!(output.name, "Nick's Moon");
+    assert_eq!(output.answers.0["examples"], ["no"]);
+    assert_eq!(output.answers.0["targets"], ["desktop", "playdate"]);
+    let mut words = shell_words(&output.command);
+    assert_eq!(words[..4], ["shuyi", "new", "prompted", "--no-input"]);
+    words[2] = "prompted-again".to_owned();
+    let again = made_from(&dir, &words[2..]);
+    assert!(again.ok, "{again:?}");
+    assert_eq!(
+        tree(&dir.join("prompted")),
+        tree(&dir.join("prompted-again")),
+        "{}",
+        output.command
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn a_new_games_project_keeps_every_answer_it_was_made_with() {
     let dir = scratch("created-with");
     let mut input = NewInput::new("g").template("grid");

@@ -42,9 +42,10 @@
             // quick checks, whose right answers are `- [x] `.
             "crates/cli/src/check_keys.rs",
             "crates/cli/src/contract/attach.rs",
-            // `shuyi new`'s questions, in the developer's terminal: "press
-            // Enter for the default" names the terminal's key, no game's.
-            "crates/cli/src/contract/new/questions.rs",
+            // `shuyi new`'s prompts, in the developer's terminal: their help
+            // lines ("space to tick, Enter when done") name the terminal's
+            // keys, no game's (ticket 3423).
+            "crates/cli/src/contract/new/prompts.rs",
             "crates/cli/src/contract/autobalance.rs",
             "crates/cli/src/contract/playtest.rs",
             "crates/cli/src/contract/run.rs",

@@ -31,7 +31,8 @@ cd box-pusher
 you into it. Use this name: the rest of the project expects it. `--template
 blank` asks for the smallest game there is, one screen with a title on it. `--no-github`
 keeps it on your machine: without it, `shuyi new` asks whether to put the game on
-GitHub too.
+GitHub too. It asks a few more questions, each with its answer already picked: press
+Enter to take each one.
 
 Now open that folder in your editor, and leave your terminal open beside it.
 

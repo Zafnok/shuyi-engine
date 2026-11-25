@@ -7,8 +7,9 @@
 //! all but `time`, has a flag of its id ([`concern_flag`]: `--perspective`,
 //! `--bodies`…), and `--targets` takes the engine's target profiles
 //! ([`engine_targets`]), the template's always-on parts' targets by
-//! default ([`default_targets`]). Asking them in a terminal, as lists to
-//! pick from, is ticket 3423's.
+//! default ([`default_targets`]). A terminal asks them as lists to pick
+//! from ([`super::prompts`]), and the GitHub questions after them
+//! ([`super::questions`]).
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -167,6 +168,9 @@ pub struct Question {
     pub flag: Option<String>,
     /// Why it isn't asked, if it isn't: it takes its default.
     pub skipped: Option<String>,
+    /// What an agent asking for its user must do with it, if it must do
+    /// more than ask: `github`'s says an agent never answers `yes` itself.
+    pub agent: Option<String>,
 }
 
 /// The questions `shuyi new` asks of a game, for the answers given so far.
@@ -212,7 +216,48 @@ fn text_question(id: &str, text: &str, flag: Option<&str>, default: &str) -> Que
         default: vec![default.to_owned()],
         flag: flag.map(str::to_owned),
         skipped: None,
+        agent: None,
     }
+}
+
+/// A question of the engine's of `takes` (a list), offering `answers`
+/// (each its id and its text, all ready), `default` unless another is
+/// given, answered by `flag`.
+pub(super) fn engine_list(
+    id: &str,
+    text: &str,
+    takes: Takes,
+    answers: &[(&str, &str)],
+    default: Vec<String>,
+    flag: &str,
+) -> Question {
+    Question {
+        id: id.to_owned(),
+        asker: Asker::Engine,
+        text: text.to_owned(),
+        takes,
+        answers: answers
+            .iter()
+            .map(|(id, text)| Offered {
+                id: (*id).to_owned(),
+                text: (*text).to_owned(),
+                status: Status::Ready,
+                tickets: Vec::new(),
+            })
+            .collect(),
+        default,
+        flag: Some(flag.to_owned()),
+        skipped: None,
+        agent: None,
+    }
+}
+
+/// A text question of the engine's, `default` unless another line is
+/// given (empty for none), answered by `flag`.
+pub(super) fn engine_text(id: &str, text: &str, default: &str, flag: &str) -> Question {
+    let mut question = text_question(id, text, Some(flag), default);
+    question.default.retain(|line| !line.is_empty());
+    question
 }
 
 /// Why `concern` isn't asked of a game of the perspectives `picked`, if it
@@ -284,6 +329,7 @@ fn concern_question(
         default,
         flag: Some(format!("--{}", concern.id)),
         skipped,
+        agent: None,
     }
 }
 
@@ -357,6 +403,7 @@ pub fn questions(
                 .unwrap_or_else(|| question.default.clone()),
             flag: Some(format!("--set {}=", question.id)),
             skipped,
+            agent: None,
         });
     }
     out.push(Question {
@@ -388,6 +435,7 @@ pub fn questions(
             .unwrap_or_else(|| default_targets(template)),
         flag: Some("--targets".to_owned()),
         skipped: None,
+        agent: None,
     });
     out
 }

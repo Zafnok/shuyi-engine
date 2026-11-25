@@ -531,14 +531,22 @@ fn with_targets(mut answers: Answers, template: &Template) -> Result<Answers, St
     Ok(answers)
 }
 
+/// The name of `input`'s folder under `cwd`, the game's name without
+/// `--name`.
+fn folder_name(cwd: &Path, input: &NewInput) -> String {
+    std::path::absolute(cwd.join(&input.dir))
+        .ok()
+        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_default()
+}
+
 /// The game's name and its crate's name for `input` under `cwd`: `--name`,
 /// else its folder's name; or why the name can't be one.
 fn name_of(cwd: &Path, input: &NewInput) -> Result<(String, String), String> {
-    let folder = std::path::absolute(cwd.join(&input.dir))
-        .ok()
-        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
-        .unwrap_or_default();
-    let name = input.name.clone().unwrap_or(folder);
+    let name = input
+        .name
+        .clone()
+        .unwrap_or_else(|| folder_name(cwd, input));
     check_name(&name)?;
     let krate = crate_name(&name)?;
     Ok((name, krate))
@@ -626,9 +634,10 @@ pub fn usage(command: &str) -> String {
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\
          --private-url names (https://github.com/<owner>/<repo>.git).\n\n\
-         In a terminal, it asks whether to include the engine skills' worked examples\n\
-         (yes by default; --examples or --no-examples answers, as --set examples=yes|no\n\
-         does), then whether to put the game on GitHub (gh, signed in):\n\
+         In a terminal, it asks each question nothing answers, as lists to pick from\n\
+         (--questions lists them), the engine skills' worked examples among them (yes by\n\
+         default; --examples or --no-examples answers, as --set examples=yes|no does),\n\
+         then whether to put the game on GitHub (gh, signed in):\n\
          --github makes <owner>/<crate name> (public by default) and, unless --private\n\
          none, <owner>/<crate name>-assets (private by default) for the KINDS of files\n\
          kept private and each --private-folder, with `{command} repos`. The KINDS are\n\
@@ -722,6 +731,7 @@ pub fn text(output: &NewOutput) -> String {
     out
 }
 
+pub(crate) mod prompts;
 pub(crate) mod questions;
 pub mod wizard;
 

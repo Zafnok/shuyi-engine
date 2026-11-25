@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3424"]
 nick_input: sign-off
-completed:
+completed: 2026-11-24
 ---
 
 # 3423 — The new-game wizard's prompts
@@ -118,16 +118,16 @@ asked is missing.
 
 ## Acceptance criteria
 
-- [ ] In a terminal, `shuyi new demo` asks the name, the id, the
+- [x] In a terminal, `shuyi new demo` asks the name, the id, the
       perspectives (top-down grid ticked), the questions the catalog
       asks for them, the template's, the targets and the GitHub ones,
       each a list where it has answers, planned and parked answers
       greyed with their tickets.
-- [ ] Answering the prompts (through the scripted `Prompter`), then
+- [x] Answering the prompts (through the scripted `Prompter`), then
       running the command `new` prints with `--no-input` into another
       folder, gives the same bytes.
-- [ ] Off a terminal, or with `--no-input`, nothing is asked.
-- [ ] `--questions --json` lists the GitHub questions, with the field
+- [x] Off a terminal, or with `--no-input`, nothing is asked.
+- [x] `--questions --json` lists the GitHub questions, with the field
       about `github: yes`, and matches its schema.
 - [ ] Nick's sign-off is recorded in the Completion notes.
 - [ ] All gates in the `run-gates` skill pass.
@@ -140,3 +140,84 @@ asked is missing.
   questions JSON against its schema.
 
 ## Completion notes
+
+What was done:
+
+- `crates/cli/src/contract/new/prompts.rs`: the `Prompter` trait (`text`,
+  `one`, `many`, `say`), the terminal's (`prompts::Terminal`, `dialoguer`
+  on stderr, with a theme that puts the planned and parked answers,
+  greyed with their status and tickets, and a help line naming the keys
+  under the list's last choice), and a scripted one for tests
+  (`prompts::scripted`). `prompts::ask` asks `wizard::questions` that
+  nothing given answers, listing them again after each answer, so the
+  name sets the id's default and the perspectives what the catalog
+  asks; a skipped question prints one line, its answer and why.
+  `prompts::pick` asks any list question: only `ready` answers are
+  choices, so a planned one can't be picked. Esc stops with nothing
+  made.
+- `questions.rs`: the line prompts of 2592 and 2597 are gone. The
+  examples question is the template's, asked in the wizard; the GitHub
+  questions are `wizard::Question`s (`github_question`, `visibility_question`,
+  `keep_question`, `kinds_question`, `folders_question`,
+  `assets_visibility_question`), asked through the `Prompter` after the
+  wizard's, and listed by `--questions` (`github_questions`) after the
+  targets, those after `github` skipped unless `--github`. Every flag
+  stays, and `--no-input` still means `--no-github`.
+- `wizard::Question` gains `agent`: `github`'s says an agent asks its
+  user and never answers yes itself. `new.questions.json` regenerated;
+  `contract::VERSION` 59 to 60.
+- `dialoguer` 0.12.0: MIT (its `Cargo.toml` and `LICENSE`, checked
+  2026-11-24), with `default-features = false` (no `editor`/`tempfile`,
+  no `password`/`zeroize`); it brings `shell-words` (MIT or Apache-2.0)
+  and uses `console` 0.16, already in the lock. No MSVC. The CLI isn't
+  in a shipped game, so rule 13's toggle doesn't apply.
+- `shuyi.ron`'s `check_keys` lets `prompts.rs` name the terminal's keys
+  (its help lines) in place of `questions.rs`, which no longer does.
+- Docs: `docs/templates.md` (what a terminal asks, the GitHub questions
+  in the list and their `agent` field), the `shuyi-new-game` skill, the
+  book's quick start and box-pusher chapter 1, and `new`'s usage. 2848's
+  clause about 3423 and 2739's mention are rewritten as what now holds.
+
+Deviations:
+
+- 2848 isn't done, so the license question was left to it (its clause
+  now says where it goes and how).
+- The folder isn't asked: it is `new`'s first word, always given. A
+  name that makes no crate (a folder named `9`) is now asked again in a
+  terminal rather than refused.
+- The examples question moved from first to among the template's, after
+  the scripting question, and its text is the template's, shorter than
+  2597's line prompt.
+- The yes-or-no GitHub questions are lists of `yes` and `no`; the help
+  line goes under each list but not under a text prompt, which is one
+  line.
+- The terminal run was checked by hand only up to the first list
+  (`Which perspectives?` with the grid ticked and the parked answers
+  greyed under it); answering it all is Nick's sign-off.
+
+Size: 2,107 counted lines, the terminal prompts replace the line prompts
+in one place: 420 of the lines are the old prompts and their tests
+removed, and landing the lists without moving the examples and GitHub
+questions would ask the examples twice and mix two prompt styles in one
+run.
+
+Behaviour: shuyi-cli: `shuyi new` in a terminal asks the wizard's
+questions (the name, the id, the perspectives, the catalog's, the
+template's, the targets) as lists before the GitHub ones, and draws its
+prompts on stderr; it asks only when stdin, stdout and stderr are all a
+terminal. The examples question comes after the perspectives, not first.
+
+Behaviour: shuyi-cli: `shuyi new <dir> --questions` lists six GitHub
+questions after the targets, and each question in its JSON has an
+`agent` field (null but for `github`).
+
+Book: updated, `quick-start.md` and `box-pusher/01-new.md` say what a
+terminal asks.
+
+Game: nothing to adopt, the game isn't made by `shuyi new` and never
+runs it (searched the game for `shuyi new` and `questions --json`: only
+its copies of the skill pack, which the pin's skill sync updates).
+
+Nick input: sign-off pending: run `shuyi new` in a terminal, answer the
+questions, and say whether the wording is clear and whether anything
+expected is missing.
