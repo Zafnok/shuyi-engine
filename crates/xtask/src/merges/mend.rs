@@ -29,16 +29,7 @@ use super::{check_merge, git};
 /// Splits every refused merge among the branch's unpushed commits. Returns
 /// what it did, one line each, or why it changed nothing.
 pub fn mend(repo_root: &Path) -> Result<Vec<String>, String> {
-    let branch = git(repo_root, &["symbolic-ref", "-q", "HEAD"])
-        .map_err(|_| "HEAD isn't on a branch: switch to the branch to mend".to_owned())?;
-    let branch = branch.trim().to_owned();
-    for state in ["MERGE_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD"] {
-        if git(repo_root, &["rev-parse", "-q", "--verify", state]).is_ok() {
-            return Err(format!(
-                "{state} exists: a merge, rebase or cherry-pick is under way; finish or abort it first"
-            ));
-        }
-    }
+    let branch = branch_to_mend(repo_root)?;
     let head = rev(repo_root, "HEAD")?;
     let listing = git(
         repo_root,
@@ -74,45 +65,15 @@ pub fn mend(repo_root: &Path) -> Result<Vec<String>, String> {
             .collect();
         let tree = rev(repo_root, &format!("{commit}^{{tree}}"))?;
         let info = Info::of(repo_root, commit)?;
-        let short = &commit[..commit.len().min(10)];
         if refused.contains(&commit) {
-            let remerged = git(
-                repo_root,
-                &[
-                    "merge-tree",
-                    "--write-tree",
-                    "-X",
-                    "ours",
-                    &new_parents[0],
-                    &new_parents[1],
-                ],
-            )
-            .map_err(|_| {
-                format!(
-                    "merge {short}: git can't remerge its parents by content alone (a rename or \
-                     delete conflict), so split it by hand: `git reset --hard {short}^1`, merge \
-                     again, commit only the resolution, then commit the rest on its own"
-                )
-            })?;
-            let clean = remerged
-                .lines()
-                .next()
-                .unwrap_or_default()
-                .trim()
-                .to_owned();
-            let merge = commit_tree(repo_root, &clean, &new_parents, &info, &info.message)?;
-            new_merges.push(merge.clone());
-            let split_message = format!(
-                "Split out of merge {short}: what it changed beyond resolving its parents\n\n\
-                 {}\n\n(`cargo xtask mend-merges`, ticket 3532)\n",
-                info.message.lines().next().unwrap_or_default()
-            );
-            let split = commit_tree(repo_root, &tree, &[merge.clone()], &info, &split_message)?;
+            let (merge, split) = split(repo_root, commit, &new_parents, &tree, &info)?;
             report.push(format!(
-                "merge {short}: split into the merge {} and {}, which holds its own changes",
+                "merge {}: split into the merge {} and {}, which holds its own changes",
+                &commit[..10],
                 &merge[..10],
                 &split[..10]
             ));
+            new_merges.push(merge);
             made.insert(commit.to_owned(), split);
         } else if new_parents != old_parents {
             let again = commit_tree(repo_root, &tree, &new_parents, &info, &info.message)?;
@@ -152,6 +113,65 @@ pub fn mend(repo_root: &Path) -> Result<Vec<String>, String> {
         &new_head[..10]
     ));
     Ok(report)
+}
+
+/// The branch HEAD is on, if nothing is under way that a rewrite would upset.
+fn branch_to_mend(repo_root: &Path) -> Result<String, String> {
+    let branch = git(repo_root, &["symbolic-ref", "-q", "HEAD"])
+        .map_err(|_| "HEAD isn't on a branch: switch to the branch to mend".to_owned())?;
+    for state in ["MERGE_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD"] {
+        if git(repo_root, &["rev-parse", "-q", "--verify", state]).is_ok() {
+            return Err(format!(
+                "{state} exists: a merge, rebase or cherry-pick is under way; finish or abort it first"
+            ));
+        }
+    }
+    Ok(branch.trim().to_owned())
+}
+
+/// Makes the refused merge `commit` again on `parents` with only its
+/// resolution, and a commit on top with its own `tree`. Returns both.
+fn split(
+    repo_root: &Path,
+    commit: &str,
+    parents: &[String],
+    tree: &str,
+    info: &Info,
+) -> Result<(String, String), String> {
+    let short = &commit[..commit.len().min(10)];
+    let remerged = git(
+        repo_root,
+        &["merge-tree", "--write-tree", "-X", "ours", &parents[0], &parents[1]],
+    )
+    .map_err(|_| {
+        format!(
+            "merge {short}: git can't remerge its parents by content alone (a rename or              delete conflict), so split it by hand: `git reset --hard {short}^1`, merge              again, commit only the resolution, then commit the rest on its own"
+        )
+    })?;
+    let clean = remerged
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_owned();
+    let merge = commit_tree(repo_root, &clean, parents, info, &info.message)?;
+    let split_message = format!(
+        "Split out of merge {short}: what it changed beyond resolving its parents
+
+         {}
+
+(`cargo xtask mend-merges`, ticket 3532)
+",
+        info.message.lines().next().unwrap_or_default()
+    );
+    let split = commit_tree(
+        repo_root,
+        tree,
+        std::slice::from_ref(&merge),
+        info,
+        &split_message,
+    )?;
+    Ok((merge, split))
 }
 
 /// Fails if a merge `check-merges` refuses is on a remote already: then only
@@ -280,7 +300,7 @@ mod tests {
     #[test]
     fn a_merge_with_edits_is_split_and_the_last_tree_kept() {
         let dir = with_a_bad_merge("mend-split");
-        assert!(!run(&dir, "main", "HEAD").is_empty());
+        assert_ne!(run(&dir, "main", "HEAD"), Vec::<String>::new());
         let before = tree(&dir, "HEAD");
         let report = mend(&dir).expect("mend");
         assert_eq!(report.len(), 2, "{report:?}");
