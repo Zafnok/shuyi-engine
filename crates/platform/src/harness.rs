@@ -45,6 +45,7 @@ use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, PerfRing};
+use shuyi_ui::settings::Background;
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
@@ -314,6 +315,17 @@ impl<G: GameData> Harness<G> {
     #[must_use]
     pub fn with_system_hook(mut self, hook: SystemHook<G>) -> Self {
         self.app.set_system_hook(hook);
+        self
+    }
+
+    /// Makes `policy` what the game does without focus, in place of its
+    /// settings' [`GameSettings::BACKGROUND`], as [`Start::background`]
+    /// does on a device.
+    ///
+    /// [`GameSettings::BACKGROUND`]: shuyi_ui::settings::GameSettings::BACKGROUND
+    #[must_use]
+    pub fn with_background(mut self, policy: Background) -> Self {
+        self.app.set_background(policy);
         self
     }
 

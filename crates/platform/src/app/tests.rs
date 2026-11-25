@@ -813,6 +813,34 @@ fn quitting_while_paused_quits() {
     assert!(app.has_quit() && !app.is_paused());
 }
 
+/// A start's background policy stands in for the settings': the toy's say
+/// keep running, and its start says pause.
+#[test]
+fn a_starts_background_policy_takes_the_place_of_the_settings() {
+    let keep = Background::KEEP_RUNNING;
+    assert_eq!(
+        <<Toy as GameData>::Settings as GameSettings>::BACKGROUND,
+        keep
+    );
+    let start = || {
+        Start::new(
+            Card::text("A toy"),
+            |toy: &Toy| toy.look(),
+            |_| Ok(toy::game()),
+        )
+    };
+    assert_eq!(App::new(start()).background(), keep);
+    let mut app = App::new(start().background(keep.paused()));
+    assert_eq!(app.background(), keep.paused());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(17));
+    assert!(app.game().is_some() && !app.is_paused());
+    p.push_system(SystemEvent::FocusLost);
+    let _ = app.frame(&mut p, Millis(34));
+    assert!(app.is_paused());
+}
+
 /// Whether every sound group the device heard of last has a gain.
 fn sounding(p: &HeadlessPlatform) -> bool {
     let gains = p.speaker().gains();

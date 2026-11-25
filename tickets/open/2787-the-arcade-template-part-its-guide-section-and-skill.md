@@ -75,8 +75,10 @@ None.
     `input.ticks()`, records a `TickRecord`, and draws through `MapScene`
     and the glyph skin as the grid part does; its tools give the scene
     and `replay` through `replay::ticks`; `playtest` stays unsupported.
-  - Its `Background` is `Background::KEEP_RUNNING.paused()` (3245's
-    short-path setter).
+  - Its `Background` is `Background::KEEP_RUNNING.paused()`, set with
+    `BasicGame::background` (3245), as `examples/snake` sets it; snake's
+    `on_system` hook, which opens its pause menu on `FocusLost`, is the
+    pattern for one.
 - **`--template arcade`**, a short name for `perspective:
   ["top-down-grid"]` and `time: ["ticks"]`, beside `grid` and `blank`;
   `--set time=ticks` picks it too.

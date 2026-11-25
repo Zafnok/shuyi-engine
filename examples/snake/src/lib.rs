@@ -25,6 +25,7 @@ use shuyi::assets::format::Formats;
 use shuyi::assets::grid_map::MapText;
 use shuyi::assets::ron::Ron;
 use shuyi::core::{Made, TerrainId};
+use shuyi::platform::SystemHook;
 use shuyi::prelude::*;
 
 use rules::{Board, Feature, Snake, Tuning};
@@ -111,7 +112,9 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
 pub type Data = BasicData<UiAction, Own>;
 
 /// The game: who it is ([`app_info::APP`]), its files and its part of them,
-/// its console, its title first, and every screen it can show.
+/// its console, its title first, and every screen it can show. Without
+/// focus it pauses ([`Background`]), and a run waits in its pause menu
+/// ([`ON_SYSTEM`]).
 pub fn game() -> BasicGame<UiAction, Own> {
     // check-text: not player text, a folder
     BasicGame::with_own(app_info::APP, Layer::dir("files", FILES), own, |_| {
@@ -120,7 +123,17 @@ pub fn game() -> BasicGame<UiAction, Own> {
     .console(CONSOLE)
     .screens(screens::every)
     .modules(shuyi::enabled_modules)
+    .background(Background::KEEP_RUNNING.paused())
+    .on_system(ON_SYSTEM)
 }
+
+/// The game's hook for the system's events: when the window loses focus
+/// during a run, the run's pause menu opens over it, as Cancel opens it.
+pub const ON_SYSTEM: SystemHook<Data> = |game, event| {
+    if event == SystemEvent::FocusLost && game.top_screen() == Some("stage") {
+        game.act(UiAction::Cancel);
+    }
+};
 
 /// What made this build, for its records: the game's id and version and
 /// the fingerprint of the files it ships, computed once. A record keeps it,

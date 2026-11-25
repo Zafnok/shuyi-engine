@@ -21,9 +21,10 @@ use shuyi_ui::basic::{BasicData, Own};
 use shuyi_ui::dialogue::preview::{DialogueFolder, DialoguePreview, PreviewGame};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
+use shuyi_ui::settings::Background;
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
 
-use crate::app::{Card, CrashRecord, Start};
+use crate::app::{Card, CrashRecord, Start, SystemHook};
 use crate::app_info::AppInfo;
 use crate::platform::Look;
 
@@ -61,6 +62,10 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     /// Whether a crash report holds its record in a build without debug
     /// tools too.
     record_in_release: bool,
+    /// What it does without focus, if it says.
+    background: Option<Background>,
+    /// Its hook for the system's events, if it has one.
+    on_system: Option<SystemHook<BasicData<A, T>>>,
 }
 
 /// What a game on the short path is painted with: its font and pictures.
@@ -94,7 +99,29 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             modules: None,
             crash_record: None,
             record_in_release: false,
+            background: None,
+            on_system: None,
         }
+    }
+
+    /// The same game, doing `policy` without focus ([`Start::background`]):
+    /// until said, `()`'s [`GameSettings::BACKGROUND`], which keeps it
+    /// running with its sound.
+    ///
+    /// [`GameSettings::BACKGROUND`]: shuyi_ui::settings::GameSettings::BACKGROUND
+    #[must_use]
+    pub fn background(mut self, policy: Background) -> Self {
+        self.background = Some(policy);
+        self
+    }
+
+    /// The same game, with `hook` its hook for the system's events
+    /// ([`Start::on_system`]; none until said): on
+    /// [`FocusLost`](crate::SystemEvent::FocusLost) it may open a pause menu.
+    #[must_use]
+    pub fn on_system(mut self, hook: SystemHook<BasicData<A, T>>) -> Self {
+        self.on_system = Some(hook);
+        self
     }
 
     /// The same game on `console` ([`BASIC_CONSOLE`] until said).
@@ -282,20 +309,23 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     /// platform shows in place of the game. A session record of it carries
     /// its [`made`](Self::made), and each frame's hash the state hash of its
     /// screens ([`Screen::state_hash`]). A crash report carries its
-    /// [`crash_record`](Self::crash_record), if it has one.
+    /// [`crash_record`](Self::crash_record), if it has one; the start, its
+    /// [`background`](Self::background) policy and its
+    /// [`on_system`](Self::on_system) hook, if it says them.
     pub fn start(self) -> Start<BasicData<A, T>> {
         let made = self.made();
-        let crash_record = self.crash_record;
-        let start = Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
+        let (crash_record, background, on_system) =
+            (self.crash_record, self.background, self.on_system);
+        let mut start = Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
             let ctx = self.ctx()?;
             self.game(setup.ctx(ctx)).map_err(|e| e.to_string())
         })
         .made(made)
         .state_hash(Game::state_hash);
-        match crash_record {
-            Some(hook) => start.crash_record(hook),
-            None => start,
-        }
+        start.crash_record = crash_record;
+        start.background = background;
+        start.on_system = on_system;
+        start
     }
 
     /// Its dialogue preview on `ctx` ([`DialoguePreview`]): the scenes of
@@ -385,7 +415,26 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         let game = self
             .game(ctx)
             .unwrap_or_else(|e| panic!("the game's modules: {e}"));
-        crate::harness::Harness::new(game)
+        self.harness_on(game)
+    }
+
+    /// `game`, one of its [`game`](Self::game)s, in the test Harness, with
+    /// its [`background`](Self::background) policy and its
+    /// [`on_system`](Self::on_system) hook as [`start`](Self::start) gives
+    /// them a device.
+    #[cfg(any(test, feature = "harness"))]
+    pub fn harness_on(
+        &self,
+        game: Game<BasicData<A, T>>,
+    ) -> crate::harness::Harness<BasicData<A, T>> {
+        let mut harness = crate::harness::Harness::new(game);
+        if let Some(policy) = self.background {
+            harness = harness.with_background(policy);
+        }
+        if let Some(hook) = self.on_system {
+            harness = harness.with_system_hook(hook);
+        }
+        harness
     }
 }
 

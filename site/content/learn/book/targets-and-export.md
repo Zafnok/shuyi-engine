@@ -58,8 +58,8 @@ machine, with a screen you couldn't test:
   shows another tier when `SHUYI_GRAPHICS` names one (`SHUYI_GRAPHICS=reduced`), to see a lesser
   target's stills without the device.
 
-A dropped file reaches the game's system hook (`Start::on_system`: a `BasicGame` gives its
-`start()` one) as
+A dropped file reaches the game's system hook (`Start::on_system`, or `BasicGame::on_system`
+on the short path) as
 `SystemEvent::FilesDropped`, each file with its `name()`, never the folders it came from, and its
 `bytes()`. That is how a player brings what the game can't ship: a level they made, a mod, their
 own copy of a file. `DroppedFile::layer(files)` makes a bundle layer named `dropped` of them, each
