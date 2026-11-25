@@ -1,13 +1,26 @@
-//! The new-game wizard's answers by flag (ADR-0013 §1, §2): each concern
-//! of the catalog (`docs/modules.ron`) that `shuyi new` asks, all but
-//! `time`, has a flag of its id ([`concern_flag`]: `--perspective`,
+//! The new-game wizard's questions (ADR-0013 §1, §2, §6): what `shuyi new`
+//! asks, as data ([`questions`]), listed for an agent by `shuyi new <dir>
+//! --questions --json` ([`listed`]). The command that makes a game again
+//! and the answers kept in `shuyi.ron` are ticket 3425's.
+//!
+//! Each concern of the catalog (`docs/modules.ron`) that `shuyi new` asks,
+//! all but `time`, has a flag of its id ([`concern_flag`]: `--perspective`,
 //! `--bodies`…), and `--targets` takes the engine's target profiles
 //! ([`engine_targets`]), the template's always-on parts' targets by
-//! default ([`default_targets`]). The questions themselves, listed for an
-//! agent, are ticket 3424's; asked in a terminal, 3423's.
+//! default ([`default_targets`]). Asking them in a terminal, as lists to
+//! pick from, is ticket 3423's.
 
-use crate::catalog::Concerns;
-use crate::template::{self, Template};
+use std::fmt::Write as _;
+use std::path::Path;
+
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use super::{Engine, NewInput, PRIVATE_FILES, answers_of, default_id, engine_root, name_of};
+use crate::catalog::{Catalog, Concern, Concerns, Status};
+use crate::contract::codes::{self, Code};
+use crate::contract::{Answer, Op};
+use crate::template::{self, Answers, Pick, TARGETS, Template};
 
 /// A target an engine profile adds, as `--targets` takes it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,6 +70,414 @@ pub fn concern_flag(flag: &str) -> Option<String> {
     let id = flag.strip_prefix("--")?;
     let concerns = Concerns::embedded().ok()?;
     template::asked(&concerns, id).map(|c| c.id.clone())
+}
+
+/// The engine's question of the game's folder.
+pub const DIR: &str = "dir";
+
+/// The engine's question of the game's name.
+pub const NAME: &str = "name";
+
+/// The engine's question of the game's reverse-DNS id.
+pub const ID: &str = "id";
+
+/// The catalog's concern of the perspectives, which the engine always asks.
+pub const PERSPECTIVE: &str = "perspective";
+
+/// Who asks a question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+// A set that may grow (ADR-0039, kind 6).
+#[non_exhaustive]
+pub enum Asker {
+    /// The engine: the folder, the name, the id, the perspectives and the
+    /// targets.
+    Engine,
+    /// The catalog, `docs/modules.ron`: one question per concern.
+    Catalog,
+    /// The template: its own questions.
+    Template,
+}
+
+/// What a question takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+// A set that may grow (ADR-0039, kind 6).
+#[non_exhaustive]
+pub enum Takes {
+    /// A line of text.
+    Text,
+    /// One of its answers at most.
+    One,
+    /// Any number of its answers.
+    Many,
+}
+
+impl From<Pick> for Takes {
+    fn from(pick: Pick) -> Self {
+        match pick {
+            Pick::One => Takes::One,
+            Pick::Many => Takes::Many,
+        }
+    }
+}
+
+/// One answer a question offers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An output, read and never built outside this crate: it may grow
+// (ADR-0039, kind 3).
+#[non_exhaustive]
+pub struct Offered {
+    /// Its id, as its flag takes it (`top-down-grid`).
+    pub id: String,
+    /// A few words that say it (`top-down grid`).
+    pub text: String,
+    /// Whether it is built: only a `ready` answer is picked, and a
+    /// `planned` or `parked` one is shown as coming (ADR-0013 §6).
+    pub status: Status,
+    /// The tickets that build it, if it isn't ready.
+    pub tickets: Vec<String>,
+}
+
+/// A question `shuyi new` asks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An output, read and never built outside this crate: it may grow
+// (ADR-0039, kind 3).
+#[non_exhaustive]
+pub struct Question {
+    /// Its id: the engine's (`dir`, `name`, `id`, `perspective`,
+    /// `targets`), a concern's (`bodies`) or the template's
+    /// (`private-files`).
+    pub id: String,
+    /// Who asks it.
+    pub asker: Asker,
+    /// The words that ask it.
+    pub text: String,
+    /// What it takes.
+    pub takes: Takes,
+    /// The answers it offers, every one with its status; none for text.
+    pub answers: Vec<Offered>,
+    /// What it takes unless another answer is given: the answers given so
+    /// far, else its default (for text, the one line).
+    pub default: Vec<String>,
+    /// The flag that answers it (`--bodies`, `--set examples=`); none for
+    /// the folder, `new`'s first word.
+    pub flag: Option<String>,
+    /// Why it isn't asked, if it isn't: it takes its default.
+    pub skipped: Option<String>,
+}
+
+/// The questions `shuyi new` asks of a game, for the answers given so far.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An output: it may grow (ADR-0039, kind 3).
+#[non_exhaustive]
+pub struct Questions {
+    /// The template's id (`shuyi-default`).
+    pub template: String,
+    /// Every question, in the order it is asked.
+    pub questions: Vec<Question>,
+}
+
+/// What the game is called so far: its folder, its name and its id, each
+/// as given or at its default.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Named {
+    /// Its folder, as given.
+    pub dir: String,
+    /// Its name: `--name`, else its folder's.
+    pub name: String,
+    /// Its reverse-DNS id: `--id`, else `com.example.<crate name>`.
+    pub id: String,
+}
+
+/// The template's questions another question answers, each with why it
+/// isn't asked itself.
+const ANSWERED_ELSEWHERE: [(&str, &str); 1] = [(
+    PRIVATE_FILES,
+    "the GitHub questions answer it (--github and --private), or --set private-files=yes with \
+     --private-url",
+)];
+
+/// A text question of the engine's.
+fn text_question(id: &str, text: &str, flag: Option<&str>, default: &str) -> Question {
+    Question {
+        id: id.to_owned(),
+        asker: Asker::Engine,
+        text: text.to_owned(),
+        takes: Takes::Text,
+        answers: Vec::new(),
+        default: vec![default.to_owned()],
+        flag: flag.map(str::to_owned),
+        skipped: None,
+    }
+}
+
+/// Why `concern` isn't asked of a game of the perspectives `picked`, if it
+/// isn't: none of its answers is for them, or fewer than two of its
+/// answers are ready or planned, so there is nothing to pick between.
+fn skipped(concern: &Concern, picked: &[String]) -> Option<String> {
+    if !concern.serves_any(picked) {
+        let picked = if picked.is_empty() {
+            "none is picked".to_owned()
+        } else {
+            format!("the game's are {}", picked.join(", "))
+        };
+        return Some(format!(
+            "its answers are for the perspectives {}, and {picked}",
+            concern.serves.join(", ")
+        ));
+    }
+    let coming: Vec<&str> = concern
+        .answers
+        .iter()
+        .filter(|a| matches!(a.status, Status::Ready | Status::Planned))
+        .map(|a| a.id.as_str())
+        .collect();
+    match coming.as_slice() {
+        [] => Some("none of its answers is ready or planned".to_owned()),
+        [one] => Some(format!(
+            "only `{one}` of its answers is ready or planned: there is nothing to pick between"
+        )),
+        _ => None,
+    }
+}
+
+/// The question of catalog concern `concern`, asked by `asker`.
+fn concern_question(
+    concern: &Concern,
+    asker: Asker,
+    given: &Answers,
+    skipped: Option<String>,
+) -> Question {
+    let default = given.0.get(&concern.id).cloned().unwrap_or_else(|| {
+        concern
+            .default_answer()
+            .map(|a| a.id.clone())
+            .into_iter()
+            .collect()
+    });
+    Question {
+        id: concern.id.clone(),
+        asker,
+        text: concern
+            .question
+            .clone()
+            .unwrap_or_else(|| concern.name.clone()),
+        takes: concern.pick.map_or(Takes::One, Takes::from),
+        answers: concern
+            .answers
+            .iter()
+            .map(|a| Offered {
+                id: a.id.clone(),
+                text: a.name.clone(),
+                status: a.status,
+                tickets: if a.status == Status::Ready {
+                    Vec::new()
+                } else {
+                    a.tickets.clone()
+                },
+            })
+            .collect(),
+        default,
+        flag: Some(format!("--{}", concern.id)),
+        skipped,
+    }
+}
+
+/// The questions `shuyi new` asks of the game `named`, with `template` over
+/// `catalog`'s concerns and the engine's `targets`, for the answers `given`
+/// so far: the folder, the name and the id; the perspectives, always asked;
+/// one question per concern the catalog asks (all but `time`), in its
+/// order; the template's own; then the targets. A question that isn't
+/// asked says why in [`Question::skipped`].
+pub fn questions(
+    catalog: &Catalog,
+    template: &Template,
+    targets: &[Target],
+    named: &Named,
+    given: &Answers,
+) -> Vec<Question> {
+    let mut out = vec![
+        text_question(DIR, "Which folder is the game made in?", None, &named.dir),
+        text_question(
+            NAME,
+            "What is the game called?",
+            Some("--name"),
+            &named.name,
+        ),
+        text_question(
+            ID,
+            "What is its reverse-DNS id, which its saves are kept under?",
+            Some("--id"),
+            &named.id,
+        ),
+    ];
+    let concerns = &catalog.concerns.concerns;
+    let asked = |id: &str| concerns.iter().find(|c| c.id == id && c.pick.is_some());
+    let mut picked = Vec::new();
+    if let Some(perspective) = asked(PERSPECTIVE) {
+        let question = concern_question(perspective, Asker::Engine, given, None);
+        picked.clone_from(&question.default);
+        out.push(question);
+    }
+    for concern in concerns
+        .iter()
+        .filter(|c| c.pick.is_some() && c.id != PERSPECTIVE)
+    {
+        let why = skipped(concern, &picked);
+        out.push(concern_question(concern, Asker::Catalog, given, why));
+    }
+    for question in &template.questions {
+        let skipped = ANSWERED_ELSEWHERE
+            .iter()
+            .find(|(id, _)| *id == question.id)
+            .map(|(_, why)| (*why).to_owned());
+        out.push(Question {
+            id: question.id.clone(),
+            asker: Asker::Template,
+            text: question.text.clone(),
+            takes: question.pick.into(),
+            answers: question
+                .answers
+                .iter()
+                .map(|a| Offered {
+                    id: a.id.clone(),
+                    text: a.text.clone(),
+                    status: Status::Ready,
+                    tickets: Vec::new(),
+                })
+                .collect(),
+            default: given
+                .0
+                .get(&question.id)
+                .cloned()
+                .unwrap_or_else(|| question.default.clone()),
+            flag: Some(format!("--set {}=", question.id)),
+            skipped,
+        });
+    }
+    out.push(Question {
+        id: TARGETS.to_owned(),
+        asker: Asker::Engine,
+        text: "Which targets does it ship on?".to_owned(),
+        takes: Takes::Many,
+        answers: targets
+            .iter()
+            .map(|t| Offered {
+                id: t.id.clone(),
+                text: if t.ready {
+                    t.id.clone()
+                } else {
+                    format!("{}: the engine doesn't run on it yet", t.id)
+                },
+                status: if t.ready {
+                    Status::Ready
+                } else {
+                    Status::Planned
+                },
+                tickets: Vec::new(),
+            })
+            .collect(),
+        default: given
+            .0
+            .get(TARGETS)
+            .cloned()
+            .unwrap_or_else(|| default_targets(template)),
+        flag: Some("--targets".to_owned()),
+        skipped: None,
+    });
+    out
+}
+
+/// The catalog of the engine `input` builds with: its checkout's at
+/// `--engine-path` (from `cwd`), else the one this `shuyi` embeds.
+pub(super) fn catalog_of(cwd: &Path, input: &NewInput) -> Result<Catalog, (Code, String)> {
+    match &input.engine {
+        Engine::Path { path } => {
+            let root = engine_root(cwd, path).map_err(|e| (codes::WRONG_ARGUMENTS, e))?;
+            Catalog::read(Path::new(&root))
+        }
+        _ => Catalog::embedded(),
+    }
+    .map_err(|e| (codes::ENGINE_DEPENDENCY, e))
+}
+
+/// `new <dir> --questions`: the questions `shuyi new` asks of the game
+/// `input` names under `cwd`, for the answers it gives so far. It makes
+/// nothing.
+pub fn listed(cwd: &Path, input: &NewInput) -> Answer<Questions> {
+    match list(cwd, input) {
+        Ok(questions) => Answer::new(Op::New, true, questions, Vec::new()),
+        Err((code, e)) => Answer::failed(Op::New, code, e),
+    }
+}
+
+/// [`listed`]'s questions, or the problem code and why there are none.
+fn list(cwd: &Path, input: &NewInput) -> Result<Questions, (Code, String)> {
+    let refused = |e| (codes::WRONG_ARGUMENTS, e);
+    let (name, krate) = name_of(cwd, input).map_err(refused)?;
+    let template = template::built_in().map_err(|e| (codes::FILE, e.to_string()))?;
+    let catalog = catalog_of(cwd, input)?;
+    let given = answers_of(cwd, &template, input).map_err(refused)?;
+    let targets = engine_targets().map_err(|e| (codes::FILE, e))?;
+    let named = Named {
+        dir: input.dir.clone(),
+        name,
+        id: input.id.clone().unwrap_or_else(|| default_id(&krate)),
+    };
+    Ok(Questions {
+        template: template.id.clone(),
+        questions: questions(&catalog, &template, &targets, &named, &given),
+    })
+}
+
+/// The answers' ids, each with its status if it isn't ready, joined by
+/// commas: `none` for none.
+fn shown_answers(question: &Question) -> String {
+    let shown: Vec<String> = question
+        .answers
+        .iter()
+        .map(|a| match a.status {
+            Status::Ready => a.id.clone(),
+            status if a.tickets.is_empty() => format!("{} ({})", a.id, status.name()),
+            status => format!("{} ({}: {})", a.id, status.name(), a.tickets.join(", ")),
+        })
+        .collect();
+    shown.join(", ")
+}
+
+/// The questions, for people: a line each, its flag and its default, then
+/// its answers, or why it isn't asked.
+pub fn text(listed: &Questions) -> String {
+    let mut out = format!(
+        "new: {} question(s), from {}\n",
+        listed.questions.len(),
+        listed.template
+    );
+    for question in &listed.questions {
+        let flag = question.flag.as_deref().unwrap_or("<dir>");
+        let default = if question.default.is_empty() {
+            "none".to_owned()
+        } else {
+            question.default.join(",")
+        };
+        // Writing to a `String` can't fail.
+        let _ = writeln!(out, "{} ({flag}, now {default})", question.text);
+        if let Some(why) = &question.skipped {
+            let _ = writeln!(out, "  not asked: {why}");
+        } else if !question.answers.is_empty() {
+            let takes = if question.takes == Takes::Many {
+                "any of"
+            } else {
+                "one of"
+            };
+            let _ = writeln!(out, "  {takes}: {}", shown_answers(question));
+        }
+    }
+    out
 }
 
 #[cfg(test)]

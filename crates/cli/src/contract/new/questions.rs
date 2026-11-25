@@ -16,6 +16,7 @@ use std::fmt::Write as _;
 use std::io::{self, BufRead, IsTerminal as _, Write};
 use std::path::Path;
 
+use super::wizard::Questions;
 use super::{NewInput, NewOutput, PRIVATE_FILES, answers_of, name_of, new, parse_args};
 use crate::contract::codes::{self, Code};
 use crate::contract::{Answer, Op};
@@ -69,6 +70,9 @@ pub struct Flags {
     /// `--no-input`: nothing asked, as off a terminal: every question
     /// the flags leave takes its default, and no repository is made.
     pub no_input: bool,
+    /// `--questions`: the questions listed for the answers given so far
+    /// ([`super::wizard::listed`]), and nothing made.
+    pub questions: bool,
 }
 
 /// Reads `new`'s arguments (not `--json`): [`parse_args`]' and the flags
@@ -103,6 +107,7 @@ pub fn parse(args: &[String]) -> Result<(NewInput, Flags), String> {
             }
             "--private-folder" => folders.push(value()?),
             "--no-input" => flags.no_input = true,
+            "--questions" => flags.questions = true,
             flag if TAKES_A_VALUE.contains(&flag)
                 || super::wizard::concern_flag(flag).is_some() =>
             {
@@ -695,6 +700,16 @@ pub fn new_with(
         answer,
         repos: Some(report),
         finish,
+    }
+}
+
+/// `new <dir> --questions`: the questions for the answers `input` and
+/// `flags` give so far, from `cwd` ([`super::wizard::listed`]); nothing is
+/// asked or made.
+pub fn listed(cwd: &Path, mut input: NewInput, flags: &Flags) -> Answer<Questions> {
+    match flag_examples(&mut input, flags.examples) {
+        Ok(()) => super::wizard::listed(cwd, &input),
+        Err((code, e)) => Answer::failed(Op::New, code, e),
     }
 }
 

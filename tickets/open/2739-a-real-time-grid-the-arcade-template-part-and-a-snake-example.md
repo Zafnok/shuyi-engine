@@ -299,11 +299,12 @@ None.
     task. Its `GameSettings::BACKGROUND` is
     `Background::KEEP_RUNNING.paused()` (built by 3093);
   - `--template arcade` is a short name for those answers, as `grid`
-    and `blank` are, and `--set time=ticks` picks it. **Either
-    order with 3424** (the questions as data): if 3424 is done, a test
-    checks that `shuyi new --questions --json` lists the template's own
-    `time` question among the template's; if not, nothing to do (3424
-    checks it, its clause says so). 3423's prompts ask it;
+    and `blank` are, and `--set time=ticks` picks it. **From
+    3424 (done):** a test checks that `shuyi new --questions --json`
+    lists the template's own `time` question among the template's (its
+    `asker` is `template`, after the catalog's concerns and before the
+    targets; `wizard::questions` lists every question of
+    `template.ron`). 3423's prompts ask it;
   - its test: with `Right` held for one second, the hero moves the same
     number of tiles in frames of 1/30 s (`Harness::frame`) as in frames
     of 1/60 s;

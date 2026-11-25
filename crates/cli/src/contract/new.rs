@@ -585,7 +585,7 @@ pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
          \x20          [--perspective IDS] [--bodies IDS] [--online ID] [--world-drawing IDS]\n\
-         \x20          [--kind IDS] [--scripting ID] [--targets IDS] [--no-input]\n\
+         \x20          [--kind IDS] [--scripting ID] [--targets IDS] [--no-input] [--questions]\n\
          \x20          [--name NAME] [--id ID] [--engine-rev COMMIT | --engine-path DIR] [--private-url URL]\n\
          \x20          [--force] [--json] [--examples | --no-examples]\n\
          \x20          [--github | --no-github] [--owner LOGIN] [--visibility public|private]\n\
@@ -597,6 +597,7 @@ pub fn usage(command: &str) -> String {
          (--perspective, --bodies…: answer ids, several with commas) and --targets. A\n\
          question nothing answers takes its default, and a planned or parked answer is\n\
          refused. --id is the game's reverse-DNS id (com.example.<crate name> without).\n\
+         --questions lists the questions for the answers given so far, and makes nothing.\n\
          The game depends on the engine's repository\n\
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\

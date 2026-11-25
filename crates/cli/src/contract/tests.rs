@@ -129,9 +129,13 @@ fn a_problem_with_a_code_says_it_with_its_rows_help() {
 fn every_op_has_an_input_and_an_output_schema() {
     let files = schemas();
     let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
-    // And the file `export` writes beside its package.
-    assert_eq!(names.len(), (Op::ALL.len() + Op::SESSION.len()) * 2 + 1);
-    assert_eq!(names.last(), Some(&"export.exposure.json"));
+    // And the file `export` writes beside its package, then `new
+    // --questions`' answer.
+    assert_eq!(names.len(), (Op::ALL.len() + Op::SESSION.len()) * 2 + 2);
+    assert_eq!(
+        names[names.len() - 2..],
+        ["export.exposure.json", "new.questions.json"]
+    );
     for &op in Op::ALL {
         for side in ["input", "output"] {
             let name = format!("{}.{side}.json", op.name());

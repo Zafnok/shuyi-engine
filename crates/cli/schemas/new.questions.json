@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "type": "string",
+      "const": "new"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Questions"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "Asker": {
+      "description": "Who asks a question.",
+      "oneOf": [
+        {
+          "description": "The engine: the folder, the name, the id, the perspectives and the\ntargets.",
+          "type": "string",
+          "const": "engine"
+        },
+        {
+          "description": "The catalog, `docs/modules.ron`: one question per concern.",
+          "type": "string",
+          "const": "catalog"
+        },
+        {
+          "description": "The template: its own questions.",
+          "type": "string",
+          "const": "template"
+        }
+      ]
+    },
+    "Offered": {
+      "description": "One answer a question offers.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Its id, as its flag takes it (`top-down-grid`).",
+          "type": "string"
+        },
+        "status": {
+          "description": "Whether it is built: only a `ready` answer is picked, and a\n`planned` or `parked` one is shown as coming (ADR-0013 §6).",
+          "$ref": "#/$defs/Status"
+        },
+        "text": {
+          "description": "A few words that say it (`top-down grid`).",
+          "type": "string"
+        },
+        "tickets": {
+          "description": "The tickets that build it, if it isn't ready.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "status",
+        "tickets"
+      ]
+    },
+    "Question": {
+      "description": "A question `shuyi new` asks.",
+      "type": "object",
+      "properties": {
+        "answers": {
+          "description": "The answers it offers, every one with its status; none for text.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Offered"
+          }
+        },
+        "asker": {
+          "description": "Who asks it.",
+          "$ref": "#/$defs/Asker"
+        },
+        "default": {
+          "description": "What it takes unless another answer is given: the answers given so\nfar, else its default (for text, the one line).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flag": {
+          "description": "The flag that answers it (`--bodies`, `--set examples=`); none for\nthe folder, `new`'s first word.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Its id: the engine's (`dir`, `name`, `id`, `perspective`,\n`targets`), a concern's (`bodies`) or the template's\n(`private-files`).",
+          "type": "string"
+        },
+        "skipped": {
+          "description": "Why it isn't asked, if it isn't: it takes its default.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "takes": {
+          "description": "What it takes.",
+          "$ref": "#/$defs/Takes"
+        },
+        "text": {
+          "description": "The words that ask it.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "asker",
+        "text",
+        "takes",
+        "answers",
+        "default"
+      ]
+    },
+    "Questions": {
+      "description": "The questions `shuyi new` asks of a game, for the answers given so far.",
+      "type": "object",
+      "properties": {
+        "questions": {
+          "description": "Every question, in the order it is asked.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Question"
+          }
+        },
+        "template": {
+          "description": "The template's id (`shuyi-default`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "template",
+        "questions"
+      ]
+    },
+    "Status": {
+      "description": "Whether an answer or a module is built.",
+      "oneOf": [
+        {
+          "description": "Built, with an example passing CI.",
+          "type": "string",
+          "const": "ready"
+        },
+        {
+          "description": "Ticketed, not built yet.",
+          "type": "string",
+          "const": "planned"
+        },
+        {
+          "description": "Not started until the plan says.",
+          "type": "string",
+          "const": "parked"
+        }
+      ]
+    },
+    "Takes": {
+      "description": "What a question takes.",
+      "oneOf": [
+        {
+          "description": "A line of text.",
+          "type": "string",
+          "const": "text"
+        },
+        {
+          "description": "One of its answers at most.",
+          "type": "string",
+          "const": "one"
+        },
+        {
+          "description": "Any number of its answers.",
+          "type": "string",
+          "const": "many"
+        }
+      ]
+    }
+  }
+}

@@ -114,6 +114,11 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
     let (json, args) = split_json(args);
     Some(match name {
         "new" => match new::questions::parse(&args) {
+            Ok((input, flags)) if flags.questions => print(
+                json,
+                &new::questions::listed(cwd, input, &flags),
+                new::wizard::text,
+            ),
             Ok((input, flags)) => {
                 let made = new::questions::main(cwd, input, &flags, json);
                 print(json, &made.answer, new::text);
@@ -699,7 +704,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 49);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 50);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(
