@@ -170,7 +170,12 @@ What was done:
   2026-11-24), with `default-features = false` (no `editor`/`tempfile`,
   no `password`/`zeroize`); it brings `shell-words` (MIT or Apache-2.0)
   and uses `console` 0.16, already in the lock. No MSVC. The CLI isn't
-  in a shipped game, so rule 13's toggle doesn't apply.
+  in a shipped game, so rule 13's toggle doesn't apply; but a new game's
+  tools program depends on `shuyi-cli`, so its tree grows by 6 crates
+  (`dialoguer`, `console`, `shell-words`, `encode_unicode`,
+  `unicode-width`, a `windows-sys`), and `tools/compile-budget.ron`'s
+  `dependencies` goes from 143 to 149. The ten tutorial steps' locks
+  gain the same crates.
 - `shuyi.ron`'s `check_keys` lets `prompts.rs` name the terminal's keys
   (its help lines) in place of `questions.rs`, which no longer does.
 - Docs: `docs/templates.md` (what a terminal asks, the GitHub questions
