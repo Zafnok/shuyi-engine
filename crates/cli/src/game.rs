@@ -572,7 +572,8 @@ pub trait GameTools {
     }
 
     /// `replay`: `record`, in the game's record format, re-run by its
-    /// rules (for a turn game, [`turns`](crate::contract::replay::turns)).
+    /// rules (for a turn game, [`turns`](crate::contract::replay::turns);
+    /// for a tick game, [`ticks`](crate::contract::replay::ticks)).
     fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
         let _ = record;
         Err(unsupported("replay", "replay"))

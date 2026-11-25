@@ -1,0 +1,6 @@
+---
+source: examples/snake/tests/it/snapshot.rs
+expression: png(&h)
+extension: png
+snapshot_kind: binary
+---
