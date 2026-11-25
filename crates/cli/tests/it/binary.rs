@@ -343,6 +343,31 @@ fn new_lists_its_questions_as_its_schema_says_and_makes_nothing() {
         .unwrap();
     assert_eq!(procedural["status"], "parked");
     assert_eq!(procedural["tickets"][0], "2701");
+    // The GitHub questions follow the targets; only `github` has an
+    // `agent`, which says an agent never answers yes itself.
+    let at = ids.iter().position(|id| *id == "targets").unwrap();
+    assert_eq!(
+        ids[at + 1..],
+        [
+            "github",
+            "visibility",
+            "keep-private",
+            "private",
+            "private-folder",
+            "assets-visibility"
+        ]
+    );
+    let agents: Vec<&str> = questions
+        .iter()
+        .filter_map(|q| q["agent"].as_str())
+        .collect();
+    assert_eq!(agents.len(), 1);
+    assert!(
+        agents[0].contains("never answer yes yourself"),
+        "{}",
+        agents[0]
+    );
+    assert_eq!(questions[at + 1]["default"][0], "no");
     // For people, the same.
     let output = shuyi(
         &dir,

@@ -767,5 +767,20 @@ pub(crate) mod device {
 "##,
             with: "Two are known:\n",
         ),
+        // Ticket 3534: the docs' rule for the sound parity gates' README.
+        Replace(
+            file: "tools/docs-rules.ron",
+            find: r##"        (
+            name: "sound-parity",
+            changes: "The sound parity gates",
+            triggers: ["tools/sound-parity/capture.py", "crates/xtask/src/sound_parity.rs", "crates/xtask/src/sound_parity/**"],
+            homes: ["tools/sound-parity/README.md", "tools/sound-parity/budget.ron"],
+            home: "the sound parity gates' README",
+            part: "the section",
+            mark: "Sound parity:",
+        ),
+"##,
+            with: "",
+        ),
     ],
 )

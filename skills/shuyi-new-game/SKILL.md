@@ -78,14 +78,19 @@ game one part at a time.
    the same game again; the game's `shuyi.ron` keeps the answers under
    `created_with`.
 
-   In a terminal, `new` also asks whether to include the skills' worked
-   examples (yes by default; `--no-examples` leaves them out, and each
-   `SKILL.md` then says where the engine keeps them) and whether to put
-   the game on GitHub; run by an agent (no terminal, `--json` or the MCP
-   `new` tool) it asks nothing, keeps the examples unless `--set
-   examples=no`, and makes no repository. `--github`, like `cargo shuyi repos`
-   later, creates repositories, keys and secrets on the developer's
-   account: ask them first, and pass their answers as flags.
+   The list ends with the GitHub questions (`github`, then the
+   repositories' visibilities and which files stay private). `github`
+   carries an `agent` field: ask the developer, and never answer `yes`
+   yourself. `--github`, like `cargo shuyi repos` later, creates
+   repositories, keys and secrets on their account; pass their answers as
+   flags.
+
+   In a terminal, `new` asks the same questions as lists to pick from,
+   with the skills' worked examples among them (yes by default;
+   `--no-examples` leaves them out, and each `SKILL.md` then says where
+   the engine keeps them). Run by an agent (no terminal, `--json` or the
+   MCP `new` tool) it asks nothing, keeps the examples unless `--set
+   examples=no`, and makes no repository.
 
 3. **Read the game's `AGENTS.md`.** It holds the rules a game on the
    engine keeps (the layers, skins, actions), the tools, the short path

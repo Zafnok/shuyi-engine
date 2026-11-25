@@ -51,8 +51,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::contract;
+use crate::docs_rules::{waived, ways};
 use crate::layers::is_engine;
-use crate::tickets::{Pr, PrKind, book_lines, breaking_lines};
+use crate::tickets::{Pr, PrKind, breaking_lines};
 
 /// The features a crate's public API is checked with. There is no "each
 /// tool's own default": the listing's (the default features) and the semver
@@ -1165,7 +1166,8 @@ fn changed_files(root: &Path, base: &str, runner: &dyn Runner) -> Result<Vec<Str
 /// diff or a semver finding) that changes no file under [`BOOK_DIRS`] needs
 /// a `Book:` line in the done ticket of `pr`, saying why the book needs no
 /// change. A PR for no ticket's work of this repository is skipped: a break
-/// there already fails [`rule`]. `changed` is the files the PR changed;
+/// there already fails [`rule`]. Its words and its reading of the line are
+/// `cargo xtask docs-rules`' ([`ways`], [`waived`], ticket 3534). `changed` is the files the PR changed;
 /// `done_ticket` reads a ticket in `tickets/done/` by id.
 pub fn book_rule(
     crates: &[CrateApi],
@@ -1202,24 +1204,11 @@ pub fn book_rule(
         .filter(|c| !c.removed.is_empty() || !c.added.is_empty() || !c.findings.is_empty())
         .map(|c| c.name.as_str())
         .collect();
-    let ways = format!(
-        "The public API of {} changed, and no file under {} did. Either change the \
-         chapter the docs map (docs/README.md) names for it, or say why the book \
-         needs no change in a line of the ticket's `## Completion notes`, as:\n\n    \
-         Book: none, <why>",
-        changed_crates.join(", "),
-        BOOK_DIRS.join(" or ")
-    );
-    let Some(body) = done_ticket(id) else {
-        return Verdict::Fail(format!(
-            "ticket {id} is not in tickets/done/, so it has no `Book:` line.\n{ways}"
-        ));
-    };
-    match book_lines(&body).first() {
-        Some(line) => Verdict::Pass(format!("ticket {id}'s notes say: {line}")),
-        None => Verdict::Fail(format!(
-            "ticket {id}'s `## Completion notes` have no `Book:` line.\n{ways}"
-        )),
+    let what = format!("The public API of {}", changed_crates.join(", "));
+    let ways = ways(&what, BOOK_DIRS, "the book", "the chapter", "Book:");
+    match waived(id, done_ticket(id).as_deref(), "Book:", &ways) {
+        Ok(said) => Verdict::Pass(said),
+        Err(why) => Verdict::Fail(why),
     }
 }
 

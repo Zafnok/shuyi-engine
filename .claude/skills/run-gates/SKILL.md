@@ -508,6 +508,7 @@ cargo xtask check-devcontainers   # the book's dev container builds every step o
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md; no two ADRs share a number
 cargo xtask check-paths   # no tracked path over 150 characters: a game's Windows checkout by Cargo adds about 80 (ticket 2071)
 cargo xtask check-merges  # no merge commit in origin/main..HEAD changes a file or line beyond resolving its parents (ticket 2065); CI: --base HEAD^1 --head HEAD^2
+cargo xtask docs-rules    # each rule of tools/docs-rules.ron whose paths changed has a home changed or its mark's line in the ticket's notes (`Skills: none, <why>`, ticket 3534); locally it warns; CI: --base HEAD^1 --pr-branch --pr-title fails
 cargo xtask mend-merges   # splits each such merge no remote has yet into the merge and a commit of its own changes, same files (ticket 3532); the post-commit hook runs it
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```

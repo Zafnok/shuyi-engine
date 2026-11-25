@@ -1314,16 +1314,10 @@ pub(crate) fn behaviour_lines(body: &str) -> Vec<&str> {
     notes_lines(body, "Behaviour:")
 }
 
-/// The `Book:` lines of a ticket (ticket 2815), read as [`breaking_lines`]
-/// reads the `Breaking:` lines: why a change to the public API needs no
-/// change to the book.
-pub(crate) fn book_lines(body: &str) -> Vec<&str> {
-    notes_lines(body, "Book:")
-}
-
 /// Each line under `## Completion notes` that starts with `mark`, after an
-/// optional `- ` list marker, returned from `mark` on.
-fn notes_lines<'a>(body: &'a str, mark: &str) -> Vec<&'a str> {
+/// optional `- ` list marker, returned from `mark` on. The marks of the
+/// docs' rules are read with it (`crate::docs_rules::waived`, ticket 3534).
+pub(crate) fn notes_lines<'a>(body: &'a str, mark: &str) -> Vec<&'a str> {
     let mut in_notes = false;
     let mut found = Vec::new();
     // `lines` drops a CR before each LF too.
@@ -2145,12 +2139,12 @@ README.md
     }
 
     #[test]
-    fn book_lines_read_the_completion_notes_only() {
+    fn a_marks_lines_are_read_from_the_completion_notes_only() {
         let body = "## Scope\n\nBook: not here\n\n## Completion notes\n\n\
                     - Book: none, a helper the tests call made public.\n\
                     Breaking: shuyi-core: `f`: call `g`.\n";
         assert_eq!(
-            book_lines(body),
+            notes_lines(body, "Book:"),
             vec!["Book: none, a helper the tests call made public."]
         );
         assert_eq!(

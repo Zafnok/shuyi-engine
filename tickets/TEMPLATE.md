@@ -46,6 +46,7 @@ repository (`game#NNNN`).
 
 - [ ] …
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
 - [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
 - [ ] All gates in the `run-gates` skill pass.
 

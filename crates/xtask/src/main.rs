@@ -25,6 +25,7 @@
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
 //! - `cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]`
 //! - `cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]`
+//! - `cargo xtask docs-rules [--base <rev>] [--head <rev>] [--pr-branch <branch>] [--pr-title <title>]`
 //! - `cargo xtask flaky rerun|report|calibration …`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog] [--base <rev>]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
@@ -48,6 +49,7 @@ mod compress;
 mod contract;
 mod devcontainers;
 mod docs;
+mod docs_rules;
 mod eval;
 mod exercises;
 mod flaky;
@@ -242,6 +244,16 @@ usage:
       it warns. --hook answers a Claude Code PreToolUse hook (its JSON on
       stdin) with a warning before git commit, git push or gh pr create, or
       nothing.
+  cargo xtask docs-rules [--base <rev>] [--head <rev>] [--pr-branch <branch>] [--pr-title <title>]
+      Check the docs map's rows as rules (tools/docs-rules.ron, ticket 3534):
+      each rule whose trigger paths changed from <rev>'s merge base (by
+      default origin/main's) to <head> (by default the working tree,
+      untracked files included), and none of whose homes did, needs a line
+      starting with its mark (`Skills: none, <why>`) in the `## Completion
+      notes` of the PR's done ticket. With --pr-branch (and --pr-title, CI)
+      a missing line fails; otherwise it warns, and the ticket may still be
+      in tickets/open/. A ticket-only, bot, Sonar or game PR is reported,
+      not failed. A glob of the rules that matches no tracked file fails.
   cargo xtask flaky rerun --failures <file> --attempt <n> --decision <file>
   cargo xtask flaky report --failures <file> --attempt <n>
   cargo xtask flaky calibration --job <name> --jobs <file> --dir <dir> --revision <sha> --summary <file>
@@ -374,6 +386,7 @@ fn main() -> ExitCode {
         Some("template-lines") => template_lines(&root, &args[1..]),
         Some("gates") => gates(&root, &args[1..]),
         Some("pr-size") => pr_size(&root, &args[1..]),
+        Some("docs-rules") => docs_rules(&root, &args[1..]),
         Some("trim-targets") => trim_targets(&root, &args[1..]),
         Some("flaky") => {
             let (errors, warnings) = flaky::run(&root, &args[1..]);
@@ -750,6 +763,19 @@ fn pr_size(root: &Path, args: &[String]) -> ExitCode {
     // A report that can't be printed leaves the verdict as it is.
     let _ = write!(std::io::stdout().lock(), "{}", outcome.report);
     report("pr-size", &outcome.errors, &outcome.warnings)
+}
+
+fn docs_rules(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = docs_rules::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    // The checkout it is run in, as `pr-size` reads it.
+    let here = pr_size::repo_of(Path::new(".")).unwrap_or_else(|_| root.to_path_buf());
+    let outcome = docs_rules::run(&here, &options);
+    // A report that can't be printed leaves the verdict as it is.
+    let _ = write!(std::io::stdout().lock(), "{}", outcome.report);
+    report("docs-rules", &outcome.errors, &outcome.warnings)
 }
 
 fn changelog(root: &Path, args: &[String]) -> ExitCode {

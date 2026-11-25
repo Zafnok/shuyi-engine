@@ -5,13 +5,15 @@
 # any hex run that holds a digit, so a hex-only word like "deadbeef" is
 # still read. Typos's regex has no look-ahead, so no length is required
 # (ticket 2069).
-# Nick's words, quoted verbatim in docs/decisions.md (2026-11-08 and
-# 2026-11-24): those phrases alone, so the words stay typos anywhere else.
+# Nick's words, quoted verbatim in docs/decisions.md (2026-11-08,
+# 2026-11-24 and 2026-11-25, the last also in ticket 3430): those phrases
+# alone, so the words stay typos anywhere else.
 extend-ignore-re = [
     '\b[0-9a-f]{16}\b',
     '\b[0-9a-f]*[0-9][0-9a-f]*\b',
     'in depth comparsion on rhai',
     'adds final build storeage req',
+    'save folder locaiton manually',
 ]
 
 [default.extend-words]
