@@ -607,10 +607,21 @@ fn cargo_tomls_merge_key_by_key_with_their_comments() {
 fn ron_files_merge_and_a_clash_names_the_field() {
     let template = with_files(&[("pa/shuyi.ron", "(\n    rules: \"r\",\n)\n")]);
     let plan = composed(&template, &Answers::default()).unwrap();
-    assert_eq!(
-        text_of(&plan, "shuyi.ron"),
-        "(\n    command: \"x\",\n    rules: \"r\",\n)\n"
+    let merged = text_of(&plan, "shuyi.ron");
+    assert!(
+        merged
+            .starts_with("(\n    command: \"x\",\n    rules: \"r\",\n    // How `shuyi new` made"),
+        "{merged}"
     );
+    // The composer keeps how it made the game, every answer among it.
+    assert!(
+        merged.contains(
+            "    created_with: (\n        template: \"fixture\",\n        version: \"1.0.0\",\n        \
+             answers: {\n            \"extra\": [\"none\"],\n"
+        ),
+        "{merged}"
+    );
+    assert!(merged.ends_with("        },\n    ),\n)\n"), "{merged}");
     let clash = with_files(&[("pa/shuyi.ron", "(command: \"y\")")]);
     let error = composed(&clash, &Answers::default()).unwrap_err();
     assert_eq!(
@@ -1159,15 +1170,20 @@ fn a_grid_game_without_examples_has_every_skill_and_passes_check_skills() {
     // No limit for the answer: the composer serves it.
     assert_eq!(without.limits, with.limits);
     assert_eq!(without.skills, with.skills);
-    // Every file outside the skills is the same.
+    // Every file outside the skills is the same, but the answer `shuyi.ron`
+    // keeps.
     let outside = |plan: &Plan| -> Vec<(PathBuf, Vec<u8>)> {
         plan.files
             .iter()
-            .filter(|(p, _)| !p.starts_with(".claude/skills"))
+            .filter(|(p, _)| !p.starts_with(".claude/skills") && *p != Path::new("shuyi.ron"))
             .map(|(p, b)| (p.clone(), b.clone()))
             .collect()
     };
     assert_eq!(outside(&without), outside(&with));
+    assert_eq!(
+        text_of(&without, "shuyi.ron"),
+        text_of(&with, "shuyi.ron").replace("\"examples\": [\"yes\"]", "\"examples\": [\"no\"]")
+    );
     // The pack as the game holds it: every skill's SKILL.md, no example.
     let mut pack = Pack::default();
     for name in &without.skills {

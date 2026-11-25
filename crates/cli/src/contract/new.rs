@@ -158,6 +158,9 @@ impl NewInput {
 /// What `new` made.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An output, read and never built outside this crate: it may grow
+// (ADR-0039, kind 3).
+#[non_exhaustive]
 pub struct NewOutput {
     /// The game's folder, as given.
     pub dir: String,
@@ -187,6 +190,9 @@ pub struct NewOutput {
     pub stages: Vec<String>,
     /// The engine's skills it holds in `.claude/skills/`, by name.
     pub skills: Vec<String>,
+    /// The one command that makes the same game again, with no question
+    /// ([`wizard::command`]): its folder, its name and every answer.
+    pub command: String,
 }
 
 /// The crate name for game name `name`: lowercase ASCII letters and
@@ -418,6 +424,17 @@ pub fn plan(
     name: &str,
     krate: &str,
 ) -> Result<(Plan, Vec<String>), (Code, String)> {
+    plan_with(cwd, template, input, name, krate).map(|(plan, limits, _)| (plan, limits))
+}
+
+/// [`plan`]'s plan and limits, with the catalog it was made over.
+fn plan_with(
+    cwd: &Path,
+    template: &Template,
+    input: &NewInput,
+    name: &str,
+    krate: &str,
+) -> Result<(Plan, Vec<String>, Catalog), (Code, String)> {
     let refused = |e| (codes::WRONG_ARGUMENTS, e);
     let mut limits = Vec::new();
     let root = match &input.engine {
@@ -444,11 +461,7 @@ pub fn plan(
             Some(root)
         }
     };
-    let catalog = match &root {
-        Some(root) => Catalog::read(Path::new(root)),
-        None => Catalog::embedded(),
-    }
-    .map_err(|e| (codes::ENGINE_DEPENDENCY, e))?;
+    let catalog = wizard::catalog_of(cwd, input)?;
     let answers = answers_of(cwd, template, input).map_err(refused)?;
     let answers = with_targets(answers, template).map_err(refused)?;
     check_private(&answers, input.private_url.as_deref()).map_err(refused)?;
@@ -483,7 +496,7 @@ pub fn plan(
              a commit by its 40 digits, so pass the whole commit to --engine-rev to pin it too"
         ));
     }
-    Ok((plan, limits))
+    Ok((plan, limits, catalog))
 }
 
 /// `answers` with the targets checked against the engine's profiles, or
@@ -548,7 +561,16 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
     let dir = cwd.join(&input.dir);
     let (name, krate) = name_of(cwd, input).map_err(refused)?;
     let template = template::built_in().map_err(|e| (codes::FILE, e.to_string()))?;
-    let (plan, mut limits) = plan(cwd, &template, input, &name, &krate)?;
+    let (plan, mut limits, catalog) = plan_with(cwd, &template, input, &name, &krate)?;
+    let (command, alike) =
+        wizard::command(input, &name, &plan.answers, &catalog.concerns, &template);
+    if !alike {
+        limits.push(
+            "the command that makes the game again is quoted for a POSIX shell: a word holds a \
+             quote with a character PowerShell's quotes don't keep"
+                .to_owned(),
+        );
+    }
     let applied = template::apply(&plan, &dir, input.force).map_err(|e| {
         if e.starts_with("is not empty") {
             refused(format!("{} {e}", input.dir))
@@ -575,6 +597,7 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
         targets: plan.targets,
         stages: plan.stages,
         skills: plan.skills,
+        command,
     };
     Ok((output, limits))
 }
@@ -597,7 +620,8 @@ pub fn usage(command: &str) -> String {
          (--perspective, --bodies…: answer ids, several with commas) and --targets. A\n\
          question nothing answers takes its default, and a planned or parked answer is\n\
          refused. --id is the game's reverse-DNS id (com.example.<crate name> without).\n\
-         --questions lists the questions for the answers given so far, and makes nothing.\n\
+         --questions lists the questions for the answers given so far and makes nothing;\n\
+         at the end, new prints the one command that makes the same game again.\n\
          The game depends on the engine's repository\n\
          at main, at --engine-rev's commit, or on the checkout at --engine-path.\n\
          --set private-files=yes keeps its private files in a second repository, which\n\
@@ -690,6 +714,11 @@ pub fn text(output: &NewOutput) -> String {
     for file in &output.files {
         let _ = writeln!(out, "  {file}");
     }
+    let _ = writeln!(
+        out,
+        "the same game again, with no question:\n  {}",
+        output.command
+    );
     out
 }
 

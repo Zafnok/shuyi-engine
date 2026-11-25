@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["3424"]
 nick_input: none
-completed:
+completed: 2026-11-24
 ---
 
 # 3425 — The command that makes a game again, and created_with
@@ -89,15 +89,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Running the printed command with `--no-input` into another folder
+- [x] Running the printed command with `--no-input` into another folder
       gives the same bytes, for a grid game and for a blank one with
       `--id`, `--no-examples`, `--targets` and a name with a `'`.
-- [ ] A new game's `shuyi.ron` holds `created_with` with every answer,
+- [x] A new game's `shuyi.ron` holds `created_with` with every answer,
       and loads.
-- [ ] A word with a space, a `$`, an `@` or a `~` is quoted, and a
+- [x] A word with a space, a `$`, an `@` or a `~` is quoted, and a
       comma list isn't.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -110,3 +110,52 @@ None.
   `created_with`.
 
 ## Completion notes
+
+Brought over from the WIP branch `t3425-the-command-again-and-created-with`
+(commit `6f244ae9`), as the Context says: `wizard::quote`,
+`wizard::command`, `NewOutput::command` with `plan_with`, `new`'s text
+ending with the command, `compose::created_with` merged into `shuyi.ron`
+through `ron_merge`, `project::CreatedWith`, and their tests. On top of
+`main` (with 3424 merged), formatted again; `plans.golden` blessed (the
+three `shuyi.ron` hashes, the same as on the branch); `new.output.json`
+gains `command`; `contract::VERSION` 58 → 59.
+
+- Tests: `wizard::quote` (a space, `$`, `@`, `~` quoted; a comma list
+  bare; a `'` in double quotes; a `'` with `$` or `` ` `` none) and
+  `wizard::command`'s flags, order and the POSIX fallback;
+  `the_printed_command_makes_the_same_game_in_another_folder` (a grid
+  game, and a blank one with `--id`, `--no-examples`, `--targets web`
+  and the name `Nick's Moon`: the command split by a small POSIX word
+  splitter, its folder changed, the same bytes);
+  `a_new_games_project_keeps_every_answer_it_was_made_with`
+  (`Project::load` reads `created_with`); the composer's RON merge test
+  and the examples test (the game without examples differs only in its
+  skills and that answer).
+- Docs: `docs/templates.md` (*The wizard's questions*, with an
+  example), `docs/contract.md`'s `new` row, the book's quick start, the
+  `shuyi-new-game` skill; 3423's handoff written as what holds.
+- Deviations: none.
+
+Breaking: shuyi-cli: `contract::new::NewOutput`: it is `#[non_exhaustive]` and gains `command`; a game that built one by a literal reads it instead
+
+```migration
+since: 0.1.0
+what: NewOutput, what shuyi new made, is non_exhaustive and gains command, the one command that makes the same game again.
+old: NewOutput { dir, name, … skills }
+new: "#[non_exhaustive] NewOutput { dir, name, … skills, command }"
+before: |
+  let out = NewOutput { dir, name, /* … */ skills };
+after: |
+  // Read a NewOutput from `new`'s answer; it can't be built by a literal.
+  let out = shuyi_cli::contract::new::new(cwd, &input).result.unwrap();
+find: ["NewOutput {"]
+```
+
+Behaviour: shuyi-cli: `shuyi new` writes `created_with` (the template, its version and every answer) into the new game's `shuyi.ron`, which a `shuyi` older than this refuses (`Config` denies unknown fields); `new`'s text ends with two lines, "the same game again, with no question:" and the command; a name or path holding a `'` with one of `` $ ` ! " \ `` adds a limit that the command is quoted for a POSIX shell.
+
+Searched the game: `gh search code --repo Zafnok/visions-of-shuyi 'NewOutput'`
+finds only `docs/engine/pins.md` ("the game builds no … `NewOutput`"),
+and its `shuyi_cli::Project` uses load the game's own `shuyi.ron`, which
+has no `created_with`: nothing in the game must change.
+
+Book: the quick start (`site/content/learn/book/quick-start.md`) names the printed command and `created_with`.

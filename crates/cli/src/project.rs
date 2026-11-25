@@ -136,6 +136,24 @@ pub struct Config {
     /// The folder of the game's files, which `run --watch` lays over the
     /// embedded ones: `assets` unless it says.
     pub assets: Option<String>,
+    /// How `shuyi new` made the game, which it writes and no tool reads
+    /// (ADR-0013 §2).
+    pub created_with: Option<CreatedWith>,
+}
+
+/// How `shuyi new` made a game: its template, at its version, and every
+/// answer, as `shuyi.ron`'s `created_with` keeps them.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+// Parsed, never built outside this crate: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct CreatedWith {
+    /// The template's id (`shuyi-default`).
+    pub template: String,
+    /// The template's version (`1.0.0`).
+    pub version: String,
+    /// Every answer, by question, the defaults among them.
+    pub answers: crate::template::Answers,
 }
 
 /// `rules`, read from one name, a list of them, or either in `Some(…)`

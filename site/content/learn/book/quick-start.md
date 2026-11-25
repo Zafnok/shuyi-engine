@@ -120,7 +120,9 @@ Without `--template`, the flags pick the parts: `--perspective top-down-grid`, `
 desktop,web`, and `--id io.github.<you>.moon-garden`, the id your players' saves are kept
 under. An answer that isn't built yet is refused, with the tickets that build it.
 `shuyi new moon-garden --questions` lists every question with its flag and what it takes
-now, and makes nothing.
+now, and makes nothing. At the end, `shuyi new` prints the one command that makes the
+same game again with nothing asked, and keeps your answers in `shuyi.ron` under
+`created_with`.
 
 The game depends on the engine's repository at its latest commit, and `shuyi new`
 says so. `--engine-rev <commit>` pins your game to one, so the engine can't change

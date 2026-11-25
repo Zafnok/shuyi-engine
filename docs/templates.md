@@ -119,12 +119,37 @@ schemas. The answers given change what is asked, so an agent asks the
 perspectives first, lists again with `--perspective`, then asks the
 rest. Without `--json` it prints the same for people.
 
+At the end, `new` prints the one command that makes the same game again
+with nothing asked, also its answer's `command`: `shuyi new <dir>
+--no-input --name <name>`, `--id` if given, each concern's answers by
+its flag (none as `--set <id>=`), `--targets`, `--examples` or
+`--no-examples`, `--set` for the template's other questions, the engine
+(`--engine-rev`, `--engine-path`) and `--private-url`. Each word is
+quoted so PowerShell and a POSIX shell read it the same; a word no quote
+keeps in both is quoted for a POSIX shell, and a limit says so.
+
+The game's `shuyi.ron` keeps how it was made, under `created_with`: the
+template, its version and every answer, the defaults among them. No
+tool reads it.
+
+```ron
+created_with: (
+    template: "shuyi-default",
+    version: "1.0.0",
+    answers: {
+        "examples": ["yes"],
+        "perspective": ["top-down-grid"],
+        "targets": ["desktop", "web"],
+        // …
+    },
+),
+```
+
 A picked answer that is a module (its `by` is a crate) turns the module
 on as `shuyi add` does, through a part that names it or, with none, by
 the composer itself. `shuyi.ron`'s `targets` are the template's parts'
-until 2504: a target picked beside them is a limit. The command that
-makes a game again and the answers kept in `shuyi.ron` are ticket 3425;
-asking the questions in a terminal, as lists to pick from, is 3423. Today a terminal gets the
+until 2504: a target picked beside them is a limit. Asking the questions
+in a terminal, as lists to pick from, is 3423. Today a terminal gets the
 examples and GitHub questions below.
 
 An answers file maps each question to the ids of its answers:
