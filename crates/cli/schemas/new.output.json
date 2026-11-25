@@ -85,6 +85,10 @@
           "description": "The answers it was made for, each question left out at its\ndefault.",
           "$ref": "#/$defs/Answers"
         },
+        "command": {
+          "description": "The one command that makes the same game again, with no question\n([`wizard::command`]): its folder, its name and every answer.",
+          "type": "string"
+        },
         "crate_name": {
           "description": "Its crate's name.",
           "type": "string"
@@ -169,7 +173,8 @@
         "modules",
         "targets",
         "stages",
-        "skills"
+        "skills",
+        "command"
       ]
     }
   }

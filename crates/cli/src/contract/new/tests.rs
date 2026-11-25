@@ -908,12 +908,14 @@ fn what_new_made_reads_for_people() {
         targets: vec!["desktop".into()],
         stages: Vec::new(),
         skills: vec!["shuyi-gates".into(), "shuyi-test".into()],
+        command: "shuyi new g --no-input --name Game".into(),
     };
     assert_eq!(
         text(&out),
         "new: Game (game) in g, 2 file(s), from shuyi-default: base, stage\n\
          modules on: shuyi-physics\nskills: shuyi-gates, shuyi-test\nwritten over: README.md\n  \
-         Cargo.toml\n  README.md\n"
+         Cargo.toml\n  README.md\nthe same game again, with no question:\n  shuyi new g \
+         --no-input --name Game\n"
     );
 }
 
@@ -2073,6 +2075,134 @@ fn a_parked_answer_or_a_planned_target_by_flag_is_refused_with_its_status() {
         ),
         "{limits:?}"
     );
+}
+
+/// The words a POSIX shell reads in `line`: bare, `'…'` (with `'\''` for a
+/// quote) or `"…"`, as [`wizard::quote`] writes them.
+fn shell_words(line: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut word = None::<String>;
+    let mut chars = line.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            ' ' => words.extend(word.take()),
+            '\'' => {
+                let w = word.get_or_insert_with(String::new);
+                w.extend(chars.by_ref().take_while(|c| *c != '\''));
+            }
+            '"' => {
+                let w = word.get_or_insert_with(String::new);
+                w.extend(chars.by_ref().take_while(|c| *c != '"'));
+            }
+            '\\' => word.get_or_insert_with(String::new).extend(chars.next()),
+            c => word.get_or_insert_with(String::new).push(c),
+        }
+    }
+    words.extend(word);
+    words
+}
+
+/// The game `args` (after `new`) make under `cwd`, from the command line
+/// with nothing asked.
+fn made_from(cwd: &Path, args: &[String]) -> Answer<NewOutput> {
+    let (input, flags) = questions::parse(args).unwrap_or_else(|e| panic!("{e}: {args:?}"));
+    questions::new_with(
+        cwd,
+        input,
+        &flags,
+        false,
+        None,
+        &mut crate::repos::ThisMachine,
+    )
+    .answer
+}
+
+#[test]
+fn the_printed_command_makes_the_same_game_in_another_folder() {
+    let dir = scratch("again");
+    for (first, args) in [
+        ("grid", &["--template", "grid", "--name", "Moon Garden"][..]),
+        (
+            "blank",
+            &[
+                "--template",
+                "blank",
+                "--name",
+                "Nick's Moon",
+                "--id",
+                "org.example.moon",
+                "--no-examples",
+                "--targets",
+                "web",
+            ],
+        ),
+    ] {
+        let mut given = vec![first.to_owned()];
+        given.extend(args.iter().map(|a| (*a).to_owned()));
+        let made = made_from(&dir, &given);
+        assert!(made.ok, "{made:?}");
+        let output = made.result.unwrap();
+        assert!(
+            output
+                .command
+                .starts_with(&format!("shuyi new {first} --no-input --name ")),
+            "{}",
+            output.command
+        );
+        let mut words = shell_words(&output.command);
+        assert_eq!(words[..3], ["shuyi", "new", first]);
+        words[2] = format!("{first}-again");
+        let again = made_from(&dir, &words[2..]);
+        assert!(again.ok, "{again:?}");
+        assert_eq!(
+            again.result.unwrap().command,
+            output.command.replacen(first, &words[2], 1)
+        );
+        assert_eq!(
+            tree(&dir.join(first)),
+            tree(&dir.join(&words[2])),
+            "{}",
+            output.command
+        );
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_new_games_project_keeps_every_answer_it_was_made_with() {
+    let dir = scratch("created-with");
+    let mut input = NewInput::new("g").template("grid");
+    input.set = Answers::parse("set", "{ \"examples\": [\"no\"] }").unwrap();
+    let made = new(&dir, &input);
+    assert!(made.ok, "{made:?}");
+    let output = made.result.unwrap();
+    let project = crate::project::Project::load(&dir.join("g")).unwrap_or_else(|e| panic!("{e}"));
+    let created = project.config.created_with.unwrap();
+    assert_eq!(
+        (created.template.as_str(), created.version.as_str()),
+        ("shuyi-default", "1.0.0")
+    );
+    assert_eq!(created.answers, output.answers);
+    for question in [
+        "perspective",
+        "online",
+        "targets",
+        "examples",
+        "private-files",
+    ] {
+        assert!(created.answers.0.contains_key(question), "{question}");
+    }
+    assert_eq!(created.answers.0["examples"], ["no"]);
+    let text = fs::read_to_string(dir.join("g/shuyi.ron")).unwrap();
+    assert!(
+        text.contains("    created_with: (\n        template: \"shuyi-default\",\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains("            \"perspective\": [\"top-down-grid\"],\n"),
+        "{text}"
+    );
+    fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]

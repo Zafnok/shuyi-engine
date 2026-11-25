@@ -1,7 +1,7 @@
 //! The new-game wizard's questions (ADR-0013 §1, §2, §6): what `shuyi new`
 //! asks, as data ([`questions`]), listed for an agent by `shuyi new <dir>
-//! --questions --json` ([`listed`]). The command that makes a game again
-//! and the answers kept in `shuyi.ron` are ticket 3425's.
+//! --questions --json` ([`listed`]), and the one command that makes the
+//! same game again with no question ([`command`]).
 //!
 //! Each concern of the catalog (`docs/modules.ron`) that `shuyi new` asks,
 //! all but `time`, has a flag of its id ([`concern_flag`]: `--perspective`,
@@ -20,7 +20,7 @@ use super::{Engine, NewInput, PRIVATE_FILES, answers_of, default_id, engine_root
 use crate::catalog::{Catalog, Concern, Concerns, Status};
 use crate::contract::codes::{self, Code};
 use crate::contract::{Answer, Op};
-use crate::template::{self, Answers, Pick, TARGETS, Template};
+use crate::template::{self, Answers, EXAMPLES, Pick, TARGETS, Template};
 
 /// A target an engine profile adds, as `--targets` takes it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -478,6 +478,99 @@ pub fn text(listed: &Questions) -> String {
         }
     }
     out
+}
+
+/// `word` quoted so PowerShell and a POSIX shell read it the same: as it
+/// is when it holds only letters, digits and `_ . / : = , + -`, else in
+/// single quotes, or in double quotes when it holds a `'`. `None` for a
+/// word with a `'` and a character double quotes don't keep in both
+/// (`$`, `` ` ``, `!`, `"`, `\`).
+pub fn quote(word: &str) -> Option<String> {
+    let bare = !word.is_empty()
+        && word.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '/' | ':' | '=' | ',' | '+' | '-')
+        });
+    if bare {
+        Some(word.to_owned())
+    } else if !word.contains('\'') {
+        Some(format!("'{word}'"))
+    } else if word.contains(['$', '`', '!', '"', '\\']) {
+        None
+    } else {
+        Some(format!("\"{word}\""))
+    }
+}
+
+/// `picked`, the answers of question `id`, as words of a command: by
+/// `flag`, or as `--set <id>=` when none is picked or it has no flag.
+fn set(words: &mut Vec<String>, flag: Option<&str>, id: &str, picked: &[String]) {
+    match (flag, picked) {
+        (Some(flag), [_, ..]) => words.extend([flag.to_owned(), picked.join(",")]),
+        _ => words.extend(["--set".into(), format!("{id}={}", picked.join(","))]),
+    }
+}
+
+/// The command that makes the game `input` made again, named `name`, with
+/// no question: `shuyi new <dir> --no-input --name <name>`, `--id` if given,
+/// each concern of `concerns` that `answers` answers by its flag (none as
+/// `--set <id>=`), `--targets`, `--examples` or `--no-examples`, `--set`
+/// for `template`'s other questions, then the engine and `--private-url`;
+/// each word quoted by [`quote`]. With it, whether every word could be
+/// quoted for both shells: when not, those are quoted for a POSIX shell.
+pub fn command(
+    input: &NewInput,
+    name: &str,
+    answers: &Answers,
+    concerns: &Concerns,
+    template: &Template,
+) -> (String, bool) {
+    let mut words: Vec<String> = vec!["shuyi".into(), "new".into(), input.dir.clone()];
+    words.extend(["--no-input".into(), "--name".into(), name.to_owned()]);
+    if let Some(id) = &input.id {
+        words.extend(["--id".into(), id.clone()]);
+    }
+    for concern in concerns.concerns.iter().filter(|c| c.pick.is_some()) {
+        if let Some(picked) = answers.0.get(&concern.id) {
+            set(
+                &mut words,
+                Some(&format!("--{}", concern.id)),
+                &concern.id,
+                picked,
+            );
+        }
+    }
+    if let Some(picked) = answers.0.get(TARGETS) {
+        set(&mut words, Some("--targets"), TARGETS, picked);
+    }
+    for question in &template.questions {
+        let Some(picked) = answers.0.get(&question.id) else {
+            continue;
+        };
+        match (question.id.as_str(), picked.as_slice()) {
+            (EXAMPLES, [yes]) if yes == "yes" => words.push("--examples".into()),
+            (EXAMPLES, [no]) if no == "no" => words.push("--no-examples".into()),
+            _ => set(&mut words, None, &question.id, picked),
+        }
+    }
+    match &input.engine {
+        Engine::Rev { rev } => words.extend(["--engine-rev".into(), rev.clone()]),
+        Engine::Path { path } => words.extend(["--engine-path".into(), path.clone()]),
+        _ => {}
+    }
+    if let Some(url) = &input.private_url {
+        words.extend(["--private-url".into(), url.clone()]);
+    }
+    let mut alike = true;
+    let quoted: Vec<String> = words
+        .iter()
+        .map(|word| {
+            quote(word).unwrap_or_else(|| {
+                alike = false;
+                format!("'{}'", word.replace('\'', "'\\''"))
+            })
+        })
+        .collect();
+    (quoted.join(" "), alike)
 }
 
 #[cfg(test)]
