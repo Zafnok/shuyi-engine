@@ -37,8 +37,11 @@ when not ready), its `default` (the answers given so far, else its
 default), its `flag` (`None` for the folder) and `skipped` with the
 reason when it isn't asked. `wizard::listed(cwd, &NewInput)` computes
 them for `shuyi new <dir> --questions` (`questions::Flags::questions`,
-`questions::listed`), and `wizard::text` prints them. The command that
-makes the game again and `created_with` are 3425's. Nothing asks them
+`questions::listed`), and `wizard::text` prints them. From 3425 (done):
+`new`'s text ends with the command that makes the game again
+(`wizard::command`, `NewOutput::command`), so the prompts' answers
+reach it as the flags' do, and `shuyi.ron` keeps them under
+`created_with`. Nothing asks them
 in a terminal yet. `shuyi new` still asks the
 plain line prompts 2592 and 2597 wrote
 (`crates/cli/src/contract/new/questions.rs`): the examples, then the

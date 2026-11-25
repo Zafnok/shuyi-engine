@@ -310,3 +310,89 @@ fn the_questions_read_for_people() {
         "{text}"
     );
 }
+
+#[test]
+fn a_word_is_quoted_for_powershell_and_a_posix_shell_alike() {
+    assert_eq!(quote("--perspective").as_deref(), Some("--perspective"));
+    assert_eq!(quote("desktop,web").as_deref(), Some("desktop,web"));
+    assert_eq!(quote("D:/games/moon").as_deref(), Some("D:/games/moon"));
+    assert_eq!(quote("perspective=").as_deref(), Some("perspective="));
+    assert_eq!(quote("Moon Garden").as_deref(), Some("'Moon Garden'"));
+    assert_eq!(quote("").as_deref(), Some("''"));
+    assert_eq!(quote("$HOME").as_deref(), Some("'$HOME'"));
+    assert_eq!(quote("@splat").as_deref(), Some("'@splat'"));
+    assert_eq!(quote("~/moon").as_deref(), Some("'~/moon'"));
+    assert_eq!(quote("Nick's Moon").as_deref(), Some("\"Nick's Moon\""));
+    assert_eq!(quote("Nick's $5 Moon"), None);
+    assert_eq!(quote("Nick's `Moon`"), None);
+}
+
+/// The command `new` prints for `input`, named `name`, with `given` and the
+/// engine's template's defaults.
+fn command_for(input: &NewInput, name: &str, given: &str) -> (String, bool) {
+    let template = built_in().unwrap();
+    let concerns = Concerns::embedded().unwrap();
+    let mut answers = template.with_defaults(&answers(given));
+    for concern in concerns.concerns.iter().filter(|c| c.pick.is_some()) {
+        if let Some(default) = concern.default_answer() {
+            answers
+                .0
+                .entry(concern.id.clone())
+                .or_insert_with(|| vec![default.id.clone()]);
+        }
+    }
+    command(input, name, &answers, &concerns, &template)
+}
+
+#[test]
+fn the_command_names_every_answer_by_its_flag() {
+    let input = NewInput::new("moon");
+    let (line, alike) = command_for(
+        &input,
+        "Moon Garden",
+        r#"{ "targets": ["desktop", "web"] }"#,
+    );
+    assert!(alike);
+    assert_eq!(
+        line,
+        "shuyi new moon --no-input --name 'Moon Garden' --perspective top-down-grid --online none \
+         --world-drawing flat --kind tactics --scripting none --targets desktop,web --set \
+         private-files=no --examples"
+    );
+    // No perspective is `--set perspective=`; `--id`, `--no-examples`, the
+    // engine and the private repository follow.
+    let mut input = NewInput::new("games/moon");
+    input.id = Some("org.example.moon".into());
+    input.engine = Engine::Rev {
+        rev: "abc1234".into(),
+    };
+    input.private_url = Some("https://github.com/o/moon-assets.git".into());
+    let (line, _) = command_for(
+        &input,
+        "Moon",
+        r#"{ "perspective": [], "examples": ["no"], "private-files": ["yes"], "targets": ["web"] }"#,
+    );
+    assert_eq!(
+        line,
+        "shuyi new games/moon --no-input --name Moon --id org.example.moon --set perspective= \
+         --online none --world-drawing flat --kind tactics --scripting none --targets web --set \
+         private-files=yes --no-examples --engine-rev abc1234 --private-url \
+         https://github.com/o/moon-assets.git"
+    );
+    let mut input = NewInput::new("moon");
+    input.engine = Engine::Path {
+        path: "../shuyi engine".into(),
+    };
+    let (line, _) = command_for(&input, "Moon", "{}");
+    assert!(
+        line.ends_with(" --examples --engine-path '../shuyi engine'"),
+        "{line}"
+    );
+}
+
+#[test]
+fn a_word_no_quote_keeps_in_both_is_quoted_for_a_posix_shell() {
+    let (line, alike) = command_for(&NewInput::new("moon"), "Nick's $5 Moon", "{}");
+    assert!(!alike);
+    assert!(line.contains(" --name 'Nick'\\''s $5 Moon' "), "{line}");
+}

@@ -722,6 +722,7 @@ pub fn compose(
         let bytes = merged(&path, writers)?;
         files.insert(PathBuf::from(path), bytes);
     }
+    keep_created_with(&mut files, template, &answers)?;
     let examples = answers
         .0
         .get(EXAMPLES)
@@ -816,6 +817,60 @@ pub fn compose(
         answers,
         limits,
     })
+}
+
+/// `files`' `shuyi.ron`, if it has one, with [`created_with`] merged in.
+fn keep_created_with(
+    files: &mut BTreeMap<PathBuf, Vec<u8>>,
+    template: &Template,
+    answers: &Answers,
+) -> Result<(), ComposeError> {
+    let Some(bytes) = files.get(Path::new(crate::project::FILE)) else {
+        return Ok(());
+    };
+    let text = String::from_utf8_lossy(bytes).into_owned();
+    let merged =
+        ron_merge::merge(&text, &created_with(template, answers)).map_err(|(at, message)| {
+            ComposeError::Merge {
+                path: crate::project::FILE.to_owned(),
+                parts: vec![COMPOSER.to_owned()],
+                at,
+                message,
+            }
+        })?;
+    files.insert(PathBuf::from(crate::project::FILE), merged.into_bytes());
+    Ok(())
+}
+
+/// The part of `shuyi.ron` that keeps how `template` made a game for
+/// `answers` (every one, the defaults among them), as RON to merge into
+/// it: `created_with: (template, version, answers)` (ADR-0013 §2).
+pub fn created_with(template: &Template, answers: &Answers) -> String {
+    let string = |text: &str| ron::to_string(text).unwrap_or_default();
+    let mut out = String::from(
+        "(\n    // How `shuyi new` made this game: its template, at its version, and\n    \
+         // every answer, the defaults among them. `shuyi new` printed the\n    \
+         // command that makes it again.\n    created_with: (\n",
+    );
+    // Writing to a `String` can't fail.
+    let _ = writeln!(out, "        template: {},", string(&template.id));
+    let _ = writeln!(
+        out,
+        "        version: {},",
+        string(&template.version.to_string())
+    );
+    out.push_str("        answers: {\n");
+    for (question, picked) in &answers.0 {
+        let picked: Vec<String> = picked.iter().map(|a| string(a)).collect();
+        let _ = writeln!(
+            out,
+            "            {}: [{}],",
+            string(question),
+            picked.join(", ")
+        );
+    }
+    out.push_str("        },\n    ),\n)\n");
+    out
 }
 
 /// `answers` with each concern `shuyi new` asks that they leave out at its

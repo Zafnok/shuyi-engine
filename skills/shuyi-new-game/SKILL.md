@@ -74,7 +74,9 @@ game one part at a time.
    answers; show a `planned` or `parked` answer as coming, with its
    `tickets`, and never pick it. Then make the game with the answers as
    each question's `flag` says (several ids with commas) and
-   `--no-input`.
+   `--no-input`. The answer's `command` is the one command that makes
+   the same game again; the game's `shuyi.ron` keeps the answers under
+   `created_with`.
 
    In a terminal, `new` also asks whether to include the skills' worked
    examples (yes by default; `--no-examples` leaves them out, and each
