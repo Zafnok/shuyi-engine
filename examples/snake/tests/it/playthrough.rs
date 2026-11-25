@@ -59,7 +59,7 @@ fn a_run_eats_its_first_food_grows_dies_on_a_wall_and_starts_again() {
 #[ignore = "writes tests/records/seed-1.ron"]
 fn write_the_golden_record() {
     let (_, record) = playthrough();
-    let config = ron::ser::PrettyConfig::default();
+    let config = ron::ser::PrettyConfig::default().new_line("\n");
     let text = ron::ser::to_string_pretty(&record, config).unwrap_or_else(|e| panic!("{e}"));
     let path = crate::root().join("tests/records/seed-1.ron");
     std::fs::write(&path, text + "\n").unwrap_or_else(|e| panic!("{}: {e}", path.display()));
