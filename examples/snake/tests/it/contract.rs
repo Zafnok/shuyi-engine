@@ -51,6 +51,15 @@ fn the_scene_has_the_length_the_score_and_whether_it_is_over() {
         (&json!(3), &json!(0), &json!(false))
     );
     assert!(shown.text.contains("►► (6,7)"), "{}", shown.text);
+    // The board's rows, each terrain by its name.
+    assert!(
+        shown.text.contains(
+            "   1: wall floor*23 wall
+"
+        ),
+        "{}",
+        shown.text
+    );
     // Left alone, it runs into the wall.
     input.script = keys("Enter");
     input.frames = 60 * 30;

@@ -550,4 +550,4 @@ No break.
 
 Book: none, `replay::ticks` is for a game's tools, and the book's project is a turn game.
 
-Size: 3,238 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.
+Size: 3,441 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.

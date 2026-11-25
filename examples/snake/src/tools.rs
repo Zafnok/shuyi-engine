@@ -118,8 +118,8 @@ fn session_of(harness: Harness<Data>) -> Box<dyn Session> {
     Box::new(session)
 }
 
-/// `errors`, one a line.
-fn lines(errors: &[ContentError]) -> String {
+/// `errors`, one a line, each as `check` prints it.
+pub fn lines(errors: &[ContentError]) -> String {
     let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
     lines.join("\n")
 }

@@ -438,7 +438,7 @@ impl Screen<Data> for Pause {
             print_centred(buf, row, ctx.text(key), fg, back);
         }
         let dim = ctx.palette.text_colors_on(c(EngineColor::TextDim), bg);
-        print_centred_styled(buf, top + 5, &ctx.text_styled("pause.help", &[]), dim);
+        print_centred_styled(buf, top + 4, &ctx.text_styled("pause.help", &[]), dim);
     }
 
     fn as_any(&self) -> Option<&dyn Any> {

@@ -8,7 +8,9 @@ mod files;
 mod frames;
 mod playthrough;
 mod props;
+mod screens;
 mod snapshot;
+mod tools;
 
 use std::fs;
 use std::path::{Path, PathBuf};
