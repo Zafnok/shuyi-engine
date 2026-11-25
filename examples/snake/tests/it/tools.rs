@@ -33,6 +33,20 @@ fn the_tools_stamp_is_the_builds() {
 }
 
 #[test]
+fn its_one_bit_look_is_the_palette_and_its_pattern_map() {
+    let skin = tools()
+        .one_bit("playdate")
+        .unwrap_or_else(|| panic!("no one-bit look"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(skin.palette_file, "files/palette.ron");
+    assert!(
+        skin.map_file.ends_with("palette@onebit.ron"),
+        "{}",
+        skin.map_file
+    );
+}
+
+#[test]
 fn a_sessions_events_are_the_rules_events_in_order() {
     let mut h = at_title(1);
     let none = events(&h);

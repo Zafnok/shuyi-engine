@@ -193,9 +193,9 @@ impl UnitPainter<Piece> for Glyphs<'_> {
             let Some((x, y)) = glyph::cell_of(grid, piece.pos) else {
                 continue;
             };
-            for (dx, glyph) in (0..).zip(glyphs) {
-                if let Some(&cell) = buf.get(x + dx, y) {
-                    buf.set(x + dx, y, Cell { glyph, fg, ..cell });
+            for (at, glyph) in (x..).zip(glyphs) {
+                if let Some(&cell) = buf.get(at, y) {
+                    buf.set(at, y, Cell { glyph, fg, ..cell });
                 }
             }
         }
