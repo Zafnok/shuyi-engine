@@ -1014,8 +1014,11 @@ specifications, never copied. The order, when unparked:
   Only final ticket 3079 removes quad-snd, after the complete comparative matrix
   and device checks pass and the game has run on the new default. Original
   clean-room codec tickets 2211–2214 were dropped.
-- **Controllers:** the research (2903) first. If it keeps our own code:
-  2402, then 2403, which removes gilrs.
+- **Controllers:** the research (2903, done) chose SDL3 for desktop pads,
+  with our own start-up for Switch 2 pads
+  ([ADR-0147](adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md)).
+  First the Steam Deck is tried (2414, not parked), then 2402 moves
+  desktop pads to SDL3 and removes gilrs, then 2403 starts Switch 2 pads.
 - **The two small ones:** web saves (3033, done: unparked on its own on
   2026-11-12) and file embedding (2215, done: unparked on its own on 2026-11-22).
 - **macroquad:** the research (3034) is done. Nick unparked it alone on
@@ -1180,7 +1183,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2903, 2402–2403, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, web saves (3033) on 2026-11-12, and file embedding (2215) and the macroquad research (3034) alone on 2026-11-22 | Nick asks |
+| 2402–2403, 2008 | The rest of the platform layer (ADR-0021): the controllers' replacement that 2903 chose (ADR-0147); separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31, web saves (3033) on 2026-11-12, and file embedding (2215) and the macroquad research (3034) alone on 2026-11-22 | Nick asks |
 | 3325–3333 | Replacing macroquad (ADR-0136): `shuyi-gpu`, our 2D renderer over wgpu; the winit backend on the desktop, its input and the window facts miniquad lacks; the web build on `wasm-bindgen` and its plugins; the IME everywhere; winit as the default; macroquad removed | Nick asks, after the MVP; and each waits for 3079 (2026-11-22) |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |

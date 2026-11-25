@@ -80,7 +80,8 @@ None.
 **Out (do not do):**
 - The IME: turning it on and off, placing it, its composing text, and
   the web's (3329, after 2346).
-- Controllers: gilrs stays, as it is on the macroquad path.
+- Controllers: the native pad source stays as it is on the macroquad path,
+  whichever `shuyi-app` has (ADR-0147 names SDL3); winit has no gamepads.
 - The window facts miniquad lacks (3328).
 
 **Estimated size:** about 1,300 lines (code 750, tests 450, docs 100).

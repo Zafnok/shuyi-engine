@@ -2026,6 +2026,23 @@ he chose **"Unpark research now"**, then:
   parked, and unparking 3034 unparks nothing else. File embedding (2215)
   was unparked on its own the same day (above).
 
+## 2026-11-22: the controller research unparked
+
+Source: Nick, asking a session to do ticket 2903 (the research on
+controllers after gilrs), parked with the in-house platform layer on
+2026-10-19. Asked whether to unpark it alone, unpark it with the build
+it picks, or keep it parked until the MVP, he chose **"Unpark 2903
+only"**. Asked which controllers he has at hand for the tests, he
+chose all four: an Xbox pad, a PlayStation pad, a Switch Pro pad and
+the Steam Deck.
+
+**Rules:**
+
+- **2903 is unparked** and worked now. It ends by asking Nick which way
+  to go.
+- **The build it picks stays parked** until the MVP, as decided on
+  2026-10-19: 2402, 2403, 2408 and any ticket the research writes.
+
 ## 2026-11-23: the hosted preview (2602) unparked, built and tested locally only
 
 Source: Nick, in a Claude Code session, asking what was left before the
@@ -2074,3 +2091,92 @@ needs each). Nick:
   `cargo xtask check-publish --index` can join CI as soon as it exists.
 - **Still no defensive names.** `shuyi-contract` (planned, not yet a
   crate) and `shuyi-engine` stay unheld.
+
+## 2026-11-24: controllers through SDL3, with our own start-up for Switch 2 pads
+
+Source: Nick, in the session working 2903, shown the
+[research](research/2903-controllers-after-gilrs.md) and the probe's
+results on his pads (SDL3 read an Xbox pad and a DualSense completely;
+gilrs missed the Xbox pad's logo button and didn't list the DualSense;
+neither read a Switch 2 Pro pad). Asked which way the engine reads
+controllers on desktop (A. SDL3, like Godot, recommended; B. keep gilrs;
+C. our own code, 2402 and 2403):
+
+> "either sdl3 with a fix for switch, or write our own. if no fix for
+> switch can exist with sdl3, then write our own. make sure it is
+> maintainable and not a clone of existing stuff. maybe needs its own
+> repo. as long as its not an endless project and can be finished in few
+> days I don't mind make our own as long as you dont clone existing
+> stuff."
+
+Asked earlier about the Steam Deck: "rn we leave untested but have it as
+a followup". He allowed the session to install CMake through MSYS2 for
+the probe.
+
+The fix for Switch 2 pads was then tried the same day: switchbrew.org's
+protocol page for the Switch 2 Pro Controller documents one
+"Initialize" command, sent over the pad's second USB interface. A
+scratch program written from that page sent it, and gilrs then read all
+17 buttons, the sticks and the triggers of Nick's pad. So a fix exists,
+and the first branch of his answer holds.
+
+**Rules:**
+
+- **Desktop pads go through SDL3** (Zlib), built from source with only
+  its input parts. gilrs leaves the engine. 2402 does it. The web keeps
+  `gamepad.js`.
+- **Switch 2 pads get a fix of our own:** a small `shuyi-pads` crate
+  sends the documented start-up command over USB, and the pad is then
+  read through SDL3 or, if SDL3 won't take it, by the crate itself.
+  2403 does it, in a few days' work, and the crate can move to its own
+  repository later (2008).
+- **Nothing is cloned.** The fix is written from switchbrew's protocol
+  description and from what the pad does when tried; no library's source
+  is read for it (ADR-0021 §2).
+- **"Write our own" (2402 and 2403 as first planned) is not taken**,
+  because the fix exists. If 2403 finds the fix can't work beside SDL3
+  on a platform, the crate reads that pad itself there; that is still
+  SDL3 with a fix for Switch.
+- **The Steam Deck is a follow-up:** 2414 tries both on the Deck.
+- **The build stays parked** until the MVP, as decided on 2026-10-19:
+  2402 and 2403 are still `Parked:`.
+
+Asked nothing more, Nick added, on hearing SDL3 adds about 1.8 MB to a
+game:
+
+> "so since it costs more storage we should make that a toggle (default
+> ON) to include controller support on game build for non-console
+> targets like PC/mac/linux
+>
+> and ppl using the engine can decide to toggle off to save space for
+> whatever weird desire they want"
+
+- **Controller support on desktop is a toggle, on by default.** A game
+  for Windows, macOS or Linux includes SDL3's pads unless its developer
+  turns them off; turned off, the game reads no controllers there and
+  is about 1.8 MB smaller. 2402 builds the toggle (ADR-0147 §5).
+- The web (whose pad reading costs nothing to speak of) and the consoles
+  (their own backends) are not part of the toggle.
+
+## 2026-11-24: an optional dependency that makes games bigger is a toggle
+
+Source: Nick, in the session working 2903, right after making controller
+support a toggle because SDL3 adds about 1.8 MB to a game:
+
+> "this should be a rule going forward, if its not strictly required and
+> we introduce a new dep that adds final build storeage req, make it a
+> toggle"
+
+**Rules:**
+
+- **A new dependency that a game doesn't strictly need, and that makes
+  a shipped game bigger, comes behind a toggle**: a cargo feature a game
+  can turn off.
+- **On or off by default is decided per case** and said in the ticket
+  or ADR that adds it; controllers are on by default (the entry above).
+- "Strictly required" means the engine can't build or run a game
+  without it (the window, drawing, the run loop). A dependency only
+  build tools or tests use doesn't count: it never reaches a game.
+- The ticket that adds such a dependency says how much bigger a game
+  gets, measured on a stripped release build, and what turning it off
+  costs the game.

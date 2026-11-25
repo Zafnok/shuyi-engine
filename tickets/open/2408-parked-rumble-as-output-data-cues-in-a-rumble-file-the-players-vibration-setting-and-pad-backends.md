@@ -57,9 +57,11 @@ What Shuyi has today (checked 2026-10-20):
 - `App` (`crates/platform/src/app.rs`) hears `Suspend`, `FocusLost` and
   `QuitRequested` (`on_system_event`). `shuyi-app` sends only
   `ToggleFullscreen` and `QuitRequested` today (`crates/app/src/backend.rs`).
-- Planned: 2402 and 2403 (parked) give their pads `Motors` if this is
-  done (their either-order clauses); 2903 (parked) lists it among what
-  later work may want;
+- Planned: 2402 (parked) moves desktop pads to SDL3 and gives them
+  `Motors` through `SDL_RumbleGamepad` if this is done (its either-order
+  clause), as 2903 (done) chose
+  ([ADR-0147](../../docs/adr/0147-desktop-pads-through-sdl3-with-our-own-start-up-for-switch-2-pads.md));
+  Switch 2 pads (2403) get no rumble;
   2340, 2406 (seats) and 2407 (phones' browsers) point their rumble
   here.
 
@@ -279,21 +281,13 @@ if he wants rumble in the game.
     - No new dependency: gilrs (MIT OR Apache-2.0, allowed by
       `deny.toml`) is already in `crates/app/Cargo.toml`, and
       `gilrs::ff` needs no feature.
-  - **Our own pads, either order with 2402 and 2403 (parked):** if
-    2402 is done, the `in-house-pads` source also implements
-    `set_motors` and `stop_motors`, through a new
-    `shuyi_pads::Pads::set_motors(id, strong: u16, weak: u16)` (0 and
-    0 to stop), written from the documents as 2402's rumble clause
-    says (ADR-0021 §2): XInput's `XInputSetState` for Xbox-style pads
-    on Windows, let go by the source when `for_ms` runs out. The gilrs
-    part above stays while 2403 isn't done. If 2403 is done too, gilrs
-    is gone, so skip the gilrs part above: `Source::set_motors` and
-    `stop_motors` go through `shuyi-pads`, the only native source, and
-    Linux rumbles as 2403's rumble clause says, in place of
-    `gilrs::ff`: an `FF_RUMBLE` effect uploaded with `EVIOCSFF`, played
-    with an `EV_FF` event and removed with `EVIOCRMFF`, on a device
-    opened read-write; none on macOS. If neither is done, nothing
-    more: each adds its part when it lands, by its own clause.
+  - **SDL3's pads, either order with 2402 (parked):** if 2402 is done,
+    gilrs is gone, so skip the gilrs part above: `Source::set_motors`
+    calls `SDL_RumbleGamepad(pad, strong, weak, for_ms)` with each
+    level `× 65535 / 100`, and `stop_motors` a rumble of 0 (ADR-0147).
+    SDL ends a rumble itself after `for_ms`. Windows, Linux and macOS
+    alike, where SDL's driver has motors. If 2402 isn't done, nothing
+    more: 2402 adds it when it lands, by its own clause.
   - **The web** (`crates/cli/web/gamepad.js`, `crates/app/src/pads/web.rs`):
     - `shuyi_pad_rumble(index, strong, weak, ms)` calls
       `vibrationActuator.playEffect("dual-rumble", { duration: ms,
@@ -367,10 +361,9 @@ if he wants rumble in the game.
   engine's own menus and widgets;
 - checking with `shuyi check` the cue names screens use in their code
   (the debug-build panic and the Harness tests catch them);
-- rumble on our own pad code when this ticket lands first (2402, 2403,
-  parked): each adds it to its source when it lands, by its rumble
-  clause. If they are done first, the clause under the backends does it
-  here.
+- rumble through SDL3 when this ticket lands first (2402, parked): 2402
+  adds it to its source when it lands, by its rumble clause. If 2402 is
+  done first, the clause under the backends does it here.
 
 ## Implementation steps
 
@@ -444,8 +437,8 @@ if he wants rumble in the game.
 - [ ] A pad on Windows or Linux rumbles for a cue (by hand, noted in the
       completion notes), or step 8 moved the backends to a ticket of
       their own, named in the completion notes.
-- [ ] If 2402 is done: an Xbox pad rumbles for a cue with
-      `in-house-pads` on (by hand, noted in the completion notes).
+- [ ] If 2402 is done: an Xbox pad and a PS5 pad rumble for a cue
+      through SDL3 (by hand, noted in the completion notes).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
