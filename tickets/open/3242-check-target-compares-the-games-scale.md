@@ -57,6 +57,10 @@ None.
   (`SHUYI_BLESS=1 cargo test -p shuyi-cli --lib template`).
 - `docs/contract.md`'s `check --target` row says it; ADR-0140 §2's
   sentence on this ticket becomes what it does.
+- **Either order with 2851:** if 2851 is done, add one sentence to the
+  book's chapter 9 scale passage (`targets-and-export.md`) saying
+  `check --target` compares a target's `scale` with `DEFAULT_SCALE`; if
+  not, nothing to do (2851 writes it).
 
 **Out:** the player's pick (3240); the capture (3241).
 
