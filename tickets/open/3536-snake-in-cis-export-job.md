@@ -57,6 +57,10 @@ None.
 - **The job**: the `export` matrix gains a `game` dimension
   (`hello-grid`, `snake`), each leg exporting and checking its game.
   Say in the PR how many legs that adds per pull request.
+- **Either order with 2788:** if 2788 is done (`examples/trails`), add
+  `trails` to the matrix beside snake, with its own `packed` feature and
+  `disclosure` part; if not, nothing to do here (2788 then adds trails
+  beside snake).
 
 **Out (do not do):**
 - The Playdate export, which never runs in CI (3010; 3353 builds snake's).

@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["1141", "1143"]
+blocked_by: ["1141", "2615"]
 nick_input: none
 completed:
 ---
@@ -14,6 +14,7 @@ completed:
 # 1145 — Sessions and lobbies
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0053 picks an online mode. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> Still parked after Nick's decision of 2026-11-25, which unparked the online trails example: trails uses quick play (2615) and needs no lobby.
 
 ## Context
 
@@ -25,6 +26,16 @@ The relay (1141) and the LAN (1143) each have a session of their own,
 and Steam (1144) has lobbies. This ticket puts them behind one trait. It
 also adds a generic lobby screen (game ADR-0054: logic, view and skin), so a
 game gets a working lobby out of the box.
+
+Quick play (2615, from Nick's decision of 2026-11-25) is another kind of
+session: a black-box director on a server seats a player in a room with
+a free seat, with no lobby, ready step, room code or invite. So this
+ticket's explicit lobby model is for invite and friend play, and a
+`QuickPlay` backend of `SessionBackend` wraps 2615's `Director` over its
+server (2616): `join` with no token asks for quick play, `list` is
+empty, and `set_ready` and `start` do nothing, since the server starts
+rounds. The LAN (1143) is not needed for sessions, so it is no longer a
+blocker, and its session backend is a follow-up (Scope).
 
 ## Nick input
 
@@ -45,10 +56,21 @@ None. Our game's lobby look comes later with 0053.
   - `metadata`;
   - `events()`, which include `SessionEvent::JoinRequested(JoinToken)`:
     a backend's own join request (Steam's, 1144) or the one from launch.
-  The relay and LAN backends implement it now, and Steam's as the
-  clause on 1144 at the end of this list says.
+  The relay backend implements it now, the LAN's as the LAN line below
+  says, and Steam's as the clause on 1144 at the end of this list says.
+- **Quick play:** `QuickPlay`, a backend over 2615's `Director`, through
+  2616's server and the client transports (2617 on native, 1142 on the
+  web), as the Context says. Its refusals (2615's `Refusal`:
+  `OtherBuild`, `Busy`, `Protocol`) become `SessionEvent`s the lobby
+  screen shows with keys the game names.
+- **The LAN's backend is a follow-up:** write, in this PR, a parked
+  ticket blocked by 1143 and this one, in which the LAN's session
+  implements `SessionBackend` and `hello-grid`'s online mode also runs
+  over loopback LAN.
 - **A join at launch:** `shuyi-app` reads `--join <token>` from the
-  command line, and on the web 1142 reads `?join=`. Either becomes
+  command line, and on the web this ticket reads `?join=` from the
+  page's address (the reader moved here from 1142 on 2026-11-25, when
+  1142 was unparked for trails, which has no join links). Either becomes
   a launch join token the platform hands in at load, as a field of
   `Setup` (`crates/platform/src/app.rs`) beside `seed`. `Setup` is
   `#[non_exhaustive]`, so the field is additive. `shuyi-platform`
@@ -58,17 +80,19 @@ None. Our game's lobby look comes later with 0053.
   (`crates/platform/src/platform.rs`), so a join request that arrives
   while the game runs reaches the session through the backend's
   `events()`, not through `SystemEvent`.
-  **Either order with 1142:** if 1142 is done, its `?join=` reader
-  hands the room code straight to `RelaySession`; hand it to `Setup`'s
-  field instead, so the lobby joins it as it joins `--join`. If not,
-  nothing to do (1142 hands it to `Setup`'s field).
+  **Either order with 1142:** if 1142 is done, add to its `net.js`
+  plugin a call that hands Rust the page's query, read its `join`
+  parameter with a pure function, and hand the token to `Setup`'s
+  field, so the lobby joins it as it joins `--join`. If not, do the
+  native half only, and write a follow-up ticket in this PR, blocked by
+  1142, for the web half.
 - Player names are strings the game gives. There are no accounts here
   (1148).
 - `shuyi-ui::screens::lobby`: create or join by code, a player list,
   ready toggles, start. It uses the `UiAction`s only, and the game names
   its own text keys. `check-keys` and `check-text` must pass.
 - `examples/hello-grid` (1118) gets a two-player online mode
-  through the lobby, over the relay and the LAN.
+  through the lobby, over the relay.
 - **Peers through the contract, in either order with 2529:** if 2529 is
   done, `examples/hello-grid/src/tools.rs` offers `GameTools::peers`
   through `shuyi_net::tools::MemoryPeers`, `hello-grid`'s `tools`
@@ -81,7 +105,8 @@ None. Our game's lobby look comes later with 0053.
   `SessionBackend`, `JoinToken`, `--join`, the lobby screen and
   `hello-grid`'s online mode. If 2529 is done too, `waits_for` is then
   empty: drop it, and write the skill's worked example,
-  `skills/shuyi-net/example.ron` (two `hello-grid` peers through
+  `skills/shuyi-net/example-lockstep.ron` (beside 2855's
+  `example.ron` for rooms; two `hello-grid` peers through
   `peers`, with a seeded loss, which CI's `skills` job runs). The
   runner, `crates/xtask/src/skills.rs`, makes a fresh `shuyi new` game
   for each example, and this one runs on `hello-grid`: give `Example`
@@ -119,23 +144,25 @@ None. Our game's lobby look comes later with 0053.
   it lands).
 
 **Out (do not do):**
-- matchmaking queues (1148);
+- matchmaking queues (1148); quick play's seating policy, room cap and
+  handshake (2615: this ticket only wraps its director);
 - chat (1149);
 - our game's lobby;
 - rich presence (3055); the Steam calls themselves, the overlay's
   invite dialog and Steam's join callbacks (1144: this ticket only
-  moves them onto its API, in the clause on 1144); reading the join
-  link in the browser (1142).
+  moves them onto its API, in the clause on 1144); the browser's
+  WebSocket plugin itself (1142).
 
 ## Implementation steps
 
-1. Write the trait, `JoinToken` and `SessionEvent`, and adapt the two
-   backends.
+1. Write the trait, `JoinToken` and `SessionEvent`, and adapt the relay
+   backend and the `QuickPlay` backend over 2615's director.
 2. Build the lobby screen, with Harness tests over the in-memory network
    (a `MemorySession` backend for tests).
 3. Add the launch join token: `Setup`'s field, `--join` in `shuyi-app`,
    and the lobby joining it on its first frame; and, if 1142 is done,
-   its `?join=` reader handing its token to that field.
+   the `?join=` reader through its plugin, handing its token to that
+   field.
 4. Add the example's online mode, with an integration test that runs two
    Harness games and a relay in one process.
 5. Do the `shuyi-net` skill's part (from 1134), and the parts of 1144,
@@ -144,7 +171,10 @@ None. Our game's lobby look comes later with 0053.
 ## Acceptance criteria
 
 - [ ] Two Harness instances of `hello-grid` find each other, ready up and
-      play to the end over the relay and over loopback LAN in CI.
+      play to the end over the relay in CI.
+- [ ] A `QuickPlay` session over `MemoryNetwork` and a 2615 director
+      joins with no token and is seated; a director at its room cap
+      gives the lobby screen a `Busy` event.
 - [ ] A game started with a launch join token joins that room on its
       first frame.
 - [ ] If 2529 is done: `hello-grid`'s CI test of `cargo shuyi peers 2
@@ -158,6 +188,9 @@ None. Our game's lobby look comes later with 0053.
   that room on its first frame over `MemorySession`.
 - Unit: a `JoinToken`'s text form reads back equal (`Display`, then
   `FromStr`).
+- Unit: the `join` parameter read from a page's query, with and without
+  one, and among other parameters.
+- Integration: `QuickPlay` over `MemoryNetwork`, seated, then `Busy`.
 - Snapshot: the lobby screen.
 
 ## Completion notes

@@ -924,6 +924,31 @@ going public, with the one book (2823–2828).
 | 2840 | The book served from its Codespace: the reader follows the book there, and each step's game is rebuilt when its files change (after 2837) |
 | 2841 | The step's Rust in the playground's tabs, in the book served from its Codespace (after 2840) |
 
+### Online play: the trails example
+
+On 2026-11-25 Nick chose an online light-trail arena as the next example
+([`decisions.md`](decisions.md)): real-time rooms on a server that decides
+everything, bots in empty seats, quick play with no accounts, hosted on an
+always-free tier. These tickets are unparked; the rest of networking stays
+parked below.
+
+| Ticket | What |
+| ------ | ---- |
+| 2612 | `TickInput` holds eight seats, and a seat's input has a byte form |
+| 2613 | `shuyi-net`: the `Transport` trait and an in-memory network with seeded faults |
+| 2614 | Tick rooms: a server-authoritative room over TickSim with bots in empty seats |
+| 2615 | Quick play: a black-box director that seats a player in a room with a free seat |
+| 2616 | `shuyi-server`: a director's rooms over WebSocket, with TLS, limits, health and a cost guard |
+| 2617 | A WebSocket client transport for native games, behind a `net` feature |
+| 1142 | WebSocket in the web build through our own JS plugin |
+| 2788 | Trails: the example, one player against bots, offline |
+| 2789 | Trails' server binary, its room rules and Linux builds from CI |
+| 2790 | Trails online: quick play from the title screen on desktop and the web |
+| 2791 | The trails server measured at ten full rooms |
+| 2618 | Hosting the trails server on Oracle Cloud Always Free (Nick does the account steps) |
+| 2619 | Watching the server: an outside uptime and certificate check that tells Nick |
+| 2854–2856 | The book's chapter on online play, the skill pack, and hosting your server for free |
+
 ### Public demo defenses
 
 On 2026-10-31 Nick asked for a ticket track for countermeasures to
@@ -1201,7 +1226,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 1135 | Research: visual scripting as a view over text | — |
 | 2506–2508 | The editor (Godot- or Unreal-style): research on where it runs and how it talks to a running game through the tool contract, the shell with a live view, a tree and an inspector over settings files, and the graph panel over `*.graph.ron` | Nick asks (2026-10-19: "UI layer for visual code -- like Godot editor or Unreal Blueprints") |
 | 2317–2320 | The debug view's channels: collision bounds, level layouts, skeletons of procedural bodies, and 3D bones and colliders | the work each one draws is unparked (1122; 1120 and 1124; 2701 and 2702; 3102, 3103 and 3105) |
-| 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
+| 1140–1141, 1143–1150 | Networking: lockstep, relay, LAN, Steam, sessions, referee server, rollback, accounts and ratings, chat, MMO and global chat research (1142 and the trails tickets were unparked on 2026-11-25, above) | the game's 0053 picks an online mode |
 | 2701–2704 | Procedural animation, a module (ADR-0010): bodies of points in `Fx`, limbs and gaits that find footholds, strips and rotated sprites to draw them, and a side-view cave example | Nick asks (2026-10-16: "this will be very late addition since it won't tie into visions of shuyi game") |
 | 2205–2206 | MIDI music, a module (ADR-0014): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |
 | 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |

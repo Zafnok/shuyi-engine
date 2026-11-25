@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2529", "1141", "1146"]
+blocked_by: ["2529", "1141", "1146", "2616"]
 nick_input: none
 completed:
 ---
@@ -18,7 +18,7 @@ completed:
 ## Context
 
 2529 adds `shuyi peers`: several copies of a turn game in one headless
-process, joined by 1140's `MemoryNetwork` with seeded faults, with
+process, joined by 2613's `MemoryNetwork` with seeded faults, with
 each peer's `NetStats` and a desync report, as an operation of the
 tool contract and through MCP. Its peers talk straight to each other,
 as lockstep between friends does (ADR-0006 §4). Its **Out** leaves "a
@@ -72,8 +72,12 @@ None.
 **In:**
 - **The contract** (`crates/cli/src/contract/peers.rs`), all of it
   additive. The new types follow ADR-0039 as 2529's do:
-  - `Via`: `Direct` (the default), `Relay`, `Referee`,
-    `#[non_exhaustive]`, lowercase in JSON. `PeersInput` gains `via:
+  - `Via`: `Direct` (the default), `Relay`, `Referee`, `Server`,
+    `#[non_exhaustive]`, lowercase in JSON. `Server` is a tick game's
+    rooms: the hub is the game's 2615 `Director` over its `RoomGame`,
+    the same code its `shuyi-server` binary runs (2616; trails' is
+    2789), in memory, and the peers are its `RoomClient`s (2614). Each
+    peer's check is 2529's room hash check against the hub's room. `PeersInput` gains `via:
     Via` with `serde(default)`, so an input without it reads as
     before.
   - `Hub { net: NetStats, turns: Option<u32> }`,
@@ -103,11 +107,13 @@ None.
     in an in-memory relay's room (the relay's room table): its
     WebSocket, TLS and server aren't tried". Under a referee: "the
     peers played under an in-memory referee (RefereeSession):
-    `shuyi-server` and its sockets aren't tried". 2529's line on the
+    `shuyi-server` and its sockets aren't tried". Through a server:
+    "the peers played in an in-memory director's rooms (Director):
+    `shuyi-server`, its WebSocket and TLS aren't tried". 2529's line on the
     in-memory network stays.
   - `peers::text` names the party on its first line ("2 peers through
     a relay: ok").
-- **The CLI:** `--via direct|relay|referee` in `peers::parse_args` and
+- **The CLI:** `--via direct|relay|referee|server` in `peers::parse_args` and
   `peers::usage`. An unknown party is `SH0001`. `peers_via` left at its
   default for that party is `SH3001`; any other error of the game's is
   `SH3002`, as in 2529.
@@ -117,7 +123,7 @@ None.
 - **`FakePeers`** (`crates/cli/src/contract/fake.rs`): a settable
   party, hub and expected hashes.
 - **`shuyi-net`** (`crates/net`):
-  - **Links to the hub only.** If 1140's `MemoryNetwork` links every
+  - **Links to the hub only.** If 2613's `MemoryNetwork` links every
     transport to every other, add a way to link chosen pairs (for
     example `MemoryNetwork::star(hub)`), so a peer's one link is the
     hub's. A peer that could reach another peer directly would pass
@@ -196,8 +202,8 @@ None.
   tools. `check-skills` passes.
 - **Docs** (the `document` skill): `docs/contract.md`'s *Peers*
   section (`via`, the hub, what is compared under a referee, the
-  limits) and its MCP lines if the session took `via`; `docs/net.md`
-  (the two constructors); `docs/net-relay.md` (the room table also
+  limits) and its MCP lines if the session took `via`; the networking page
+  the docs map names (the two constructors); 1141's relay docs (the room table also
   runs in memory in `shuyi peers --via relay`).
 - **For the game:** additive. `GameTools` and `Peers` gain defaulted
   methods, `PeersInput` and `PeersOutput` gain fields, and
@@ -240,9 +246,9 @@ None.
 
 1. Read 2529's `crates/cli/src/contract/peers.rs`, `contract/fake.rs`
    (`FakePeers`), `GameTools::peers` and `shuyi_net::tools::MemoryPeers`
-   as built; 1140's `MemoryNetwork` (how it links transports, its
+   as built; 2613's `MemoryNetwork` (how it links transports, its
    step); 1141's relay (the room table, the protocol's messages,
-   `WsTransport`, `RelaySession`) and `docs/net-relay.md`; 1146's
+   `WsTransport`, `RelaySession`) and its docs; 1146's
    `PlayerView`, `RefereeSession` and how its tests inspect every
    message; `docs/contract.md`'s *Peers*; ADR-0006, ADR-0009 §4,
    ADR-0022 and ADR-0039.
