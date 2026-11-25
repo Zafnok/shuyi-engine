@@ -369,6 +369,17 @@ refuses a screenshot on such a signal was found. None was tried here either.
 
 ## Reproduction
 
+**Where the materials are.** Ticket 2093 moved `tools/research/` out of
+the engine, with its history, to
+[`shuyi-engine-research`](https://github.com/Zafnok/shuyi-engine-research)
+(this study is its
+[`2915/`](https://github.com/Zafnok/shuyi-engine-research/tree/main/2915)).
+The paths below are as they were in the engine: they run in a checkout of
+the engine's commit
+[`f4b902f8`](https://github.com/Zafnok/shuyi-engine/tree/f4b902f89e317504bcf1a4fc3544517923ca1c77/tools/research),
+the last that has them, or with that repository cloned into
+`tools/research/`.
+
 The runner (`study.py`), marks (`marks.py`), Windows probe (`probe.py`), build check
 (`verify_public.py`) and tests (`test_study.py`) are in `tools/research/2915/`. The
 fixtures come from 2913's `clip-capture` crate, so its folder must exist to re-run
@@ -405,6 +416,5 @@ capture checks (`capture.json`), every simulated arm (`marks.json`), the readers
 frames, the kit and the secret key stay in the ignored `target/`. The phone film
 shows a room and a reflection, so no frame of it is in this repository.
 
-**Removing the study.** `git rm -r tools/research/2915` removes it, and nothing else
-depends on it. This report names those files as text, so it stays valid without
-them, though it then cannot be re-run.
+**The study's removal.** Ticket 2093 removed the folder from the engine, as
+above. This report names those files as text, so it stays valid without them.

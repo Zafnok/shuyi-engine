@@ -297,6 +297,17 @@ every category, with at least three of four finishing the loop.
 
 ## Reproduction
 
+**Where the materials are.** Ticket 2093 moved `tools/research/` out of
+the engine, with its history, to
+[`shuyi-engine-research`](https://github.com/Zafnok/shuyi-engine-research)
+(this study is its
+[`2913/`](https://github.com/Zafnok/shuyi-engine-research/tree/main/2913)).
+The paths below are as they were in the engine: they run in a checkout of
+the engine's commit
+[`f4b902f8`](https://github.com/Zafnok/shuyi-engine/tree/f4b902f89e317504bcf1a4fc3544517923ca1c77/tools/research),
+the last that has them, or with that repository cloned into
+`tools/research/`.
+
 The runner (`study.py`), perturbations (`perturb.py`), tests (`test_study.py`)
 and capture crate (`capture/`) are in `tools/research/2913/`. In a virtual
 environment with Pillow 12.3.0, NumPy 2.5.3, imageio-ffmpeg 0.7.0 (ffmpeg 7.1),
@@ -326,12 +337,11 @@ hash of each evaluated encode and frame set (`encodes.json`), the per-arm summar
 (`summary.json`) and the viewer metrics (`viewer_metrics.json`). Programs,
 responses, clips and the case seed stay in the ignored `target/`.
 
-**Removing the study.** Everything is in that one folder, so `git rm -r
-tools/research/2913` removes it. Only re-running
+**The study's removal.** Ticket 2093 removed the folder from the engine, as
+above. Only re-running
 [2915's study](2915-capture-controls-marks-and-ai-signals.md) needs its capture
 crate. This report deliberately names
-those files as text, so it stays valid without them, though the study then cannot
-be re-run or its hashes checked.
+those files as text, so it stays valid without them.
 
 The SHA-256 commitment to the grader's seed, made before the first attempt, was
 `0d6db84e77d18b74c3d4ba51214176de8123865b68e1b1d53ca088d0b9277965`.

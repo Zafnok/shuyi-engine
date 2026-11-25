@@ -958,7 +958,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
 | 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609; done 2026-11-23) |
 | 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
-| 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
+| 2093 | Move the research scripts under `tools/research/` to a repository of their own and keep their reports (unparked 2026-11-25; done 2026-11-25) |
 
 ## Parked
 

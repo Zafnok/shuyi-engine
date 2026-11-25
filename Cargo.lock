@@ -248,31 +248,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
 
 [[package]]
-name = "cloning-fixture"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "shuyi-core",
-]
-
-[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
 dependencies = [
  "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cold-rules-web-fixture"
-version = "0.1.0"
-dependencies = [
- "cloning-fixture",
- "serde",
- "serde_json",
- "shuyi-core",
 ]
 
 [[package]]

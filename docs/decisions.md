@@ -2181,6 +2181,27 @@ support a toggle because SDL3 adds about 1.8 MB to a game:
   gets, measured on a stripped release build, and what turning it off
   costs the game.
 
+## 2026-11-25: the research scripts move to a repository of their own
+
+Source: Nick, in a Claude Code session, rescoping 2093 (remove the
+reverse-engineering research scripts, after 3083):
+
+> "since i dont wanna do [2611] for a while which means [3083] wont be
+> done for a while if at all but if I ever do resume it after say
+> getting funding I dont want stuff to be lost so lets organize it into
+> a new repo and link to it if its ever necessary. Just link w/in
+> tickets + research docs. Dont link inside of documentation and such."
+
+**Rules:**
+
+- **2093 is unparked and no longer waits for 3083.** It moves
+  `tools/research/` with its history to a public repository of its own
+  and removes it from the engine.
+- **Only tickets and the research reports link that repository.** The
+  book, the README and the other docs don't.
+- 2611 and 3083 stay as they were; 3083 takes what it needs from the
+  new repository when it starts.
+
 ## 2026-11-25: shuyi new's prompts show only what can be answered
 
 Source: Nick, signing off ticket 3423 (the wizard's prompts in a
