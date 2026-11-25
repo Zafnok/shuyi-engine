@@ -202,7 +202,7 @@ Deviations:
   (`Which perspectives?` with the grid ticked and the parked answers
   greyed under it); answering it all is Nick's sign-off.
 
-Size: 2,241 counted lines, the terminal prompts replace the line prompts
+Size: 2,244 counted lines, the terminal prompts replace the line prompts
 in one place: 420 of the lines are the old prompts and their tests
 removed, and landing the lists without moving the examples and GitHub
 questions would ask the examples twice and mix two prompt styles in one
