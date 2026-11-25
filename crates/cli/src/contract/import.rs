@@ -411,6 +411,11 @@ pub fn import(importers: &Importers, root: &Path, input: &ImportInput) -> Answer
     Answer::new(Op::Import, ok, output, limits)
 }
 
+/// `import`'s usage, with `command` as the tool's name.
+pub fn usage(command: &str) -> String {
+    format!("usage: {command} import <file> [--kind KIND] [--print] [--json]")
+}
+
 /// Reads `import`'s arguments (not `--json`).
 pub fn parse_args(args: &[String]) -> Result<ImportInput, String> {
     let mut input = ImportInput::default();

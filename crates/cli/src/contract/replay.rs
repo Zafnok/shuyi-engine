@@ -280,6 +280,11 @@ fn stamps(now: Option<&Made>, runs: &[ReplayRun], any_stamp: bool) -> Result<Vec
     Ok(limits)
 }
 
+/// `replay`'s usage, with `command` as the tool's name.
+pub fn usage(command: &str) -> String {
+    format!("usage: {command} replay <record> [<other>] [--any-stamp] [--json]")
+}
+
 /// What `replay` found, for people.
 pub fn text(output: &ReplayOutput) -> String {
     let mut out = String::new();
