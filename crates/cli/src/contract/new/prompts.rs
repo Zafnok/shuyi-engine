@@ -220,13 +220,16 @@ pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io:
         return Ok(());
     }
     let (name_given, id_given) = (input.name.is_some(), input.id.is_some());
-    let mut at = 0;
     // The questions are listed again after each answer: the name sets the
-    // id's default, and the perspectives what the catalog asks.
-    while let Some(question) =
-        questions_now(cwd, input, &template, &catalog, &targets).and_then(|q| q.into_iter().nth(at))
-    {
-        at += 1;
+    // id's default, and the perspectives what the catalog asks. Their
+    // number doesn't change, only what they say.
+    let count = questions_now(cwd, input, &template, &catalog, &targets).map_or(0, |q| q.len());
+    for at in 0..count {
+        let Some(question) = questions_now(cwd, input, &template, &catalog, &targets)
+            .and_then(|q| q.into_iter().nth(at))
+        else {
+            break;
+        };
         let answered = match question.id.as_str() {
             DIR => true,
             NAME => name_given,
