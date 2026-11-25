@@ -403,19 +403,19 @@ None.
 - [x] `cargo shuyi check`, `check --target all` (`desktop`, `web`,
       `steam-deck` and `playdate`) and `check-keys` pass on the example,
       and its `frame-png` pictures are checked in.
-- [ ] Pages publishes the web build at `/examples/snake/`, and `/snake/`
-      redirects there. (Its card and the loop are in; Pages runs after the
-      merge.)
-- [ ] `shuyi new` with the `arcade` short name makes a game whose gates
+- [x] ~~Pages publishes the web build at `/examples/snake/`, and `/snake/`
+      redirects there.~~ (not done: Pages runs on `main` after the merge;
+      the card and `pages.yml`'s loop are in place)
+- [x] ~~`shuyi new` with the `arcade` short name makes a game whose gates
       pass in the `templates` job, and its test passes at 30 and 60
-      frames a second. (Moved to 2787.)
+      frames a second.~~ (not done: moved to 2787, deviation 3)
 - [x] The example's README states its own lines, and the engine's README
       claims the style.
-- [ ] The skill is in `skills/shuyi-stage-arcade/`, passing
-      `check-skills`, CI's `skills` job runs its worked example (moved to
-      2787), and the eval's snake task has `examples/snake` as its
-      reference (done).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~The skill is in `skills/shuyi-stage-arcade/`, passing
+      `check-skills`, and CI's `skills` job runs its worked example~~ (not
+      done: moved to 2787, deviation 3); the eval's snake task has
+      `examples/snake` as its reference.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
