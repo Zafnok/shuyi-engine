@@ -18,7 +18,10 @@ fn the_preview_is_what_frame_png_makes_of_its_part() {
 
 #[test]
 fn the_web_build_is_the_games_binary() {
-    let web = project().config.web.unwrap_or_else(|| panic!("no web part"));
+    let web = project()
+        .config
+        .web
+        .unwrap_or_else(|| panic!("no web part"));
     assert_eq!((web.package.as_str(), web.bin.as_str()), ("snake", "snake"));
     assert_eq!(web.dist, "dist/web");
 }

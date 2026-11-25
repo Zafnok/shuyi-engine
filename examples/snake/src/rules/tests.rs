@@ -20,8 +20,7 @@ fn board(rows: &str) -> Board {
         tiles.push('\n');
     }
     let source = format!("{LEGEND}{start} }})\n---\n{tiles}");
-    grid_map::parse("t.map", &source, &FORMAT, terrain_named)
-        .unwrap_or_else(|e| panic!("{e:?}"))
+    grid_map::parse("t.map", &source, &FORMAT, terrain_named).unwrap_or_else(|e| panic!("{e:?}"))
 }
 
 /// Numbers that move the snake every `period` steps, from 3 tiles long,
@@ -70,7 +69,10 @@ fn a_run_starts_three_long_heading_right_with_food_off_its_body() {
     let food = snake.food().unwrap_or_else(|| panic!("no food"));
     assert!(!snake.body().contains(&food), "{food:?}");
     assert_eq!(snake.board().get(food), Some(&FLOOR));
-    assert_eq!((snake.score(), snake.length(), snake.outcome()), (0, 3, None));
+    assert_eq!(
+        (snake.score(), snake.length(), snake.outcome()),
+        (0, 3, None)
+    );
     assert_eq!(snake.floor_tiles(), 32);
     // The same seed, the same food.
     assert_eq!(run(OPEN, 1).food(), snake.food());
@@ -83,7 +85,12 @@ fn a_board_needs_one_start_with_floor_under_the_snake_and_to_fit() {
     assert!(none.contains("0 Start tiles"), "{none}");
     let walled = Snake::new(&board("#####\n#.S.#\n#####"), tuning, 0).unwrap_err();
     assert!(walled.contains("(0, 1), which is not floor"), "{walled}");
-    let wide = format!("{}\n#S{}#\n{}", "#".repeat(26), ".".repeat(23), "#".repeat(26));
+    let wide = format!(
+        "{}\n#S{}#\n{}",
+        "#".repeat(26),
+        ".".repeat(23),
+        "#".repeat(26)
+    );
     let wide = Snake::new(&board(&wide), tuning, 0).unwrap_err();
     assert!(wide.contains("26 × 3 tiles"), "{wide}");
     assert_eq!(terrain_named("wall"), Some(WALL));
@@ -140,7 +147,10 @@ fn a_press_turns_it_at_its_next_move_and_two_quick_presses_both_count() {
 fn a_turn_back_into_its_neck_or_the_way_it_goes_is_ignored() {
     let mut snake = run(OPEN, 0);
     snake.step(&press(&[UiAction::Left, UiAction::Right]));
-    assert_eq!((snake.head(), snake.heading()), (Pos::new(4, 2), Dir::Right));
+    assert_eq!(
+        (snake.head(), snake.heading()),
+        (Pos::new(4, 2), Dir::Right)
+    );
     // Behind a turn that waits, it is the turn's way back that is ignored.
     let mut snake = Snake::new(&board(OPEN), tuning(4), 0).unwrap_or_else(|e| panic!("{e}"));
     snake.step(&press(&[UiAction::Down, UiAction::Up, UiAction::Left]));
@@ -223,7 +233,10 @@ fn its_own_body_ends_the_run_but_its_tail_moves_away() {
     snake.step(&press(&[UiAction::Left]));
     let events = snake.step(&press(&[UiAction::Up]));
     assert_eq!(events.last(), Some(&Event::Died));
-    assert!(matches!(snake.outcome(), Some(Outcome::Died { step: 3, .. })));
+    assert!(matches!(
+        snake.outcome(),
+        Some(Outcome::Died { step: 3, .. })
+    ));
 
     // Four long, it chases its tail round a square and lives.
     let mut snake = Snake::new(
@@ -236,7 +249,12 @@ fn its_own_body_ends_the_run_but_its_tail_moves_away() {
     )
     .unwrap_or_else(|e| panic!("{e}"));
     snake.food = None;
-    for turn in [UiAction::Down, UiAction::Left, UiAction::Up, UiAction::Right] {
+    for turn in [
+        UiAction::Down,
+        UiAction::Left,
+        UiAction::Up,
+        UiAction::Right,
+    ] {
         snake.step(&press(&[turn]));
     }
     assert_eq!(snake.outcome(), None);
@@ -288,10 +306,18 @@ fn food_is_never_placed_on_the_body() {
 
 #[test]
 fn the_same_seed_and_inputs_give_the_same_run() {
-    let inputs = [press(&[UiAction::Down]), idle(), press(&[UiAction::Left]), idle()];
+    let inputs = [
+        press(&[UiAction::Down]),
+        idle(),
+        press(&[UiAction::Left]),
+        idle(),
+    ];
     let play = || {
         let mut snake = run(OPEN, 7);
-        inputs.iter().map(|i| (snake.step(i), snake.hash())).collect::<Vec<_>>()
+        inputs
+            .iter()
+            .map(|i| (snake.step(i), snake.hash()))
+            .collect::<Vec<_>>()
     };
     assert_eq!(play(), play());
     assert_ne!(run(OPEN, 7).hash(), run(OPEN, 8).hash());

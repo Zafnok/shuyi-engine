@@ -17,10 +17,16 @@ fn a_run_eats_its_first_food_grows_dies_on_a_wall_and_starts_again() {
     // wall: its head is on a wall's neighbour.
     assert_eq!(snake.score(), 1);
     assert_eq!(snake.length(), 4);
-    let ate = run.events.iter().position(|e| *e == Event::Ate { score: 1 });
+    let ate = run
+        .events
+        .iter()
+        .position(|e| *e == Event::Ate { score: 1 });
     let ate = ate.unwrap_or_else(|| panic!("{:?}", run.events));
     assert!(
-        matches!(run.events[ate + 1], Event::Moved { .. } | Event::Turned { .. }),
+        matches!(
+            run.events[ate + 1],
+            Event::Moved { .. } | Event::Turned { .. }
+        ),
         "{:?}",
         &run.events[ate..]
     );
@@ -41,7 +47,35 @@ fn a_run_eats_its_first_food_grows_dies_on_a_wall_and_starts_again() {
     h.act(UiAction::Confirm);
     assert_eq!(h.screens(), ["title", "stage"]);
     let again = stage(&h);
-    assert_eq!((again.seed, again.snake.score(), again.snake.length()), (2, 0, 3));
+    assert_eq!(
+        (again.seed, again.snake.score(), again.snake.length()),
+        (2, 0, 3)
+    );
+}
+
+/// Writes the golden test's record (`tests/golden.rs`) from the
+/// playthrough.
+#[test]
+#[ignore = "writes tests/records/seed-1.ron"]
+fn write_the_golden_record() {
+    let (_, record) = playthrough();
+    let config = ron::ser::PrettyConfig::default();
+    let text = ron::ser::to_string_pretty(&record, config).unwrap_or_else(|e| panic!("{e}"));
+    let path = crate::root().join("tests/records/seed-1.ron");
+    std::fs::write(&path, text + "\n").unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+}
+
+#[test]
+fn the_golden_record_is_the_playthroughs() {
+    let (_, record) = playthrough();
+    let text = include_str!("../records/seed-1.ron");
+    let checked_in: shuyi::core::tick::TickRecord =
+        ron::from_str(text).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        checked_in.runs(),
+        record.runs(),
+        "run `cargo test -p snake --test it -- --ignored write_the_golden_record`"
+    );
 }
 
 #[test]

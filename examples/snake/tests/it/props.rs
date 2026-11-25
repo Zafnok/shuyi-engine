@@ -9,10 +9,7 @@ use snake::rules::Snake;
 
 /// The game's own part, from its files.
 fn own() -> Own {
-    snake::game()
-        .data()
-        .unwrap_or_else(|e| panic!("{e:?}"))
-        .own
+    snake::game().data().unwrap_or_else(|e| panic!("{e:?}")).own
 }
 
 /// A step's input: each of the game's six actions pressed or not (`bits`).

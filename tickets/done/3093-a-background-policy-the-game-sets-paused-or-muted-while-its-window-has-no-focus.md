@@ -174,7 +174,9 @@ made in its own repository.
 - 2342 and 2739 are not done: the mute is three volumes at 0 (2342 moves
   it onto `Gains::muted()`, its clause rewritten to say where), and snake
   and the arcade part set `Background::KEEP_RUNNING.paused()` when 2739
-  writes them (its clauses rewritten as what holds). 3043's handoff names
+  writes them (its clauses rewritten as what holds). **From 2739 (done):**
+  a game on the short path can't set its own policy yet, so snake's is
+  3245's and the arcade part's 2787's. 3043's handoff names
   what was built.
 - No deviation from the steps.
 

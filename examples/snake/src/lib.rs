@@ -69,8 +69,8 @@ impl Own {
     pub fn next_run(&mut self) -> (u64, Snake) {
         let seed = self.next_seed();
         // `own` made a run of this board and tuning, so this does too.
-        let snake = Snake::new(&self.board, self.tuning, seed)
-            .unwrap_or_else(|e| panic!("{BOARD}: {e}"));
+        let snake =
+            Snake::new(&self.board, self.tuning, seed).unwrap_or_else(|e| panic!("{BOARD}: {e}"));
         (seed, snake)
     }
 }
@@ -90,7 +90,11 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
     let (board, tuning) = match (board, tuning) {
         (Ok(board), Ok(tuning)) => (board, tuning),
         (board, tuning) => {
-            return Err([board.err(), tuning.err()].into_iter().flatten().flatten().collect());
+            return Err([board.err(), tuning.err()]
+                .into_iter()
+                .flatten()
+                .flatten()
+                .collect());
         }
     };
     Snake::new(&board, tuning, 0).map_err(|e| vec![ContentError::new(BOARD, e)])?;

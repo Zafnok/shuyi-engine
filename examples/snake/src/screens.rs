@@ -303,7 +303,10 @@ impl Screen<Data> for Stage {
         let palette = &ctx.palette;
         let c = |e| palette.engine(e);
         let bg = c(EngineColor::Panel);
-        buf.fill_rect(Rect::new(0, 0, i32::from(buf.width()), 1), Cell::new(' ', bg, bg));
+        buf.fill_rect(
+            Rect::new(0, 0, i32::from(buf.width()), 1),
+            Cell::new(' ', bg, bg),
+        );
         let score = self.snake.score();
         let score = ctx.text_with("stage.score", &[("score", &score)]);
         buf.print(1, 0, &score, c(EngineColor::Highlight), bg);
@@ -419,7 +422,13 @@ impl Screen<Data> for Pause {
         let c = |e| ctx.palette.engine(e);
         let bg = c(EngineColor::Panel);
         let top = dialog(ctx, buf, 5);
-        print_centred(buf, top, ctx.text("pause.title"), c(EngineColor::Highlight), bg);
+        print_centred(
+            buf,
+            top,
+            ctx.text("pause.title"),
+            c(EngineColor::Highlight),
+            bg,
+        );
         for (row, (i, key)) in (top + 2..).zip(PAUSE_ITEMS.iter().enumerate()) {
             let (fg, back) = if i == self.focus {
                 (bg, c(EngineColor::Focus))

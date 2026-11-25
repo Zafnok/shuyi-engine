@@ -182,7 +182,9 @@ where
 /// them: `pressed Up`, `released Up`, `held Right`, joined by `; `. `None`
 /// when it did nothing.
 fn seat_in_words<A: ActionSet>(seat: &SeatInput) -> Option<String> {
-    let name = |id: &ActionId| A::from_id(*id).map_or_else(|| format!("#{}", id.0), |a| a.name().to_owned());
+    let name = |id: &ActionId| {
+        A::from_id(*id).map_or_else(|| format!("#{}", id.0), |a| a.name().to_owned())
+    };
     let parts: Vec<String> = [
         ("pressed", &seat.pressed),
         ("released", &seat.released),

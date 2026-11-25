@@ -2,7 +2,7 @@
 
 - **Covers:** `perspective/top-down-grid`, `kind/tactics`, `time/turns`
 - **Status:** ready
-- **Tickets:** 2117, 2739
+- **Tickets:** 2117, 2787
 
 A board seen from above, cut into square tiles, where the game waits for
 the player: tactics, board games, puzzles, a roguelike's moves. The
@@ -107,7 +107,10 @@ project, a box-pushing puzzle built step by step
 
 ## In real time (planned)
 
-A grid that steps in real time, a snake, waits for ticket 2739, which
-builds on the tick simulation (`TickSim`, ticket 2137). Until then a turn
-game times its rules in turns, with `shuyi_core::timer`'s `Countdown` and
-`Every`, never with `dt`.
+A grid that steps in real time is [Snake](../../examples/snake/README.md)
+([ADR-0148](../adr/0148-a-grid-stage-may-run-in-real-time.md)): its rules
+are a `TickSim` timed in steps with `shuyi_core::timer`'s `Every`, never
+with `dt`, stepped by `TickDriver` and drawn through `MapScene` as a turn
+stage is. The template part that starts one (`--template arcade`) and
+this section in full wait for ticket 2787. A turn game times its rules in
+turns, with the same `Countdown` and `Every`.

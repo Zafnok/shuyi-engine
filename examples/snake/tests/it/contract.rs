@@ -76,10 +76,16 @@ fn the_playthroughs_record_replays_a_step_per_tick_with_no_difference() {
     assert_eq!(run.steps.len() as u64, record.len() + 1);
     assert_eq!(run.steps[0].command, None);
     assert!(
-        run.steps.iter().any(|s| s.command.as_deref() == Some("pressed Down")
-            || s.command.as_deref() == Some("pressed Up")),
+        run.steps
+            .iter()
+            .any(|s| s.command.as_deref() == Some("pressed Down")
+                || s.command.as_deref() == Some("pressed Up")),
         "no turn in the replay"
     );
-    assert!(run.outcome.as_deref().is_some_and(|o| o.starts_with("Died")));
+    assert!(
+        run.outcome
+            .as_deref()
+            .is_some_and(|o| o.starts_with("Died"))
+    );
     assert_eq!(run.made.as_ref(), Some(&snake::made()));
 }

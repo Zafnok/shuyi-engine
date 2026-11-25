@@ -72,7 +72,10 @@ fn eat_first_food(h: &mut Harness<Data>) {
         if run.snake.score() == 1 {
             return;
         }
-        let (head, food) = (run.snake.head(), run.snake.food().unwrap_or(run.snake.head()));
+        let (head, food) = (
+            run.snake.head(),
+            run.snake.food().unwrap_or(run.snake.head()),
+        );
         let heading = run.snake.heading();
         let across = matches!(heading, Dir::Left | Dir::Right);
         // Along a row once in the food's column, along a column once in its
@@ -80,7 +83,11 @@ fn eat_first_food(h: &mut Harness<Data>) {
         let turn = if across && head.x == food.x {
             Some(if food.y < head.y { Dir::Up } else { Dir::Down })
         } else if !across && head.y == food.y {
-            Some(if food.x < head.x { Dir::Left } else { Dir::Right })
+            Some(if food.x < head.x {
+                Dir::Left
+            } else {
+                Dir::Right
+            })
         } else if across && (food.x < head.x) == (heading == Dir::Right) {
             Some(if food.y < head.y { Dir::Up } else { Dir::Down })
         } else {

@@ -32,11 +32,11 @@ use crate::{Data, Own};
 pub const PATTERN_MAP: &str = "palette@onebit.ron";
 
 /// The game's own options, for `frame-png`, `run` and `scene`.
-pub const OPTIONS: [GameOption; 1] = [GameOption::new(
-    "--seed",
-    "seed the first run's luck with N (1 by default)",
-)
-.with_value(Some("N"))];
+pub const OPTIONS: [GameOption; 1] =
+    [
+        GameOption::new("--seed", "seed the first run's luck with N (1 by default)")
+            .with_value(Some("N")),
+    ];
 
 /// The first run's seed `options` ask for.
 pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
@@ -154,7 +154,8 @@ impl Tools {
     pub fn one_bit_skin(&self) -> Result<OneBitSkin, String> {
         let bundle = self.game.bundle();
         let formats = Data::formats();
-        let palette = (formats.load::<PaletteDef>(&bundle, "palette.ron")).map_err(|e| lines(&e))?;
+        let palette =
+            (formats.load::<PaletteDef>(&bundle, "palette.ron")).map_err(|e| lines(&e))?;
         let map = (formats.load::<PatternMapDef>(&bundle, PATTERN_MAP)).map_err(|e| lines(&e))?;
         Ok(OneBitSkin::new(
             bundle.display_path("palette.ron"),

@@ -74,7 +74,11 @@ impl AssetKind for Tuning {
 /// The id a step's input gives `action` (its place in [`UiAction::ALL`]).
 fn id(action: UiAction) -> ActionId {
     let place = UiAction::ALL.iter().position(|&a| a == action);
-    ActionId(place.and_then(|p| u16::try_from(p).ok()).unwrap_or(u16::MAX))
+    ActionId(
+        place
+            .and_then(|p| u16::try_from(p).ok())
+            .unwrap_or(u16::MAX),
+    )
 }
 
 /// The four direction actions and their directions.
@@ -174,7 +178,10 @@ impl Snake {
         }
         let starts: Vec<Pos> = board.features.keys().copied().collect();
         let [start] = starts[..] else {
-            return Err(format!("the board has {} Start tiles, not one", starts.len()));
+            return Err(format!(
+                "the board has {} Start tiles, not one",
+                starts.len()
+            ));
         };
         if tuning.start_length == 0 || tuning.fastest_period == 0 {
             return Err("the start length and the fastest period must be at least 1".to_owned());

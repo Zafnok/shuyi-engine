@@ -113,9 +113,18 @@ jobs:
       # which builds natively.
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - name: Hello, Grid fits every target it lists
-        working-directory: examples/hello-grid
-        run: cargo shuyi check --target all
+      # Every example whose shuyi.ron has a `web` section, as pages.yml
+      # builds them: each fits every target it lists, and builds for the
+      # web carrying its notices.
+      - name: Each example fits every target it lists
+        run: |
+          for ron in examples/*/shuyi.ron; do
+            grep -qE '^[[:space:]]*web:[[:space:]]*\(' "$ron" || continue
+            dir="$(dirname "$ron")"
+            echo "::group::$dir"
+            (cd "$dir" && cargo shuyi check --target all)
+            echo "::endgroup::"
+          done
       # The code compiled for the web alone: the capture mode's and the
       # render card's (ticket 2019).
       - name: Clippy on the web's code
@@ -124,21 +133,29 @@ jobs:
       # web build (2102) is what shows the loader runs it.
       - name: The script runtime for the web
         run: cargo clippy --target wasm32-unknown-unknown -p shuyi-script --lib --locked -- -D warnings
-      - name: Build Hello, Grid for the web
-        working-directory: examples/hello-grid
-        run: cargo shuyi web --release
-      # The notices the build owes (ticket 3039): a crate, the font and a
-      # vendored script of the shell.
-      - name: The web build carries its notices
-        working-directory: examples/hello-grid/dist/web
+      # The notices each build owes (ticket 3039): a crate, the font and a
+      # vendored script of the shell. Each build is copied to
+      # `target/web-builds/<example>` for one artifact of them all.
+      - name: Build each example for the web
         run: |
-          for needle in "- macroquad " "Terminus" "- mq_js_bundle.js, from macroquad"; do
-            grep -qF -- "$needle" NOTICES.txt || { echo "NOTICES.txt lacks: $needle"; exit 1; }
+          for ron in examples/*/shuyi.ron; do
+            grep -qE '^[[:space:]]*web:[[:space:]]*\(' "$ron" || continue
+            dir="$(dirname "$ron")"
+            name="$(basename "$dir")"
+            echo "::group::$dir"
+            (cd "$dir" && cargo shuyi web --release)
+            for needle in "- macroquad " "Terminus" "- mq_js_bundle.js, from macroquad"; do
+              grep -qF -- "$needle" "$dir/dist/web/NOTICES.txt" || { echo "$dir: NOTICES.txt lacks: $needle"; exit 1; }
+            done
+            mkdir -p target/web-builds
+            rm -rf "target/web-builds/$name"
+            cp -r "$dir/dist/web" "target/web-builds/$name"
+            echo "::endgroup::"
           done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: hello-grid-web
-          path: examples/hello-grid/dist/web
+          name: examples-web
+          path: target/web-builds
 
   # The packages (ticket 3004, ADR-0058): every example exported with
   # `shuyi export <target> --release`, which runs the target's check,
@@ -1091,6 +1108,8 @@ jobs:
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
+      - name: Snake's golden table on wasm32
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p snake --no-default-features --test golden -- --nocapture
 
   # The performance budgets (ticket 3008, ADR-0008 §6, ADR-0081): `shuyi
   # bench` plays Hello, Grid's scenarios under Valgrind's Callgrind and
