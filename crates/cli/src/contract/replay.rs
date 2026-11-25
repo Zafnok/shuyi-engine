@@ -200,7 +200,7 @@ fn seat_in_words<A: ActionSet>(seat: &SeatInput) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("; "))
 }
 
-/// A step's input in words ([`seat_in_words`]): seat 0's as it is, each
+/// A step's input in words (`pressed Up; held Up`): seat 0's as it is, each
 /// other seat's after its number (`seat 2: pressed Up`), joined by ` · `.
 /// `None` when no seat did anything.
 pub fn input_in_words<A: ActionSet>(input: &TickInput) -> Option<String> {

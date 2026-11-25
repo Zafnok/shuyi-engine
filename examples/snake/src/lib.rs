@@ -11,7 +11,7 @@
 //! the keys, the palette, the font and the sounds) and its own part
 //! ([`Own`]): the board and the run's numbers. [`game`] says all the engine
 //! needs to know: `src/main.rs` runs it, and `examples/tools.rs` hands it to
-//! the engine's tools ([`tools`]).
+//! the engine's tools (`snake::tools`, with the `tools` feature).
 
 pub mod app_info;
 pub mod rules;
