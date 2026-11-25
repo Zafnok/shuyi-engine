@@ -1,13 +1,13 @@
-// The end goal's own game, on record: real time waits for Visions of
-// Shuyi's launch. 2739 gives it its reference (examples/snake). A tick
-// game has no `playtest`, so no Replay check.
+// The end goal's own game, on record: its reference is examples/snake
+// (ticket 2739), graded where it is. A tick game has no `playtest`, so no
+// Replay check. 2787 moves it to the `arcade` template.
 (
     id: "snake",
-    prompt: "Make me a snake game with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template blank`. The snake moves one cell a step on its own, turned with the actions `Up`, `Down`, `Left` and `Right`; it grows by one cell when it eats the food, and the game ends when it hits a wall or itself. `Confirm` starts a game from the title, and again once it has ended. `cargo shuyi scene --json` shows the board, and the scene's data has `length` (the snake's cells), `score` (the food eaten) and `over` (`true` once it has crashed). Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, and `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one).",
+    prompt: "Make me a snake game with Shuyi Engine, with a web build. This folder holds a new game made with `shuyi new --template blank`. The snake moves one cell a step on its own, turned with the actions `Up`, `Down`, `Left` and `Right`; it grows by one cell when it eats the food, and the game ends when it hits a wall or itself. `Confirm` starts a game from the title, and again once it has ended. `cargo shuyi scene --json` shows the board, and the scene's data has `length` (the snake's cells), `score` (the food eaten) and `over` (`true` once it has crashed). Its `shuyi.ron` lists the Playdate among its targets. Done means: the gates in `AGENTS.md` pass, `cargo shuyi check --target all` passes, and `cargo shuyi export web` builds the web package (and on Linux `cargo shuyi export linux` the Linux one).",
     template: "blank",
     name: "Snake",
     time_box_minutes: 60,
-    targets: ["desktop", "web"],
+    targets: ["desktop", "web", "playdate"],
     checks: [
         Gates,
         Check,
@@ -20,10 +20,9 @@
         // Left alone, it runs into a wall.
         Scene(steps: [Act("Confirm"), Wait(30.0)], has: [("/over", Some("true"))]),
     ],
-    reference: None,
-    waits_for: ["2739"],
+    reference: Project("examples/snake"),
     unmeasured: [
-        ("a Playdate build", ["2739"]),
+        ("a Playdate build", ["3353"]),
         ("an agent's own time against the hour", ["2525"]),
     ],
 )

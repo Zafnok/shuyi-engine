@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2739"]
+blocked_by: ["2739", "2787"]
 nick_input: none
 completed:
 ---
@@ -50,8 +50,8 @@ None. When it unparks is his call (above).
 ## Scope
 
 **In:**
-- **`examples/maze-chase`**, a game made the way 2739 makes snake: from
-  the arcade template part (`cargo shuyi new --template arcade`, 2739),
+- **`examples/maze-chase`**, a game made from the arcade template part
+  (`cargo shuyi new --template arcade`, 2787),
   then changed, so its lines over the template are counted the same way.
   - **the rules**, a `TickSim` (2137) in tile coordinates
     (`shuyi_core::grid`):
@@ -107,11 +107,12 @@ None. When it unparks is his call (above).
     actor is ever inside a wall, and the pellets never grow;
   - `frame-png` pictures: the start, and the first frightened chasers;
   - `cargo shuyi check`, `check --target all` and `check-keys` pass.
-- **CI and Pages:** after 2739, the `wasm` job and `pages.yml` loop over
-  every example with a `web` section, so the example plays beside snake
-  on Pages, wherever the site serves its examples on the day, with no
-  workflow change. If they still name each example, add it as 2739's
-  scope says.
+- **CI and Pages:** the `wasm` job and `pages.yml` loop over every
+  example with a `web` section (2739), so the example plays beside snake
+  on Pages with no workflow change: it needs its card,
+  `site/content/examples/maze-chase.md`. **From 2739 (done):** CI's
+  `export` job exports Hello, Grid alone; 3536 adds snake and makes its
+  checks take any game, after which this example can join it.
 
 **Out (do not do):**
 - The eval task, `evals/tasks/maze-chase.ron`: 2572.

@@ -72,7 +72,7 @@ Split them about half and half.
 the body, the diff, and the ticket the PR closed.
 
 **Themes.** Each theme reviewer follows one subject across the whole
-window. Always include these six:
+window. Always include these seven:
 - prioritization against `docs/ROADMAP.md` and `docs/decisions.md`:
   sort the PRs into buckets with line totals, and trace the critical
   path to 2005;
@@ -86,7 +86,19 @@ window. Always include these six:
 - redundancy in the tools: `crates/xtask`, `crates/cli`, `scripts/`
   and the templates;
 - tests and runtime performance: allocation or parsing every frame,
-  scans in hot paths, tests that can't fail or that flake.
+  scans in hot paths, tests that can't fail or that flake;
+- docs drift: each PR of the window that changed something public (a
+  contract op, a field, a format, the template, a public item) read
+  against the homes the docs map (`docs/README.md`) names for it: the
+  book and its project (`site/tutorial/`), the glossary,
+  `docs/contract.md`, the MCP tools' descriptions
+  (`crates/cli/src/mcp.rs`), the skill pack (`skills/`),
+  `docs/formats.md` and the crate docs. It reports each home left
+  behind, with the PR and `file:line`, and its findings become proposed
+  tickets like the others'. The `document` skill's *Homes that are easy
+  to miss* lists where earlier sessions slipped. Why: the docs audit of
+  2026-11-25 had to be asked for, and found second homes missed after
+  tickets 2203, 2225, 2234, 3424 and 3425.
 
 Add 4–6 themes from the clusters you saw in the titles. Past ones:
 text and i18n, assets and packs, the book and its playground, new-game

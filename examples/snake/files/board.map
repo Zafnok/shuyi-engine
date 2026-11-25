@@ -1,0 +1,24 @@
+// The board, in the engine's `.map` format (`shuyi::assets::grid_map`):
+// 25 × 14 tiles, as many as the screen holds below the score line (a tile
+// is two cells across). The snake's head starts on the `Start` tile,
+// heading right, its body to the left.
+(
+    name: "The board",
+    legend: { '.': "floor", '#': "wall" },
+    features: { (6, 7): Start },
+)
+---
+#########################
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#.......................#
+#########################

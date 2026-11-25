@@ -52,10 +52,13 @@ These come from the code that already runs the game.
   MCP server, and Agent Skills
   ([ADR-0005](docs/adr/0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md)).
 
-**Game styles.** The game's top-down grid comes first. Top-down free
-movement, isometric, side-scrolling, and moving between them come after
-Visions of Shuyi launches, unless the game needs them sooner. The engine
-is built for one game first, and happens to handle many
+**Game styles.** The game's top-down grid comes first, in turns, and a
+grid in real time steps the same kit 60 times a second:
+[Snake](examples/snake/README.md) is one
+([ADR-0148](docs/adr/0148-a-grid-stage-may-run-in-real-time.md)). Top-down
+free movement, isometric, side-scrolling, and moving between them come
+after Visions of Shuyi launches, unless the game needs them sooner. The
+engine is built for one game first, and happens to handle many
 ([ADR-0003](docs/adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md)).
 
 **3D, later.** First person, third person, top-down 3D, and HD-2D (2D

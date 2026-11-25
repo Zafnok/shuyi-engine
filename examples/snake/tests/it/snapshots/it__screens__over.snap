@@ -1,0 +1,46 @@
+---
+source: examples/snake/tests/it/screens.rs
+expression: h.snapshot()
+---
+ Score 1                                 Length 4 
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · · · · · · · · · · · · · · · ▓▓
+▓▓· · ·┌──────────────────────────────────┐ · · ▓▓
+▓▓· · ·│            Game over             │ · · ▓▓
+▓▓· · ·│                                  │ · · ▓▓
+▓▓· · ·│        Score 1 · length 4        │ · · ▓▓
+▓▓· · ·│                                  │ · · ▓▓
+▓▓· · ·│Enter play again · Backspace title│ · · ▓▓
+▓▓· · ·└──────────────────────────────────┘ · · ▓▓
+▓▓· · · · · · · · · ()· · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · ()· · · · · · · · · · · · · ▓▓
+▓▓· · · · · · · · · ▼▼· · · · · · · · · · · · · ▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+--- colours ---
+abbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacccccccca
+dddddddddddddddddddddddddddddddddddddddddddddddddd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeffffffffffffffffffffffffffffffffffffeeeeedd
+ddeeeeefaaaaaaaaaaaabbbbbbbbbaaaaaaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaaccccccccccccccccccaaaaaaaafeeeeedd
+ddeeeeefaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafeeeeedd
+ddeeeeefggggghhhhhhhhhhhhhhggggggggghhhhhhfeeeeedd
+ddeeeeeffffffffffffffffffffffffffffffffffffeeeeedd
+ddeeeeeeeeeeeeeeeeeeiieeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeeiieeeeeeeeeeeeeeeeeeeeeeeeeedd
+ddeeeeeeeeeeeeeeeeeejjeeeeeeeeeeeeeeeeeeeeeeeeeedd
+dddddddddddddddddddddddddddddddddddddddddddddddddd
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+c = fg:text bg:panel
+d = fg:wall_fg bg:wall_bg
+e = fg:floor_fg bg:panel
+f = fg:border bg:panel
+g = fg:key bg:panel
+h = fg:text_dim bg:panel
+i = fg:body bg:panel
+j = fg:head bg:panel

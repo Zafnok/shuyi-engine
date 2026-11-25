@@ -1,0 +1,11 @@
+// The snake eats (the engine's preset `coin`): a short high note that
+// jumps up a fourth. `cargo shuyi check` checks the numbers, and the game
+// renders them to a sound as it loads.
+(
+    wave: Square(duty: 50),
+    hz: 988,
+    hold_ms: 120,
+    fade_ms: 200,
+    volume: 40,
+    step: (at_ms: 60, percent: 133),
+)

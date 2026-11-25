@@ -1,0 +1,50 @@
+(
+    made: (
+        engine: "0.1.0",
+        game: "io.github.zafnok.shuyi-engine.snake 0.1.0",
+        content: "7586e0f6e6d707e8",
+    ),
+    seed: 1,
+    runs: [
+        (
+            steps: 32,
+            input: (
+                seats: [
+                    (),
+                ],
+            ),
+        ),
+        (
+            steps: 1,
+            input: (
+                seats: [
+                    (
+                        pressed: [
+                            1,
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        (
+            steps: 1,
+            input: (
+                seats: [
+                    (
+                        released: [
+                            1,
+                        ],
+                    ),
+                ],
+            ),
+        ),
+        (
+            steps: 46,
+            input: (
+                seats: [
+                    (),
+                ],
+            ),
+        ),
+    ],
+)

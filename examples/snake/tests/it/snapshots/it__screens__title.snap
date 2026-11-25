@@ -1,0 +1,42 @@
+---
+source: examples/snake/tests/it/screens.rs
+expression: h.snapshot()
+---
+                                                  
+                                                  
+                                                  
+                   ╔═════════╗                    
+                   ║  Snake  ║                    
+                   ╚═════════╝                    
+                                                  
+        eat, grow, and never bite yourself        
+                                                  
+                                                  
+                    Enter play                    
+                                                  
+          arrows steer · Backspace pause          
+                                                  
+                 Backspace leave                  
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaabbbbbbbbbbbaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaabaacccccaabaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaabbbbbbbbbbbaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaddddddddddddddddddddddddddddddddddaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaeeeeefffffaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaeeeeeedddddddddeeeeeeeeeddddddaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaeeeeeeeeeddddddaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:background bg:background
+b = fg:border bg:background
+c = fg:highlight bg:background
+d = fg:text_dim bg:background
+e = fg:key bg:background
+f = fg:text bg:background

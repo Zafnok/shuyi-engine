@@ -1,0 +1,32 @@
+// Snake's English: every screen's text by key. A `{name}` that is an
+// action's name shows the player's key for it ({Confirm}).
+{
+    // The keys and layouts the engine names.
+    "keys.not_mapped": "! not mapped",
+    "keys.arrows": "arrows",
+    "keys.chord_join": "+",
+    "layout.arrows": "Arrows",
+
+    // The title.
+    "title.name": "Snake",
+    "title.subtitle": "eat, grow, and never bite yourself",
+    "title.play": "{Confirm} play",
+    "title.steer": "{Cursor} steer · {Cancel} pause",
+    "title.help": "{Cancel} leave",
+
+    // The line over the board.
+    "stage.score": "Score {score}",
+    "stage.length": "Length {length}",
+
+    // The pause menu.
+    "pause.title": "Paused",
+    "pause.resume": "Resume",
+    "pause.quit": "Back to the title",
+    "pause.help": "{Confirm} choose · {Cancel} resume",
+
+    // The end of a run.
+    "over.died": "Game over",
+    "over.filled": "You filled the board!",
+    "over.score": "Score {score} · length {length}",
+    "over.help": "{Confirm} play again · {Cancel} title",
+}
