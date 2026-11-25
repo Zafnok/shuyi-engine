@@ -17,6 +17,10 @@
 //! into #285's branch, in neither parent, and reached `main` unnamed; #277 hid
 //! an 18-line fix inside a merge commit.
 
+mod mend;
+
+pub use mend::mend;
+
 use std::path::Path;
 use std::process::Command;
 
@@ -36,7 +40,7 @@ pub fn run(repo_root: &Path, base: &str, head: &str) -> Vec<String> {
 }
 
 /// The errors of one merge commit.
-fn check_merge(repo_root: &Path, merge: &str) -> Vec<String> {
+pub(super) fn check_merge(repo_root: &Path, merge: &str) -> Vec<String> {
     let short = &merge[..merge.len().min(10)];
     let parents = match git(repo_root, &["rev-list", "--parents", "-n", "1", merge]) {
         Ok(line) => line.split_whitespace().count().saturating_sub(1),
@@ -71,14 +75,15 @@ fn check_merge(repo_root: &Path, merge: &str) -> Vec<String> {
         .map(|change| {
             format!(
                 "merge {short}: {change}; a merge changes only what resolving its \
-                 parents needs, so commit it on its own (ticket 2065)"
+                 parents needs, so commit it on its own (ticket 2065); before it's pushed, \
+                 `cargo xtask mend-merges` splits it in two with the same files (ticket 3532)"
             )
         })
         .collect()
 }
 
 /// Runs git in `repo_root` and returns its standard output.
-fn git(repo_root: &Path, args: &[&str]) -> Result<String, String> {
+pub(super) fn git(repo_root: &Path, args: &[&str]) -> Result<String, String> {
     match Command::new("git")
         .args(args)
         .current_dir(repo_root)
@@ -347,7 +352,7 @@ remerge CONFLICT (content): Merge conflict in f
 
     /// A new repository in the temporary folder, `name`d, with one commit
     /// on `main`: a file of twelve numbered lines.
-    fn repository(name: &str) -> std::path::PathBuf {
+    pub(super) fn repository(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("xtask-merges-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("temporary folder");
@@ -366,7 +371,7 @@ remerge CONFLICT (content): Merge conflict in f
     }
 
     /// Twelve numbered lines, line `changed` reading `text` instead.
-    fn numbered(changed: u32, text: &str) -> String {
+    pub(super) fn numbered(changed: u32, text: &str) -> String {
         (1..=12)
             .map(|n| {
                 if n == changed {
@@ -379,7 +384,7 @@ remerge CONFLICT (content): Merge conflict in f
     }
 
     /// Writes `text` to `file` in `dir` and commits it.
-    fn commit(dir: &Path, file: &str, text: &str, message: &str) {
+    pub(super) fn commit(dir: &Path, file: &str, text: &str, message: &str) {
         std::fs::write(dir.join(file), text).expect("write");
         git(dir, &["add", "."]).expect("add");
         git(dir, &["commit", "-q", "-m", message]).expect("commit");
@@ -387,7 +392,7 @@ remerge CONFLICT (content): Merge conflict in f
 
     /// `side` changes line 2 of `f`; `main` changes line 12. Back on `side`,
     /// ready to merge `main` into it.
-    fn diverged(name: &str) -> std::path::PathBuf {
+    pub(super) fn diverged(name: &str) -> std::path::PathBuf {
         let dir = repository(name);
         git(&dir, &["switch", "-q", "-c", "side"]).expect("switch");
         let side = numbered(2, "2side");
