@@ -17,7 +17,7 @@ completed:
 
 Found while working 2853 (the book's box pusher's push and win sounds).
 `shuyi_assets::sfx::to_text` (`crates/assets/src/sfx.rs`) writes a
-`SfxDef` with `ron::ser::PrettyConfig::new()`, whose `new_line` is
+`SfxDef` with `PrettyConfig::new()` (`ron`), whose `new_line` is
 `"\r\n"` when the crate is built for Windows. So on Windows,
 `shuyi sfx coin --out crates/game/files/sfx/coin.sfx.ron` (2277,
 `crates/cli/src/contract/sfx.rs`) writes a file whose first line, the
