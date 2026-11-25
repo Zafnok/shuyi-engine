@@ -17,6 +17,22 @@ it; read the map.
 2. **Find each one's row** in the map's three tables. The reader of the
    row decides the words: people making games read nothing of this
    repository's process (tickets, Nick, the game's pin).
+
+   **Homes that are easy to miss.** Past audits (2026-11-25) found
+   sessions updated the obvious home and missed these second ones. Each
+   names its row in the map's
+   [*People making games*](../../../docs/README.md#people-making-games-and-their-agents)
+   table; the row, not this list, says what to write:
+   - a template change → the book's project too (`site/tutorial/`):
+     row *How to make a whole game on the engine, from nothing*;
+   - a contract op or field → the MCP tool's description and input
+     (`description` in `crates/cli/src/mcp.rs`): row *The tool contract*;
+   - a format → the skill that teaches it (`skills/shuyi-import-art/`
+     for importing): row *How an agent makes a game on the engine*;
+   - a new term in the book → the glossary: row *How to make a game on
+     the engine, idea by idea*;
+   - a new `pub mod` → the crate doc (`//!` in `src/lib.rs`): row *What
+     a crate, a module or a public item does*.
 3. **Update each home.** Then look the fact up in the map's *Pairs*: if
    it is one, change the other half in the same PR.
 4. **Put nothing in a second place.** Anywhere else links to the home, or
