@@ -51,6 +51,7 @@ use crate::screens::key_bindings::KeyRow;
 use crate::screens::key_bindings::RowGroup::{self, Optional, Required};
 use crate::screens::layout_picker::{self, LayoutPickerScreen, LegendKeys};
 use crate::screens::options::{self, OptionRow, RowAction, RowValue};
+use crate::settings::{FirstLanguage, language_from_text, language_to_text};
 use crate::settings::{GameSettings, Settings, TextSpeed, Volumes, read_old_volumes};
 use crate::storage::Storage;
 use shuyi_assets::dialogue::{Present, Side};
@@ -119,6 +120,7 @@ struct File {
     volumes: Volumes,
     frame_cap: FrameCap,
     layout: Option<String>,
+    language: Option<String>,
     #[serde(skip_serializing, deserialize_with = "crate::settings::old_volume")]
     music_volume: Option<u8>,
     #[serde(skip_serializing, deserialize_with = "crate::settings::old_volume")]
@@ -136,6 +138,7 @@ impl Default for File {
             volumes: s.volumes,
             frame_cap: s.frame_cap,
             layout: None,
+            language: None,
             music_volume: None,
             sound_volume: None,
         }
@@ -157,6 +160,7 @@ impl GameSettings for Prefs {
             volumes: s.volumes.clone(),
             frame_cap: s.frame_cap,
             layout: s.layout().map(|l| l.name().to_owned()),
+            language: language_to_text(s.language.as_ref()),
             music_volume: None,
             sound_volume: None,
         };
@@ -173,6 +177,7 @@ impl GameSettings for Prefs {
         s.volumes = file.volumes;
         read_old_volumes(&mut s.volumes, file.music_volume, file.sound_volume, None);
         s.frame_cap = file.frame_cap;
+        s.language = language_from_text(file.language.as_deref());
         Ok(match file.layout.as_deref().and_then(Layout::from_name) {
             Some(layout) => s.with_layout(layout),
             None => s,
@@ -237,8 +242,8 @@ pub const SPEEDS: [&str; 3] = ["toy.speed.calm", "toy.speed.brisk", "toy.speed.w
 
 /// The options screen's rows: the engine's text speed, the toy's speed,
 /// fullscreen, the frame cap, the theme and the volumes; the layout and the Key bindings
-/// screen; the toy's level while it has one (not a setting), a row that
-/// refuses, and Restore defaults.
+/// screen, and the language; the toy's level while it has one (not a
+/// setting), a row that refuses, and Restore defaults.
 pub fn option_rows(ctx: &ToyCtx) -> Vec<OptionRow<Toy>> {
     let mut rows: Vec<OptionRow<Toy>> = vec![
         OptionRow::text_speed(),
@@ -288,6 +293,7 @@ pub fn option_rows(ctx: &ToyCtx) -> Vec<OptionRow<Toy>> {
                 help: |_| options::HELP_OPEN,
             },
         ),
+        OptionRow::language(),
     ];
     if ctx.game.level.is_some() {
         let level = OptionRow::<Toy>::new(
@@ -484,6 +490,10 @@ pub struct Toy {
     /// The toy's own level, one of [`SPEEDS`]' worth: an options row that
     /// isn't a setting, shown only while it is `Some`.
     pub level: Option<usize>,
+    /// Which language a start shows while the player hasn't picked one
+    /// ([`GameData::first_language`]): the engine's default,
+    /// [`FirstLanguage::System`].
+    pub first_language: FirstLanguage,
 }
 
 impl Toy {
@@ -589,6 +599,7 @@ impl Toy {
             images: ImageTable::new([(CARD, CARD_SIZE), (grid::TILES, grid::TILES_SIZE)].into()),
             lights: grid::lights(),
             level: None,
+            first_language: FirstLanguage::System,
         }
     }
 
@@ -668,6 +679,10 @@ impl GameData for Toy {
 
     fn debug_lang(&self) -> Option<&str> {
         Some(DEBUG_LANG)
+    }
+
+    fn first_language(&self) -> FirstLanguage {
+        self.first_language.clone()
     }
 
     fn voice_variant(&self) -> Voice {

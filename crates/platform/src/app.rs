@@ -213,7 +213,10 @@ impl Setup {
     /// `ctx` on this platform: its saves and settings in the platform's
     /// storage, the voices the voice manifest allows, idle motion on, the
     /// platform's facts and the key prompt the backend says, and the music
-    /// seeded from the clock so each launch picks differently.
+    /// seeded from the clock so each launch picks differently. The facts go
+    /// in before the settings load, so the system's languages among them
+    /// pick the language the game starts in
+    /// ([`Ctx::lang`](shuyi_ui::Ctx::lang)).
     pub fn ctx<G: GameData>(self, mut ctx: Ctx<G>) -> Ctx<G> {
         ctx.idle_motion = IdleMotion::On;
         ctx.music_seed = self.seed;

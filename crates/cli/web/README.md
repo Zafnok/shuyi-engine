@@ -41,6 +41,9 @@ itself, so a game needs no copy of its own.
   not vendored. See below.
 - `gamepad.js`: controllers, a miniquad JS plugin over the browser's
   Gamepad API. The engine's own code, not vendored. See below.
+- `languages.js`: the system's languages, a miniquad JS plugin over the
+  browser's `navigator.languages`, which a game picks its first language
+  from. The engine's own code, not vendored. See below.
 - `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
   with `shuyi-app`'s `in-house-sound` feature plays through. The engine's own
   code, not vendored. See below.
@@ -307,6 +310,19 @@ version of the crate and update this note. It comes in Dependabot's
   the plugin reports no pads; the keyboard still works.
 - `index.html` loads it after `mq_js_bundle.js` (it calls the bundle's
   `miniquad_add_plugin`) and before `load(...)`.
+
+## The engine's own `languages.js`
+
+- Exposes the browser's languages (`navigator.languages`, else
+  `navigator.language`), most preferred first, to
+  `crates/app/src/languages/web.rs` as its `shuyi_lang_count` and
+  `shuyi_lang_char` functions: a tag is ASCII, so it crosses one character
+  code at a time, 0 past its end. The two files must list the same
+  functions and the same plugin version: `shuyi-cli`'s tests fail
+  otherwise.
+- The game picks its first language from them while the player hasn't
+  picked one (`FirstLanguage::System`, ticket 2349).
+- `index.html` loads it after `mq_js_bundle.js` and before `load(...)`.
 
 ## The engine's own `sound.js`
 

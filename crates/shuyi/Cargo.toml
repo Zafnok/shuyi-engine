@@ -19,9 +19,15 @@ workspace = true
 # the default engine's, no modules: a game on a device with neither, such as
 # the Playdate, turns the default features off (ADR-0062).
 [features]
-default = ["std", "app"]
+default = ["std", "app", "system-languages"]
 std = ["shuyi-core/std", "shuyi-assets/std", "shuyi-ui/std", "shuyi-platform/std"]
 app = ["std", "dep:shuyi-app"]
+# `system-languages`: the macroquad backend reads the system's preferred
+# languages on a desktop (`sys-locale`, ticket 2349), so a new player starts
+# in the system's language when the game has it. On by default; a game
+# turns it off with `default-features = false` and `features = ["std",
+# "app"]`, and then starts in its source language until the player picks.
+system-languages = ["app", "shuyi-app?/system-languages"]
 # `schema`: the engine's types describe their shapes with `schemars`
 # (ADR-0084 §2), for a game's tools: a game's `tools` feature turns it on,
 # and a shipped game builds no schema.
@@ -42,7 +48,7 @@ shuyi-script = { path = "../script", optional = true }
 # library tests build for it without the backend (CI's `determinism` job,
 # ticket 2116).
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-shuyi-app = { path = "../app", optional = true }
+shuyi-app = { path = "../app", optional = true, default-features = false }
 
 [dev-dependencies]
 # The toy game, to install every module on.

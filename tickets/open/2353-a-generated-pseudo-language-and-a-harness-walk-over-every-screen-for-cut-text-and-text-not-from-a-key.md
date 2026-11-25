@@ -138,9 +138,13 @@ None.
   `debug_tools` is on. A game adds the pack where it loads its text,
   under `shuyi_ui::DEBUG_TOOLS`. `GameData::debug_lang` is unchanged; a
   game keeps its own debug language if it has one.
-  **Either order with 2349:** if it is done, its options row offers
-  `PSEUDO` only with debug tools and its first-start pick never takes it
-  from the system, as for the debug language; if not, 2349 does that.
+  **From 2349 (done):** `Ctx::languages_offered` offers the game's
+  debug language only with debug tools, and the first-start pick
+  (`FirstLanguage::System`, in `Ctx`'s `pick_lang`) never takes it from
+  the system (`Ctx::is_debug_lang`). Give `PSEUDO` the same two rules,
+  with a test beside 2349's in `crates/ui/src/ctx/lang_tests.rs` (the
+  toy's Language row then shows `[Pseudo]` after `Debug`); tools still
+  pick it with `Harness::set_lang`.
 - **Picking the language in tools:**
   - `Harness::set_lang(&mut self, code: &str) -> &mut Self` sets
     `ctx.lang` and redraws (`Game::redraw`, as `snapshot_as` does); a
@@ -282,7 +286,7 @@ None.
    (`LineEntry`, `LineText`), `lang/source.rs` (`SourceText`),
    `tip::placeholders`, `Ctx::effective_lang` and the Harness
    (`crates/platform/src/harness.rs`). Check the *Either order* tickets
-   (2226, 2301, 2323, 2334, 2346, 2348, 2349, 2350, 2351, 2390, 2501)
+   (2226, 2301, 2323, 2334, 2346, 2348, 2350, 2351, 2390, 2501)
    for which are done.
 2. Write `pseudo_text` with its accent table and its tests, then
    `Lang::with_pseudo` and `LangPack::texts`.

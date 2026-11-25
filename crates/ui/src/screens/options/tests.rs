@@ -1,8 +1,8 @@
 //! The options screen on the toy game's rows ([`toy::option_rows`]): text
 //! speed, the toy's speed, fullscreen, colors, the music and sound
 //! volumes, then the
-//! layout and the Key bindings, a locked row and Restore defaults; the
-//! toy's level (not a setting) only while it has one.
+//! layout, the Key bindings and the language, a locked row and Restore
+//! defaults; the toy's level (not a setting) only while it has one.
 
 use shuyi_assets::keymap::{Chord, Key};
 
@@ -16,13 +16,14 @@ use crate::settings::{SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::toy::{self, Action, LEFT_HANDED, Prefs, Theme, Toy, ToyCtx, ctx};
 use core::sync::atomic::{AtomicU8, Ordering::Relaxed};
+use shuyi_assets::lang::LangCode;
 
 type Ctx = ToyCtx;
 type OptionsScreen = super::OptionsScreen<Toy>;
 type FrameInput = crate::screen::FrameInput<Action>;
 
 /// The rows' keys, top to bottom (without the toy's level).
-const ROWS: [&str; 11] = [
+const ROWS: [&str; 12] = [
     "options.row.text_speed",
     "toy.speed",
     "options.row.fullscreen",
@@ -32,6 +33,7 @@ const ROWS: [&str; 11] = [
     "options.row.sound_volume",
     "options.row.layout",
     "options.row.key_bindings",
+    "options.row.language",
     "toy.locked",
     "options.row.restore_defaults",
 ];
@@ -99,7 +101,7 @@ fn up_and_down_move_the_focus_and_wrap() {
     assert_eq!(s.focus(&c), "options.row.restore_defaults");
     press(&mut s, &mut c, &[CursorUp, CursorUp]);
     // No level: it isn't a row.
-    assert_eq!(s.focus(&c), "options.row.key_bindings");
+    assert_eq!(s.focus(&c), LANGUAGE_ROW);
     c.game.level = Some(0);
     press(&mut s, &mut c, &[CursorDown]);
     assert_eq!(s.focus(&c), "toy.level");
@@ -358,6 +360,7 @@ fn rows_show_their_values() {
             "<97/100>",
             "Right-handed",
             "",
+            "English*",
             "-",
             ""
         ]
@@ -385,6 +388,7 @@ fn rows_show_their_values() {
             "<100/100>",
             "Left-handed",
             "",
+            "English*",
             "Brisk*",
             "-",
             ""
@@ -402,6 +406,57 @@ fn rows_show_their_values() {
     // Before a layout is chosen, the layout row shows nothing.
     let c = toy::first_launch();
     assert_eq!(shown(&c)[7], "");
+}
+
+/// The language row offers the languages by their own names, the debug
+/// one only with debug tools; a step changes every screen's text at
+/// once, and Discard puts it back.
+#[test]
+fn the_language_row_steps_through_the_languages_by_their_own_names() {
+    use Action::{Cancel, Confirm, CursorLeft, CursorRight};
+    let mut c = ctx();
+    let names = |c: &Ctx| match OptionRow::<Toy>::language().value {
+        RowValue::Names { values, .. } => values(c),
+        _ => Vec::new(),
+    };
+    c.debug_tools = true;
+    assert_eq!(names(&c), ["English", "Debug"]);
+    let mut s = on(LANGUAGE_ROW);
+    assert_eq!(focused_value(&s, &c).text(), Some("English"));
+    assert_eq!(s.help(&c).plain(), c.text_styled(HELP_CHANGE, &[]).plain());
+    press(&mut s, &mut c, &[CursorRight]);
+    assert_eq!(
+        c.settings().language.as_ref().map(LangCode::as_str),
+        Some("dbg")
+    );
+    assert_eq!(c.text("home.greeting"), "HELLO, {name}");
+    assert_eq!(focused_value(&s, &c).text(), Some("Debug"));
+    assert_eq!(sounds(&mut c), ["ui_move"]);
+    // It stops at the end; Confirm goes round.
+    press(&mut s, &mut c, &[CursorRight]);
+    assert!(sounds(&mut c).is_empty());
+    press(&mut s, &mut c, &[Confirm]);
+    assert_eq!(focused_value(&s, &c).text(), Some("English"));
+    press(&mut s, &mut c, &[CursorRight]);
+    assert!(unsaved(&c));
+    // Discard: the language as the screen found it.
+    press(&mut s, &mut c, &[Cancel]);
+    press(&mut s, &mut c, &[CursorLeft, Confirm]);
+    assert_eq!(s.leaving(), None);
+    assert_eq!(c.settings().language, None);
+    assert_eq!(c.text("home.greeting"), "Hello, {name}");
+    // Without debug tools, the source alone; a language the row doesn't
+    // offer shows the first of its chain that it does.
+    c.debug_tools = false;
+    assert_eq!(names(&c), ["English"]);
+    c.lang = LangCode::new("dbg").unwrap();
+    assert_eq!(
+        on(LANGUAGE_ROW)
+            .view(&c)
+            .focused()
+            .and_then(|r| r.value.text().map(str::to_owned)),
+        Some("English".to_owned())
+    );
 }
 
 /// The toy's level isn't a setting: it changes at once and, like any row,
@@ -1045,6 +1100,9 @@ fn the_row_values_constructors_give_the_variants() {
     fn refuse(_: &mut ToyCtx) -> RowAction<Toy> {
         RowAction::Refuse(None)
     }
+    fn names(_: &ToyCtx) -> Vec<String> {
+        vec!["Français".to_owned()]
+    }
     fn help(_: &ToyCtx) -> &'static str {
         HELP_OPEN
     }
@@ -1056,6 +1114,10 @@ fn the_row_values_constructors_give_the_variants() {
     assert!(matches!(
         RowValue::<Toy>::choice(values, which, set_which),
         RowValue::Choice { values, get, .. } if values(&ctx) == ["a", "b"] && get(&ctx) == 1
+    ));
+    assert!(matches!(
+        RowValue::<Toy>::names(names, which, set_which),
+        RowValue::Names { values, .. } if values(&ctx) == ["Français"]
     ));
     assert!(matches!(
         RowValue::<Toy>::volume(volume, set_volume),

@@ -30,7 +30,7 @@ required-features = ["tools"]
 [features]
 default = ["window"]
 # `window`: the binary, which opens the game in macroquad's window.
-window = ["shuyi/app"]
+window = ["shuyi/app", "shuyi/system-languages"]
 # `tools`: the engine's tools for the game (`snake::tools`) and its
 # Harness, for its tool program and its tests; the scene's data describes
 # its shape for `scene --shape`.

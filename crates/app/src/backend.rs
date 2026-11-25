@@ -45,6 +45,7 @@ use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 use crate::audio;
 use crate::drops;
 use crate::focus::WindowFocus;
+use crate::languages;
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
@@ -146,7 +147,7 @@ impl Macroquad {
         }
         Self {
             player_files: PlayerFiles::new(&storage_at),
-            facts: player_files::facts(facts, &storage_at),
+            facts: player_files::facts(facts, &storage_at).with_languages(&languages::system()),
             storage_at,
             files: config.files,
             font_png: config.font_png,

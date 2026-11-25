@@ -73,6 +73,12 @@ pub trait Sdk: Clone + fmt::Debug + 'static {
     fn crank_change(&self) -> f32;
     /// `isCrankDocked`.
     fn crank_docked(&self) -> bool;
+    /// `getLanguage`: the language the player set in the device's
+    /// Settings, as a tag: `en` for English, `ja` for Japanese, `None` for
+    /// any other (and by default).
+    fn language(&self) -> Option<&'static str> {
+        None
+    }
     /// `addMenuItem`: an item named `title` that gives `slot` back when
     /// chosen; false if the SDK refused it.
     fn add_menu_item(&self, title: &str, slot: u8) -> bool;

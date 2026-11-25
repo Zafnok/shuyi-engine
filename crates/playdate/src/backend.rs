@@ -74,16 +74,20 @@ pub struct Playdate<S: Sdk> {
 }
 
 impl<S: Sdk> Playdate<S> {
-    /// The backend on `sdk`: it sets the display's rate from the profile.
+    /// The backend on `sdk`: it sets the display's rate from the profile,
+    /// and its facts are the profile's with the device's language
+    /// ([`Sdk::language`]).
     pub fn new(sdk: S) -> Self {
         let profile = profile();
         let rate = profile.frame_rate.target;
         sdk.set_refresh_rate(rate);
+        let language = sdk.language();
         let audio = PlayerDevice::new(Speaker::new(sdk.clone()));
         Self {
             sdk,
             facts: PlatformFacts::from_profile(&profile)
-                .with_device(Device::Pad(PadKind::Playdate)),
+                .with_device(Device::Pad(PadKind::Playdate))
+                .with_languages(language.as_slice()),
             rate,
             menu_slots: profile.input.system_menu_slots,
             load_slice_us: profile.budgets.load_slice_ms.map(|ms| u64::from(ms) * 1000),

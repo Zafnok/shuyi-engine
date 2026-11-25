@@ -53,6 +53,7 @@
     "options.row.voice_volume": "Voice volume",
     "options.row.layout": "Layout",
     "options.row.key_bindings": "Key bindings",
+    "options.row.language": "Language",
     "options.row.restore_defaults": "Restore defaults",
     "options.value.on": "On",
     "options.value.off": "Off",

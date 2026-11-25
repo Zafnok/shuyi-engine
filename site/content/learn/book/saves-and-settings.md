@@ -90,8 +90,8 @@ version, the game's word for its build, and a fingerprint of the files it ships.
 ## Settings
 
 The player's settings are the engine's (text speed, full screen, the color theme, a
-volume for each sound group, whether voices play, the frame cap, the layout of keys) and
-the game's own. The sound groups are `master` over everything, `music`, `sfx` and
+volume for each sound group, whether voices play, the frame cap, the layout of keys, the
+language) and the game's own. The sound groups are `master` over everything, `music`, `sfx` and
 `voice` under it, and `ui`, the menus' sounds, under `sfx`; each volume goes from 0 to
 100 on a loudness curve, so every step sounds like the same change. `ctx.volume(MUSIC)`
 reads one.
@@ -153,6 +153,15 @@ change before the player keeps it. The engine's options screen
 apart, by the Key bindings screen. A game with settings of its own writes a
 `GameSettings` type and its own `GameData`
 ([chapter 6](@/learn/book/games-and-screens.md#when-a-game-outgrows-the-short-path)).
+
+The language the player reads is a setting of the profile too: `settings.language`, which
+is `None` until they pick one. Until then, each start shows the game's language that
+fits the system's, else the language the game is written in. That is the default answer
+of `GameData::first_language`, `FirstLanguage::System`; `FirstLanguage::Source` always
+starts in the game's own language, and `FirstLanguage::Fixed(tag)` in one language (a
+build that ships one). `OptionRow::language()` is the options row that picks it, each
+language shown by its own name ("Português", not "Portuguese"), and every screen changes
+at once. Restore defaults keeps it, so nobody is switched to a language they can't read.
 
 What the game does while its window has no focus is the game's choice, not the player's:
 a constant of its `GameSettings`. By default it runs on with its sound. A game that

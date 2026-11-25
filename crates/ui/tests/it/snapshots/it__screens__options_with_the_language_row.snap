@@ -1,0 +1,53 @@
+---
+source: crates/ui/tests/it/screens.rs
+expression: h.snapshot()
+---
+┌─ Options ────────────────────────────┐
+│                                      │
+│   Text speed                Normal   │
+│   Speed                     Calm     │
+│   Fullscreen                Off      │
+│   Frame rate                60 FPS   │
+│   Colors                    Day      │
+│   Music volume              █████████▒
+│   Sound volume              █████████▒
+│                                      │
+│   Layout                    Right-hand
+│   Key bindings                       │
+│   Language                ◄ Debug ►  │
+│   Locked                    -        │
+│                                      │
+│   Restore defaults                   │
+└──────────────────────────────────────┘
+                                        
+                                        
+    ARROWS move · f change · d back     
+--- colours ---
+aabbbbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+accccccccccccccccccccccccccccccccccccccc
+accccccccccccccccccccccccccccccccccccccc
+acccccccccccccccccccccccccccccccccccccca
+accccccccccccccccccccccccccccccccccccccc
+acccccccccccccccccccccccccccccccccccccca
+accddddddddddcccccccccccccccecbbbbbcecca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+acccccccccccccccccccccccccccccccccccccca
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ffffffffffffffffffffffffffffffffffffffff
+ffffffffffffffffffffffffffffffffffffffff
+ffffgggggggggggggggggggggggggggggggfffff
+--- legend ---
+a = fg:border bg:panel
+b = fg:highlight bg:panel
+c = fg:text bg:panel
+d = fg:panel bg:focus
+e = fg:text_dim bg:panel
+f = fg:text bg:background
+g = fg:text_dim bg:background

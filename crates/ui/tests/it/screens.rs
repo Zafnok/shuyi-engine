@@ -1,13 +1,17 @@
 //! The engine's screens and widgets in the toy game, through the Harness
 //! (ticket 1112): its lobby is an engine menu; from it the options screen
 //! with the toy's rows (a setting kept on leaving, a volume typed in, the
-//! layout switched through the layout picker), the Key bindings screen
+//! layout switched through the layout picker, the language switched and
+//! kept or put back), the Key bindings screen
 //! with the toy's rows, and a scene read in the engine's text box.
 
+use insta::assert_snapshot;
 use shuyi_assets::target::TargetProfile;
 use shuyi_platform::harness::Harness;
 use shuyi_ui::audio::groups::SFX;
-use shuyi_ui::screens::options::{FULLSCREEN_ROW, LeaveChoice, OptionsScreen, ValueView};
+use shuyi_ui::screens::options::{
+    FULLSCREEN_ROW, LANGUAGE_ROW, LeaveChoice, OptionsScreen, ValueView,
+};
 use shuyi_ui::settings::{SETTINGS_KEY, TextSpeed};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::toy::{self, LEFT_HANDED, Lobby, Talk, Toy};
@@ -102,6 +106,50 @@ fn a_setting_changed_on_the_options_screen_is_kept_on_leaving_and_saved() {
     assert_eq!(h.screens(), ["lobby"]);
     let h = relaunch(h);
     assert_eq!(h.ctx().settings().text_speed, TextSpeed::Fast);
+}
+
+/// The options screen focused on the Language row, nine rows down.
+fn on_the_language_row() -> Harness<Toy> {
+    let mut h = lobby();
+    h.keys("f Down Down Down Down Down Down Down Down Down");
+    assert_eq!(options(&h).focus(h.ctx()), LANGUAGE_ROW);
+    h
+}
+
+/// The language row's value, as the options screen shows it.
+fn language_shown(h: &Harness<Toy>) -> Option<String> {
+    let view = options(h).view(h.ctx());
+    let row = view.row(LANGUAGE_ROW)?;
+    row.value.text().map(str::to_owned)
+}
+
+#[test]
+fn the_language_row_switches_every_screens_text_at_once_and_keeps_it() {
+    let mut h = on_the_language_row();
+    assert_eq!(language_shown(&h).as_deref(), Some("English"));
+    assert_eq!(h.ctx().text("home.greeting"), "Hello, {name}");
+    h.keys("Right");
+    assert_eq!(language_shown(&h).as_deref(), Some("Debug"));
+    assert_eq!(h.ctx().text("home.greeting"), "HELLO, {name}");
+    assert_snapshot!("options_with_the_language_row", h.snapshot());
+    // Kept: the next launch from the same storage starts in it.
+    h.keys("d Left Left f");
+    assert_eq!(h.screens(), ["lobby"]);
+    let h = relaunch(h);
+    assert_eq!(h.ctx().text("home.greeting"), "HELLO, {name}");
+    let picked = h.ctx().settings().language.clone();
+    assert_eq!(picked.as_ref().map(|code| code.as_str()), Some("dbg"));
+}
+
+#[test]
+fn a_discarded_language_is_put_back() {
+    let mut h = on_the_language_row();
+    h.keys("Right");
+    assert_eq!(h.ctx().text("home.greeting"), "HELLO, {name}");
+    h.keys("d Left f");
+    assert_eq!(h.screens(), ["lobby"]);
+    assert_eq!(h.ctx().text("home.greeting"), "Hello, {name}");
+    assert_eq!(h.ctx().settings().language, None);
 }
 
 #[test]
