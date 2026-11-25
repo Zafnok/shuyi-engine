@@ -594,3 +594,42 @@ fn the_answers_paths_the_grader_reads_are_in_the_contracts_schemas() {
         );
     }
 }
+
+#[test]
+fn a_game_inside_a_larger_workspace_is_graded_as_its_own_package() {
+    let dir = temp("member");
+    // A game that is its own workspace, as `shuyi new` makes one.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/*\"]\n",
+    )
+    .unwrap();
+    assert_eq!(grade::member_package(&dir), None);
+    // A member of a workspace rooted elsewhere, as an example is.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"snake\"\nversion.workspace = true\n",
+    )
+    .unwrap();
+    assert_eq!(grade::member_package(&dir).as_deref(), Some("snake"));
+    assert_eq!(grade::member_package(&dir.join("none")), None);
+    let _ = fs::remove_dir_all(&dir);
+    // Its gates run on it alone; the other checks don't change.
+    let task = task();
+    let scratch = Path::new("scratch");
+    let plan = grade::scoped(task.plan(scratch), "snake");
+    let names: Vec<&str> = plan.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(
+        names[1],
+        "Gates 2: cargo clippy -p snake --all-targets -- -D warnings"
+    );
+    assert_eq!(names[2], "Gates 3: cargo test -p snake");
+    assert_eq!(names[0], "Gates 1: cargo fmt --all --check");
+    let Step::Cargo { args, .. } = &plan[2].steps[0] else {
+        panic!("{:?}", plan[2].steps);
+    };
+    assert_eq!(args, &["test", "-p", "snake"]);
+    let whole = task.plan(scratch);
+    assert_eq!(plan.len(), whole.len());
+    assert_eq!(plan[5].name, whole[5].name);
+}

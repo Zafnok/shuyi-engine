@@ -523,14 +523,17 @@ Deviations:
 6. **Not in CI's `export` job**: its check wants a packed build, a
    `disclosure` part, and file lists that name Hello, Grid's program and
    its extras. 3536 adds snake to the job.
-7. **The eval grades snake inside the engine's workspace**, so its
-   `Gates` run the whole workspace's `fmt`, `clippy` and `test`, with the
-   eval's shared `CARGO_TARGET_DIR`. One engine test assumed none
-   (`mcp_ready_builds_what_the_server_needs_and_exits`, in
-   `crates/cli/tests/it/binary.rs`): its tiny game now builds without it.
-   `cargo xtask eval-reference snake` here passes every check but `Export
-   linux`, which builds on Linux only (CI's `eval` job runs in the sniper
-   image). No ticket: CI's `eval` job is the measure of the cost.
+7. **The eval grades snake inside the engine's workspace**, where its
+   `Gates` ran the whole workspace's `clippy` and `test`: in CI's
+   sniper image 8 of `shuyi-cli`'s `private_assets` tests failed there
+   (git as root), and one engine test assumed no shared
+   `CARGO_TARGET_DIR` (`mcp_ready_builds_what_the_server_needs_and_exits`,
+   now building its tiny game without it). The grader now runs a game's
+   gates on its own package when its folder is a member of a workspace
+   rooted elsewhere (`eval::grade::member_package` and `scoped`, with a
+   test, and a limit in the result saying so): `cargo clippy -p snake`
+   and `cargo test -p snake`. `cargo xtask eval-reference snake` here
+   passes every check but `Export linux`, which builds on Linux only.
 8. **The golden table has no asset rows**, only `step NNN` and `outcome`,
    as the ticket said; Hello, Grid's has both.
 
@@ -550,4 +553,4 @@ No break.
 
 Book: none, `replay::ticks` is for a game's tools, and the book's project is a turn game.
 
-Size: 3,441 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.
+Size: 3,543 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.
