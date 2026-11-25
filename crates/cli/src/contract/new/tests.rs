@@ -2074,3 +2074,34 @@ fn a_parked_answer_or_a_planned_target_by_flag_is_refused_with_its_status() {
         "{limits:?}"
     );
 }
+
+#[test]
+fn the_questions_listed_make_nothing_and_follow_the_answers_given() {
+    let dir = scratch("listed");
+    let mut input = NewInput::new("moon");
+    let listed = wizard::listed(&dir, &input);
+    assert!(listed.ok, "{listed:?}");
+    assert!(!dir.join("moon").exists());
+    let questions = listed.result.unwrap();
+    assert_eq!(questions.template, "shuyi-default");
+    let ids: Vec<&str> = questions.questions.iter().map(|q| q.id.as_str()).collect();
+    assert_eq!(ids[..4], ["dir", "name", "id", "perspective"]);
+    assert_eq!(ids.last(), Some(&"targets"));
+    assert!(!ids.contains(&"time"));
+    let id = questions.questions.iter().find(|q| q.id == "id").unwrap();
+    assert_eq!(id.default, ["com.example.moon"]);
+    // The perspectives given are the default, as `--perspective` gives them.
+    input.set = Answers::parse("set", "{ \"perspective\": [] }").unwrap();
+    let listed = wizard::listed(&dir, &input).result.unwrap();
+    let perspective = listed
+        .questions
+        .iter()
+        .find(|q| q.id == "perspective")
+        .unwrap();
+    assert_eq!(perspective.default, Vec::<String>::new());
+    // A name that makes no game is refused, as `new` refuses it.
+    input.name = Some("9".into());
+    let refused = wizard::listed(&dir, &input);
+    assert_eq!(refused.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    fs::remove_dir_all(&dir).unwrap();
+}

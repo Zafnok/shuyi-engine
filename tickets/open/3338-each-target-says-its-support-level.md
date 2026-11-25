@@ -147,10 +147,13 @@ profiles through `engine_targets()` in
 profile; a planned one is refused by flag. Take a `Preview` profile
 there like a supported one.
 
-**Either order with 3424** (the questions as data): if 3424 is done,
-its targets question offers a `Preview` profile with "preview: not yet
-run on its device" beside it, and never offers a `Planned` one; if not,
-nothing to do (3424 does it, its clause says so).
+**From 3424 (done):** the targets question of `wizard::questions` (the
+last one) lists each `Target` as an `Offered`: a ready one with status
+`ready` and its id as its text, a planned one with status `planned` and
+"<id>: the engine doesn't run on it yet", shown and never picked. Make
+it offer a `Preview` profile as `ready`, with "<id> (preview: not yet
+run on its device)" as its text, and keep a `Planned` one shown, never
+picked; its test is in `crates/cli/src/contract/new/wizard/tests.rs`.
 
 **Either order with 3507:** if 3507 is done, `docs/targets/web.md`'s
 `## On the device` names headless Firefox and headless WebKit in CI (the

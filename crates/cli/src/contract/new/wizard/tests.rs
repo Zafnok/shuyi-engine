@@ -1,6 +1,10 @@
-//! The wizard's flags and targets.
+//! The wizard's questions, its flags and targets, and the command that
+//! makes a game again.
+
+use std::path::PathBuf;
 
 use super::*;
+use crate::skills::Pack;
 use crate::template::built_in;
 
 #[test]
@@ -24,4 +28,285 @@ fn the_targets_are_the_engines_profiles_and_default_to_the_templates() {
     assert_eq!(ready("desktop"), Some(true));
     assert_eq!(ready("playdate"), Some(true));
     assert_eq!(ready("switch"), Some(false));
+}
+
+/// A catalog of `concerns`, a `docs/modules.ron` text, with no module.
+fn catalog(concerns: &str) -> Catalog {
+    Catalog {
+        root: PathBuf::new(),
+        concerns: Concerns::parse(concerns).unwrap_or_else(|e| panic!("{e}")),
+        modules: Vec::new(),
+        skills: Pack::default(),
+    }
+}
+
+/// A catalog where a free perspective is ready, and bodies and motion has
+/// a ready answer and a planned one.
+const FREE: &str = r#"(concerns: [
+    (id: "time", name: "Time", alternatives: true, answers: [
+        (id: "turns", name: "turns", by: "default", status: ready, tickets: []),
+        (id: "fixed-ticks", name: "fixed ticks", by: "default", status: ready, tickets: []),
+    ]),
+    (id: "perspective", name: "Perspective", alternatives: true, pick: Many,
+     question: "Which perspectives?", answers: [
+        (id: "top-down-grid", name: "top-down grid", by: "default", status: ready, tickets: []),
+        (id: "top-down", name: "top-down free", by: "default", status: ready, tickets: []),
+        (id: "side-view", name: "side view", by: "default", status: parked, tickets: ["1127"]),
+    ]),
+    (id: "bodies", name: "Bodies and motion", alternatives: true, pick: Many,
+     question: "How do bodies move?", serves: ["top-down", "side-view"], answers: [
+        (id: "movers", name: "movers", by: "default", status: ready, tickets: ["1122"]),
+        (id: "rigid-body", name: "rigid-body physics", by: "shuyi-physics", status: planned, tickets: ["1128"]),
+    ]),
+    (id: "online", name: "Online play", alternatives: true, pick: One,
+     question: "How do players play online?", answers: [
+        (id: "none", name: "none", by: "default", status: ready, tickets: []),
+        (id: "lockstep", name: "lockstep", by: "shuyi-net", status: parked, tickets: ["1140", "1141"]),
+    ]),
+])"#;
+
+/// The targets the fixtures offer.
+fn targets() -> Vec<Target> {
+    vec![
+        Target {
+            id: "desktop".into(),
+            ready: true,
+        },
+        Target {
+            id: "switch".into(),
+            ready: false,
+        },
+    ]
+}
+
+fn named() -> Named {
+    Named {
+        dir: "moon".into(),
+        name: "Moon".into(),
+        id: "com.example.moon".into(),
+    }
+}
+
+fn answers(ron: &str) -> Answers {
+    Answers::parse("given", ron).unwrap()
+}
+
+/// The questions of the fixture catalog `concerns` for `given`.
+fn asked(concerns: &str, given: &str) -> Vec<Question> {
+    questions(
+        &catalog(concerns),
+        &built_in().unwrap(),
+        &targets(),
+        &named(),
+        &answers(given),
+    )
+}
+
+fn question<'a>(questions: &'a [Question], id: &str) -> &'a Question {
+    questions
+        .iter()
+        .find(|q| q.id == id)
+        .unwrap_or_else(|| panic!("no question {id}"))
+}
+
+#[test]
+fn the_questions_come_in_order_and_time_is_never_asked() {
+    let questions = asked(FREE, "{}");
+    let ids: Vec<&str> = questions.iter().map(|q| q.id.as_str()).collect();
+    // The engine's, the perspectives, the concerns in the catalog's order,
+    // the template's, then the targets.
+    assert_eq!(
+        ids,
+        [
+            "dir",
+            "name",
+            "id",
+            "perspective",
+            "bodies",
+            "online",
+            "private-files",
+            "examples",
+            "targets"
+        ]
+    );
+    let askers: Vec<Asker> = questions.iter().map(|q| q.asker).collect();
+    assert_eq!(askers[..4], [Asker::Engine; 4]);
+    assert_eq!(askers[4..6], [Asker::Catalog; 2]);
+    assert_eq!(askers[6..8], [Asker::Template; 2]);
+    assert_eq!(askers[8], Asker::Engine);
+    // The text questions' defaults are the folder, its name and the id.
+    let defaults: Vec<&[String]> = questions[..3].iter().map(|q| &q.default[..]).collect();
+    assert_eq!(
+        defaults,
+        [
+            &["moon".to_owned()][..],
+            &["Moon".to_owned()],
+            &["com.example.moon".to_owned()]
+        ]
+    );
+    assert!(questions[..3].iter().all(|q| q.takes == Takes::Text));
+    let flags: Vec<Option<&str>> = questions.iter().map(|q| q.flag.as_deref()).collect();
+    assert_eq!(
+        flags,
+        [
+            None,
+            Some("--name"),
+            Some("--id"),
+            Some("--perspective"),
+            Some("--bodies"),
+            Some("--online"),
+            Some("--set private-files="),
+            Some("--set examples="),
+            Some("--targets")
+        ]
+    );
+    // The engine's catalog asks every concern but `time` too.
+    let engine = questions_of_the_engine("{}");
+    assert!(engine.iter().all(|q| q.id != "time"));
+    let concerns = Concerns::embedded().unwrap();
+    for concern in concerns.concerns.iter().filter(|c| c.id != "time") {
+        assert!(engine.iter().any(|q| q.id == concern.id), "{}", concern.id);
+    }
+}
+
+/// The questions of the engine's own catalog and template for `given`.
+fn questions_of_the_engine(given: &str) -> Vec<Question> {
+    questions(
+        &Catalog::embedded().unwrap(),
+        &built_in().unwrap(),
+        &engine_targets().unwrap(),
+        &named(),
+        &answers(given),
+    )
+}
+
+#[test]
+fn bodies_and_motion_is_skipped_for_a_grid_only_game_and_asked_of_a_free_one() {
+    let grid = asked(FREE, "{}");
+    let bodies = question(&grid, "bodies");
+    assert_eq!(
+        bodies.skipped.as_deref(),
+        Some(
+            "its answers are for the perspectives top-down, side-view, and the game's are \
+             top-down-grid"
+        )
+    );
+    let none = asked(FREE, r#"{ "perspective": [] }"#);
+    assert!(
+        question(&none, "bodies")
+            .skipped
+            .as_deref()
+            .unwrap()
+            .ends_with("and none is picked")
+    );
+    let free = asked(FREE, r#"{ "perspective": ["top-down-grid", "top-down"] }"#);
+    let bodies = question(&free, "bodies");
+    assert_eq!(bodies.skipped, None);
+    assert_eq!(bodies.takes, Takes::Many);
+    assert_eq!(bodies.default, ["movers"]);
+    assert_eq!(bodies.text, "How do bodies move?");
+    // In the engine's catalog no free perspective is ready yet.
+    let engine = questions_of_the_engine("{}");
+    assert!(question(&engine, "bodies").skipped.is_some());
+}
+
+#[test]
+fn planned_and_parked_answers_are_marked_with_their_tickets() {
+    let free = asked(FREE, r#"{ "perspective": ["top-down"] }"#);
+    let bodies = question(&free, "bodies");
+    assert_eq!(
+        bodies.answers,
+        [
+            Offered {
+                id: "movers".into(),
+                text: "movers".into(),
+                status: Status::Ready,
+                tickets: Vec::new(),
+            },
+            Offered {
+                id: "rigid-body".into(),
+                text: "rigid-body physics".into(),
+                status: Status::Planned,
+                tickets: vec!["1128".into()],
+            }
+        ]
+    );
+    let perspective = question(&free, "perspective");
+    assert_eq!(perspective.answers[2].status, Status::Parked);
+    assert_eq!(perspective.answers[2].tickets, ["1127"]);
+    // A planned target is offered as one, and never by default.
+    let targets = question(&free, "targets");
+    assert_eq!(targets.answers[1].status, Status::Planned);
+    assert_eq!(
+        targets.answers[1].text,
+        "switch: the engine doesn't run on it yet"
+    );
+    assert_eq!(targets.default, ["desktop", "web"]);
+}
+
+#[test]
+fn a_concern_with_fewer_than_two_ready_or_planned_answers_isnt_asked() {
+    let free = asked(FREE, r#"{ "perspective": ["top-down"] }"#);
+    let online = question(&free, "online");
+    assert_eq!(
+        online.skipped.as_deref(),
+        Some("only `none` of its answers is ready or planned: there is nothing to pick between")
+    );
+    assert_eq!(online.default, ["none"]);
+    // The perspectives are always asked, even with one ready answer.
+    let engine = questions_of_the_engine("{}");
+    assert_eq!(question(&engine, "perspective").skipped, None);
+    // The engine's scripting has a ready answer and a planned one.
+    assert_eq!(question(&engine, "scripting").skipped, None);
+}
+
+#[test]
+fn private_files_is_answered_by_the_github_questions() {
+    let questions = asked(FREE, "{}");
+    let private = question(&questions, "private-files");
+    assert!(
+        private
+            .skipped
+            .as_deref()
+            .unwrap()
+            .starts_with("the GitHub questions answer it"),
+        "{private:?}"
+    );
+    assert_eq!(private.default, ["no"]);
+    assert_eq!(question(&questions, "examples").skipped, None);
+}
+
+#[test]
+fn the_answers_given_so_far_are_the_defaults() {
+    let given = asked(
+        FREE,
+        r#"{ "online": ["lockstep"], "examples": ["no"], "targets": ["desktop"] }"#,
+    );
+    assert_eq!(question(&given, "online").default, ["lockstep"]);
+    assert_eq!(question(&given, "examples").default, ["no"]);
+    assert_eq!(question(&given, "targets").default, ["desktop"]);
+    assert_eq!(question(&given, "perspective").default, ["top-down-grid"]);
+}
+
+#[test]
+fn the_questions_read_for_people() {
+    let listed = Questions {
+        template: "shuyi-default".into(),
+        questions: asked(FREE, "{}"),
+    };
+    let text = text(&listed);
+    assert!(
+        text.starts_with("new: 9 question(s), from shuyi-default\n"),
+        "{text}"
+    );
+    assert!(text.contains("Which folder is the game made in? (<dir>, now moon)\n"));
+    assert!(text.contains(
+        "Which perspectives? (--perspective, now top-down-grid)\n  any of: top-down-grid, \
+         top-down, side-view (parked: 1127)\n"
+    ));
+    assert!(text.contains("How do bodies move? (--bodies, now movers)\n  not asked: "));
+    assert!(
+        text.contains("  any of: desktop, switch (planned)\n"),
+        "{text}"
+    );
 }

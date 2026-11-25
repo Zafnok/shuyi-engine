@@ -261,6 +261,109 @@ fn json(output: &Output) -> serde_json::Value {
         .unwrap_or_else(|e| panic!("not JSON ({e}): {}", stdout(output)))
 }
 
+/// The fields of `value` that `schema` (at `node`, its `$ref`s read from
+/// its `$defs`) has no property for, each by its path from `at`.
+fn unknown_fields(
+    schema: &serde_json::Value,
+    node: &serde_json::Value,
+    value: &serde_json::Value,
+    at: &str,
+) -> Vec<String> {
+    if let Some(reference) = node["$ref"].as_str() {
+        let name = reference.trim_start_matches("#/$defs/");
+        return unknown_fields(schema, &schema["$defs"][name], value, at);
+    }
+    for key in ["anyOf", "oneOf"] {
+        if let Some(branches) = node[key].as_array() {
+            return branches
+                .iter()
+                .map(|branch| unknown_fields(schema, branch, value, at))
+                .min_by_key(Vec::len)
+                .unwrap_or_default();
+        }
+    }
+    match value {
+        serde_json::Value::Object(fields) => fields
+            .iter()
+            .flat_map(|(name, field)| {
+                let path = format!("{at}.{name}");
+                match node["properties"].get(name) {
+                    Some(property) => unknown_fields(schema, property, field, &path),
+                    None if node["additionalProperties"].is_object() => {
+                        unknown_fields(schema, &node["additionalProperties"], field, &path)
+                    }
+                    None => vec![path],
+                }
+            })
+            .collect(),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .flat_map(|(n, item)| {
+                unknown_fields(schema, &node["items"], item, &format!("{at}[{n}]"))
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+#[test]
+fn new_lists_its_questions_as_its_schema_says_and_makes_nothing() {
+    let dir = scratch("new-questions");
+    let output = shuyi(&dir, &["new", "demo", "--questions", "--json"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    assert!(!dir.join("demo").exists());
+    let answer = json(&output);
+    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/new.questions.json");
+    let schema: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(file).unwrap()).unwrap();
+    assert_eq!(
+        unknown_fields(&schema, &schema, &answer, "answer"),
+        Vec::<String>::new()
+    );
+    assert_eq!(answer["op"], "new");
+    let questions = answer["result"]["questions"].as_array().unwrap();
+    let ids: Vec<&str> = questions
+        .iter()
+        .map(|q| q["id"].as_str().unwrap())
+        .collect();
+    // Every concern of the catalog but `time`, each answer with its status
+    // and, if it isn't ready, its tickets.
+    let catalog = shuyi_cli::catalog::Concerns::embedded().unwrap();
+    for concern in &catalog.concerns {
+        assert_eq!(ids.contains(&concern.id.as_str()), concern.id != "time");
+    }
+    let bodies = questions.iter().find(|q| q["id"] == "bodies").unwrap();
+    assert!(bodies["skipped"].is_string());
+    let procedural = bodies["answers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["id"] == "procedural")
+        .unwrap();
+    assert_eq!(procedural["status"], "parked");
+    assert_eq!(procedural["tickets"][0], "2701");
+    // For people, the same.
+    let output = shuyi(
+        &dir,
+        &[
+            "new",
+            "demo",
+            "--questions",
+            "--perspective",
+            "top-down-grid",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stdout(&output).contains("How do bodies move? (--bodies, now none)\n  not asked: "),
+        "{}",
+        stdout(&output)
+    );
+    assert!(!dir.join("demo").exists());
+    fs::remove_dir_all(&dir).unwrap();
+}
+
 #[test]
 fn new_doctor_explain_and_schema_need_no_project() {
     let dir = scratch("no-project-ops");
@@ -274,7 +377,7 @@ fn new_doctor_explain_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 49);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 50);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));

@@ -73,7 +73,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 56;
+pub const VERSION: u32 = 57;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -480,7 +480,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
 
 /// Every operation's input and output schema, in [`Op::ALL`]'s order,
 /// then the MCP server's session tools' ([`Op::SESSION`]), then the file
-/// `export` writes beside its package.
+/// `export` writes beside its package, then `new --questions`' answer.
 pub fn schemas() -> Vec<SchemaFile> {
     let ops = Op::ALL.iter().copied().flat_map(|op| op_schemas(op, false));
     let session = Op::SESSION
@@ -491,7 +491,11 @@ pub fn schemas() -> Vec<SchemaFile> {
         "export.exposure.json".to_owned(),
         &schema_for!(crate::export::disclosure::ExposureReport),
     );
-    ops.chain(session).chain([exposure]).collect()
+    let questions = file(
+        "new.questions.json".to_owned(),
+        &names_its_op(schema_for!(Answer<new::wizard::Questions>), Op::New),
+    );
+    ops.chain(session).chain([exposure, questions]).collect()
 }
 
 /// The fingerprint of `files`: a hash of their names and texts, which

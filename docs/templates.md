@@ -93,22 +93,39 @@ for `examples`). An answer whose status in the catalog is `planned` or
 picked: by flag it fails, naming its status and its tickets
 (ADR-0013 §6).
 
-A concern's `serves` names the perspectives its answers are for: bodies
-and motion is for the free ones, since the grid kit moves its pieces
-itself. `private-files` is answered by the GitHub questions, or by
-`--set private-files=yes` with `--private-url`.
+A question isn't asked, and takes its default, when:
+
+- none of its answers is for the perspectives picked: a concern's
+  `serves` names the perspectives its answers are for, and bodies and
+  motion is for the free ones, since the grid kit moves its pieces
+  itself;
+- fewer than two of its answers are ready or planned, so there is
+  nothing to pick between (every concern but the perspectives, which are
+  always asked);
+- another question answers it: `private-files` is answered by the GitHub
+  questions, or by `--set private-files=yes` with `--private-url`.
 
 With `--no-input`, as off a terminal, nothing is asked: each question
 the flags leave takes its default, and no repository is made.
 
+`shuyi new <dir> --questions --json` lists the questions for an agent,
+for the answers given so far, and makes nothing: each with its `id`, who
+asks it (`asker`: `engine`, `catalog` or `template`), its `text`, what it
+`takes` (`text`, `one` or `many`), its `answers` (each with its `id`, its
+`text`, its `status` in the catalog and, if it isn't `ready`, its
+`tickets`), its `default`, its `flag` and, when it isn't asked, why
+(`skipped`). Its shape is `new.questions.json` among the contract's
+schemas. The answers given change what is asked, so an agent asks the
+perspectives first, lists again with `--perspective`, then asks the
+rest. Without `--json` it prints the same for people.
+
 A picked answer that is a module (its `by` is a crate) turns the module
 on as `shuyi add` does, through a part that names it or, with none, by
 the composer itself. `shuyi.ron`'s `targets` are the template's parts'
-until 2504: a target picked beside them is a limit. Listing the
-questions for an agent (`--questions --json`), the command that makes a
-game again and the answers kept in `shuyi.ron` are ticket 3424; asking
-them in a terminal, as lists to pick from, is 3423. Today a terminal
-gets the examples and GitHub questions below.
+until 2504: a target picked beside them is a limit. The command that
+makes a game again and the answers kept in `shuyi.ron` are ticket 3425;
+asking the questions in a terminal, as lists to pick from, is 3423. Today a terminal gets the
+examples and GitHub questions below.
 
 An answers file maps each question to the ids of its answers:
 

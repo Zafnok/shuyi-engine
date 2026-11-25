@@ -61,6 +61,21 @@ game one part at a time.
    the stages and the skills. A folder that isn't empty is refused
    (`SH0001`); `--force` writes into it.
 
+   To ask the developer what the game is instead, list the questions,
+   which makes nothing:
+
+   ```bash
+   cargo shuyi new ../moon-garden --questions --json
+   ```
+
+   Ask the perspectives first (`perspective`), then list again with
+   `--perspective <ids>`: they change what else is asked. Ask each
+   question whose `skipped` is null, in order, offering its `ready`
+   answers; show a `planned` or `parked` answer as coming, with its
+   `tickets`, and never pick it. Then make the game with the answers as
+   each question's `flag` says (several ids with commas) and
+   `--no-input`.
+
    In a terminal, `new` also asks whether to include the skills' worked
    examples (yes by default; `--no-examples` leaves them out, and each
    `SKILL.md` then says where the engine keeps them) and whether to put

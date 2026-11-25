@@ -23,14 +23,23 @@ side scroller?" and let the developer "tick off multiple".
 
 **From 2502 (done):** the flags (`--perspective`, `--bodies`,
 `--online`, `--world-drawing`, `--kind`, `--scripting`, `--targets`,
-`--id`, `--set`) and `--no-input` work. 3424 (which this waits for)
-adds `shuyi_cli::contract::new::wizard::questions`, every question in
-order (the folder, the name and the game's id; the perspectives; one per
-catalog concern but `time`; the template's own; the targets), each with
-what it takes, its answers with their status and tickets, its default,
-its flag, and `skipped` with the reason when it isn't asked; and
-`--questions --json`, the printed command and `created_with`. Nothing
-asks them in a terminal yet. `shuyi new` still asks the
+`--id`, `--set`) and `--no-input` work.
+
+**From 3424 (done):** `wizard::questions(&Catalog, &Template,
+&[Target], &Named, &Answers) -> Vec<Question>` (in
+`crates/cli/src/contract/new/wizard.rs`) gives every question in order
+(the folder, the name and the game's id; the perspectives; one per
+catalog concern but `time`; the template's own; the targets). A
+`Question` has its `id`, its `asker` (`Engine`, `Catalog`, `Template`),
+its `text`, what it `takes` (`Takes::Text`, `One`, `Many`), its
+`answers` (`Offered`: `id`, `text`, the catalog's `Status`, `tickets`
+when not ready), its `default` (the answers given so far, else its
+default), its `flag` (`None` for the folder) and `skipped` with the
+reason when it isn't asked. `wizard::listed(cwd, &NewInput)` computes
+them for `shuyi new <dir> --questions` (`questions::Flags::questions`,
+`questions::listed`), and `wizard::text` prints them. The command that
+makes the game again and `created_with` are 3425's. Nothing asks them
+in a terminal yet. `shuyi new` still asks the
 plain line prompts 2592 and 2597 wrote
 (`crates/cli/src/contract/new/questions.rs`): the examples, then the
 six GitHub questions.
