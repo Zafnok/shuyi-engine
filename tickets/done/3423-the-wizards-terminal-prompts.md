@@ -129,7 +129,7 @@ asked is missing.
 - [x] Off a terminal, or with `--no-input`, nothing is asked.
 - [x] `--questions --json` lists the GitHub questions, with the field
       about `github: yes`, and matches its schema.
-- [x] ~~Nick's sign-off is recorded in the Completion notes.~~ (not done: asked in the PR, recorded here before it merges)
+- [x] Nick's sign-off is recorded in the Completion notes.
 - [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -229,11 +229,9 @@ Game: nothing to adopt, the game isn't made by `shuyi new` and never
 runs it (searched the game for `shuyi new` and `questions --json`: only
 its copies of the skill pack, which the pin's skill sync updates).
 
-Nick input: sign-off pending: run `shuyi new` in a terminal, answer the
-questions, and say whether the wording is clear and whether anything
-expected is missing.
+Nick input: sign-off, given 2026-11-25 (below).
 
-Nick's sign-off, in progress (2026-11-25): he found the id question
+Nick's sign-off (2026-11-25): he ran `shuyi new` in a terminal. He found the id question
 ("What is its reverse-DNS id, which its saves are kept under?")
 confusing and Java-looking, and asked whether it really names the save
 folder. It does, by default (ADR-0059: the id is unique, so two games
@@ -249,4 +247,9 @@ for the game, like io.github.yourname.<crate name>: app stores ask for
 one.") and that the save folder be a question of its own after it,
 prefilled with the id: that is a new question, flag and input field,
 so it is ticket 3430. All three are in `docs/decisions.md`
-(2026-11-25).
+(2026-11-25). Then he signed off:
+
+> "I guess I sign off once 3430 is done so for 3423 its good enough and
+> ill do 3430 soon after..."
+
+The save-folder question's own sign-off is 3430's.
