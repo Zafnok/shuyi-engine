@@ -160,7 +160,11 @@ pauses, or goes quiet, or both, says so in one line of its `impl GameSettings`:
 `const BACKGROUND: Background = Background::KEEP_RUNNING.paused().muted();`.
 Paused, the game isn't updated and shows its last frame until the player comes back, and
 the time away makes no steps. Muted, its music keeps its place in silence. `Background`
-is in `shuyi::ui::settings`.
+is in `shuyi::ui::settings`, and in the prelude. A game on the short path, whose settings
+are `()`, says it on its `BasicGame`:
+`.background(Background::KEEP_RUNNING.paused())`. To do more when the window loses focus,
+such as opening its pause menu, it gives its `BasicGame` a hook for the system's events,
+`.on_system(hook)`, which hears `SystemEvent::FocusLost`.
 
 ## Files the player keeps
 

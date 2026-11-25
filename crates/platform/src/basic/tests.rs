@@ -273,6 +273,65 @@ fn its_crash_record_reaches_the_app() {
     assert_eq!(app.crash_record().as_deref(), Some("on hello"));
 }
 
+/// The demo's hook: a lost focus hands the top screen Cancel, which quits
+/// Hello.
+const CANCEL_ON_FOCUS_LOST: crate::SystemHook<Data> = |game, event| {
+    if event == crate::SystemEvent::FocusLost {
+        game.act(UiAction::Cancel);
+    }
+};
+
+/// An app of `game`'s start, its first screen loaded, after its window
+/// lost focus.
+fn unfocused(game: &BasicGame<UiAction>) -> App<Data> {
+    let mut app = App::new(game.start());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    assert!(app.game().is_some(), "{:?}", app.errors());
+    p.push_system(crate::SystemEvent::FocusLost);
+    let _ = app.frame(&mut p, Millis(32));
+    app
+}
+
+#[test]
+fn its_background_and_its_hook_reach_its_start() {
+    let start = demo(GOOD).start();
+    assert_eq!((start.background, start.on_system.is_some()), (None, false));
+    let app = unfocused(&demo(GOOD));
+    assert_eq!(app.background(), Background::KEEP_RUNNING);
+    assert!(!app.is_paused() && !app.has_quit());
+
+    let paused = Background::KEEP_RUNNING.paused();
+    let start = demo(GOOD).background(paused).start();
+    assert_eq!(start.background, Some(paused));
+    let app = unfocused(&demo(GOOD).background(paused));
+    assert_eq!(app.background(), paused);
+    assert!(app.is_paused());
+
+    let start = demo(GOOD).on_system(CANCEL_ON_FOCUS_LOST).start();
+    assert!(start.on_system.is_some());
+    assert!(unfocused(&demo(GOOD).on_system(CANCEL_ON_FOCUS_LOST)).has_quit());
+}
+
+#[test]
+fn its_harness_pauses_and_hears_the_system_as_its_start_says() {
+    let mut h = demo(GOOD).harness();
+    assert_eq!(h.app().background(), Background::KEEP_RUNNING);
+    h.system(crate::SystemEvent::FocusLost);
+    assert!(!h.app().is_paused() && !h.quit_requested());
+
+    let mut h = demo(GOOD)
+        .background(Background::KEEP_RUNNING.paused())
+        .harness();
+    h.system(crate::SystemEvent::FocusLost);
+    assert!(h.app().is_paused());
+
+    let mut h = demo(GOOD).on_system(CANCEL_ON_FOCUS_LOST).harness();
+    h.system(crate::SystemEvent::FocusLost);
+    assert!(h.quit_requested());
+}
+
 #[test]
 fn its_record_is_in_a_release_builds_report_only_when_said() {
     assert!(!demo(GOOD).records_play_in_release(), "off until said");
