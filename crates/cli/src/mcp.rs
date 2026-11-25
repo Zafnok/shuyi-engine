@@ -352,6 +352,13 @@ pub fn tool(name: &str) -> Option<(Op, bool)> {
         .map(|op| (op, false))
 }
 
+/// What `sfx`'s tool does.
+const SFX: &str = "A sound effect (`.sfx.ron`: a wave, a pitch, how loud it rises, holds and \
+     fades) from one of the engine's presets (`source`: `coin`; a `seed` varies it) or from a \
+     file: its text, how long it plays and its loudest sample, or a file's problems with their \
+     lines. `out` writes its text, a sound of the game's own for `files/audio.ron` to name; \
+     `wav` writes the sound, for a person to listen to. Needs no game.";
+
 /// What `attach`'s tool does.
 const ATTACH: &str = "Reach a game's debug build already running in its window, over the live link \
      (`address` and `token`: its log line `shuyi link: listening on ..., token ...`; the \
@@ -470,14 +477,7 @@ fn description(op: Op, session: bool) -> &'static str {
             "Check the toolchain (Rust, Cargo, targets, the linker) and say how to fix each \
              missing piece."
         }
-        (Op::Sfx, _) => {
-            "A sound effect (`.sfx.ron`: a wave, a pitch, how loud it rises, holds and fades) \
-             from one of the engine's presets (`source`: `coin`; a `seed` varies it) or from a \
-             file: its text, how long it plays and its loudest sample, or a file's problems \
-             with their lines. `out` writes its text, a sound of the game's own for \
-             `files/audio.ron` to name; `wav` writes the sound, for a person to listen to. \
-             Needs no game."
-        }
+        (Op::Sfx, _) => SFX,
         (Op::Explain, _) => {
             "Every problem code, or one code's page (`SH2003` or `missing-file`): what it means \
              and how to fix it. Every failed answer has a `code`."

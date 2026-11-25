@@ -437,7 +437,8 @@ fn new_doctor_explain_and_schema_need_no_project() {
 /// The schema `name` of `schemas/` (`sfx.output`).
 fn schema(name: &str) -> serde_json::Value {
     let file = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("schemas/{name}.json"));
-    serde_json::from_str(&fs::read_to_string(file).unwrap()).unwrap()
+    let text = fs::read_to_string(&file).unwrap_or_else(|e| panic!("{}: {e}", file.display()));
+    serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", file.display()))
 }
 
 #[test]

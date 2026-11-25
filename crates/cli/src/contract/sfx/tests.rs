@@ -80,7 +80,7 @@ fn a_preset_gives_its_text_and_measures_and_a_seed_varies_it() {
         "{}",
         output.peak
     );
-    assert!(output.written.is_empty());
+    assert_eq!(output.written, Vec::<String>::new());
     // Another seed is another sound of the same preset, and says so.
     let mut seeded = input("coin");
     seeded.seed = Some(7);
@@ -137,7 +137,7 @@ fn a_file_with_problems_fails_with_each_on_its_line_and_writes_nothing() {
         ("loud.sfx.ron", Some(6))
     );
     assert_eq!(problem.message, "volume 150 is over 100 (percent)");
-    assert!(output.written.is_empty());
+    assert_eq!(output.written, Vec::<String>::new());
     assert!(!dir.join("out.sfx.ron").exists());
     assert_eq!(
         text(&output),

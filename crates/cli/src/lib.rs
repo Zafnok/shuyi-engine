@@ -112,12 +112,8 @@ pub const COMMANDS: &[&str] = &[
     "seed-target",
 ];
 
-/// The usage text, with `command` as the tool's name.
-pub fn usage(command: &str) -> String {
-    format!(
-        "\
-usage: {command} <command>
-
+/// The usage text's part on the tool contract's operations.
+const CONTRACT: &str = "\
 the tool contract (each also with --json; a wrong argument prints its usage):
   new <dir> [--template NAME]        make a new game from the engine's template: grid, blank;
                                      --answers FILE, --set QUESTION=ANSWER pick its parts
@@ -161,7 +157,15 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   mcp                                serve the contract over MCP (stdio), with a session
   mcp --ready                        build the server and the game's tool program, then exit
   mcp install [--dry-run] [--yes]    register the server with the agents found here
+";
 
+/// The usage text, with `command` as the tool's name.
+pub fn usage(command: &str) -> String {
+    format!(
+        "\
+usage: {command} <command>
+
+{CONTRACT}
 commands:
   check-keys                         fail on keys hard-coded in game code or text
   check-text                         count screen text still written as literals,
@@ -213,7 +217,7 @@ commands:
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain, attach, schema, check-skills, mcp, reveal verify
+{file} (new, doctor, sfx, explain, attach, schema, check-skills, mcp, reveal verify
 and reveal open need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix

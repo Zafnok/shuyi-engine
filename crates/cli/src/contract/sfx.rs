@@ -122,15 +122,16 @@ pub fn sfx(input: &SfxInput, cwd: &Path) -> Answer<SfxOutput> {
                 "// The engine's preset `{source}`, seed {seed} (`shuyi sfx {source} --seed {seed}`).\n"
             )
         };
-        (def.clone(), made + &sfx::to_text(&def))
+        let text = made + &sfx::to_text(&def);
+        (def, text)
     };
-    measured(def, text, input, cwd)
+    measured(&def, text, input, cwd)
 }
 
 /// The answer for `def`, whose text is `text`: measured, and written where
 /// `input` says, from `cwd`.
-fn measured(def: SfxDef, text: String, input: &SfxInput, cwd: &Path) -> Answer<SfxOutput> {
-    let samples = sfx::render(&def);
+fn measured(def: &SfxDef, text: String, input: &SfxInput, cwd: &Path) -> Answer<SfxOutput> {
+    let samples = sfx::render(def);
     let mut output = SfxOutput {
         presets: presets(),
         length_ms: def.length_ms(),
