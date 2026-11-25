@@ -181,6 +181,48 @@
           "required": [
             "Median"
           ]
+        },
+        {
+          "description": "The share of `entrant`'s tries that meet every `success` condition\nis at most `most` percentage points over the same share of entrant\n`than`'s, compared in integers. It never blocks the run: a miss is\n✗ in the report only.",
+          "type": "object",
+          "properties": {
+            "Gap": {
+              "type": "object",
+              "properties": {
+                "entrant": {
+                  "description": "The entrant checked.",
+                  "type": "string"
+                },
+                "most": {
+                  "description": "The most `entrant`'s share may be over `than`'s, in percentage\npoints.",
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0
+                },
+                "success": {
+                  "description": "What a success is, for both.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/Condition"
+                  }
+                },
+                "than": {
+                  "description": "The entrant compared with.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "entrant",
+                "than",
+                "success",
+                "most"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Gap"
+          ]
         }
       ]
     },
@@ -239,7 +281,7 @@
       ]
     },
     "Found": {
-      "description": "What a check found.",
+      "description": "What a check found. More kinds may come (ADR-0039).",
       "oneOf": [
         {
           "description": "A [`Check::Rate`]'s numbers.",
@@ -257,6 +299,28 @@
                   "type": "integer",
                   "format": "uint32",
                   "minimum": 0
+                },
+                "interval": {
+                  "description": "Its 95% interval in whole percents ([`Band::interval`]); `None`\nfor 0 tries, and in a report kept before it was measured.",
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "default": null,
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "type": "integer",
+                      "format": "uint32",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "integer",
+                      "format": "uint32",
+                      "minimum": 0
+                    }
+                  ]
                 },
                 "successes": {
                   "description": "The tries that succeeded.",
@@ -319,6 +383,71 @@
           "required": [
             "Median"
           ]
+        },
+        {
+          "description": "A [`Check::Gap`]'s numbers.",
+          "type": "object",
+          "properties": {
+            "Gap": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "description": "The entrant's tries.",
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0
+                },
+                "successes": {
+                  "description": "The entrant's tries that succeeded.",
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0
+                },
+                "than_count": {
+                  "description": "The other entrant's tries.",
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0
+                },
+                "than_successes": {
+                  "description": "The other entrant's tries that succeeded.",
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0
+                },
+                "verdict": {
+                  "description": "How the gap compares with its most.",
+                  "$ref": "#/$defs/GapVerdict"
+                }
+              },
+              "required": [
+                "successes",
+                "count",
+                "than_successes",
+                "than_count",
+                "verdict"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Gap"
+          ]
+        }
+      ]
+    },
+    "GapVerdict": {
+      "description": "How a gap between two entrants' shares compares with its most\n([`Check::Gap`]).",
+      "oneOf": [
+        {
+          "description": "At most the most (✓).",
+          "type": "string",
+          "const": "Within"
+        },
+        {
+          "description": "Over it (✗).",
+          "type": "string",
+          "const": "Over"
         }
       ]
     },
@@ -538,10 +667,10 @@
       ]
     },
     "RateVerdict": {
-      "description": "Where a share of tries falls against a [`Band`].",
+      "description": "Where a share of tries falls against a [`Band`], judged with its 95%\ninterval ([`Band::interval`]). More verdicts may come (ADR-0039).",
       "oneOf": [
         {
-          "description": "Under the band: too hard (✗).",
+          "description": "The whole interval is under the band: too hard (✗).",
           "type": "string",
           "const": "Below"
         },
@@ -551,9 +680,19 @@
           "const": "Within"
         },
         {
-          "description": "Over the band: too easy (⚠).",
+          "description": "The whole interval is over the band: too easy (⚠).",
           "type": "string",
           "const": "Above"
+        },
+        {
+          "description": "Under the band, but its interval reaches it: maybe too hard (~).",
+          "type": "string",
+          "const": "MaybeBelow"
+        },
+        {
+          "description": "Over the band, but its interval reaches it: maybe too easy (~).",
+          "type": "string",
+          "const": "MaybeAbove"
         }
       ]
     },

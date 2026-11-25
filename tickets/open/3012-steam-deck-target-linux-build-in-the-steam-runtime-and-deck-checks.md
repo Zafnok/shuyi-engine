@@ -80,6 +80,10 @@ None. Running it on a real Deck is 3013.
     `PadKind::SteamDeck`, so the help text names the Deck's buttons
     through `HelpKeys` (the `input-actions` skill);
   - the Steam and Quick Access buttons are never read;
+  - **either order with 2402 (parked):** if 2402 is done, pads come
+    through SDL3 (ADR-0147), so the Deck is told apart by the ids SDL
+    reports for it, as 2414 records; if not, by gilrs's, and 2402
+    carries the detection over when it lands;
   - the context starts with `ctx.device` on
     `Device::Pad(PadKind::SteamDeck)` in the Deck's build, not on the
     keyboard it doesn't have, so the first screen's help names the

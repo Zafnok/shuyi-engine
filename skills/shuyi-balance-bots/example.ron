@@ -74,8 +74,9 @@ Example(
             Is("/result/0/report/checks/0/check/Rate/entrant", "rollout"),
         ]),
         Holds(file: "playtest.json", text: "\"op\": \"playtest\""),
-        // A band the bot misses is a verdict (too hard); only a rate under
-        // its floor fails the run.
+        // A band the bot misses is a verdict: too hard, since the whole of
+        // its 95% interval, 1–23% for 1 win in 20, is under the band. Only
+        // a rate under its floor fails the run.
         Edit(
             file: "crates/game/playtest.ron",
             find: "        band: (min: 0, max: 20),",
@@ -83,6 +84,8 @@ Example(
         ),
         Shuyi(args: ["playtest", "--entrant", "random", "--tries", "20"], ok: false, expect: [
             Is("/result/0/report/checks/0/found/Rate/verdict", "Below"),
+            Is("/result/0/report/checks/0/found/Rate/interval/0", "1"),
+            Is("/result/0/report/checks/0/found/Rate/interval/1", "23"),
             Is("/result/0/report/blocked", "true"),
         ]),
         Edit(
