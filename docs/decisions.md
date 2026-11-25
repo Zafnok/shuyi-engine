@@ -2290,3 +2290,20 @@ terminal), on the id question, then on a skipped question's line:
   takes its default unseen.
 - **`shuyi new <dir> --questions` is the view that shows them all**,
   each skipped one with why, so their wording can still be checked.
+
+## 2026-11-25: the publish list (3510) joins the MVP
+
+Nick asked what was left before the first release. Claude found four
+open tickets on 2005's list, and that the release also depends on 3510
+(the publish list from the workspace, exact pins between the engine's
+crates, and a runbook for a publish that stops part way), which was
+After MVP and not on the list. Asked "Should 3510 join the MVP, ahead
+of the release?", Nick:
+
+> "Yes, add it"
+
+**Rules:**
+
+- **3510 is an MVP ticket,** and 2005 waits for it.
+- **This answers 3528's question 6 for 3510 only.** 3511, 3512 and the
+  question's other picks are still Nick's to make there.
