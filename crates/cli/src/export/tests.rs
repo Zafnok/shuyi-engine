@@ -568,11 +568,12 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 }
 
 /// What a web build of [`web_build`]'s game makes.
-const WEB_FILES: [&str; 12] = [
+const WEB_FILES: [&str; 13] = [
     "NOTICES.txt",
     "gamepad.js",
     "hello-grid.wasm",
     "index.html",
+    "languages.js",
     "mq_js_bundle.js",
     "music/a.ogg",
     "pack-file.js",

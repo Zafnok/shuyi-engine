@@ -5,6 +5,7 @@ gamepad.js
 hello-grid.pack
 hello-grid.wasm
 index.html
+languages.js
 mq_js_bundle.js
 pack-file.js
 page-files.js
