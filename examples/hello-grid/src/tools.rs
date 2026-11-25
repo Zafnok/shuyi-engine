@@ -218,7 +218,8 @@ impl GameTools for HelloTools {
         &OPTIONS
     }
 
-    /// The blips, made by code, on every target that bakes its audio.
+    /// The sound effects of `files/sfx/`, on every target that bakes its
+    /// audio.
     fn audio(&self, _target: &str) -> Result<GameAudio, String> {
         Ok(GameAudio::new(
             crate::sound::manifest(),

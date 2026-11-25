@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "type": "string",
+      "const": "sfx"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SfxOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "Problem": {
+      "description": "A problem in a file: what a validator found, with where.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "Its problem code (`SH2001`), if its class has one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "column": {
+          "description": "Its 1-based column, if known.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The file, as the game shows it (`files/stage.map`).",
+          "type": "string"
+        },
+        "help": {
+          "description": "How to fix it, with the code.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "description": "Its 1-based line, if known.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "message": {
+          "description": "What is wrong.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "message"
+      ]
+    },
+    "SfxOutput": {
+      "description": "What `sfx` answers.",
+      "type": "object",
+      "properties": {
+        "length_ms": {
+          "description": "How long it plays, in milliseconds; 0 with problems.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "peak": {
+          "description": "Its loudest sample, 0 to 32 767; 0 with problems.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "presets": {
+          "description": "Every preset's name.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "problems": {
+          "description": "Every problem with a file's numbers, each with its line: none\npasses. Nothing is written when there is one.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Problem"
+          }
+        },
+        "samples": {
+          "description": "How many samples it renders to, mono at 44 100 a second; 0 with\nproblems.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "text": {
+          "description": "The sound's text, as `out` writes it: a preset's with a line naming\nit, a file's in the form the engine writes. A file with problems\ngives its own text.",
+          "type": "string"
+        },
+        "written": {
+          "description": "The files written (`out`, then `wav`), as given.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "presets",
+        "text",
+        "length_ms",
+        "samples",
+        "peak",
+        "problems",
+        "written"
+      ]
+    }
+  }
+}

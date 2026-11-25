@@ -214,10 +214,10 @@ None.
   Its messages are for the game's developer, not the player: mark them
   `// check-text: not player text`, as the engine's other checks do.
 - **hello-grid** (`examples/hello-grid/`):
-  - one gameplay cue, `foe_step`, added to `sound::manifest()`: if
-    Hello, Grid's sounds are already `.sfx.ron` files (2277), a new
-    `files/sfx/foe_step.sfx.ron` made with `shuyi sfx` from a preset;
-    if not, a new blip in `BLIPS` (`src/sound.rs`). It plays when the
+  - one gameplay cue, `foe_step`, added to `sound::manifest()` (and
+    `sound::SOUNDS`): a new `files/sfx/foe_step.sfx.ron` made with
+    `shuyi sfx` from a preset, as Hello, Grid's sounds are `.sfx.ron`
+    files (2277, done). It plays when the
     foe steps (`foe_moves`, `src/screens/stage.rs:214`; it and
     `walked`, which calls it, then take the `ctx`). It is captioned
     `cc.foe_step` ("[Footsteps]") in `files/en.ron`. Its menu sounds

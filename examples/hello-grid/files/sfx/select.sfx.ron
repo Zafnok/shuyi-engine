@@ -1,0 +1,8 @@
+// A choice made: a higher blip.
+(
+    wave: Sine,
+    hz: 880,
+    hold_ms: 20,
+    fade_ms: 60,
+    volume: 37,
+)

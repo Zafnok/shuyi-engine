@@ -1,0 +1,8 @@
+// The cursor's tick: the highest and shortest.
+(
+    wave: Sine,
+    hz: 990,
+    hold_ms: 5,
+    fade_ms: 25,
+    volume: 37,
+)

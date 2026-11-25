@@ -94,7 +94,8 @@ fn bake_writes_the_games_pack() {
     let answer = bake(&HelloTools, &project, &BakeInput::default());
     assert!(answer.ok, "{answer:?}");
     let made = answer.result.unwrap().pack.unwrap();
-    assert_eq!(made.files, 11);
+    // The four sound effects are kept as their own bytes, not baked.
+    assert_eq!(made.files, 15);
     assert_eq!(made.baked, 6);
     let bytes = fs::read(dir.join(&made.file)).unwrap();
     assert!(Hello::from_pack(bytes.leak()).is_ok());

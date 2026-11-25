@@ -268,6 +268,12 @@ fn the_one_off_operations_answer_as_the_cli_does() {
         (Op::Import, json!({ "file": "a.ron" }), false),
         (Op::Explain, json!({ "code": "SH0002" }), true),
         (Op::Doctor, json!({}), true),
+        (
+            Op::Sfx,
+            json!({ "source": "coin", "out": "c.sfx.ron" }),
+            true,
+        ),
+        (Op::Sfx, json!({ "source": "nope" }), false),
     ] {
         let answer = ask(&mut host, op, input);
         assert_eq!(answer["op"], op.name(), "{answer}");
@@ -275,6 +281,8 @@ fn the_one_off_operations_answer_as_the_cli_does() {
             assert_eq!(answer["ok"], true, "{op:?}: {answer}");
         }
     }
+    // `sfx` wrote its file in the session's folder, with no game.
+    assert!(dir.join("c.sfx.ron").is_file());
     let answer = ask(&mut host, Op::Playtest, json!({ "tries": 0 }));
     assert_eq!(
         (answer["ok"].as_bool(), answer["code"].as_str()),
