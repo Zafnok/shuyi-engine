@@ -176,9 +176,7 @@ fn questions_now(
         .clone()
         .unwrap_or_else(|| folder_name(cwd, input));
     let id = input.id.clone().unwrap_or_else(|| {
-        crate_name(&name)
-            .map(|krate| default_id(&krate))
-            .unwrap_or_default()
+        crate_name(&name).map_or_else(|_| String::new(), |krate| default_id(&krate))
     });
     let named = Named {
         dir: input.dir.clone(),
@@ -292,8 +290,7 @@ impl Lists {
             last: list
                 .choices
                 .last()
-                .map(|(_, t)| t.clone())
-                .unwrap_or_default(),
+                .map_or_else(String::new, |(_, t)| t.clone()),
             footer,
         }
     }

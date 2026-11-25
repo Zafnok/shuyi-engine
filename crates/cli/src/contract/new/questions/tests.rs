@@ -369,7 +369,7 @@ impl Scratch {
         let mut script = script;
         let prompter = script.as_mut().map(|s| s as &mut dyn Prompter);
         let made = new_with(&self.dir, input, &flags, false, prompter, fake);
-        (made, script.map(|s| s.shown).unwrap_or_default())
+        (made, script.map_or_else(Vec::new, |s| s.shown))
     }
 
     fn shuyi_ron(&self) -> String {

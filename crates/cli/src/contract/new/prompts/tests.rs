@@ -172,8 +172,8 @@ fn a_skipped_question_prints_its_answer_and_why() {
 
 #[test]
 fn the_terminals_lists_show_the_coming_answers_and_the_help_under_the_last_choice() {
-    let list = list(&rules());
-    let theme = Lists::new(&list, ONE_HELP);
+    let shown = list(&rules());
+    let theme = Lists::new(&shown, ONE_HELP);
     let mut last = String::new();
     theme
         .format_select_prompt_item(&mut last, "none: rules in Rust", false)
