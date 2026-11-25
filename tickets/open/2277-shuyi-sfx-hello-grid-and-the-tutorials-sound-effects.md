@@ -101,7 +101,10 @@ None.
   them: what a `.sfx.ron` is, `cargo shuyi sfx coin --out …`, `--wav`
   to listen, and which fields to change. `site/tutorial/tries.toml`'s
   pictures don't change (sound isn't drawn). The steps' `Cargo.lock`
-  files follow.
+  files follow. **Either order with 2850:** if 2850 is done, steps
+  08–10 already have the four menu sounds: add only the push and win
+  sounds; if not, add the menu sounds to 08–10 as above (2850 brings
+  the other steps up to them).
 - **The `shuyi-new-game` skill** (from 1134): a short section on sound
   effects: a cue of `files/audio.ron` names a `.sfx.ron` file, `cargo
   shuyi sfx <preset> --out <file>` writes one, `--wav` renders it to
