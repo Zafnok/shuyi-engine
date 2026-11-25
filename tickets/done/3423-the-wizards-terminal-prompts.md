@@ -181,7 +181,9 @@ What was done:
 - Docs: `docs/templates.md` (what a terminal asks, the GitHub questions
   in the list and their `agent` field), the `shuyi-new-game` skill, the
   book's quick start and box-pusher chapter 1, and `new`'s usage. 2848's
-  clause about 3423 and 2739's mention are rewritten as what now holds.
+  clause about 3423 and 2739's mention are rewritten as what now holds,
+  and 3426 (MCP's `new` lists the questions) gets a note on the GitHub
+  questions it will list.
 
 Deviations:
 
@@ -200,7 +202,7 @@ Deviations:
   (`Which perspectives?` with the grid ticked and the parked answers
   greyed under it); answering it all is Nick's sign-off.
 
-Size: 2,107 counted lines, the terminal prompts replace the line prompts
+Size: 2,241 counted lines, the terminal prompts replace the line prompts
 in one place: 420 of the lines are the old prompts and their tests
 removed, and landing the lists without moving the examples and GitHub
 questions would ask the examples twice and mix two prompt styles in one

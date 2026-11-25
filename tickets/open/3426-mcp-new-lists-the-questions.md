@@ -31,6 +31,14 @@ the CLI's alone:
   (`crates/cli/src/mcp/host.rs`, about line 134) and never reaches
   `questions::listed`.
 
+**From 3423 (done):** `questions::listed(cwd, input, &Flags)` lists the
+wizard's questions (`wizard::listed`) then the six GitHub questions
+(`questions::github_questions`), at the answers the repository flags
+give; `github`'s `Question::agent` says an agent never answers yes
+itself. Through MCP, which makes no repository, pass `Flags::default()`:
+the GitHub questions are listed with `github` at `no` and the rest
+skipped, and `contract::VERSION` is 60 after it.
+
 `docs/contract.md`'s `new` row (about line 16) presents `--questions` as
 part of the operation and doesn't say MCP lacks it. Everything else the
 wizard takes does reach MCP (its flags through `set`, `answers`, `engine`,
