@@ -17,7 +17,7 @@
 //! files.
 
 mod compose;
-mod ron_merge;
+pub(crate) mod ron_merge;
 
 use std::collections::BTreeMap;
 use std::fmt;

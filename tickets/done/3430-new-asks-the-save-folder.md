@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: sign-off
-completed:
+completed: 2026-11-25
 ---
 
 # 3430 — shuyi new asks the save folder's name after the id
@@ -113,21 +113,21 @@ its wording is clear.
 
 ## Acceptance criteria
 
-- [ ] In a terminal, after the id, `shuyi new demo` asks the save
+- [x] In a terminal, after the id, `shuyi new demo` asks the save
       folder's name with the id prefilled; Enter keeps it and the game
       is as without the question, byte for byte.
-- [ ] `--storage "Demo Saves"` makes a game whose `shuyi.ron` has
+- [x] `--storage "Demo Saves"` makes a game whose `shuyi.ron` has
       `storage: "Demo Saves"` and whose `cargo shuyi app-info --check`
       passes; the printed command makes the same bytes in another
       folder.
-- [ ] `--storage ".bad"` is refused with `check_storage`'s reason, and
+- [x] `--storage ".bad"` is refused with `check_storage`'s reason, and
       in a terminal such an answer is asked again.
-- [ ] `--questions --json` lists `storage` right after `id`, and
+- [x] `--questions --json` lists `storage` right after `id`, and
       matches its schema.
-- [ ] Nick's sign-off is recorded in the Completion notes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Nick's sign-off is recorded in the Completion notes.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -140,5 +140,76 @@ its wording is clear.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `NewInput::storage` (`#[serde(default)]`, additive: `NewInput` is
+  `#[non_exhaustive]`), `--storage <name>` in `parse_args` and `usage`,
+  and among `questions.rs`' `TAKES_A_VALUE`.
+- `wizard::STORAGE`, a text question of the engine's right after `id`:
+  "Which folder are the game's saves kept in, on the player's computer?
+  The id is the default, since it is nearly sure to be unique.", flag
+  `--storage`, its default
+  the id so far. `Named` gains `storage` and `Named::new`, which defaults
+  it to the id.
+- `prompts::ask` asks it through `Prompter::text`, checked by
+  `app_info::check_storage`, the id just answered typed in; it sets
+  `input.storage` only when the answer isn't the id.
+- `plan_with` checks `--storage` (refused as `--storage: <check_storage's
+  reason>`, `SH0001`); a storage equal to the id is none. Otherwise
+  `with_storage` merges `app: (storage: "<name>")`, with a comment, into
+  the planned `shuyi.ron` (`ron_merge`, now `pub(crate)`), parses the
+  merged `app` and writes `app_info.rs` as `app_info::rust` writes it, so
+  `app-info --check` passes on the new game.
+- `wizard::command` prints `--storage <name>` after `--id`, when given
+  and not the id.
+- `new.input.json` and `new.questions.json` regenerated;
+  `contract::VERSION` 60 to 61, `versions.json`, `docs/contract.md`.
+- Docs: `docs/templates.md` (the engine's questions, the command, the
+  terminal's text prompts), the `shuyi-new-game` skill (the saves'
+  folder follows the id), and the book's quick start (what a terminal
+  asks, `--storage`, where the settings are kept).
+- Tests: the question's place, default and flag (`wizard::tests`); the
+  default is the id typed before it, Enter sets no `--storage`, `.bad`
+  is asked again, a given `--storage` isn't asked (`prompts::tests`,
+  through the scripted `Prompter`); the command with and without it;
+  a game made with `--storage "Demo Saves"` against the game its printed
+  command makes, `app-info --check` on it, a storage equal to the id
+  making the same bytes as none, `.bad` refused (`new::tests`); the
+  questions JSON lists `storage` after `id`, against its schema
+  (`tests/it/binary.rs`).
+
+Deviations:
+
+- The question's words: the Scope's example said "The id is a good
+  name: it is unique." Nick, at the sign-off, didn't want it to call
+  the id a good name (it isn't friendly to a player), only to say it is
+  the default because it is nearly sure to be unique; the question reads
+  so.
+- `wizard::questions` passed clippy's 100-line limit with the new
+  question: the four text questions moved into `named_questions`.
+
+The ticket was written today, so its names were current.
+
+Handoff: 3426 (MCP's `new` lists the questions) gains a **From 3430
+(done)** line: `NewInput::storage` reaches MCP as `id` does, and
+`contract::VERSION` is 61 after this.
+
+Game: nothing to adopt, the game calls no `NewInput` and makes no game
+with `shuyi new` (searched `gh search code --repo Zafnok/visions-of-shuyi
+'NewInput'`: only `docs/engine/pins.md` saying so).
+
+Behaviour: shuyi-cli: `shuyi new` in a terminal asks one more question,
+the saves' folder, after the id; `--questions --json` lists `storage`
+after `id`; `NewInput` takes `storage`; contract version 61.
+
+Book: the quick start names the new question and `--storage`
+(`site/content/learn/book/quick-start.md`).
+
+Guides: none, the change adds no direction, module or move.
+
+Nick's sign-off (2026-11-25): shown the question after the id, with the
+id typed in. He asked that it not suggest the id is a good name, since an
+id isn't friendly to a player: only that the id is prefilled as the
+default, because it is nearly sure to be unique. The wording was changed
+to that ("The id is the default, since it is nearly sure to be unique.");
+`docs/decisions.md` records it under the 2026-11-25 entry.

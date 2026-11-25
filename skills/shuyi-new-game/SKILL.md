@@ -69,7 +69,9 @@ game one part at a time.
    ```
 
    Ask the perspectives first (`perspective`), then list again with
-   `--perspective <ids>`: they change what else is asked. Ask each
+   `--perspective <ids>`: they change what else is asked. The saves'
+   folder (`storage`) follows the id: offer the id the developer gave as
+   its default, and pass `--storage` only for another name. Ask each
    question whose `skipped` is null, in order, offering its `ready`
    answers; show a `planned` or `parked` answer as coming, with its
    `tickets`, and never pick it. Then make the game with the answers as

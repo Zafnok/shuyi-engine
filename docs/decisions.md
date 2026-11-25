@@ -2211,7 +2211,16 @@ terminal), on the id question, then on a skipped question's line:
   > saves under and pre-filled with the id used from prev answer. Then
   > they can overwrite that."
 - **The save folder is a question of its own, right after the id**,
-  prefilled with the id the developer just gave (ticket 3430).
+  prefilled with the id the developer just gave (ticket 3430). At 3430's
+  sign-off, the same day, it doesn't call the id a good name:
+  > "id rather it not suggest the id is a good name. Just prefill with
+  > id and mention its the default bc its nearly guaranteed to be
+  > unique. But its not player friendly so I wouldnt say its "a good
+  > name""
+
+  It reads: "Which folder are the game's saves kept in, on the player's
+  computer? The id is the default, since it is nearly sure to be
+  unique."
 - **A question with nothing to pick is not shown** in a terminal: it
   takes its default unseen.
 - **`shuyi new <dir> --questions` is the view that shows them all**,

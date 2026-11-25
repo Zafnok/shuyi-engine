@@ -676,7 +676,7 @@ impl Merge<'_> {
 
 /// `other` merged into `base` (see the module's doc); or where they differ
 /// (a path such as `check_keys.rust`, or `""`) and how.
-pub(super) fn merge(base: &str, other: &str) -> Result<String, (String, String)> {
+pub(crate) fn merge(base: &str, other: &str) -> Result<String, (String, String)> {
     let base_node = parse(base).map_err(|e| (String::new(), format!("not RON: {e}")))?;
     let other_node = parse(other).map_err(|e| (String::new(), format!("not RON: {e}")))?;
     let mut merge = Merge {
