@@ -845,13 +845,9 @@ impl<G: GameData> OptionsScreen<G> {
                 }
             }
             RowValue::Names { values, get, .. } => {
-                let mut values = values(ctx);
-                let i = get(ctx);
-                let name = if i < values.len() {
-                    Some(values.swap_remove(i))
-                } else {
-                    values.into_iter().next()
-                };
+                let values = values(ctx);
+                // A name it says it has no such value of: its first.
+                let name = values.get(get(ctx)).or(values.first()).cloned();
                 name.map_or(ValueView::None, words)
             }
             RowValue::Volume { get, .. } => ValueView::Volume {

@@ -1119,6 +1119,16 @@ fn the_row_values_constructors_give_the_variants() {
         RowValue::<Toy>::names(names, which, set_which),
         RowValue::Names { values, .. } if values(&ctx) == ["Français"]
     ));
+    // A names row says what it holds: the first name for an index past its
+    // end, and nothing with no names.
+    let past = OptionRow::<Toy>::new("toy.speed", RowValue::names(names, |_| 1, set_which));
+    let first = OptionsScreen::value(&ctx, &past);
+    assert_eq!(first.text(), Some("Français"));
+    let none = OptionRow::<Toy>::new(
+        "toy.speed",
+        RowValue::names(|_| Vec::new(), which, set_which),
+    );
+    assert_eq!(OptionsScreen::value(&ctx, &none), ValueView::None);
     assert!(matches!(
         RowValue::<Toy>::volume(volume, set_volume),
         RowValue::Volume { get, .. } if get(&ctx) == 40
