@@ -75,7 +75,7 @@ buttons for the Playdate (the d-pad, A and B) and one for the Deck, and
 `files/palette@onebit.ron` keeps the snake apart from the food and the
 floor from the walls in black and white. It doesn't build for the
 Playdate yet: the short path has no one-bit look and reads no pack there
-(ticket 3352).
+(ticket 3353).
 
 ## Art and licenses
 

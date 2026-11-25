@@ -1,5 +1,5 @@
 ---
-id: "3352"
+id: "3353"
 title: "A game on the short path runs on the Playdate: BasicGame's one-bit look and its pack from the .pdx, and Snake's Playdate build"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3352 — A short-path game on the Playdate, and Snake's build
+# 3353 — A short-path game on the Playdate, and Snake's build
 
 ## Context
 

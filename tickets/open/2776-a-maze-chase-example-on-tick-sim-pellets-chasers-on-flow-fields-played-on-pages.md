@@ -111,7 +111,7 @@ None. When it unparks is his call (above).
   example with a `web` section (2739), so the example plays beside snake
   on Pages with no workflow change: it needs its card,
   `site/content/examples/maze-chase.md`. **From 2739 (done):** CI's
-  `export` job exports Hello, Grid alone; 3533 adds snake and makes its
+  `export` job exports Hello, Grid alone; 3536 adds snake and makes its
   checks take any game, after which this example can join it.
 
 **Out (do not do):**

@@ -1,5 +1,5 @@
 ---
-id: "3533"
+id: "3536"
 title: "Snake in CI's export job: its packed build, and the export check's file lists by program"
 type: infra
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3533 — Snake in CI's export job
+# 3536 — Snake in CI's export job
 
 ## Context
 
@@ -59,7 +59,7 @@ None.
   Say in the PR how many legs that adds per pull request.
 
 **Out (do not do):**
-- The Playdate export, which never runs in CI (3010; 3352 builds snake's).
+- The Playdate export, which never runs in CI (3010; 3353 builds snake's).
 - Any change to what a package holds.
 
 ## Implementation steps

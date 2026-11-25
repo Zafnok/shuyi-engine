@@ -22,7 +22,7 @@
     ],
     reference: Project("examples/snake"),
     unmeasured: [
-        ("a Playdate build", ["3352"]),
+        ("a Playdate build", ["3353"]),
         ("an agent's own time against the hour", ["2525"]),
     ],
 )

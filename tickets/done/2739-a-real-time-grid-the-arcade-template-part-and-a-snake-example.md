@@ -488,7 +488,7 @@ What was done:
 - **The eval:** `evals/tasks/snake.ron`'s reference is
   `Project("examples/snake")`, its `waits_for` gone, `playdate` among its
   targets (the prompt says so), and its Playdate build `unmeasured` on
-  3352. `crates/xtask/src/eval/tests.rs` lists it as graded.
+  3353. `crates/xtask/src/eval/tests.rs` lists it as graded.
 - **The engine's README** claims a grid in real time, linking the
   example and ADR-0148; the top-down grid guide's planned section points
   at it.
@@ -519,10 +519,10 @@ Deviations:
    reads no pack without `std`. Snake lists `playdate`, has its buttons
    and its `palette@onebit.ron`, and passes `check --target playdate`,
    but `shuyi export playdate` can't build it, so the Simulator wasn't
-   tried. 3352 builds it.
+   tried. 3353 builds it.
 6. **Not in CI's `export` job**: its check wants a packed build, a
    `disclosure` part, and file lists that name Hello, Grid's program and
-   its extras. 3533 adds snake to the job.
+   its extras. 3536 adds snake to the job.
 7. **The eval grades snake inside the engine's workspace**, so its
    `Gates` run the whole workspace's `fmt`, `clippy` and `test`, with the
    eval's shared `CARGO_TARGET_DIR`. One engine test assumed none
@@ -536,8 +536,8 @@ Deviations:
 
 Follow-up tickets: 2787 (the arcade template part, its question, CI
 entry, guide section and skill), 3245 (a short-path game's background
-and system hook), 3352 (a short-path game on the Playdate, and snake's
-build), 3533 (snake in CI's export job).
+and system hook), 3353 (a short-path game on the Playdate, and snake's
+build), 3536 (snake in CI's export job).
 
 What changes for the game: nothing. `ticks` and `input_in_words` are
 new, `turns` keeps its signature, and the CI artifact `hello-grid-web`
@@ -550,4 +550,4 @@ No break.
 
 Book: none, `replay::ticks` is for a game's tools, and the book's project is a turn game.
 
-Size: 3,219 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3352 and 3533.
+Size: 3,219 counted lines, the example is one game whose rules, screens, tools and the tests this ticket requires land together: an example that doesn't play passes no CI and claims no style (ADR-0003 §1). Everything that could wait went to 2787, 3245, 3353 and 3536.
