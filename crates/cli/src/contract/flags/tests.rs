@@ -16,13 +16,17 @@ fn input_fields(op: Op) -> BTreeSet<String> {
     schema
         .get("properties")
         .and_then(Value::as_object)
-        .map(|properties| properties.keys().cloned().collect())
-        .unwrap_or_default()
+        .map_or_else(BTreeSet::new, |properties| {
+            properties.keys().cloned().collect()
+        })
 }
 
+/// An op's parser, which answers an error or nothing.
+type Parse = fn(&[String]) -> Result<(), String>;
+
 /// What an op's parser needs before its flags (its positional arguments),
-/// and the parser, which answers an error or nothing.
-fn parser(op: Op) -> (&'static [&'static str], fn(&[String]) -> Result<(), String>) {
+/// and the parser.
+fn parser(op: Op) -> (&'static [&'static str], Parse) {
     fn none(args: &[String]) -> Result<(), String> {
         if args.is_empty() {
             Ok(())
@@ -178,5 +182,5 @@ fn flags_are_read_from_a_text_once_each_and_never_from_inside_a_word() {
         flags_in("usage: x [--a-b N] [--c | --a-b]\n  --d2 x--e --- -- --F (--g)"),
         ["--a-b", "--c", "--d2", "--g"]
     );
-    assert!(flags_in("").is_empty());
+    assert_eq!(flags_in(""), Vec::<String>::new());
 }
