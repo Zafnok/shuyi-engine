@@ -1,0 +1,11 @@
+// The level won: a rising note (the engine's preset `power_up`, made with
+// `cargo shuyi sfx power_up`).
+(
+    wave: Square(duty: 50),
+    hz: 330,
+    to_hz: 990,
+    hold_ms: 400,
+    fade_ms: 150,
+    volume: 35,
+    vibrato: (hz: 14, percent: 5),
+)
