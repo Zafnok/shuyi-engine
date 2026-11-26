@@ -41,11 +41,11 @@ schema = ["dep:schemars"]
 [dependencies]
 # The step rate, which `tick` re-exports; the frame's hash and the build's
 # stamp in a session record.
-shuyi-core = { path = "../core", default-features = false }
+shuyi-core = { workspace = true }
 # The font atlas, the image table and the voice clips' file names.
-shuyi-assets = { path = "../assets", default-features = false }
+shuyi-assets = { workspace = true }
 # The game's frame loop (`Game`), its context and storage.
-shuyi-ui = { path = "../ui", default-features = false }
+shuyi-ui = { workspace = true }
 # A session record's file and what the frame's hash reads; the live link's
 # requests and answers (the `link` feature) and a plan's file (the `capture`
 # feature) use them too.
@@ -55,7 +55,7 @@ ron.workspace = true
 serde_json = { version = "1", optional = true }
 # The heap counter's counts and rows (the `heap` feature), never its
 # global static.
-shuyi-alloc-count = { path = "../alloc-count", default-features = false, optional = true }
+shuyi-alloc-count = { workspace = true, optional = true }
 # The JSON schemas of a script's steps (the `schema` feature).
 schemars = { version = "1", optional = true, default-features = false, features = ["derive"] }
 

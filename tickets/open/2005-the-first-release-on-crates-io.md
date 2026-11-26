@@ -171,8 +171,8 @@ The sign-off also:
     `migration` block under it in the ticket's completion notes (2804),
     the version raised at release time from the `Breaking:` lines since
     the last tag (2028), never in the PR (3510 changed `work-ticket`
-    §3), and a pin bump in the game. It cites 3510's publishing ADR
-    (exact `=` pins between the crates, the publish list from the
+    §3), and a pin bump in the game. It cites 3510's publishing ADR,
+    ADR-0152 (exact `=` pins between the crates, the publish list from the
     workspace) and doesn't restate it. It cites ADR-0038 (2010) for how a break is
     found (CI's `api` job: cargo-semver-checks against each PR's base) and
     recorded (a `Breaking:` line in the ticket's completion notes)
@@ -315,7 +315,7 @@ The sign-off also:
   `shuyi-embed`, `shuyi-embed-macros`, `shuyi-script`, `shuyi-sound`
   and `shuyi-sound-out` among them) in dependency order; every other
   member is `publish = false` (3510). A run that stops part way follows
-  3510's runbook. No crates.io token is stored anywhere (2011's ADR). The publish job runs
+  3510's runbook, [`docs/releasing.md`](../../docs/releasing.md). No crates.io token is stored anywhere (2011's ADR). The publish job runs
   in a `release` environment with `permissions: id-token: write`. It
   gets a short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
@@ -330,6 +330,27 @@ The sign-off also:
   crates and a trusted-publisher click; if not, nothing to do (3517
   gives `shuyi-contract` its crates.io metadata and its place in the
   publish order).
+- **From 3510 (done)** (ADR-0152), what the release workflow meets:
+  - **`shuyi-app`'s package can't resolve with its lockfile.** Its
+    package carries quad-snd and, behind `in-house-sound`, CPAL, and
+    both say `links = "alsa"`. The root's `[patch.crates-io]` of
+    `alsa-sys` (ADR-0075) doesn't reach a package's resolve, so
+    `cargo package` of `shuyi-app`, `shuyi` or `shuyi-cli` fails unless
+    it has `--exclude-lockfile`. `cargo publish` verifies each package
+    with a build, which resolves every optional dependency, so it fails
+    the same way. Settle it here before the publish: for example, give
+    the published `shuyi-app` no `in-house-sound` until 3084 or 3079
+    removes the conflict, or publish with `--no-verify` once CI's
+    `cargo package` (with verification) has built the packages. Record
+    the choice in the version ADR.
+  - **The workspace's `publish` turns on here.** Cargo checks a package
+    against the others of the same run only when they may be published,
+    so CI's `layers` job turns the workspace's `publish` on in its own checkout
+    (`sed`, then `--allow-dirty`) before `cargo package`. Once this
+    ticket sets `publish = true`, drop the `sed` and `--allow-dirty`
+    from that step.
+  - **`cargo publish --workspace` skips no live version:** it refuses
+    the whole run first. The runbook resumes with `--exclude`.
 - **`SECURITY.md`** at the root, short: *Supported versions* (the latest
   0.x release only, no backports or LTS); how to report (the Security
   tab's "Report a vulnerability", never a public issue); and the

@@ -42,8 +42,10 @@ completed:
   - the crate names held on crates.io (decisions of 2026-10-21,
     2026-10-22 and 2026-11-24) don't include `shuyi-net` or
     `shuyi-server`; the rule is that a name is held when its crate is
-    real. 3510 (open) plans `cargo xtask check-publish --index` in CI's
-    `layers` job, which fails a crate whose name isn't on crates.io.
+    real. `cargo xtask check-publish --index` (3510, done) runs in CI's
+    `layers` job and fails a crate whose name isn't on crates.io, so
+    `shuyi-net`'s name is held before this PR merges (Nick's, with the
+    `ask-nick` skill).
 - `grep -rnw` over `tickets/open` for the names this ticket builds:
   `Transport` and `MemoryNetwork` are planned by 1140 (moved here) and
   used by 1141, 1144, 1146, 1147, 2123, 2529, 2550, 2601, 2605, 2606,
@@ -224,8 +226,9 @@ ADR 150).
 
 1. Add `crates/net` to the workspace (`crates/*` already covers it),
    with `Cargo.toml` (`version.workspace = true`, the metadata, a
-   dependency on `shuyi-core` from `[workspace.dependencies]` if 3510
-   has made that the rule), `src/lib.rs` with the float deny, and the
+   dependency on `shuyi-core` from `[workspace.dependencies]`, as
+   `cargo xtask check-publish` holds since 3510, and an `API_CRATES`
+   entry), `src/lib.rs` with the float deny, and the
    `README.md`.
 2. Add the `layers.ron` entry and the front door's edge and `net`
    feature. Run `cargo xtask check-layers` and `check-modules`.

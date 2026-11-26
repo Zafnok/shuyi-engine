@@ -162,5 +162,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0148](0148-a-grid-stage-may-run-in-real-time.md) | A grid stage may run in real time: tick rules on the grid kit, moves timed with `Every`, and `replay::ticks` | Accepted; supersedes two sentences of ADR-0013 §1, extends ADR-0003 §2 and ADR-0009 §2 |
 | [0149](0149-the-docs-maps-rows-as-checked-rules-with-a-waiver-line.md) | The docs map's rows as checked rules, with a waiver line | Accepted; extends ADR-0038's `api` job |
 | [0150](0150-the-contracts-version-rises-only-on-a-break.md) | The contract's version rises only on a break, and every other schema change is a fingerprint under it | Accepted; amends ADR-0022 §5 |
+| [0152](0152-publishing-the-engine-crates-the-workspaces-list-exact-pins.md) | Publishing the engine crates: the workspace is the list, the pins are exact, and the version moves only at release time | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).
