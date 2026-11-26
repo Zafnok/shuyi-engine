@@ -1,8 +1,8 @@
 //! A sample game's actions and keymap file, for the tests of the keymap
 //! format and of the input mechanism built on it (ticket 1107): a tactics
 //! game with four cursor moves, Confirm and Cancel, a few map actions, a
-//! developer's Debug, DebugPause and DebugStep keys no player can rebind, two optional actions and a
-//! dialogue log in a [`KeyGroup`] of its own. Its keymap file
+//! developer's `Debug`, `DebugPause` and `DebugStep` keys no player can
+//! rebind, two optional actions and a dialogue log in a [`KeyGroup`] of its own. Its keymap file
 //! ([`keymap`]) has two layouts, [`RIGHT_HANDED`] and [`LEFT_HANDED`].
 //!
 //! Built for this crate's tests and, with the `sample-actions` feature, for
@@ -196,7 +196,7 @@ impl Action {
     }
 
     /// Whether the player can rebind this action. Only the developer's
-    /// keys can't: Debug, DebugPause and DebugStep.
+    /// keys can't: `Debug`, `DebugPause` and `DebugStep`.
     pub fn is_rebindable(self) -> bool {
         !matches!(self, Self::Debug | Self::DebugPause | Self::DebugStep)
     }

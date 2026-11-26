@@ -525,12 +525,12 @@ impl<G: GameData> Game<G> {
     ///
     /// With debug tools on, the debug view's pause and slow motion
     /// (ADR-0153, [`DebugView`](crate::debug::DebugView)) decide what the
-    /// frame updates. The game's DebugPause action pauses it or lets it
+    /// frame updates. The game's `DebugPause` action pauses it or lets it
     /// run again: while paused, the stack is drawn but no screen of the
     /// game updates, no module's `before_update` runs, no time passes for
     /// them, and the frame's input but the debug actions' is dropped. The
     /// debug tools' own screens ([`GameHooks::debug_screens`]) still update
-    /// on top, and the Debug action still opens the debug menu. DebugStep,
+    /// on top, and the Debug action still opens the debug menu. `DebugStep`,
     /// while paused, runs one update with this frame's input, of
     /// [`STEP_DT`] and one fixed step. In slow motion
     /// ([`DebugView::slow`](crate::debug::DebugView::slow) above 1), one
@@ -638,25 +638,9 @@ impl<G: GameData> Game<G> {
         // Bindings changed between frames (a test rebinding keys).
         self.sync_keymap();
         let pace = self.pace(events);
-        let (dt, ticks) = match pace {
-            Pace::Run => (dt, ticks),
-            Pace::Held => (0.0, 0),
-            Pace::Step => (STEP_DT, 1),
-            Pace::Skip => {
-                // Its input waits for the next update, and so does a
-                // resume; that resume lets go of what was held before.
-                if resumed {
-                    self.slow_events.clear();
-                    self.resumed = true;
-                } else {
-                    self.slow_events.extend_from_slice(events);
-                }
-                return 0.0;
-            }
+        let Some((kept, dt, ticks)) = self.paced(pace, events, (dt, ticks), resumed) else {
+            return 0.0;
         };
-        // Slow motion's skipped frames' input comes first, in order.
-        let mut kept = core::mem::take(&mut self.slow_events);
-        kept.extend_from_slice(events);
         let events = kept.as_slice();
         // A paused game's debug screens (on top) play, but its time stands
         // and its modules wait.
@@ -741,11 +725,7 @@ impl<G: GameData> Game<G> {
         actions.retain(|&a| !is_pace_action(a));
         let held = self.held();
         if game_runs {
-            for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
-                if installed.hooks.contains(&Hook::BeforeUpdate) {
-                    module.before_update(&mut self.ctx, dt);
-                }
-            }
+            self.modules_before_update(dt);
         }
         let debug = self.hooks.debug.filter(|_| {
             self.ctx.debug_tools
@@ -779,13 +759,54 @@ impl<G: GameData> Game<G> {
         played
     }
 
+    /// What a frame of `pace` updates with: the input events, slow
+    /// motion's skipped frames' first, in order, the frame time and the
+    /// fixed steps. `None` for a frame slow motion skips, which keeps its
+    /// `events` for the next update, or its resume, which lets go of what
+    /// was held before and drops what was kept.
+    fn paced(
+        &mut self,
+        pace: Pace,
+        events: &[RawInputEvent],
+        (dt, ticks): (f32, u32),
+        resumed: bool,
+    ) -> Option<(Vec<RawInputEvent>, f32, u32)> {
+        let (dt, ticks) = match pace {
+            Pace::Run => (dt, ticks),
+            Pace::Held => (0.0, 0),
+            Pace::Step => (STEP_DT, 1),
+            Pace::Skip => {
+                if resumed {
+                    self.slow_events.clear();
+                    self.resumed = true;
+                } else {
+                    self.slow_events.extend_from_slice(events);
+                }
+                return None;
+            }
+        };
+        let mut kept = core::mem::take(&mut self.slow_events);
+        kept.extend_from_slice(events);
+        Some((kept, dt, ticks))
+    }
+
+    /// Runs the `before_update` of the modules that declared it, in
+    /// install order, with `dt` seconds.
+    fn modules_before_update(&mut self, dt: f32) {
+        for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
+            if installed.hooks.contains(&Hook::BeforeUpdate) {
+                module.before_update(&mut self.ctx, dt);
+            }
+        }
+    }
+
     /// Whether the game is paused, which only debug tools allow.
     fn is_paused(&self) -> bool {
         self.ctx.debug_tools && self.ctx.debug_view.paused()
     }
 
     /// What this frame updates (ADR-0153). With debug tools on, the
-    /// DebugPause and DebugStep keys pressed in `events` act first, in
+    /// `DebugPause` and `DebugStep` keys pressed in `events` act first, in
     /// order, the moment they are pressed (in slow motion's skipped frames
     /// too): they are keyboard only, so the keymap's chords name them.
     /// Then a debug tools' screen on top runs, a paused game holds or
@@ -859,8 +880,8 @@ impl<G: GameData> Game<G> {
     /// stage keeps it as a tap (pressed, and let go unless a key holds it)
     /// for its next step. After a quit, nothing.
     ///
-    /// With debug tools on, the DebugPause action pauses the game or lets
-    /// it run again and DebugStep asks the next frame for a step
+    /// With debug tools on, the `DebugPause` action pauses the game or lets
+    /// it run again and `DebugStep` asks the next frame for a step
     /// (ADR-0153); while the game is paused, any other action is dropped
     /// unless a debug tools' screen is on top. The two never reach a
     /// screen.
@@ -1122,7 +1143,7 @@ pub const CRANK_HINT: &str = "crank.unfold";
 // check-text: the engine's fallback, for a game that says nothing else
 const CRANK_HINT_ENGLISH: &str = "Unfold the crank to go on";
 
-/// Whether `action` is the debug pause's (DebugPause or DebugStep), which
+/// Whether `action` is the debug pause's (`DebugPause` or `DebugStep`), which
 /// the game takes and no screen gets.
 fn is_pace_action<A: ActionSet>(action: A) -> bool {
     matches!(

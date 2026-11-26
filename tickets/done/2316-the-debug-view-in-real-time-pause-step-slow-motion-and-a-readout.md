@@ -276,7 +276,7 @@ Deviations:
   the sample and the toy only. No ticket: a game maps them when it
   wants a debug pause, as the book's new section says.
 
-Size: 1,373 counted lines, under the cap. It would have split cleanly
+Size: 1,408 counted lines, under the cap. It would have split cleanly
 between the pause (actions, `Game`, the screen's row) and the readout
 (`Screen::debug_readout`, the channel, the toy's readouts).
 

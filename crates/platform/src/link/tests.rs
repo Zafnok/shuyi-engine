@@ -493,7 +493,7 @@ fn field() -> Game<Toy> {
 }
 
 /// A client pauses a running build and steps it with the game's actions
-/// for DebugPause and DebugStep (ADR-0153), and it ends as the same
+/// for `DebugPause` and `DebugStep` (ADR-0153), and it ends as the same
 /// updates run with no pause: each `act` is a press and a release, a step
 /// runs one update on its press, and the unpause press and its release
 /// run one each.

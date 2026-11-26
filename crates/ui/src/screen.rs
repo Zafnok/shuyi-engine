@@ -466,8 +466,7 @@ impl<G: GameData> ScreenStack<G> {
     pub fn debug_readout(&self, ctx: &Ctx<G>) -> Vec<String> {
         self.screens
             .last()
-            .map(|top| top.debug_readout(ctx))
-            .unwrap_or_default()
+            .map_or_else(Vec::new, |top| top.debug_readout(ctx))
     }
 
     /// The screens drawn: the top-most opaque one and every overlay above
