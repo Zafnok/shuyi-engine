@@ -618,7 +618,7 @@ manifest names it like any sound file:
 ### Sprite atlases (`atlas.ron`)
 
 An `atlas.ron` packs every image directly inside a folder into square
-pages ([ADR-0153](adr/0153-sprite-atlas-pages-as-painted-pictures-a-skyline-packer.md)):
+pages ([ADR-0154](adr/0154-sprite-atlas-pages-as-painted-pictures-a-skyline-packer.md)):
 
 ```ron
 (from: "sprites/", page_size: 1024, padding: 1)

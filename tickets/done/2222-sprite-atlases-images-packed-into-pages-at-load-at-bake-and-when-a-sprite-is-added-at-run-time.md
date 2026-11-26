@@ -155,12 +155,12 @@ None.
   painted picture of the frame (ADR-0078) named by the page, so
   `shuyi-app` uploads it the first frame a sprite draws it and again when
   `insert` moves its revision (through `upload_rgba` now), and the raster
-  paints it. ADR-0153 records why.
+  paints it. ADR-0154 records why.
 - The render card holds an atlas sprite (`Over`) and one inserted after
   its page was shown (`Under`); a raster snapshot shows a sprite inserted
   between two frames drawn on the next one.
 - Docs: `docs/formats.md` (a built-in formats row, *Sprite atlases*, the
-  kinds row split), the book's *Frame and skins*, ADR-0153. Handoffs
+  kinds row split), the book's *Frame and skins*, ADR-0154. Handoffs
   written in 1123 and 3229 as **From 2222 (done)**.
 
 **Deviations:**
@@ -175,7 +175,7 @@ None.
   page is made), so the errors are a sprite too big for a page, a name
   taken, and a picture with no pixels.
 - "The sprite skin draws a sprite from its atlas page": an atlas sprite is
-  a `PaintedSprite` of the page's picture, not a `Sprite` (ADR-0153 §5),
+  a `PaintedSprite` of the page's picture, not a `Sprite` (ADR-0154 §5),
   so it has a painted sprite's brightness and clip, not a sprite's paints,
   opacity or mirroring. The window and the raster needed no new path.
 - 1123 isn't done, so `Atlas` is written here and 1123 adds its import

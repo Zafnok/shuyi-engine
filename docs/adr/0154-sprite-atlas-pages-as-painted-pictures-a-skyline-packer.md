@@ -1,4 +1,4 @@
-# ADR-0153: Sprite atlases: a skyline packer in `shuyi-assets`, its pages shown as the frame's painted pictures
+# ADR-0154: Sprite atlases: a skyline packer in `shuyi-assets`, its pages shown as the frame's painted pictures
 
 - **Status:** Accepted
 - **Date:** 2026-11-26

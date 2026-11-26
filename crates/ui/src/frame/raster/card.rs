@@ -18,7 +18,7 @@
 //!   or half clear), indexed and one-bit (with a mask and without), in
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;
-//! - a sprite atlas's pages among them (ADR-0153): a sprite packed into
+//! - a sprite atlas's pages among them (ADR-0154): a sprite packed into
 //!   a page, and one inserted after the page was shown;
 //! - two key caps (ticket 3215): a box under each, the name's glyph moved
 //!   off the grid and bold, one drawn from the atlas's bold face (ticket
@@ -486,11 +486,11 @@ fn painted(buf: &mut GlyphBuffer) {
     buf.add_painted(missing);
 }
 
-/// The atlas whose sprites are on the card (ADR-0153): its pages are
+/// The atlas whose sprites are on the card (ADR-0154): its pages are
 /// pictures of the frame, `card/atlas#0` and on.
 pub const ATLAS_ID: &str = "card/atlas";
 
-/// A sprite atlas (ADR-0153), from y 158 beside the missing picture,
+/// A sprite atlas (ADR-0154), from y 158 beside the missing picture,
 /// each sprite twice its size: one packed into the page, `Over`, and one
 /// inserted after the page was shown, `Under`, which writes its page
 /// again.
