@@ -41,11 +41,11 @@ script = ["std", "dep:shuyi-script"]
 net = ["std", "dep:shuyi-net"]
 
 [dependencies]
-shuyi-core = { path = "../core", default-features = false }
-shuyi-assets = { path = "../assets", default-features = false }
-shuyi-ui = { path = "../ui", default-features = false }
-shuyi-platform = { path = "../platform", default-features = false }
-shuyi-script = { path = "../script", optional = true }
+shuyi-core = { workspace = true }
+shuyi-assets = { workspace = true }
+shuyi-ui = { workspace = true }
+shuyi-platform = { workspace = true }
+shuyi-script = { workspace = true, optional = true }
 shuyi-net = { path = "../net", optional = true }
 
 # The macroquad backend, on every target with a window. WASI has none, and
@@ -53,7 +53,7 @@ shuyi-net = { path = "../net", optional = true }
 # library tests build for it without the backend (CI's `determinism` job,
 # ticket 2116).
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-shuyi-app = { path = "../app", optional = true, default-features = false }
+shuyi-app = { workspace = true, optional = true }
 
 [dev-dependencies]
 # The toy game, to install every module on.

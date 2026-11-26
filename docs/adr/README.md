@@ -163,6 +163,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0149](0149-the-docs-maps-rows-as-checked-rules-with-a-waiver-line.md) | The docs map's rows as checked rules, with a waiver line | Accepted; extends ADR-0038's `api` job |
 | [0150](0150-the-contracts-version-rises-only-on-a-break.md) | The contract's version rises only on a break, and every other schema change is a fingerprint under it | Accepted; amends ADR-0022 §5 |
 | [0151](0151-constructors-take-no-two-neighbouring-numbers.md) | Constructors take no two neighbouring numbers, checked by `cargo xtask api` | Accepted; amends ADR-0039 kinds 2 to 5 |
+| [0152](0152-publishing-the-engine-crates-the-workspaces-list-exact-pins.md) | Publishing the engine crates: the workspace is the list, the pins are exact, and the version moves only at release time | Accepted |
 | [0152](0152-real-time-rooms-a-server-broadcasts-each-steps-inputs.md) | Real-time rooms: an authoritative server broadcasts each step's inputs, with bots in empty seats and quick play without accounts | Accepted; amends ADR-0006 §1, §5 and §6, and ADR-0008 §2 |
 
 Template: [`0000-template.md`](0000-template.md).
