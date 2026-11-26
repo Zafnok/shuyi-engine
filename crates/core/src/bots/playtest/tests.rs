@@ -1257,7 +1257,7 @@ proptest! {
 }
 
 /// Tries as games build theirs, in a `const` item.
-const TEN: Tries = Tries::new(10, 4, 30);
+const TEN: Tries = Tries::new(10).with_seed(4).with_turns(30);
 
 #[test]
 fn the_constructors_give_the_literals() {
@@ -1269,6 +1269,9 @@ fn the_constructors_give_the_literals() {
             turns: 30,
         }
     );
+    // Left alone, from seed 0, stopped at turn 200.
+    let plain = Tries::new(10);
+    assert_eq!((plain.seed, plain.turns), (0, 200));
     let won = Condition::new("won").with_min(Some(1)).with_max(Some(3));
     assert_eq!(
         won,

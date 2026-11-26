@@ -82,7 +82,7 @@ fn the_tool_contract_finds_what_the_core_finds_on_one_thread() {
         .collect();
     let mut checks = playtest_checks().unwrap_or_else(|e| panic!("{e}"));
     checks.extend(file.checks);
-    let settings = BalanceSettings::new(Tries::new(50, 0, 200), 10, 40);
+    let settings = BalanceSettings::new(Tries::new(50)).with_evaluations(40);
     assert_eq!(output.settings, settings);
     let core =
         shuyi::core::autobalance(&stage, &[&trip, &head_start], &entrants, &checks, &settings)

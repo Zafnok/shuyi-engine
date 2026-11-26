@@ -100,24 +100,48 @@ pub struct RolloutSettings {
 }
 
 impl RolloutSettings {
-    /// The first `candidates` commands tried, each played out on `samples`
-    /// copies until `horizon`, at most `commands` commands a playout, the
-    /// pick straying by `temperature`.
+    /// The first command tried, played out on 1 copy until `horizon`, at
+    /// most 100 commands a playout, always picking the best. Set each
+    /// number with its `with_` method; no constructor takes two, which a
+    /// call could swap (ADR-0151).
     #[must_use]
-    pub const fn new(
-        candidates: u32,
-        samples: u32,
-        horizon: Horizon,
-        commands: u32,
-        temperature: u32,
-    ) -> Self {
+    pub const fn new(horizon: Horizon) -> Self {
         Self {
-            candidates,
-            samples,
+            candidates: 1,
+            samples: 1,
             horizon,
-            commands,
-            temperature,
+            commands: 100,
+            temperature: 0,
         }
+    }
+
+    /// The same settings, trying the first `candidates` commands.
+    #[must_use]
+    pub const fn with_candidates(mut self, candidates: u32) -> Self {
+        self.candidates = candidates;
+        self
+    }
+
+    /// The same settings, each candidate played out on `samples` copies.
+    #[must_use]
+    pub const fn with_samples(mut self, samples: u32) -> Self {
+        self.samples = samples;
+        self
+    }
+
+    /// The same settings, at most `commands` commands a playout after the
+    /// candidate.
+    #[must_use]
+    pub const fn with_commands(mut self, commands: u32) -> Self {
+        self.commands = commands;
+        self
+    }
+
+    /// The same settings, the pick straying by `temperature` points.
+    #[must_use]
+    pub const fn with_temperature(mut self, temperature: u32) -> Self {
+        self.temperature = temperature;
+        self
     }
 }
 

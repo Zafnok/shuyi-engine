@@ -166,7 +166,12 @@ fn danger_adds_only_the_threats_the_forecast_answers() {
     let threats = two_threats();
     // Both reach (1, 0); `b` wouldn't strike.
     let danger = threats.danger(p(1, 0), |&piece| {
-        (piece == 'a').then_some(Strike::new(450, 6, 120))
+        (piece == 'a').then_some(
+            Strike::DEFAULT
+                .with_expected(450)
+                .with_all_hit(6)
+                .with_struck_back(120),
+        )
     });
     let want = Danger {
         expected: 450,
@@ -183,7 +188,12 @@ fn danger_adds_every_threat_that_reaches() {
     let mut asked = Vec::new();
     let danger = threats.danger(p(1, 0), |&piece| {
         asked.push(piece);
-        Some(Strike::new(100, 2, 50))
+        Some(
+            Strike::DEFAULT
+                .with_expected(100)
+                .with_all_hit(2)
+                .with_struck_back(50),
+        )
     });
     assert_eq!(asked, ['a', 'b']);
     assert_eq!((danger.expected, danger.worst), (200, 4));
@@ -196,7 +206,9 @@ fn danger_adds_every_threat_that_reaches() {
 #[test]
 fn danger_saturates() {
     let threats = two_threats();
-    let danger = threats.danger(p(1, 0), |_| Some(Strike::new(i64::MAX, 1, 0)));
+    let danger = threats.danger(p(1, 0), |_| {
+        Some(Strike::DEFAULT.with_expected(i64::MAX).with_all_hit(1))
+    });
     assert_eq!(danger.expected, i64::MAX);
 }
 

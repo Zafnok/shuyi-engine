@@ -77,7 +77,7 @@ rest of that decision's work:
 - the types that grow but were missed (2095);
 - a check that classifies every new public type (2096);
 - constructors that can't take their arguments swapped (3503, and 3537
-  for the ones it left);
+  and 3539 for the ones it left);
 - public API with no second user, hidden before it freezes (2098).
 
 The two more:
@@ -200,7 +200,8 @@ These tickets, in order:
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 (done) | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
-| 3537 | The bots' settings, the perf rows and five other constructors take no two neighbouring numbers |
+| 3537 (done) | The bots' settings, the perf rows and five other constructors take no two neighbouring numbers |
+| 3539 | The perf rows take no two neighbouring numbers |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
 | 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |

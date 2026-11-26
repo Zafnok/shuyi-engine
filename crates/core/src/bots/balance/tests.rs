@@ -718,18 +718,24 @@ proptest! {
 }
 
 /// Settings as games build theirs, in a `const` item.
-const QUICK: BalanceSettings = BalanceSettings::new(Tries::new(20, 0, 50), 5, 12);
+const QUICK: BalanceSettings = BalanceSettings::new(Tries::new(20).with_turns(50))
+    .with_quick(5)
+    .with_evaluations(12);
 
 #[test]
 fn the_constructors_give_the_literals() {
     assert_eq!(
         QUICK,
         BalanceSettings {
-            tries: Tries::new(20, 0, 50),
+            tries: Tries::new(20).with_turns(50),
             quick: 5,
             evaluations: 12,
         }
     );
+    // Left alone, a fifth of the tries (at least 1) and 100 runs.
+    let plain = BalanceSettings::new(Tries::new(4));
+    assert_eq!((plain.quick, plain.evaluations), (1, 100));
+    assert_eq!(BalanceSettings::new(Tries::new(50)).quick, 10);
     assert_eq!(
         Change::new("trip", 4, "20%"),
         Change {

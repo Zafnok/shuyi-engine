@@ -144,10 +144,31 @@ pub struct Tries {
 }
 
 impl Tries {
-    /// `count` tries from seed `seed`, each stopped at turn `turns`.
+    /// `count` tries from seed 0, each stopped at turn 200. Set the seed
+    /// and the turn with [`with_seed`](Self::with_seed) and
+    /// [`with_turns`](Self::with_turns): no constructor takes the three
+    /// numbers, which a call could swap (ADR-0151).
     #[must_use]
-    pub const fn new(count: u32, seed: u64, turns: u32) -> Self {
-        Self { count, seed, turns }
+    pub const fn new(count: u32) -> Self {
+        Self {
+            count,
+            seed: 0,
+            turns: 200,
+        }
+    }
+
+    /// The same tries, the first from seed `seed`.
+    #[must_use]
+    pub const fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = seed;
+        self
+    }
+
+    /// The same tries, each stopped at turn `turns` if it hasn't ended.
+    #[must_use]
+    pub const fn with_turns(mut self, turns: u32) -> Self {
+        self.turns = turns;
+        self
     }
 
     /// The seeds of the tries.

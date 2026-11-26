@@ -166,9 +166,9 @@ fn refusal_cells(ogg: &[u8]) -> Vec<Value> {
     judged("ogg_no_bytes", ogg_file(&[]));
     judged("ogg_of_noise", ogg_file(&corpus::wav_noise()));
     judged("ogg_headers_cut", ogg_file(&ogg[..ogg.len().min(64)]));
-    let tiny = Limits::new(Limits::DEFAULT_MAX_RATE, 100);
+    let tiny = Limits::DEFAULT.with_max_frames(100);
     judged("ogg_over_frames", whole_ogg(ogg, &tiny).map(drop));
-    let slow = Limits::new(1000, Limits::DEFAULT_MAX_FRAMES);
+    let slow = Limits::DEFAULT.with_max_rate(1000);
     judged("ogg_over_rate", whole_ogg(ogg, &slow).map(drop));
     let bytes = corpus::wav(&corpus::sources()[0].1);
     judged("wav_over_frames", whole_wav(&bytes, &tiny).map(drop));

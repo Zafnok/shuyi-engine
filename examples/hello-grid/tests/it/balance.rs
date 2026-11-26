@@ -14,7 +14,7 @@ use shuyi::core::bots::playtest::{Band, Check, Condition, Entrant, Found, Playte
 use shuyi::core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
 
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs.
-const SETTINGS: BalanceSettings = BalanceSettings::new(Tries::new(50, 0, 200), 10, 40);
+const SETTINGS: BalanceSettings = BalanceSettings::new(Tries::new(50)).with_evaluations(40);
 
 /// The foe should stumble at least once in 50–70% of the walker's tries.
 /// With no trip chance it never does: 0 of 50 (measured once, with these

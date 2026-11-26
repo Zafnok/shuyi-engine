@@ -75,7 +75,7 @@ fn a_glyph_style_and_skin_are_built_in_a_const() {
 
 #[test]
 fn a_grid_is_laid_top_down() {
-    let grid = Grid::top_down(shuyi_core::Pos::new(0, 0), (0, 0), (16, 8), (4, 3), 1);
+    let grid = Grid::top_down(shuyi_core::Pos::new(0, 0), (16, 8)).with_tiles((4, 3));
     let corner = match grid.projection {
         Projection::TopDown => grid.tile_px(shuyi_core::Pos::new(1, 1)),
         _ => (0, 0),

@@ -185,14 +185,23 @@ pub struct PackSpan {
 }
 
 impl PackSpan {
-    /// The span of `folder`, `bytes` long from byte `start` of the pack.
+    /// The span of `folder` from byte `start` of the pack, no byte long
+    /// until [`with_bytes`](Self::with_bytes): no constructor takes both
+    /// numbers, which a call could swap (ADR-0151).
     #[must_use]
-    pub fn new(folder: impl Into<String>, start: u64, bytes: u64) -> Self {
+    pub fn new(folder: impl Into<String>, start: u64) -> Self {
         Self {
             folder: folder.into(),
             start,
-            bytes,
+            bytes: 0,
         }
+    }
+
+    /// The same span, `bytes` long.
+    #[must_use]
+    pub fn with_bytes(mut self, bytes: u64) -> Self {
+        self.bytes = bytes;
+        self
     }
 }
 
@@ -201,7 +210,9 @@ fn spans_of(baked: &Baked, stamp: &str) -> Vec<PackSpan> {
     Index::read(&baked.bytes, stamp).map_or_default(|index| {
         index
             .spans()
-            .map(|(folder, range)| PackSpan::new(folder, range.start, range.end - range.start))
+            .map(|(folder, range)| {
+                PackSpan::new(folder, range.start).with_bytes(range.end - range.start)
+            })
             .collect()
     })
 }

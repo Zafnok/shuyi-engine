@@ -18,7 +18,7 @@ use shuyi_cli::contract::replay::Record;
 use shuyi_cli::serde_json;
 use shuyi_cli::{GameArg, GameTools};
 
-const FIFTY: Tries = Tries::new(50, 0, 200);
+const FIFTY: Tries = Tries::new(50);
 
 fn fifty() -> PlaytestReport {
     playtest_run(&FIFTY).unwrap_or_else(|e| panic!("{e}"))

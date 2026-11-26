@@ -51,18 +51,34 @@ impl Limits {
     /// which is 256 MiB of stereo decoded whole.
     pub const DEFAULT_MAX_FRAMES: u64 = 1 << 26;
 
-    /// These limits.
-    pub const fn new(max_rate: u32, max_frames: u64) -> Self {
-        Self {
-            max_rate,
-            max_frames,
-        }
+    /// The default limits, [`DEFAULT_MAX_RATE`](Self::DEFAULT_MAX_RATE) and
+    /// [`DEFAULT_MAX_FRAMES`](Self::DEFAULT_MAX_FRAMES). Change them with
+    /// [`with_max_rate`](Self::with_max_rate) and
+    /// [`with_max_frames`](Self::with_max_frames): no constructor takes both
+    /// numbers, which a call could swap (ADR-0151).
+    pub const DEFAULT: Self = Self {
+        max_rate: Self::DEFAULT_MAX_RATE,
+        max_frames: Self::DEFAULT_MAX_FRAMES,
+    };
+
+    /// The same limits, `max_rate` samples a second at the highest.
+    #[must_use]
+    pub const fn with_max_rate(mut self, max_rate: u32) -> Self {
+        self.max_rate = max_rate;
+        self
+    }
+
+    /// The same limits, at most `max_frames` frames a source.
+    #[must_use]
+    pub const fn with_max_frames(mut self, max_frames: u64) -> Self {
+        self.max_frames = max_frames;
+        self
     }
 }
 
 impl Default for Limits {
     fn default() -> Self {
-        Self::new(Self::DEFAULT_MAX_RATE, Self::DEFAULT_MAX_FRAMES)
+        Self::DEFAULT
     }
 }
 
@@ -213,7 +229,7 @@ mod tests {
 
     #[test]
     fn a_rate_is_from_one_to_the_limit() {
-        let limits = Limits::new(48_000, 10);
+        let limits = Limits::DEFAULT.with_max_rate(48_000).with_max_frames(10);
         let bad = |rate| Err(Error::Rate { rate, max: 48_000 });
         assert_eq!(PcmFormat::new(0, 1, &limits), bad(0));
         assert_eq!(PcmFormat::new(48_001, 1, &limits), bad(48_001));
@@ -276,7 +292,7 @@ mod tests {
 
     #[test]
     fn pcm_holds_whole_frames_within_the_limit() {
-        let limits = Limits::new(48_000, 2);
+        let limits = Limits::DEFAULT.with_max_rate(48_000).with_max_frames(2);
         let pcm = Pcm::new(STEREO, vec![1, 2, 3, 4], &limits);
         let pcm = pcm.unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(pcm.frames(), 2);
@@ -324,11 +340,26 @@ mod tests {
         fn pcm_new_never_panics(count in 0usize..64, stereo: bool, limit in 0u64..64) {
             let channels = if stereo { Channels::Stereo } else { Channels::Mono };
             let format = PcmFormat { rate: 8_000, channels };
-            let limits = Limits::new(8_000, limit);
+            let limits = Limits::DEFAULT.with_max_rate(8_000).with_max_frames(limit);
             if let Ok(pcm) = Pcm::new(format, vec![0; count], &limits) {
                 prop_assert!(pcm.frames() <= limit);
                 prop_assert_eq!(pcm.samples().len() % usize::from(channels.count()), 0);
             }
         }
+    }
+
+    #[test]
+    fn the_limits_build_what_a_literal_built() {
+        let built = Limits::DEFAULT.with_max_rate(8_000).with_max_frames(10);
+        let literal = Limits {
+            max_rate: 8_000,
+            max_frames: 10,
+        };
+        assert_eq!(built, literal);
+        let default = Limits {
+            max_rate: Limits::DEFAULT_MAX_RATE,
+            max_frames: Limits::DEFAULT_MAX_FRAMES,
+        };
+        assert_eq!((Limits::DEFAULT, Limits::default()), (default, default));
     }
 }

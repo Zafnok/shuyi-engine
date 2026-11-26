@@ -168,7 +168,7 @@ fn playtest_checks_the_tries_the_seeds_and_the_threads_then_asks_the_game() {
 #[test]
 fn a_number_not_given_is_the_games_default() {
     let game = fake(FakePlaytest {
-        defaults: Tries::new(3, 1, 60),
+        defaults: Tries::new(3).with_seed(1).with_turns(60),
         ..FakePlaytest::default()
     });
     let answer = playtest(&game, &PlaytestInput::default());

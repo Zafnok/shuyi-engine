@@ -407,7 +407,7 @@ mod tests {
             (1, 1)
         }
         fn grid(&self, scene: &MapScene<Piece>, _: Rect) -> Grid {
-            Grid::top_down(scene.origin, (0, 0), (16, 16), (1, 1), 1)
+            Grid::top_down(scene.origin, (16, 16))
         }
         fn walk(&self) -> WalkSpeeds {
             WalkSpeeds::of(3.0)
@@ -468,7 +468,9 @@ mod tests {
                 (2, 2)
             }
             fn grid(&self, scene: &MapScene<Piece>, _: Rect) -> Grid {
-                Grid::top_down(scene.origin, (8, 32), (16, 16), (2, 2), 1)
+                Grid::top_down(scene.origin, (16, 16))
+                    .with_corner((8, 32))
+                    .with_tiles((2, 2))
             }
             fn walk(&self) -> WalkSpeeds {
                 WalkSpeeds::of(3.0)
@@ -535,7 +537,7 @@ mod tests {
         assert_eq!(looks.dark(), palette.engine(EngineColor::Background));
         // A painter that paints nothing under or over the ground.
         let scene = MapScene::<Piece>::new(Pos::new(0, 0), (2, 2));
-        let grid = Grid::top_down(scene.origin, (0, 0), (16, 16), (2, 2), 1);
+        let grid = Grid::top_down(scene.origin, (16, 16)).with_tiles((2, 2));
         let mut buf = GlyphBuffer::new(8, 4, crate::frame::Cell::new('x', text, text));
         let before = buf.clone();
         NoUnits.paint_under(&scene, &grid, &mut buf);

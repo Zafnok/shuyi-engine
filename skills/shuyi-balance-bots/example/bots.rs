@@ -41,7 +41,10 @@ fn score(_: &Stage, end: &Stage, _: Player) -> i32 {
 
 /// How the rollout bot thinks: its first 4 commands, each played out on
 /// 8 copies for 6 turns, at most 30 commands a copy, always the best.
-pub const ROLLOUT: RolloutSettings = RolloutSettings::new(4, 8, Horizon::Turns(6), 30, 0);
+pub const ROLLOUT: RolloutSettings = RolloutSettings::new(Horizon::Turns(6))
+    .with_candidates(4)
+    .with_samples(8)
+    .with_commands(30);
 
 /// A named bot for your piece: an entrant of the playtest.
 #[derive(Debug, Clone, Copy)]
