@@ -360,7 +360,9 @@ Done on 2026-11-26.
 - **`cargo xtask api` checks the crate:** `shuyi-net` joins
   `API_CRATES`, and `shuyi`'s checked features gain `net`
   (`crates/xtask/src/api.rs` and its test's table), since `check_catalog`
-  fails an engine crate left out.
+  fails an engine crate left out. Its catalog tests named `shuyi-net` as
+  a crate not yet listed: they name `shuyi-physics` now, and count 15
+  crates (the sound give-up's footprint, 15 → 13).
 - **The root `README.md`'s crate table** gains a `shuyi-net` row.
 - **2617** gains a "From 2613 (done)" note: `shuyi::net` is a re-export
   of the crate today, so its `connect` needs `net` made a module that
