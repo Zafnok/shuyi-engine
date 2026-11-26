@@ -339,6 +339,14 @@ manifests 300).
 
   So the acceptance criterion on `cargo package --no-verify --locked` is
   met with these two flags, not without them.
+- **The eval reference's rules crate loses an unused `schemars`.**
+  cargo-machete resolves `evals/references/tic-tac-toe` (an overlay
+  with no root of its own) against the repository's root. Before this
+  change it failed to load the reference, because the root had no
+  `shuyi-core` entry, and skipped it with no error. Now it loads the
+  reference and finds `schemars`, which the reference's rewritten
+  `rules/src/lib.rs` no longer uses. Its `schema` feature keeps
+  `shuyi-core/schema`.
 - **The give-up stays version-free.** The root's two sound entries are
   removed by a `Cut` between names, not a `Replace` of their text,
   because that text holds `=0.1.0`, which changes at each release.
