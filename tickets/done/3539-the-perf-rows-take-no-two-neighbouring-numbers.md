@@ -141,7 +141,14 @@ None.
 
 **Deviations.** None.
 
-No ticket: this one left no work behind.
+**Follow-up tickets.** 3540: the local `site` gate lacks CI's copies of
+the examples' shots and previews, so `zola check` failed here until `bash
+site/copy-shots.sh` was run by hand. Found here; nothing of this ticket's
+work is left.
+
+**For Nick.** The API check ran out of disk on D: (1.6 GB free); `cargo
+xtask trim-targets` (the default trim a passing gate run does) freed
+22.6 GB of idle worktrees' incremental caches.
 
 Game: nothing to adopt, the game calls none of these (`gh search code --repo Zafnok/visions-of-shuyi` for `HeapCounts`, `HeapSnapshot`, `TagRow`, `TagDelta`, `HeapDiff`, `SpanEvent`, `PerfRead`, `Counts` and `TagCounts`, 2026-11-26: no hit but unrelated `counts` functions)
 
