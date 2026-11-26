@@ -141,7 +141,7 @@ None.
 
 **Deviations.** None.
 
-**Follow-up tickets.** None.
+No ticket: this one left no work behind.
 
 Game: nothing to adopt, the game calls none of these (`gh search code --repo Zafnok/visions-of-shuyi` for `HeapCounts`, `HeapSnapshot`, `TagRow`, `TagDelta`, `HeapDiff`, `SpanEvent`, `PerfRead`, `Counts` and `TagCounts`, 2026-11-26: no hit but unrelated `counts` functions)
 
@@ -162,7 +162,7 @@ after: |
   let heap = HeapCounts::new(counts.live_bytes)
       .with_peak_bytes(counts.peak_bytes)
       .with_allocs(counts.allocs);
-find: ["HeapCounts::new("]
+find: ["HeapCounts::new(counts.live_bytes, counts.peak_bytes"]
 ```
 
 Breaking: shuyi-ui: `perf::HeapSnapshot::new`: takes the live bytes and the rows (peak the live bytes); set the peak with `with_peak_bytes`
@@ -176,7 +176,7 @@ before: |
   let snapshot = HeapSnapshot::new(4096, 8192, rows);
 after: |
   let snapshot = HeapSnapshot::new(4096, rows).with_peak_bytes(8192);
-find: ["HeapSnapshot::new("]
+find: ["HeapSnapshot::new(4096, 8192"]
 ```
 
 Breaking: shuyi-ui: `perf::TagRow::new`: takes the class, the name and the live bytes (0 blocks); set the blocks with `with_live_blocks`
@@ -190,7 +190,7 @@ before: |
   let row = TagRow::new(TagClass::Phase, "update", 1024, 3);
 after: |
   let row = TagRow::new(TagClass::Phase, "update", 1024).with_live_blocks(3);
-find: ["TagRow::new("]
+find: ["TagRow::new(TagClass::Phase, \"update\", 1024, 3)"]
 ```
 
 Breaking: shuyi-ui: `perf::TagDelta::new`: takes the class, the name and the change in live bytes (no change in blocks); set the blocks with `with_live_blocks`
@@ -204,7 +204,7 @@ before: |
   let delta = TagDelta::new(TagClass::Span, "ai", -512, -2);
 after: |
   let delta = TagDelta::new(TagClass::Span, "ai", -512).with_live_blocks(-2);
-find: ["TagDelta::new("]
+find: ["TagDelta::new(TagClass::Span, \"ai\", -512, -2)"]
 ```
 
 Breaking: shuyi-ui: `perf::SpanEvent::new`: takes the name and its microseconds (at the frame's start, inside no span); set the rest with `with_start_us` and `with_depth`
@@ -218,7 +218,7 @@ before: |
   let span = SpanEvent::new("ai", 40, 250, 1);
 after: |
   let span = SpanEvent::new("ai", 250).with_start_us(40).with_depth(1);
-find: ["SpanEvent::new("]
+find: ["SpanEvent::new(\"ai\", 40, 250"]
 ```
 
 Breaking: shuyi-ui: `perf::HeapDiff::new`: removed; use `HeapDiff::until(to)` (from frame 0) and `with_from`
@@ -246,7 +246,7 @@ before: |
   let read = PerfRead::of(&ring, since, max);
 after: |
   let read = PerfRead::of(&ring, since).first(max);
-find: ["PerfRead::of("]
+find: ["PerfRead::of(&ring, since, max)"]
 ```
 
 Breaking: shuyi-alloc-count: `Counts::new`: takes only the live bytes (peak the same, no call); set the rest with `with_peak_bytes` and `with_allocs`
@@ -274,5 +274,5 @@ before: |
   let row = TagCounts::new(tag, class, name);
 after: |
   let row = TagCounts::new(tag, name).with_class(class);
-find: ["TagCounts::new("]
+find: ["TagCounts::new(tag, class, name)"]
 ```
