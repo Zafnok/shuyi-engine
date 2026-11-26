@@ -137,7 +137,7 @@ None.
 - [x] 50 runs under a full workspace test run on Windows pass (the
       command and count in the notes).
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
