@@ -1,4 +1,4 @@
-//! Files the player keeps (ticket 3309): what the backend does with a
+//! Files the player keeps: what the backend does with a
 //! screen's requests (`shuyi_ui::player_files`).
 //!
 //! - On a desktop ([`native`]), an offered file is written into the

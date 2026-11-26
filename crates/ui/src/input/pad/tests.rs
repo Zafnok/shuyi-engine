@@ -52,8 +52,8 @@ fn changes(p: &mut Pads, connected: &[(PadId, PadKind, PadState)]) -> Vec<(Butto
 
 const KINDS: &[PadKind] = PadKind::ALL;
 
-/// `docs/design/controls.md`, *Controller → Default buttons* and *Button
-/// names on screen*: each position's name on each kind of pad.
+/// Each binding position's name on each kind of pad, as help text shows
+/// it.
 #[test]
 fn buttons_are_named_as_the_pad_in_use_labels_them() {
     use Button::{LeftShoulder, LeftTrigger, RightShoulder, RightTrigger, Select};

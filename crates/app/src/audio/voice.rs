@@ -1,4 +1,4 @@
-//! Where the game's voice clips are (game ADR-0046), and their manifest: the
+//! Where the game's voice clips are, and their manifest: the
 //! shared player plays them ([`shuyi_platform::audio::player`]).
 
 use std::path::Path;

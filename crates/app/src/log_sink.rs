@@ -1,4 +1,4 @@
-//! Where the log's lines go in a running game (ticket 3041, ADR-0030): a
+//! Where the log's lines go in a running game (ADR-0030): a
 //! `log::Log` that [`run_app`](crate::run_app) installs first thing
 //! ([`install`]), so the engine's lines, `shuyi-app`'s, the libraries' and
 //! a panic's message reach the same sinks.

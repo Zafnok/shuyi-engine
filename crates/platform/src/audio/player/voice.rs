@@ -1,8 +1,8 @@
-//! Voice clips (game ADR-0046): the files of the game's voice folder for the
+//! Voice clips: the files of the game's voice folder for the
 //! script's language (`voice/<lang>/`, say), loaded when asked for and a
 //! few ahead, played one at a time and freed when they end.
 //!
-//! A clip is loaded like a music track (on native, on game ADR-0028's worker
+//! A clip is loaded like a music track (on native, on the music's worker
 //! thread). A scene says which clips are coming
 //! ([`SoundRequest::PreloadVoices`]); the next [`AHEAD`] of them are kept
 //! loaded, so a line's clip is ready when the line is shown. A clip that

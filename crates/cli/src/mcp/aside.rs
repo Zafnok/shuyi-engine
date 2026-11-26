@@ -1,5 +1,5 @@
 //! A running server's program moved aside, so the next build can write a
-//! fresh one (ticket 2545).
+//! fresh one.
 //!
 //! Windows won't let a running program's file be removed or rewritten,
 //! and cargo must do both to relink; it does let the file be renamed. So
@@ -7,7 +7,7 @@
 //! hard-linked twin cargo wrote first (in `deps/`, or beside an example),
 //! into `<exe dir>/.shuyi-running/`, and run on from there. A copy, with
 //! the program's modified time, takes both places, one file under both
-//! names as cargo left them (ticket 2599): no program runs from the copy,
+//! names as cargo left them: no program runs from the copy,
 //! so the next build can replace it, and until then the program is still
 //! there to run (another session's `cargo run`, a test's
 //! `CARGO_BIN_EXE_shuyi`), and cargo sees it fresh and already linked.
@@ -20,13 +20,13 @@
 //!
 //! That replacing is the one moment left, and it is the system's: on a busy
 //! machine a name being replaced can read as not there for tens of
-//! milliseconds (ticket 2564 saw it in about one move in 36,000, inside the
+//! milliseconds (about one move in 36,000 was seen to, inside the
 //! call, with `fs::rename`, a POSIX-semantics rename and a replacing hard
 //! link alike). No order of the moves avoids it, so the promise is what the
 //! system allows: no gap of the order's own, and rarely one of the
-//! system's (ticket 2574).
+//! system's.
 //!
-//! The twin is where cargo's layout puts it (ticket 3420): before Rust
+//! The twin is where cargo's layout puts it: before Rust
 //! 1.100, `<profile>/deps/<stem>-<hash>` (or beside an example); in the
 //! build-dir layout since, `<profile>/build/<package>/<hash>/out/<crate
 //! name>`, with no `deps/` at all. Finding none there once left every
@@ -85,8 +85,8 @@ fn stamp(path: &Path) -> Option<(u64, SystemTime)> {
 
 /// `exe`'s twins, each with `exe`'s extension, length and modified time:
 /// in cargo's old layout each `<exe stem>-*` in `<exe dir>/deps/` (a
-/// binary) or beside it (an example); in its build-dir layout (Rust 1.100,
-/// ticket 3420) each `<profile>/build/<package>/<hash>/out/<name>`, where
+/// binary) or beside it (an example); in its build-dir layout (Rust 1.100)
+/// each `<profile>/build/<package>/<hash>/out/<name>`, where
 /// the profile folder is `exe`'s or, for an example, its parent, and
 /// `<name>` is the stem, or the crate name cargo makes of it (`_` for `-`).
 fn twins(exe: &Path, stem: &str) -> Vec<PathBuf> {
@@ -169,7 +169,7 @@ pub fn sweep(dir: &Path) {
 /// `from`: the copy is no running program's, so a build can replace it,
 /// and until one does the program is still where cargo left it.
 ///
-/// The order leaves no moment without a program at `from` (ticket 2561):
+/// The order leaves no moment without a program at `from`:
 /// the copy is made first, the running file gains its second name `to`
 /// by a hard link, and the copy is renamed over `from`, which replaces
 /// that name in one step. Renaming `from` away first would leave nothing
@@ -184,7 +184,7 @@ pub fn sweep(dir: &Path) {
 /// lasts is still returned.
 ///
 /// With `linked_to`, the copy is that file under one more name, not a new
-/// one: a twin's copy is the program's copy (ticket 2599), see
+/// one: a twin's copy is the program's copy, see
 /// [`move_aside`].
 fn put_aside(from: &Path, to: &Path, linked_to: Option<&Path>) -> Result<(), String> {
     let at = |path: &Path, e: std::io::Error| format!("{}: {e}", path.display());
@@ -215,7 +215,7 @@ fn put_aside(from: &Path, to: &Path, linked_to: Option<&Path>) -> Result<(), Str
 /// `exe` has no twin. Or why not.
 ///
 /// The copies left are one file under every name, as cargo left the
-/// program (ticket 2599). Cargo links a program's name to its twin on
+/// program. Cargo links a program's name to its twin on
 /// every build, a fresh one too, and when the two are separate files it
 /// first removes the program's name: on each `cargo run`, right after a
 /// copy was made, where a scan of the new `.exe` can refuse it

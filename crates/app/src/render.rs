@@ -1,13 +1,13 @@
-//! Blits a [`GlyphBuffer`] to the window with the font atlas (game ADR-0003):
+//! Blits a [`GlyphBuffer`] to the window with the font atlas:
 //! integer-scaled, centred, black letterbox; or, for a game that fills the
 //! window ([`ScaleMode::Fit`], ADR-0140), drawn at a whole scale into a
 //! texture that is then stretched to fill with linear filtering ("sharp
 //! bilinear": a pixel's edge blends over one window pixel at most). The buffer's items are drawn
 //! scaled, in the order they were added: `Under` ones after the cell
-//! backgrounds, `Over` ones after the glyphs. A rectangle (game ADR-0018) is a
-//! solid fill; a sprite (game ADR-0038) is part of an image's texture, or of a
+//! backgrounds, `Over` ones after the glyphs. A rectangle is a
+//! solid fill; a sprite is part of an image's texture, or of a
 //! recoloured copy of it when the sprite isn't painted in the image's own
-//! colours (game ADR-0049). A buffer's backdrop (game ADR-0048), a second buffer
+//! colours. A buffer's backdrop, a second buffer
 //! panned and zoomed, is drawn the same way inside its window, behind the
 //! console. A wide glyph (its continuation cell after it) is one quad over
 //! both its cells, as the raster paints it. A painted picture (ADR-0078) is
@@ -192,7 +192,7 @@ impl Renderer {
     /// its [`draw_scale`](Placement::draw_scale) into a texture first
     /// (a render target kept between frames), then stretched into its rectangle.
     ///
-    /// With a backdrop (game ADR-0048) the order is: the clear colour, the
+    /// With a backdrop the order is: the clear colour, the
     /// scene inside its window, then the console over it, whose
     /// see-through cells have no background.
     pub fn draw(&mut self, buf: &GlyphBuffer) {
@@ -766,7 +766,7 @@ fn source_rect(r: AtlasRect) -> Rect {
 mod tests {
     use super::*;
 
-    /// A fixture of ticket 2203's, by file name.
+    /// A fixture of the picture formats' tests, by file name.
     macro_rules! fixture {
         ($name:literal) => {
             include_bytes!(concat!("../../assets/tests/fixtures/formats/", $name)).as_slice()

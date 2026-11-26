@@ -1,10 +1,10 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
 //! and Cargo, rustup's targets, MSYS2's linker and `objcopy` on the
-//! Windows GNU toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
+//! Windows GNU toolchain, on Linux the C linker, `pkg-config` and the
 //! system libraries the backend links and opens, and the web target; and,
 //! as optional checks that never fail it, `gh`, which only `shuyi repos`
 //! needs, `ssh-keygen`, which it and `export --recipient` need, and, in a
-//! git checkout, the disk its worktrees take (ticket 3402): whether git's
+//! git checkout, the disk its worktrees take: whether git's
 //! hooks are set to its `scripts/git-hooks`, and on Windows whether its
 //! `target/` carries NTFS compression, which the `post-checkout` hook
 //! gives a new worktree. `doctor` only reads that attribute: it never

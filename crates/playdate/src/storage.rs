@@ -1,6 +1,6 @@
 //! The game's [`Storage`] on the Playdate's files: `<key>.ron` per key in the
 //! game's data folder (`Disk/Data/<bundle id>/` in the Simulator), kept as
-//! `shuyi-app`'s `FileStorage` keeps them (ticket 3045).
+//! `shuyi-app`'s `FileStorage` keeps them.
 //!
 //! A write puts the new value in `<key>.ron.tmp` and flushes it, copies the
 //! old `<key>.ron` (when it is a good copy: not empty, not all zero bytes,

@@ -2,7 +2,7 @@
 //!
 //! The data directory is resolved by hand from environment variables rather
 //! than with the `directories` crate: it pulls in `dirs-sys`, which
-//! unconditionally depends on `option-ext` (MPL-2.0), denied by game ADR-0013.
+//! unconditionally depends on `option-ext` (MPL-2.0), denied by ADR-0002 §8.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -20,7 +20,7 @@ mod fake_disk;
 /// directory ([`data_dir`]).
 ///
 /// The folder holds `<key>.ron`, the value, and `<key>.ron.bak`, the
-/// value before it (ticket 3045). A `<key>.ron.tmp` is there only between
+/// value before it. A `<key>.ron.tmp` is there only between
 /// a crash and the next write, which removes it. A sync of the folder
 /// (Steam Auto-Cloud) must carry the `.bak` files with the `.ron` files:
 /// a key whose `.ron` is gone reads its good `.bak`, so a save deleted on

@@ -1,4 +1,4 @@
-//! A toy [`TickSim`] for the engine's tests (ticket 2137): a [`Dot`] that
+//! A toy [`TickSim`] for the engine's tests: a [`Dot`] that
 //! moves a pixel a step while a direction is held, one more pixel a step
 //! for every 8 steps it is held, up to 4, and stops when let go. Stopping
 //! is its one event, [`DotEvent::Stopped`]. Integers only.

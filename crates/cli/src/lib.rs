@@ -603,7 +603,7 @@ const NO_TEXT: &str = "--no-text";
 /// `font-atlas`'s option naming the wide font.
 const WIDE: &str = "--wide";
 
-/// `font-atlas`'s option naming the font's bold face (ticket 3216).
+/// `font-atlas`'s option naming the font's bold face.
 const BOLD: &str = "--bold";
 
 /// `args` (paths), each relative one made relative to `project`'s root

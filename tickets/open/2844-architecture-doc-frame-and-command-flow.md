@@ -125,7 +125,7 @@ None.
 - The README as a front door is 2843's. It may link this page; this
   ticket doesn't edit `README.md`.
 - No guides (2004), and no cleanup of the ticket citations in rustdoc
-  (2034).
+  (2034 and 3538).
 
 **Estimated size:** about 900 lines (code 250, tests 150, docs 500),
 doubled from the steps.

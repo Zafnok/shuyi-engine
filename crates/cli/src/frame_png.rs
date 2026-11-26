@@ -593,7 +593,7 @@ fn summary(shown: &str, frame: &Image, warning: Option<&str>) -> String {
 
 /// Decodes picture file `png`: a PNG, or any other file a format of
 /// `Formats::standard()` reads, those whose feature of `shuyi-assets` the
-/// game turns on (JPEG, WebP, QOI, JPEG XL; ticket 2234), as `shuyi-app`
+/// game turns on (JPEG, WebP, QOI, JPEG XL), as `shuyi-app`
 /// decodes it.
 pub fn decode_image(png: &[u8]) -> Result<Image, String> {
     decode_with(&Formats::standard(), "", png)

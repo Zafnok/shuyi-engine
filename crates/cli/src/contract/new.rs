@@ -309,7 +309,7 @@ fn dependency(engine: &Engine, root: Option<&str>, krate: &str) -> String {
 /// The engine's rules and docs for a game's agent, as a Markdown list, one
 /// link or path per line: those of the engine the game builds with. At a
 /// commit or in a checkout the guides are their own line: the book copies
-/// them from `docs/guides/` as it builds (ticket 2004).
+/// them from `docs/guides/` as it builds.
 fn engine_docs(engine: &Engine, root: Option<&str>) -> String {
     match (engine, root) {
         (Engine::Path { .. }, Some(root)) => format!(
