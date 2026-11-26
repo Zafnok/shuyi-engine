@@ -24,6 +24,7 @@
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //! | `sfx <preset \| file>` | a sound effect from a preset or a `.sfx.ron` file: its text, length and peak; with `--out` its text written, with `--wav` the sound | [`sfx`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
+//! | `docs <query>` | the engine's docs searched: Learn pages, skills, examples and problem codes, best first, and the "how do I" rows the query asks | [`docs`] |
 //! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
 //!
 //! Every answer is an [`Answer`]: the contract's [`VERSION`], the
@@ -47,6 +48,7 @@ pub mod bake;
 pub mod check;
 pub mod cli;
 pub mod codes;
+pub mod docs;
 pub mod doctor;
 pub mod explain;
 pub mod export;
@@ -135,9 +137,11 @@ pub enum Op {
     Reset,
     /// The MCP session's game stopped.
     Stop,
-    /// A sound effect from a preset or a file. Last, so the variants
-    /// before it keep their places.
+    /// A sound effect from a preset or a file.
     Sfx,
+    /// The engine's docs searched. Last, so the variants before it keep
+    /// their places.
+    Docs,
 }
 
 impl Op {
@@ -160,6 +164,7 @@ impl Op {
         Op::Doctor,
         Op::Sfx,
         Op::Explain,
+        Op::Docs,
         Op::Attach,
     ];
 
@@ -195,6 +200,7 @@ impl Op {
             Op::Doctor => "doctor",
             Op::Sfx => "sfx",
             Op::Explain => "explain",
+            Op::Docs => "docs",
             Op::Attach => "attach",
             Op::Export => "export",
             Op::Start => "start",
@@ -478,6 +484,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op, name),
         (Op::Sfx, _) => pair::<sfx::SfxInput, sfx::SfxOutput>(op, name),
         (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(op, name),
+        (Op::Docs, _) => pair::<docs::DocsInput, docs::DocsOutput>(op, name),
         (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(op, name),
         (Op::Export, _) => pair::<export::ExportInput, export::ExportResult>(op, name),
         (Op::Start, _) => pair::<StartInput, StartOutput>(op, name),

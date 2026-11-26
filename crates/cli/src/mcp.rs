@@ -33,6 +33,9 @@
 //! The one-off `scene` operation is the session's `scene` here: `run`
 //! answers with the scene of a one-off run.
 //!
+//! `docs` searches the engine's docs as the server embeds them, at the
+//! engine's revision it was built from (ADR-0154).
+//!
 //! The server runs no game itself. A tool that runs the game runs it in
 //! the game's tool program (`shuyi.ron`'s `game`), started with `cargo
 //! run` as `shuyi mcp-host` ([`host`]); the session keeps that program
@@ -359,6 +362,15 @@ const SFX: &str = "A sound effect (`.sfx.ron`: a wave, a pitch, how loud it rise
      lines. `out` writes its text, a sound of the game's own for `files/audio.ron` to name; \
      `wav` writes the sound, for a person to listen to. Needs no game.";
 
+/// What `docs`'s tool does.
+const DOCS: &str = "Search the engine's docs, as this server embeds them at the game's engine \
+     revision: the Learn pages (with the book's code), the skills, the examples and the problem \
+     codes' pages. `query`: words or a name (`play a sound`, `add_sprite`, `Sprite`, `SH2003`). \
+     Answers the best `limit` hits (8, up to 50), each with its kind, title, source path, \
+     section anchor, the Learn page's Markdown URL, a score and an excerpt, and the \
+     \"how do I\" rows whose task the query asks. `kinds` keeps only `learn`, `skill`, \
+     `example` or `code` hits. Call it before guessing a type's or a function's name.";
+
 /// What `attach`'s tool does.
 const ATTACH: &str = "Reach a game's debug build already running in its window, over the live link \
      (`address` and `token`: its log line `shuyi link: listening on ..., token ...`; the \
@@ -482,6 +494,7 @@ fn description(op: Op, session: bool) -> &'static str {
             "Every problem code, or one code's page (`SH2003` or `missing-file`): what it means \
              and how to fix it. Every failed answer has a `code`."
         }
+        (Op::Docs, _) => DOCS,
         (Op::Attach, _) => ATTACH,
         (Op::Export, _) => EXPORT,
         (Op::Start, _) => START,
