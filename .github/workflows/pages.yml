@@ -76,6 +76,10 @@ jobs:
       # example's tests, which its Examples card plays (ticket 2811).
       - name: Copy the examples' previews
         run: bash site/copy-previews.sh
+      # Each example's shots/, checked in and kept current by the example's
+      # tests, which the book's chapters show (ticket 2813).
+      - name: Copy the examples' shots
+        run: bash site/copy-shots.sh
       - name: Build the site
         working-directory: site
         env:

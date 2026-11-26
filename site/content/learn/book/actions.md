@@ -144,7 +144,10 @@ The engine's Key bindings screen (`shuyi::ui::screens::key_bindings`) lets the p
 rebind three key slots and three button slots for each action, and saves them in the
 player's profile. It refuses to close while a required action has no key or no button. A
 keymap file with several layouts lets a player pick one on the layout picker the first
-time the game starts.
+time the game starts. Here it is in Hello, Grid, waiting for the key to put in Up's first
+slot:
+
+{{ shot(example="hello-grid", name="options", alt="The Key bindings screen: a table of the actions Up, Down, Left, Right, Confirm and Cancel, each with three key slots; Up's first slot is highlighted and says Press, and the line at the bottom says to press the key to put there or Escape to go back") }}
 
 You don't write any of this. It works since your code only ever asked for actions.
 

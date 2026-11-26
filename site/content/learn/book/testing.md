@@ -112,6 +112,14 @@ file's name (`preview: (args: ["--keys", "Enter", "--every", "0.05", "--count", 
 shows has changed and the picture hasn't, and says the command that remakes it. Hello,
 Grid's README shows its own.
 
+Still pictures of your game, for its docs or a page about it, are kept the same way. Name
+each in a `shots` part of `shuyi.ron`, with its arguments (`shots: {"title": (args:
+["--scale", "1"])}`), and `cargo shuyi frame-png --shots` writes each to
+`shots/<name>.png` (`--shot <name>` writes one). The test is
+`shuyi_cli::frame_png::kept::check_shots(&project, &MyTools)`: it names the first pixel
+that differs, and fails on a file in `shots/` that no shot names too. This book's pictures
+of Hello, Grid are its shots.
+
 That picture is the raster's, painted in software. To check that your window draws the same
 pixels, give your game a `capture` feature (`capture = ["shuyi-app/capture"]`) and a plan, a
 RON file of the same steps with captures between them:

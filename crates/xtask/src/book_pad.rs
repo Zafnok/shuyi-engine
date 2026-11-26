@@ -4,7 +4,8 @@
 //! own build of it, made again when its files change.
 //!
 //! - It builds the site once as CI does (`site-data`, `errors.sh`,
-//!   `copy-playground.sh`, `copy-previews.sh`, then `zola build`), into a
+//!   `copy-playground.sh`, `copy-previews.sh`, `copy-shots.sh`, then
+//!   `zola build`), into a
 //!   folder outside the repository's tree, at the address the reader opens
 //!   it at: the Codespace's forwarded port 4000, or `http://127.0.0.1:4000/`
 //!   outside one.
@@ -862,6 +863,7 @@ fn build_site(root: &Path, out: &Path, base: &str) -> Result<(), String> {
         "site/errors.sh",
         "site/copy-playground.sh",
         "site/copy-previews.sh",
+        "site/copy-shots.sh",
     ] {
         run(Command::new("bash").arg(script).current_dir(root), script)?;
     }

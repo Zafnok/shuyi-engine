@@ -1513,8 +1513,9 @@ jobs:
   # no shortcode left unexpanded, every llms.txt link resolving but the API
   # docs' (pages.yml builds those), and llms-full.txt under its budget.
   # The feature cards' statuses come from their tickets (ticket 2815), the
-  # playground's files from Hello, Grid's (ticket 2814), and the Examples
-  # cards' previews from each example's preview.png (ticket 2811). Cheap,
+  # playground's files from Hello, Grid's (ticket 2814), the Examples
+  # cards' previews from each example's preview.png (ticket 2811), and the
+  # book's pictures from each example's shots/ (ticket 2813). Cheap,
   # and Markdown is what it reads, so this always runs, like `tickets`. pages.yml builds and publishes the site on main.
   site:
     name: site
@@ -1540,6 +1541,11 @@ jobs:
       # it, and the Examples page names it.
       - name: Copy the examples' previews
         run: bash site/copy-previews.sh
+      # Each example's shots/, the book's pictures (ticket 2813);
+      # check-build.sh checks the build holds each as the example has it, and
+      # each chapter that shows one has its picture.
+      - name: Copy the examples' shots
+        run: bash site/copy-shots.sh
       - name: Check the site's links
         working-directory: site
         run: zola check --skip-external-links

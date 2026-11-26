@@ -4,7 +4,8 @@
 //! - a Markdown twin of every Learn page (`site/content/learn/`, drafts
 //!   aside) at its URL with `index.md` on the end: its title, a `Source:`
 //!   line, then its text with each `snippet` shortcode replaced by the code
-//!   it shows and its links made absolute;
+//!   it shows, each `try_it` and `shot` by its pictures as images, and its
+//!   links made absolute;
 //! - `llms.txt`: `site/llms-header.md`, the version and the commit, then the
 //!   links, a list per Learn section, the contract, the API docs, the
 //!   released versions' copies and the optional reading;
@@ -867,11 +868,11 @@ fn expand(shown: &str, body: &str, first_line: usize, snippets: &Path) -> (Strin
             }
             Some(Ok(call)) => {
                 at = open + 2 + call.len;
-                if opener == "{{" && matches!(call.name, "snippet" | "try_it") {
-                    let expanded = if call.name == "snippet" {
-                        snippet(call.args, snippets)
-                    } else {
-                        try_it(call.args, snippets)
+                if opener == "{{" && matches!(call.name, "snippet" | "try_it" | "shot") {
+                    let expanded = match call.name {
+                        "snippet" => snippet(call.args, snippets),
+                        "try_it" => try_it(call.args, snippets),
+                        _ => shot(call.args, snippets),
                     };
                     match expanded {
                         Ok(code) => out.push_str(&code),
@@ -1059,6 +1060,45 @@ fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
         out.push_str(TRY_RUST);
     }
     Ok(out.trim_end().to_owned())
+}
+
+/// The `shot` shortcode (`site/templates/shortcodes/shot.html`, ticket
+/// 2813): shot `name` of `example` as an image with its `alt`, from
+/// `site/static/shots/<example>/<name>.png`, which must be there (as the
+/// build has it), and its `caption`, if any, a line in italics under it.
+fn shot(args: &str, snippets: &Path) -> Result<String, String> {
+    let (mut example, mut name, mut alt, mut caption) = (None, None, None, None);
+    for (key, value) in arguments(args).map_err(|e| format!("shot: {e}"))? {
+        match key {
+            "example" => example = Some(value),
+            "name" => name = Some(value),
+            "alt" => alt = Some(value),
+            "caption" => caption = Some(value),
+            _ => {
+                return Err(format!(
+                    "shot: no argument `{key}` (it takes `example`, `name`, `alt` and `caption`)"
+                ));
+            }
+        }
+    }
+    let example = example.ok_or("shot: no `example`")?;
+    let name = name.ok_or("shot: no `name`")?;
+    let alt = alt
+        .filter(|alt| !alt.is_empty())
+        .ok_or_else(|| format!("shot: `{example}/{name}` has no `alt`"))?;
+    let path = format!("shots/{example}/{name}.png");
+    let site = snippets.parent().unwrap_or(snippets);
+    if !site.join("static").join(&path).is_file() {
+        return Err(format!(
+            "shot: site/static/{path} isn't there: run `bash site/copy-shots.sh`, and `cargo shuyi \
+             frame-png --shot {name}` in examples/{example}/ if it has no shots/{name}.png"
+        ));
+    }
+    let mut out = format!("![{alt}](/{path})");
+    if let Some(caption) = caption.filter(|caption| !caption.is_empty()) {
+        let _ = write!(out, "\n\n*{caption}*");
+    }
+    Ok(out)
 }
 
 /// What a try of the Rust code says under its pictures, as the shortcode

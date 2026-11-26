@@ -25,6 +25,11 @@
 //! APNG a README and the website's Examples card show, which a test of the
 //! game keeps equal to what the part makes ([`preview::check`]).
 //!
+//! With `--shot <name>` or `--shots`, it takes them from `shuyi.ron`'s
+//! `shots` part and writes the game's pictures, each a still frame in
+//! `shots/<name>.png` that the book shows and a test of the game keeps equal
+//! to what the part makes ([`kept::check_shots`]).
+//!
 //! [`Painter`] decodes a game's font atlas and images and paints with the
 //! raster, `shuyi_ui::frame::raster`: the reference picture of a
 //! frame, which `shuyi-app` must match. Its module docs say what it draws.
@@ -47,6 +52,7 @@ use shuyi_ui::frame::{GlyphBuffer, Rgb};
 use crate::codec::{decode_png, encode_apng, encode_gif, encode_png, gif_delay};
 use crate::game::{GameArg, GameOption, GameTools, game_arg};
 
+pub mod kept;
 pub mod preview;
 pub mod sheet;
 
@@ -162,6 +168,8 @@ pub fn usage(command: &str, options: &[GameOption], notes: &str) -> String {
         "\
 usage: {command} frame-png <out.png> [steps] [options]
        {command} frame-png --preview
+       {command} frame-png --shot NAME
+       {command} frame-png --shots
 
 Starts the game in the test Harness, runs the steps in the order given,
 and writes the frame to <out.png> (a relative path is from the project's
@@ -170,6 +178,13 @@ root).
 --preview, alone, writes the game's preview, {preview} in the project's
 root: an APNG of the steps and options in shuyi.ron's `preview` part
 (`args`, as typed after <out.png>), which a README and the website show.
+
+--shot NAME writes the game's shot NAME, {shots}/NAME.png in the project's
+root: the frame of the steps and options of NAME in shuyi.ron's `shots`
+part (its `args`, as typed after <out.png>), which the book shows. --shots,
+alone, writes every shot, then fails on a file of {shots}/ no shot names,
+which it leaves for you to remove. A test of the game fails when a shot
+is stale.
 
 steps (each may repeat):
   --keys \"F2 Up f\"   press and release each key chord in turn
@@ -202,6 +217,7 @@ frames over time (with --count; without it, one frame):
                        a frame; each frame shown in whole 1/100 s, at least 2)
 ",
         preview = preview::FILE,
+        shots = kept::FOLDER,
     );
     for option in options {
         let name = match option.value {
@@ -477,11 +493,8 @@ pub fn run(
     target: Option<&TargetProfile>,
 ) -> Result<String, String> {
     let (game_options, script, scale) = (&options.game, &options.script, options.scale);
-    let one_bit = target.filter(|profile| profile.display.color == Color::OneBit);
-    let painted = |script: &Script| match one_bit {
-        Some(profile) => game.frame_one_bit(&profile.id, game_options, script, scale),
-        None => game.frame(game_options, script, scale),
-    };
+    let one_bit = one_bit(target);
+    let painted = |script: &Script| paint(game, options, script, one_bit);
     let Some((capture, output)) = options.capture else {
         let shot = painted(script)?;
         let png = encode_png(shot.image.width, shot.image.height, &shot.image.rgba)?;
@@ -531,6 +544,35 @@ pub fn run(
         said.push_str(&speed);
     }
     Ok(said)
+}
+
+/// The frame `options`' script ends on (its capture aside), as the display
+/// of `target` shows it: what [`run`] writes of one frame.
+pub fn frame_of(
+    options: &Options,
+    game: &dyn GameTools,
+    target: Option<&TargetProfile>,
+) -> Result<Shot, String> {
+    paint(game, options, &options.script, one_bit(target))
+}
+
+/// `target`, if its display is black and white.
+fn one_bit(target: Option<&TargetProfile>) -> Option<&TargetProfile> {
+    target.filter(|profile| profile.display.color == Color::OneBit)
+}
+
+/// The frame `script` ends on, with the game's options and scale of
+/// `options`, in the patterns of `one_bit`'s display if it is given.
+fn paint(
+    game: &dyn GameTools,
+    options: &Options,
+    script: &Script,
+    one_bit: Option<&TargetProfile>,
+) -> Result<Shot, String> {
+    match one_bit {
+        Some(profile) => game.frame_one_bit(&profile.id, &options.game, script, options.scale),
+        None => game.frame(&options.game, script, options.scale),
+    }
 }
 
 /// What the summary says of a GIF whose frames are `every` frames of

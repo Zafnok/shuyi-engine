@@ -389,7 +389,9 @@ python -m http.server --directory dist/web
 
 and open `http://localhost:8000`. [Chapter 9](@/learn/book/targets-and-export.md#the-web-build)
 says how it works and how to hand it out. [Hello, Grid](@/examples/hello-grid.md), the
-engine's example, plays in your browser on this site.
+engine's example, plays in your browser on this site. This is its title:
+
+{{ shot(example="hello-grid", name="title", alt="Hello, Grid's title: the game's name in a box, a line saying it is a small game made with Shuyi Engine, a menu of Play, Options, Profiles and Quit with Play picked, and a line at the bottom naming the keys that choose and pick") }}
 
 ## On GitHub
 
