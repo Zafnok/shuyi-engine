@@ -246,4 +246,12 @@ lands first.
   paths.
 - Game: nothing to adopt, comments and an xtask check of this
   repository only.
-- No break. Book: none, no public API changed.
+- No break.
+
+Book: none, only doc comments changed there, and no behaviour.
+Skills: none, only doc comments changed there, and no behaviour.
+Templates: none, only doc comments changed there, and no behaviour.
+Formats: none, only doc comments changed there, and no behaviour.
+Backends: none, only doc comments changed there, and no behaviour.
+Crash: none, only doc comments changed there, and no behaviour.
+Playdate: none, only doc comments changed there, and no behaviour.
