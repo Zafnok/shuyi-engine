@@ -30,7 +30,7 @@ What it builds on:
   deterministic `Round` with exactly the server's inputs, checks the
   server's hash every 15 steps, and asks for a catch-up on a mismatch.
   It doesn't predict: about one step of input delay at 15 steps a
-  second (ADR-0154, 2613).
+  second (ADR-0155, 2613).
 - **The director's handshake** (2615): `Hello { protocol, made }`, then
   `Play`; answers `Welcome`, `Refused { why: OtherBuild | Busy {
   retry_after_s } | Protocol }`.

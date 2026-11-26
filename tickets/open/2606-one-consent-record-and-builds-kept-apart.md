@@ -69,7 +69,7 @@ extends. The game builds none of this: every ticket named here is
 parked, and the game's 0053 has not picked an online mode.
 
 **Since Nick's decision of 2026-11-25** (`docs/decisions.md`, the
-online example trails, ADR-0154), the first version handshake exists
+online example trails, ADR-0155), the first version handshake exists
 before this ticket: 2615's quick-play director opens every connection
 with `Hello { protocol, made }`, checks `protocol` against 2614's
 `room::wire::PROTOCOL` and `made` with `Made::check`, and answers

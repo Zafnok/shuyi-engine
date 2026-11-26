@@ -17,7 +17,7 @@ completed:
 
 - Nick's decision of 2026-11-25 (`docs/decisions.md`): trails is played
   online, in up to 10 rooms on an always-free host.
-- ADR-0154 (2613) makes the server a **headless platform backend**
+- ADR-0155 (2613) makes the server a **headless platform backend**
   (ADR-0008 §2): tokio, sockets and the clock, never macroquad, never
   the rules. The rooms (2614) and the director (2615) are sans-IO in
   `shuyi-net`; this ticket is the I/O around them.
@@ -138,7 +138,7 @@ binary (2789's `trails-server`); the library parses no command line.
     or written.
 - **The cost guard:**
   - an egress counter of every byte the server writes, plus a fixed 74 B
-    a message for the TLS record and TCP/IP headers (ADR-0154's
+    a message for the TLS record and TCP/IP headers (ADR-0155's
     numbers), so it tracks what the host bills;
   - saved to a state file (`state_dir` in the config; 2618's
     `StateDirectory=trails-server`) every minute and at shutdown, and

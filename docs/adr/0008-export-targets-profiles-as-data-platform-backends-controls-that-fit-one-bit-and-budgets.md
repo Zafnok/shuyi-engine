@@ -11,7 +11,7 @@
   "every `supported` profile"); §6 extended by ADR-0128 (`startup_ms`
   is to the game's first frame; what must not stay in memory on
   `playdate` and `web`)
-- **Amended by [ADR-0154](0154-real-time-rooms-a-server-broadcasts-each-steps-inputs.md):** §2 gains a headless server backend,
+- **Amended by [ADR-0155](0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md):** §2 gains a headless server backend,
   `shuyi-server`, which touches sockets and the clock, never the rules
 - **Date:** 2026-10-15
 - **Related tickets:** 3001–3016; game 1025 (the parked Playdate port),

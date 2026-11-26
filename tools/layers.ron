@@ -160,7 +160,7 @@
             floats: false,
         ),
         "shuyi-net": (
-            // The transport trait and the in-memory network (ADR-0154), a
+            // The transport trait and the in-memory network (ADR-0155), a
             // module: pure, with no I/O, no clock and no threads; the
             // sockets are the backends'.
             engine: [],

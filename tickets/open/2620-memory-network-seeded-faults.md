@@ -19,7 +19,7 @@ completed:
   `MemoryNetwork`, which delivers everything sent at the next `step`, in
   the order sent, on both channels. It was split there at 1,936 counted
   lines: this ticket takes the faults
-  ([ADR-0154](../../docs/adr/0154-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)
+  ([ADR-0155](../../docs/adr/0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)
   §4: "its faults draw from one `SimRng` in a fixed order per message").
 - A first draft of this ticket's code and tests was written with 2613, on
   the local branch `t2620-memory-network-faults` of its session (commit

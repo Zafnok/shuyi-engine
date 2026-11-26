@@ -1,4 +1,4 @@
-# ADR-0154: Real-time rooms: an authoritative server broadcasts each step's inputs, with bots in empty seats and quick play without accounts
+# ADR-0155: Real-time rooms: an authoritative server broadcasts each step's inputs, with bots in empty seats and quick play without accounts
 
 - **Status:** Accepted
 - **Date:** 2026-11-26

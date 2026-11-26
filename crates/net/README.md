@@ -10,7 +10,7 @@ socket and runs the same on every target, wasm32 included (seeded loss,
 duplicates, reordering and delay are 2620's). It is the base of the rooms
 of a game server, where the server broadcasts each step's inputs and
 every client steps the same rules
-([ADR-0154](../../docs/adr/0154-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)).
+([ADR-0155](../../docs/adr/0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)).
 It serves fixed-tick games. The rooms (2614), the quick-play director
 (2615) and the server (2616) are planned; lockstep, rollback and a
 referee are parked (1140–1150).

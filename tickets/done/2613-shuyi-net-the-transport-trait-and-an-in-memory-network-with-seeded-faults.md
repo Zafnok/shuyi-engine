@@ -1,6 +1,6 @@
 ---
 id: "2613"
-title: "shuyi-net: the Transport trait and an in-memory network, split out of 1140, and ADR-0154 for real-time rooms"
+title: "shuyi-net: the Transport trait and an in-memory network, split out of 1140, and ADR-0155 for real-time rooms"
 type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
@@ -11,14 +11,14 @@ nick_input: none
 completed: 2026-11-26
 ---
 
-# 2613 — shuyi-net: Transport, an in-memory network, and ADR-0154
+# 2613 — shuyi-net: Transport, an in-memory network, and ADR-0155
 
 **Split on 2026-11-26:** at 1,936 counted lines this ticket's PR was
 split. The seeded faults (`Faults`, their draws, and the tests and
 acceptance cases of loss, duplicates, reordering and delay) are 2620's;
 this ticket keeps the crate, `Transport` and its types, a
 `MemoryNetwork` that delivers at the next step in send order, the
-module duties, the CI line and ADR-0154. The scope below is as
+module duties, the CI line and ADR-0155. The scope below is as
 written; the Out list and the struck criteria say what moved.
 
 ## Context
@@ -31,7 +31,7 @@ written; the Out list and the struck criteria say what moved.
   together with lockstep over `TurnRules`. Trails needs the first two and
   not lockstep. This ticket takes the transport half; 1140 is amended to
   keep only lockstep and commit-reveal, built on this crate.
-- It also writes ADR-0154, the architecture of the whole set
+- It also writes ADR-0155, the architecture of the whole set
   (2613–2619, 2788–2791, 2854–2856), and amends ADR-0006, whose §6 left
   real time in the browser to 1147's research.
 - What exists today, checked on 2026-11-25:
@@ -158,7 +158,7 @@ Nick's next batch of names.
   the line that tests `-p shuyi-core … -p shuyi-script`), so delivery
   order is checked on wasm32, where the browser client runs. (1140's
   "From 2116" line moves here.)
-- **ADR-0154**, written with the `write-adr` skill. Title in the style
+- **ADR-0155**, written with the `write-adr` skill. Title in the style
   of the others, for example "Real-time rooms: an authoritative server
   broadcasts each step's inputs, with bots in empty seats and quick play
   without accounts". It says:
@@ -206,7 +206,7 @@ Nick's next batch of names.
     "server-authoritative input broadcast" sync model for ticks), §5
     (systemd on a free host beside Docker images; 2618's ADR) and
     §6 (real time over WebSocket in the browser is built now, not left to
-    1147). Add an "Amended by ADR-0154" line under ADR-0006's status,
+    1147). Add an "Amended by ADR-0155" line under ADR-0006's status,
     and one under ADR-0008's for the server backend.
 - **Public types** follow ADR-0039: `NetEvent`, `DisconnectReason`,
   `SendError`, `Faults` and `NetStats` may grow, so they are
@@ -249,7 +249,7 @@ ADR 150).
 5. Write `MemoryNetwork`, `MemoryEndpoint` and `Faults`, then the tests
    below.
 6. Add `-p shuyi-net` to CI's wasm32 `determinism` step.
-7. Write ADR-0154 with the `write-adr` skill, and the back-links in
+7. Write ADR-0155 with the `write-adr` skill, and the back-links in
    ADR-0006 and ADR-0008.
 8. Check the crate names (Nick input), and write the `Book:`,
    `Skills:` and `Behaviour:` lines.
@@ -276,7 +276,7 @@ ADR 150).
       message is `Err(TooLarge)`; neither panics.
 - [x] A game built without the front door's `net` feature has no
       `shuyi-net` in `cargo tree`.
-- [x] ADR-0154 is merged, and ADR-0006 and ADR-0008 name it.
+- [x] ADR-0155 is merged, and ADR-0006 and ADR-0008 name it.
 - [x] The completion notes have a `Book:` line naming 2854 and a
       `Skills:` line naming 2855.
 - [x] All gates in the `run-gates` skill pass.
@@ -326,7 +326,7 @@ Done on 2026-11-26.
 - **CI:** `-p shuyi-net` joins the wasm32 `cargo test` step of the
   `determinism` job, and the same line in the `run-gates` skill and in
   `tools/sound-parity/footprint.ron` (which rewrites that line).
-- **ADR-0154** (real-time rooms), with "Amended by" lines in ADR-0006 and
+- **ADR-0155** (real-time rooms), with "Amended by" lines in ADR-0006 and
   ADR-0008 and both index rows.
 - **Size measured** on 2026-11-26: Hello, Grid's web release build with
   a live use of `MemoryNetwork` is 21,159 bytes bigger (3,915,937 →
@@ -344,11 +344,11 @@ Done on 2026-11-26.
   2854 now name 2620 for the faults; 1140 and 2614 have it in
   `blocked_by` (2615 waits through 2614, 2529 through 1140).
   `shuyi-core` and the layers' `engine: ["shuyi-core"]` come with 2620.
-- **The ADR's number is 0154, not 0150.** ADR-0150 (the contract's
-  version), ADR-0151 (constructors), ADR-0152 (publishing, 3510) and
-  ADR-0153 (the debug pause, 2316) were taken after this ticket was
-  written. The net tickets' references to ADR-0150 now say ADR-0154
-  (1140, 1141, 1142, 1146, 1147, 2551, 2606, 2613–2618, 2789, 2790,
+- **The ADR's number is 0155, not 0150.** ADR-0150 (the contract's
+  version), ADR-0151 (constructors), ADR-0152 (publishing, 3510),
+  ADR-0153 (the debug pause, 2316) and ADR-0154 (the docs search, 3412)
+  were taken after this ticket was written. The net tickets' references
+  to ADR-0150 now say ADR-0155 (1140, 1141, 1142, 1146, 1147, 2551, 2606, 2613–2618, 2789, 2790,
   2854–2856). The hosting ADR they called ADR-0151 is now "2618's ADR",
   numbered by `cargo xtask next-id adr` when 2618 writes it (2616, 2618,
   2619, 1141, 1146, 2854–2856).
@@ -399,7 +399,7 @@ Game: nothing to adopt, the crate is behind a feature that is off by
 default, and the game builds none of it.
 
 Book: none here; 2854 writes the online chapter, over this crate and
-ADR-0154.
+ADR-0155.
 
 Skills: none here; 2855 rewrites `skills/shuyi-net`, whose `waits_for`
 keeps 1140.

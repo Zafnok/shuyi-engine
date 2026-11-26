@@ -26,7 +26,7 @@ It needs `TurnRules` (the game's ticket 1114), which is in this
 repository (`crates/core/src/turn.rs`).
 
 Nick's decision of 2026-11-25 (`docs/decisions.md`) unparked an online
-example, trails, on real-time rooms (ADR-0154). That work needs the
+example, trails, on real-time rooms (ADR-0155). That work needs the
 transport half of this ticket and not lockstep, so the transport moved
 to 2613: the crate `shuyi-net`, `Transport`, `PeerId`, `Channel`,
 `NetEvent`, `NetStats` and `MemoryNetwork` are built there, and the
@@ -145,7 +145,7 @@ None (technical). Scheduling: see above.
 
 ## Implementation steps
 
-1. Read 2613's `crates/net` and ADR-0154; add `serde` to the crate and
+1. Read 2613's `crates/net` and ADR-0155; add `serde` to the crate and
    its `layers.ron` entry.
 2. Write the lockstep session and its tests, with the soak if 2527 is
    done.
