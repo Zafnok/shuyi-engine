@@ -84,6 +84,11 @@ The two more:
   private files;
 - 2090 joined 2005's `blocked_by` as an MVP ticket.
 
+On 2026-11-25 Nick put 3510 in the phase (the publish list from the
+workspace, exact pins between the crates, and a runbook for a publish
+that stops part way), which the release's workflow runs on
+([`decisions.md`](decisions.md)).
+
 These tickets, in order:
 
 | Ticket | What |
@@ -198,6 +203,7 @@ These tickets, in order:
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
 | 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
 | 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
+| 3510 | The publish list comes from the workspace, internal pins are exact, and a half-finished publish has a runbook |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
@@ -397,7 +403,8 @@ is done.
 | 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
 | 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
-| 2277 | `shuyi sfx`, Hello, Grid's sounds as `.sfx.ron` files, and the tutorial's push and win sounds (after 2225) |
+| 2277 (done) | `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files |
+| 2853 | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how (after 2277) |
 
 **Text and languages:**
 
@@ -927,6 +934,31 @@ going public, with the one book (2823–2828).
 | 2840 | The book served from its Codespace: the reader follows the book there, and each step's game is rebuilt when its files change (after 2837) |
 | 2841 | The step's Rust in the playground's tabs, in the book served from its Codespace (after 2840) |
 
+### Online play: the trails example
+
+On 2026-11-25 Nick chose an online light-trail arena as the next example
+([`decisions.md`](decisions.md)): real-time rooms on a server that decides
+everything, bots in empty seats, quick play with no accounts, hosted on an
+always-free tier. These tickets are unparked; the rest of networking stays
+parked below.
+
+| Ticket | What |
+| ------ | ---- |
+| 2612 | `TickInput` holds eight seats, and a seat's input has a byte form |
+| 2613 | `shuyi-net`: the `Transport` trait and an in-memory network with seeded faults |
+| 2614 | Tick rooms: a server-authoritative room over TickSim with bots in empty seats |
+| 2615 | Quick play: a black-box director that seats a player in a room with a free seat |
+| 2616 | `shuyi-server`: a director's rooms over WebSocket, with TLS, limits, health and a cost guard |
+| 2617 | A WebSocket client transport for native games, behind a `net` feature |
+| 1142 | WebSocket in the web build through our own JS plugin |
+| 2788 | Trails: the example, one player against bots, offline |
+| 2789 | Trails' server binary, its room rules and Linux builds from CI |
+| 2790 | Trails online: quick play from the title screen on desktop and the web |
+| 2791 | The trails server measured at ten full rooms |
+| 2618 | Hosting the trails server on Oracle Cloud Always Free (Nick does the account steps) |
+| 2619 | Watching the server: an outside uptime and certificate check that tells Nick |
+| 2854–2856 | The book's chapter on online play, the skill pack, and hosting your server for free |
+
 ### Public demo defenses
 
 On 2026-10-31 Nick asked for a ticket track for countermeasures to
@@ -958,7 +990,7 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2609 | The hosted preview's action API: sessions over HTTP, one frame an action, and deadlines (after 2602; done 2026-11-23) |
 | 2610 | The hosted preview's quotas: per address, actions and their rate, the game's time, memory and bytes sent; idle and old sessions ended, and the connections at once (after 2609; done 2026-11-23) |
 | 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
-| 2093 | Parked: remove the research scripts under `tools/research/` and keep their reports (after 3083) |
+| 2093 | Move the research scripts under `tools/research/` to a repository of their own and keep their reports (unparked 2026-11-25; done 2026-11-25) |
 
 ## Parked
 
@@ -1204,7 +1236,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 1135 | Research: visual scripting as a view over text | — |
 | 2506–2508 | The editor (Godot- or Unreal-style): research on where it runs and how it talks to a running game through the tool contract, the shell with a live view, a tree and an inspector over settings files, and the graph panel over `*.graph.ron` | Nick asks (2026-10-19: "UI layer for visual code -- like Godot editor or Unreal Blueprints") |
 | 2317–2320 | The debug view's channels: collision bounds, level layouts, skeletons of procedural bodies, and 3D bones and colliders | the work each one draws is unparked (1122; 1120 and 1124; 2701 and 2702; 3102, 3103 and 3105) |
-| 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
+| 1140–1141, 1143–1150 | Networking: lockstep, relay, LAN, Steam, sessions, referee server, rollback, accounts and ratings, chat, MMO and global chat research (1142 and the trails tickets were unparked on 2026-11-25, above) | the game's 0053 picks an online mode |
 | 2701–2704 | Procedural animation, a module (ADR-0010): bodies of points in `Fx`, limbs and gaits that find footholds, strips and rotated sprites to draw them, and a side-view cave example | Nick asks (2026-10-16: "this will be very late addition since it won't tie into visions of shuyi game") |
 | 2205–2206 | MIDI music, a module (ADR-0014): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |
 | 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |

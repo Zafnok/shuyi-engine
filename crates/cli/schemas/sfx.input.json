@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SfxInput",
+  "description": "What `sfx` makes or reads.",
+  "type": "object",
+  "properties": {
+    "out": {
+      "description": "The `.sfx.ron` file to write the sound's text to, from the working\nfolder; its folder is made if it is missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "seed": {
+      "description": "The preset's variation: 0, or none, is the preset as written;\nanother seed moves its pitches by up to 10 % and its `hold_ms` by up\nto 20 %. Only for a preset.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "default": null,
+      "minimum": 0
+    },
+    "source": {
+      "description": "A preset's name (`coin`; the answer lists them), or a `.sfx.ron`\nfile, from the working folder.",
+      "type": "string"
+    },
+    "wav": {
+      "description": "The WAV file to write the rendered sound to, from the working\nfolder, to listen to it.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "source"
+  ]
+}

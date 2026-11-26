@@ -37,7 +37,7 @@ What Shuyi has today, and plans:
   `shuyi-app`'s player (`crates/app/src/audio.rs`) over macroquad and
   quad-snd. Only platform backends touch audio devices (`AGENTS.md`
   rule 5, ADR-0024).
-- **The net tickets, all parked:** 1140's `Transport` trait with a
+- **The net tickets, all parked:** 2613's `Transport` trait with a
   `Reliable` and an `Unreliable` channel; the relay and native
   WebSocket (1141), WebSocket in the browser through our own JS plugin
   (1142), UDP on the LAN (1143), Steam networking and lobbies (1144),

@@ -108,8 +108,8 @@ cd moon-garden
 
 `shuyi new` writes a new game in a new folder, and `cd` moves your terminal into
 it. In a terminal it asks what the flags don't say, each question a list to pick from
-with its default already picked, so Enter alone takes it: the game's id, how its rules
-are written, which targets it ships on, and whether to include the engine skills'
+with its default already picked, so Enter alone takes it: the game's id, the folder its
+saves are kept in (the id, typed in for you), how its rules are written, which targets it ships on, and whether to include the engine skills'
 *worked examples*, files that show each skill at work (`bots.rs`, `playtest.ron`…).
 Yes keeps them for you and your coding agent to read, no leaves only the skills, and
 the game runs the same either way (`--examples` or `--no-examples` answers it). Answers
@@ -120,8 +120,8 @@ GitHub](#on-github), below). A **template** is what the game starts from. `blank
 records. [Chapter 5](@/learn/book/rules-as-commands.md) explains the rules.
 
 Without `--template`, the flags pick the parts: `--perspective top-down-grid`, `--targets
-desktop,web`, and `--id io.github.<you>.moon-garden`, the id your players' saves are kept
-under. An answer that isn't built yet is refused, with the tickets that build it.
+desktop,web`, `--id io.github.<you>.moon-garden`, the game's unique id, and `--storage`,
+the name of the folder your players' saves are kept in (the id without). An answer that isn't built yet is refused, with the tickets that build it.
 `shuyi new moon-garden --questions` lists every question with its flag and what it takes
 now, and makes nothing. At the end, `shuyi new` prints the one command that makes the
 same game again with nothing asked, and keeps your answers in `shuyi.ron` under
@@ -293,7 +293,8 @@ compiler or its tools, and this one tells the code formatter to leave the line
 alone.
 {% end %}
 
-The player's settings are kept under the id. A new game's is a placeholder,
+The player's settings are kept under the id, unless `shuyi.ron`'s `app` names another
+folder (`storage`, which `shuyi new --storage` sets). A new game's id is a placeholder,
 `com.example.moon-garden`, which `check --target` warns of. Set your own before you
 hand out a build, since two games with one id share their saves.
 

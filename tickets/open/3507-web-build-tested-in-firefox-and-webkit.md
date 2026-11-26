@@ -26,8 +26,11 @@ one browser engine: Chromium.
 - `tools/web-check/check.py` launches only
   `playwright.chromium.launch(args=CHROMIUM_ARGS)` (line 380). Its modes
   are `boot`, `capture`, `fixtures` and `frame` (3505).
-- `tools/research/2914/web/browser_smoke.py` (the cold rules' replay
-  against native, run by `web-render`) launches Chromium only (line 66).
+- **From 2093 (done):** the cold rules' browser replay
+  (`browser_smoke.py`) left the engine with the other research scripts
+  ([`shuyi-engine-research`](https://github.com/Zafnok/shuyi-engine-research)),
+  and `web-render` no longer runs it, so this ticket has no replay to
+  run in the other browsers.
 - `.github/workflows/sound-parity.yml` installs Chromium only (line 54),
   and `tools/sound-parity/capture.py` records the web sound in Chromium
   only (`Browser.open`, about line 473). `tools/sound-parity/budget.ron`
@@ -72,7 +75,6 @@ None.
   for every mode. Each browser starts with what it needs to draw WebGL
   without a GPU, written as a constant beside `CHROMIUM_ARGS` with a
   comment saying why.
-- `browser_smoke.py --browser`, the same three.
 - A new CI job, `web-browsers`, with a matrix of `firefox` and `webkit`.
   It runs the same page checks `web-render` runs on the pages
   `web-render` built, without building them again. It is in
@@ -161,10 +163,8 @@ Firefox) into a new ticket that names this one.
    start. Each entry the session adds names a bug ticket it writes
    (`write-ticket`) in the same PR. `check.py` fails an entry for a
    check that now passes, so a fixed gap is removed.
-3. **`browser_smoke.py --browser`.** In
-   `tools/research/2914/web/browser_smoke.py`, the same flag and the
-   same launch options. Import them from `check.py` (as
-   `tools/sound-parity/capture.py` imports `serve`), not a copy.
+3. *(None: 2093 removed `browser_smoke.py` from the engine. The
+   number stays so the steps below keep theirs.)*
 4. **The pages, once.** In `web-render` (`ci.yml`), upload the pages the
    job built and checks as an artifact `web-pages`: `target/web/*`
    (every example and the render card), Hello, Grid's capture build
@@ -179,9 +179,7 @@ Firefox) into a new ticket that names this one.
    with `fail-fast: false`. It installs the checker from
    `requirements.txt` with `--require-hashes`, runs
    `playwright install --with-deps ${{ matrix.browser }}`, downloads
-   `web-pages` (a wasm build of the cold rules too, or it builds the
-   three small `cold-rules-web-fixture` wasm files and the native
-   fixture as `web-render` does: whichever is shorter), and runs with
+   `web-pages`, and runs with
    `--browser ${{ matrix.browser }}`:
    - `check.py fixtures`;
    - `check.py boot` on every example page;
@@ -189,8 +187,7 @@ Firefox) into a new ticket that names this one.
    - `check.py frame` on Hello, Grid and the copy that takes no focus on
      fullscreen, which must fail;
    - `check.py boot` on the packed export;
-   - `check.py capture` on Hello, Grid's plan and the render card;
-   - `browser_smoke.py` for the three kernels.
+   - `check.py capture` on Hello, Grid's plan and the render card.
    The consoles go in the step summary, and `target/web-check/` is
    uploaded as `web-render-<browser>`. Add `web-browsers` to
    `ci-result`'s `needs` (and to its check of each result, as the other
@@ -257,8 +254,7 @@ Firefox) into a new ticket that names this one.
 - [ ] In each cell: every example page boots, the page without `var
       register_plugin;` fails, the frame check passes on Hello, Grid and
       fails on its copy, the packed export boots, both capture plans
-      pass at `Tolerance::default()`, and the three cold-rules replays
-      match native. Or the check is in `BROWSER_GAPS` with a reason and
+      pass at `Tolerance::default()`. Or the check is in `BROWSER_GAPS` with a reason and
       an open bug ticket.
 - [ ] A `BROWSER_GAPS` entry whose check passes fails `check.py`.
 - [ ] `web-render`'s Chromium checks are unchanged: the same steps, the

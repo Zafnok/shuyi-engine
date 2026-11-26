@@ -39,7 +39,7 @@ What Shuyi has today (checked 2026-10-20 and 2026-10-21):
   relay, UDP on a LAN, Steam, later WebRTC or WebTransport) and services
   on our own server. A request to someone else's web API is neither.
   1141 (a native WebSocket) and 1142 (`net.js`, a WebSocket in the
-  browser) carry bytes between peers behind 1140's `Transport` trait.
+  browser) carry bytes between peers behind 2613's `Transport` trait.
   1148's client API names no transport.
 - **The web build can't use an HTTP crate.** macroquad's loader doesn't
   use `wasm-bindgen` (game ADR-0034), so `reqwest`, `ehttp` and `gloo`

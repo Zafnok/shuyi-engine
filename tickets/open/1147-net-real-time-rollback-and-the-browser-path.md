@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["1125", "1140", "2604"]
+blocked_by: ["1125", "1140", "2604", "2614"]
 nick_input: none
 completed:
 ---
@@ -28,6 +28,27 @@ ADR-0006 §1 and §6. Real-time games need one of two sync models:
 The web build's loader blocks most browser crates. GGRS on wasm pulls
 `js-sys` and the unmaintained `instant`. WebRTC (matchbox) and
 WebTransport need `wasm-bindgen`. naia has a macroquad feature.
+
+**A third model is built already, by the decision of 2026-11-25**
+(`docs/decisions.md`, the online example trails). Under ADR-0150, which
+amends ADR-0006 §6, a server runs the real `TickSim` and broadcasts
+each step's resolved inputs, with a hash every 15 steps and a catch-up
+from the round's start on join (2614 the rooms, 2615 quick play, 2616
+the server, 2617 and 1142 the clients over WebSocket). So real time in
+the browser no longer waits for this ticket: it works over WebSocket,
+with clients that show confirmed steps behind a 1–2 step jitter buffer
+and don't predict. This ticket stays parked and keeps what that model
+doesn't cover:
+
+- rollback for 2–4 peers (GGRS against our own, with 2604's costs);
+- **client-side prediction of the player's own rider**, with
+  interpolation, as a named follow-up for trails: on top of 2614's
+  `RoomClient`, predicting the local seat's input and re-simulating
+  from the last confirmed step when the server's input differs (the
+  same resimulate window as rollback);
+- per-client state deltas (snapshots) for games too big for input
+  broadcast, or with hidden information in real time;
+- WebRTC and WebTransport for the browser.
 
 This ticket has two parts. Part one is research and an ADR, with spikes
 that are not committed. Part two is implementation tickets for:
@@ -63,11 +84,19 @@ None.
    `TickDriver` keeps to tell an added event from one already handed
    on, since `rewind_to` alone hands on no event of a step that runs
    again.
+1b. **Own-rider prediction over 2614's rooms.** Spike predicting the
+   local seat in `RoomClient` (repeat the local input, re-simulate from
+   the last confirmed `Step` when the server's differs), on 2614's
+   `room::testing::Dots` at 100 ms of delay, and measure the input delay it saves
+   against the jitter buffer alone. The ADR says whether it ships, and
+   the implementation ticket names 2790 as its first user.
 2. **Snapshots.** Spike naia (it works with macroquad on the web; its
    server is native) against our own snapshots over `Transport`. Our own
    version is delta-compressed state per client, interpolation buffers,
    and client prediction for the local player.
-3. **The browser.** Weigh three options:
+3. **The browser.** WebSocket already carries ADR-0150's rooms (1142).
+   For rollback and snapshots, where loss-tolerant datagrams matter,
+   weigh three options:
    - more JS plugins (WebRTC data channels through a signaling server,
      plus STUN/TURN: coturn is BSD-3 and self-hosted, or a paid TURN);
    - WebTransport (91.6% of browsers);
@@ -103,7 +132,9 @@ None.
 
 **Out (do not do):**
 - committing spike code;
-- MMO concerns beyond what snapshots need (1150).
+- MMO concerns beyond what snapshots need (1150);
+- the input-broadcast rooms, quick play and their server (2614–2616,
+  ADR-0150): built, not re-decided here.
 
 ## Implementation steps
 

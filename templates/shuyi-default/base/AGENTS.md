@@ -90,6 +90,7 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi modules` | the engine's modules by concern (perspective, bodies and motion, online play, kind of game), each with its status, and the ones this game has on |
 | `cargo shuyi add <module>` | turns a module on (its feature of `shuyi` in `Cargo.toml`), says what it is for, and warns of an alternative already on; the game already installs every module it turns on (`shuyi::enabled_modules`) |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
+| `cargo shuyi sfx coin --out crates/game/files/sfx/coin.sfx.ron` | a sound effect started from a preset (`blip`, `coin`, `jump`, `hit`, `explosion`…; `sfx nope` lists them), written for `files/audio.ron` to name as a cue's file; `--seed N` varies it, `--wav coin.wav` renders it to listen to, and `sfx <file.sfx.ron>` checks a file and says how long and loud it is |
 | `cargo shuyi seed-target --into <worktree>` | run in the main checkout: starts a new worktree's `target/` from its build, so the new one's first build compiles the game's own crates, not every dependency (the `shuyi-worktrees` skill) |
 | `cargo shuyi trim-targets` | deletes the incremental caches of the game's idle worktrees' `target/` (no build in 3 days), never a worktree; `--dry-run` says what it would delete |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |

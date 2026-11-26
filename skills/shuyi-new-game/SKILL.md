@@ -69,7 +69,9 @@ game one part at a time.
    ```
 
    Ask the perspectives first (`perspective`), then list again with
-   `--perspective <ids>`: they change what else is asked. Ask each
+   `--perspective <ids>`: they change what else is asked. The saves'
+   folder (`storage`) follows the id: offer the id the developer gave as
+   its default, and pass `--storage` only for another name. Ask each
    question whose `skipped` is null, in order, offering its `ready`
    answers; show a `planned` or `parked` answer as coming, with its
    `tickets`, and never pick it. Then make the game with the answers as
@@ -157,6 +159,31 @@ A new game names only what the engine can't read from its files:
   engine's `BasicTools` or a stage's own on top of them.
 
 A screen names what it needs from `shuyi::prelude`.
+
+## Sounds
+
+A new game already plays the engine's menu cues. Each cue of
+`files/audio.ron` names its files; a `.sfx.ron` file is a sound effect
+written as a few numbers, which the game renders as it loads it (the
+`sfx` feature of `shuyi-assets`, on in `crates/game/Cargo.toml`). For a
+sound of the game's own:
+
+```bash
+cargo shuyi sfx coin --out crates/game/files/sfx/coin.sfx.ron
+cargo shuyi sfx crates/game/files/sfx/coin.sfx.ron --wav coin.wav
+```
+
+The first starts one from a preset (`sfx nope` lists them; `--seed N`
+varies one); the second checks the file, says how long and loud it is,
+and renders it to a WAV a person can listen to. Add a cue to
+`files/audio.ron` naming the file (`(id: "coin", files:
+["sfx/coin.sfx.ron"], volume: 80, credit: Own)`), and play it from a
+screen with `ctx.audio.play_sound("coin")`. To change it, change its
+numbers: `hz` and `to_hz` (the pitch, sliding), `hold_ms` and `fade_ms`
+(how long), `volume`, `wave` (`Square(duty: 50)`, `Triangle`, `Saw`,
+`Sine`, `Noise`), and an optional `step` or `vibrato`; the engine's
+`docs/formats.md`, *Sound effects*, has each one's range. `cargo shuyi
+check` reports a number out of range with its line.
 
 ## When to leave it
 

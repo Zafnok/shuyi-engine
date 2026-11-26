@@ -24,7 +24,7 @@ use dialoguer::console::{Term, style};
 use dialoguer::theme::{ColorfulTheme, Theme};
 use dialoguer::{Input, MultiSelect, Select};
 
-use super::wizard::{self, DIR, ID, NAME, Named, Question, Takes};
+use super::wizard::{self, DIR, ID, NAME, Named, Question, STORAGE, Takes};
 use super::{NewInput, answers_of, check_name, crate_name, default_id, folder_name};
 use crate::catalog::Status;
 use crate::template;
@@ -141,11 +141,7 @@ fn questions_now(
     let id = input.id.clone().unwrap_or_else(|| {
         crate_name(&name).map_or_else(|_| String::new(), |krate| default_id(&krate))
     });
-    let named = Named {
-        dir: input.dir.clone(),
-        name,
-        id,
-    };
+    let named = Named::new(input.dir.clone(), name, id, input.storage.clone());
     Some(wizard::questions(
         catalog, template, targets, &named, &given,
     ))
@@ -158,7 +154,8 @@ fn check_game_name(name: &str) -> Result<(), String> {
 }
 
 /// Asks, through `prompter`, each of the wizard's questions that nothing
-/// in `input` answers (from `cwd`): the name, the id, the perspectives,
+/// in `input` answers (from `cwd`): the name, the id, the saves' folder
+/// (the id typed in, so Enter keeps it), the perspectives,
 /// then the questions asked again for them (so a concern skipped for the
 /// perspectives picked isn't asked), the template's and the targets. Each
 /// answer goes into `input` as its flag would put it. A question that
@@ -183,8 +180,10 @@ pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io:
         return Ok(());
     }
     let (name_given, id_given) = (input.name.is_some(), input.id.is_some());
+    let storage_given = input.storage.is_some();
     // The questions are listed again after each answer: the name sets the
-    // id's default, and the perspectives what the catalog asks. Their
+    // id's default, the id the saves' folder's, and the perspectives what
+    // the catalog asks. Their
     // number doesn't change, only what they say.
     let count = questions_now(cwd, input, &template, &catalog, &targets).map_or(0, |q| q.len());
     for at in 0..count {
@@ -197,6 +196,7 @@ pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io:
             DIR => true,
             NAME => name_given,
             ID => id_given,
+            STORAGE => storage_given,
             id => given.0.contains_key(id),
         };
         // A skipped question takes its default unseen; `--questions` shows
@@ -217,6 +217,14 @@ pub fn ask(cwd: &Path, input: &mut NewInput, prompter: &mut dyn Prompter) -> io:
                 let id = prompter.text(&question.text, &default, &check)?;
                 if id != default {
                     input.id = Some(id);
+                }
+            }
+            (Takes::Text, STORAGE) => {
+                // Its default is the id: a storage equal to it is none.
+                let check = |storage: &str| crate::app_info::check_storage(storage);
+                let storage = prompter.text(&question.text, &default, &check)?;
+                if storage != default {
+                    input.storage = Some(storage);
                 }
             }
             (Takes::Text, _) => {}

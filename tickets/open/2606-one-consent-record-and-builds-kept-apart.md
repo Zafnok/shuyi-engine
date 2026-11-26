@@ -68,6 +68,20 @@ ADR-0006 (networking in layers) and 2601's ADR are the ones this
 extends. The game builds none of this: every ticket named here is
 parked, and the game's 0053 has not picked an online mode.
 
+**Since Nick's decision of 2026-11-25** (`docs/decisions.md`, the
+online example trails, ADR-0150), the first version handshake exists
+before this ticket: 2615's quick-play director opens every connection
+with `Hello { protocol, made }`, checks `protocol` against 2614's
+`room::wire::PROTOCOL` and `made` with `Made::check`, and answers
+`Refused { why: Refusal::OtherBuild { theirs } }` or
+`Refusal::Protocol { ours }` (`Refusal` is `#[non_exhaustive]`, in
+`shuyi-net`). This ticket generalizes it: `RELAY_PROTOCOL` and the
+other services' versions reuse `room::wire::PROTOCOL` (one protocol
+number for every `shuyi-net` wire), never a second number, and
+`Refused` takes in 2615's `Refusal` rather than standing beside it.
+Trails needs no age gate and no consent record: it has no chat, no
+names and no accounts, and its server logs no addresses (2616).
+
 ## Nick input
 
 None for this ticket. 3527 asks Nick whether web HTTP and the online
@@ -126,7 +140,7 @@ review; the engine's docs say so and give no legal advice.
   are the game's keys (`AGENTS.md` rule 4), asked once at first start
   when `age_gate` is set. Both use `UiAction`s only; `check-keys` and
   `check-text` pass.
-- **Builds kept apart** (`shuyi-net`, which 1140 creates):
+- **Builds kept apart** (`shuyi-net`, which 2613 creates):
   - `Refused`, `#[non_exhaustive]`, `Serialize`: `UpdateRequired {
     accepted: Vec<Made> }` (a service accepts none of this build's
     stamps), `OtherBuild { theirs: Made }` (a peer runs another build;
@@ -136,7 +150,8 @@ review; the engine's docs say so and give no legal advice.
     `Made::check`;
   - 1140's lockstep handshake refuses with `Refused::OtherBuild`;
   - the relay's handshake (1141) opens with a protocol version,
-    `RELAY_PROTOCOL: u16`, and a room keeps its creator's `Made`: a
+    `RELAY_PROTOCOL: u16` (the value of `room::wire::PROTOCOL`, not a
+    number of its own), and a room keeps its creator's `Made`: a
     join from another build is refused with `OtherBuild` before
     anything is forwarded, and a client of another protocol with
     `Protocol`;

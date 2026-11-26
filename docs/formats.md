@@ -603,6 +603,9 @@ manifest names it like any sound file:
   (`sfx::preset_source`). `sfx::preset(name, seed)` reads one; a seed
   other than 0 moves its pitches by up to 10 % and its `hold_ms` by up to
   20 %, so a cue's variants can be a few seeds of one preset.
+  `shuyi sfx <preset> --out <file.sfx.ron>` writes one for a game to
+  change, and `shuyi sfx <file> --wav <file.wav>` renders a file to
+  listen to (`docs/contract.md`).
 - **The feature is the game's.** A game turns `sfx` on in its own
   `Cargo.toml`, as the templates do (`shuyi-assets = { workspace = true,
   features = ["sfx"] }`). `shuyi-cli` turns it on for itself, so `cargo

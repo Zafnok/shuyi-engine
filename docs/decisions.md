@@ -464,7 +464,6 @@ Source: Nick, in a Claude Code session on 2026-10-19.
   (2507), then the graph panel (2508). It stays a view over text files:
   agents and git read the same files a person edits in it.
 
-
 ## 2026-10-19: a frame cap of 60 by default
 
 Source: Nick, in a Claude Code session on 2026-10-19.
@@ -2181,6 +2180,72 @@ support a toggle because SDL3 adds about 1.8 MB to a game:
   gets, measured on a stripped release build, and what turning it off
   costs the game.
 
+## 2026-11-25: the next example is an online light-trail arena, served free with bots in empty seats
+
+Source: Nick, in the session that planned the next example game:
+
+> "our next example game should be an .io style, tron style game … the
+> one with the bikes … it can be a simple style but the idea is to
+> introduce networking / multiplayer … lets use an always free infra for
+> hosting. Capped room sizes. And under a max room size we introduce
+> bots, where players can drop in / drop out … this would be still grid
+> style, still top down … Find what always free infra can support say 10
+> rooms at any time, allowing players to join into them until they're
+> full. And bots running on them until a player joins, or replacing a
+> player if they drop. Also file or amend tickets which support real time
+> mp on a server + blackbox matchmaking."
+
+**Rules:**
+
+- **The next example is "trails", an original light-trail arena.**
+  - It is a grid, top-down, real-time game on TickSim, after the snake example (2739).
+  - It is never named or styled after Tron or any other existing game, its look or its marks.
+  - It plays offline against bots first, then online.
+- **Its online play is real-time rooms on a server that decides everything.**
+  - The server runs the simulation. Clients send their inputs and follow the server's steps.
+  - Rooms have a capped number of seats, 8 for trails. Bots ride every empty seat.
+  - A joining player takes over a bot's seat (drop in). A player who leaves or goes silent is replaced by a bot (drop out).
+  - Rounds restart without end.
+- **Matchmaking is a black box.**
+  - The player presses "Play online" and the server picks a room with a free seat, or opens one, up to about 10 rooms.
+  - There are no accounts, ratings, room browser, invite codes, player names or chat.
+  - No personal data is kept: addresses are held only in memory, for rate limits.
+- **Hosting must be always free.**
+  - Oracle Cloud's Always Free tier is the host.
+  - Nick does every account step himself: signup, the card Oracle asks for to verify identity, two-step sign-in, a $1 budget alert, creating the VM and opening its ports. Agents never do these.
+  - The rule of 2026-11-23 still holds: anything that costs money waits for Nick. That includes upgrading to Pay As You Go (reported to stop idle reclaim, possibly with a temporary card hold), a domain for a Cloudflare fallback, and a paid host such as Fly.io or Hetzner.
+  - If the free tier changes or the VM is reclaimed, the server is rebuilt from the repository's setup script, and Nick is told before any money is spent.
+- **This unparks, for the example only:**
+  - 1142 (WebSocket in the web build);
+  - the new tickets 2612–2619 (seats, `shuyi-net`, rooms, quick play, `shuyi-server`, the native client, the host and its watch);
+  - 2788–2791 (the trails example, its server, its online client, its load test);
+  - 2854–2856 (the book's online chapter, the skill pack, the hosting page).
+  - 2522 was already ready.
+- **The rest of networking stays parked.**
+  - 1140, 1141, 1143–1150, 2529, 2550, 2551, 2601, 2603–2608, 2720 and 2774–2775 stay parked. Some are amended to build on the new work.
+  - This does not answer the game's 0053: nothing networked reaches Visions of Shuyi through this decision (ADR-0006 §10).
+
+## 2026-11-25: the research scripts move to a repository of their own
+
+Source: Nick, in a Claude Code session, rescoping 2093 (remove the
+reverse-engineering research scripts, after 3083):
+
+> "since i dont wanna do [2611] for a while which means [3083] wont be
+> done for a while if at all but if I ever do resume it after say
+> getting funding I dont want stuff to be lost so lets organize it into
+> a new repo and link to it if its ever necessary. Just link w/in
+> tickets + research docs. Dont link inside of documentation and such."
+
+**Rules:**
+
+- **2093 is unparked and no longer waits for 3083.** It moves
+  `tools/research/` with its history to a public repository of its own
+  and removes it from the engine.
+- **Only tickets and the research reports link that repository.** The
+  book, the README and the other docs don't.
+- 2611 and 3083 stay as they were; 3083 takes what it needs from the
+  new repository when it starts.
+
 ## 2026-11-25: shuyi new's prompts show only what can be answered
 
 Source: Nick, signing off ticket 3423 (the wizard's prompts in a
@@ -2211,8 +2276,34 @@ terminal), on the id question, then on a skipped question's line:
   > saves under and pre-filled with the id used from prev answer. Then
   > they can overwrite that."
 - **The save folder is a question of its own, right after the id**,
-  prefilled with the id the developer just gave (ticket 3430).
+  prefilled with the id the developer just gave (ticket 3430). At 3430's
+  sign-off, the same day, it doesn't call the id a good name:
+  > "id rather it not suggest the id is a good name. Just prefill with
+  > id and mention its the default bc its nearly guaranteed to be
+  > unique. But its not player friendly so I wouldnt say its "a good
+  > name""
+
+  It reads: "Which folder are the game's saves kept in, on the player's
+  computer? The id is the default, since it is nearly sure to be
+  unique."
 - **A question with nothing to pick is not shown** in a terminal: it
   takes its default unseen.
 - **`shuyi new <dir> --questions` is the view that shows them all**,
   each skipped one with why, so their wording can still be checked.
+
+## 2026-11-25: the publish list (3510) joins the MVP
+
+Nick asked what was left before the first release. Claude found four
+open tickets on 2005's list, and that the release also depends on 3510
+(the publish list from the workspace, exact pins between the engine's
+crates, and a runbook for a publish that stops part way), which was
+After MVP and not on the list. Asked "Should 3510 join the MVP, ahead
+of the release?", Nick:
+
+> "Yes, add it"
+
+**Rules:**
+
+- **3510 is an MVP ticket,** and 2005 waits for it.
+- **This answers 3528's question 6 for 3510 only.** 3511, 3512 and the
+  question's other picks are still Nick's to make there.

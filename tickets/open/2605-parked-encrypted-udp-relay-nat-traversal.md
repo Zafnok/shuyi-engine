@@ -97,7 +97,7 @@ same $4–6 a month VPS runs it.
   - the nonce is the packet's sequence number per direction, and a
     replay window of 256 refuses a repeated or stale packet;
   - a packet that fails to decrypt is dropped and counted in `stats()`.
-- **`RelayTransport`** (native) implements 1140's `Transport`. Its
+- **`RelayTransport`** (native) implements 2613's `Transport`. Its
   constructor takes the relay's URL, the room code and a `RelayPaths`
   value (`#[non_exhaustive]`, with a constructor and builder methods,
   ADR-0039): `udp` on by default, `direct` off by default.

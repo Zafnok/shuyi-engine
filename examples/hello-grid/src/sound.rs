@@ -1,23 +1,22 @@
-//! The game's sounds, made by code rather than shipped as files: a short
-//! blip for each of the engine's menu and cursor sounds, a sine at its own
-//! pitch that fades out, as a 16-bit mono WAV at the engine's sample rate.
-
-#[cfg(feature = "std")]
-use std::borrow::Cow;
+//! The game's sounds: a short blip for each of the engine's menu and cursor
+//! sounds, each a sound effect written as a few numbers in `files/sfx/`
+//! (`.sfx.ron`), which the sound hook renders to a WAV as it reads it
+//! (`audio::playable`).
 
 use crate::prelude::*;
 
 use shuyi::assets::audio::{AudioManifest, CreditRef, CueRules, SoundCue};
 #[cfg(feature = "std")]
-use shuyi::assets::audio::{Bytes, Files, SAMPLE_RATE};
+use shuyi::assets::audio::{Bytes, Files, playable};
 use shuyi::ui::audio::AudioConfig;
 
-/// Each sound file: its name, pitch in hertz and length in milliseconds.
-pub const BLIPS: [(&str, f32, u32); 4] = [
-    ("move.wav", 660.0, 50),
-    ("select.wav", 880.0, 80),
-    ("cancel.wav", 440.0, 80),
-    ("cursor.wav", 990.0, 30),
+/// The sound files, by their names under `files/`: the highlight's move,
+/// a choice made, backing out and the cursor's tick.
+pub const SOUNDS: [&str; 4] = [
+    "sfx/move.sfx.ron",
+    "sfx/select.sfx.ron",
+    "sfx/cancel.sfx.ron",
+    "sfx/cursor.sfx.ron",
 ];
 
 /// How soon the cursor's tick and the move's blip may play again, in
@@ -25,15 +24,16 @@ pub const BLIPS: [(&str, f32, u32); 4] = [
 pub const STEP_GAP_MS: u32 = 40;
 
 /// The audio manifest: the engine's four sound cues ([`AudioConfig`]),
-/// each a blip of [`BLIPS`], the cursor's and the move's with a gap of
+/// each a file of [`SOUNDS`], the cursor's and the move's with a gap of
 /// [`STEP_GAP_MS`]; no music.
 pub fn manifest() -> AudioManifest {
     let config = AudioConfig::DEFAULT;
+    let [moved, select, cancel, cursor] = SOUNDS;
     let cues = [
-        (config.move_cue, "move.wav"),
-        (config.select_cue, "select.wav"),
-        (config.cancel_cue, "cancel.wav"),
-        (config.cursor_cue, "cursor.wav"),
+        (config.move_cue, moved),
+        (config.select_cue, select),
+        (config.cancel_cue, cancel),
+        (config.cursor_cue, cursor),
     ];
     let mut audio = AudioManifest::default();
     for (cue, file) in cues {
@@ -46,17 +46,18 @@ pub fn manifest() -> AudioManifest {
     audio
 }
 
-/// The sound files for the platform: the blips, made when asked for; no
-/// music folder.
+/// The sound files for the platform: the game's files ([`crate::file`]),
+/// each sound effect rendered to its WAV; no music folder.
 #[cfg(feature = "std")]
 pub fn files() -> Files<'static> {
     Files::new(&file, &shown, &left_out, "music")
 }
 
-/// How errors name a sound file: as the manifest does.
+/// How errors name a sound file: under `files/`, as `cargo shuyi check`
+/// does.
 #[cfg(feature = "std")]
 fn shown(name: &str) -> String {
-    format!("(made by code) {name}")
+    format!("files/{name}")
 }
 
 /// Whether a build leaves the sound file out on purpose: none does.
@@ -65,56 +66,14 @@ fn left_out(_: &str) -> bool {
     false
 }
 
-/// The file `name` of [`BLIPS`], or `None`.
+/// The sound file `name` (under `files/`) as the platform plays it: a
+/// `.sfx.ron` rendered to its WAV; `None` if there is no such file.
 #[cfg(feature = "std")]
 pub fn file(name: &str) -> Bytes {
-    let &(_, pitch, ms) = BLIPS.iter().find(|(file, ..)| *file == name)?;
-    Some(Cow::Owned(wav(pitch, ms)))
+    playable(name, crate::file(name))
 }
 
-/// A sine of `pitch` hertz, `ms` milliseconds long, fading out, as a WAV.
-#[cfg(feature = "std")]
-pub fn wav(pitch: f32, ms: u32) -> Vec<u8> {
-    let count = SAMPLE_RATE * ms / 1000;
-    let samples: Vec<i16> = (0..count)
-        .map(|i| {
-            // Below 2^24: exact as a float.
-            #[allow(clippy::cast_precision_loss)]
-            let (t, left) = (i as f32, (count - i) as f32);
-            #[allow(clippy::cast_precision_loss)]
-            let rate = SAMPLE_RATE as f32;
-            #[allow(clippy::cast_precision_loss)]
-            let fade = left / count as f32;
-            let wave = (t / rate * pitch * core::f32::consts::TAU).sin();
-            // Within ±12 000 by construction.
-            #[allow(clippy::cast_possible_truncation)]
-            let sample = (wave * fade * 12_000.0) as i16;
-            sample
-        })
-        .collect();
-    let data = u32::try_from(samples.len() * 2).unwrap_or(0);
-    let mut out = Vec::with_capacity(44 + samples.len() * 2);
-    out.extend_from_slice(b"RIFF");
-    out.extend_from_slice(&(36 + data).to_le_bytes());
-    out.extend_from_slice(b"WAVEfmt ");
-    out.extend_from_slice(&16u32.to_le_bytes());
-    // PCM, one channel.
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&SAMPLE_RATE.to_le_bytes());
-    // Bytes a second, bytes a frame, bits a sample.
-    out.extend_from_slice(&(SAMPLE_RATE * 2).to_le_bytes());
-    out.extend_from_slice(&2u16.to_le_bytes());
-    out.extend_from_slice(&16u16.to_le_bytes());
-    out.extend_from_slice(b"data");
-    out.extend_from_slice(&data.to_le_bytes());
-    for sample in samples {
-        out.extend_from_slice(&sample.to_le_bytes());
-    }
-    out
-}
-
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 
@@ -139,8 +98,10 @@ mod tests {
         assert_eq!(gaps, want);
     }
 
+    /// Every cue the engine plays names a sound effect of `files/sfx/`,
+    /// which the hook hands the platform as a WAV the audio check accepts.
     #[test]
-    fn every_cue_the_engine_plays_has_a_blip_the_audio_check_accepts() {
+    fn every_cue_the_engine_plays_has_a_sound_the_audio_check_accepts() {
         let audio = manifest();
         let config = AudioConfig::DEFAULT;
         for cue in [
@@ -153,6 +114,7 @@ mod tests {
             let sound = &audio.sounds[cue];
             for name in &sound.files {
                 let bytes = file(name).unwrap_or_else(|| panic!("no {name}"));
+                assert_eq!(&bytes[..4], b"RIFF", "{name} is rendered to a WAV");
                 assert_eq!(
                     shuyi::assets::audio::format_problem(name, &bytes),
                     None,
@@ -161,34 +123,24 @@ mod tests {
             }
         }
         assert!(audio.music.is_empty(), "{:?}", audio.music);
-        assert_eq!(file("loud.wav"), None);
+        assert_eq!(file("sfx/loud.sfx.ron"), None);
         let files = files();
-        assert_eq!((files.sound)("move.wav"), file("move.wav"));
-        assert_eq!((files.sound_shown)("move.wav"), "(made by code) move.wav");
-        assert!(!(files.sound_left_out)("move.wav"));
+        assert_eq!((files.sound)(SOUNDS[0]), file(SOUNDS[0]));
+        assert_eq!((files.sound_shown)(SOUNDS[0]), "files/sfx/move.sfx.ron");
+        assert!(!(files.sound_left_out)(SOUNDS[0]));
         assert!(files.music.is_none());
     }
 
+    /// Each sound is a blip near the pitch and length the game's blips
+    /// had when code made them: the cursor's shortest, the cancel's lowest.
     #[test]
-    fn a_blip_is_a_mono_16_bit_wav_that_fades_out() {
-        let bytes = wav(441.0, 10);
-        // 441 samples of 2 bytes after a 44-byte header.
-        assert_eq!(bytes.len(), 44 + 441 * 2);
-        assert_eq!(&bytes[..4], b"RIFF");
-        assert_eq!(&bytes[4..8], &(36u32 + 882).to_le_bytes());
-        assert_eq!(&bytes[22..24], &1u16.to_le_bytes());
-        assert_eq!(&bytes[24..28], &44_100u32.to_le_bytes());
-        // Bytes a second, a frame, bits a sample.
-        assert_eq!(&bytes[28..32], &88_200u32.to_le_bytes());
-        assert_eq!(&bytes[32..34], &2u16.to_le_bytes());
-        assert_eq!(&bytes[34..36], &16u16.to_le_bytes());
-        assert_eq!(&bytes[40..44], &882u32.to_le_bytes());
-        let sample = |i: usize| i16::from_le_bytes([bytes[44 + 2 * i], bytes[45 + 2 * i]]);
-        // It starts at 0, swings to near its peak a quarter wave in (25
-        // samples at 441 Hz), and is quieter by the end.
-        assert_eq!(sample(0), 0);
-        assert!(sample(25) > 11_000, "{}", sample(25));
-        let loudest = |from: usize| (from..from + 100).map(|i| sample(i).abs()).max();
-        assert!(loudest(340) < loudest(0));
+    fn each_sound_is_a_short_blip_at_its_pitch() {
+        let want = [(660, 50), (880, 80), (440, 80), (990, 30)];
+        for (name, (hz, ms)) in SOUNDS.into_iter().zip(want) {
+            let text = crate::file(name).unwrap_or_else(|| panic!("no {name}"));
+            let source = core::str::from_utf8(&text).unwrap();
+            let def = shuyi::assets::sfx::from_source(name, source).unwrap();
+            assert_eq!((def.hz, def.length_ms()), (hz, ms), "{name}");
+        }
     }
 }

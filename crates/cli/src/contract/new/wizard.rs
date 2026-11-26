@@ -82,6 +82,10 @@ pub const NAME: &str = "name";
 /// The engine's question of the game's reverse-DNS id.
 pub const ID: &str = "id";
 
+/// The engine's question of the name of the folder the game's saves are
+/// kept in (`shuyi.ron`'s `app.storage`).
+pub const STORAGE: &str = "storage";
+
 /// The catalog's concern of the perspectives, which the engine always asks.
 pub const PERSPECTIVE: &str = "perspective";
 
@@ -91,8 +95,8 @@ pub const PERSPECTIVE: &str = "perspective";
 // A set that may grow (ADR-0039, kind 6).
 #[non_exhaustive]
 pub enum Asker {
-    /// The engine: the folder, the name, the id, the perspectives and the
-    /// targets.
+    /// The engine: the folder, the name, the id, the saves' folder, the
+    /// perspectives and the targets.
     Engine,
     /// The catalog, `docs/modules.ron`: one question per concern.
     Catalog,
@@ -148,7 +152,7 @@ pub struct Offered {
 // (ADR-0039, kind 3).
 #[non_exhaustive]
 pub struct Question {
-    /// Its id: the engine's (`dir`, `name`, `id`, `perspective`,
+    /// Its id: the engine's (`dir`, `name`, `id`, `storage`, `perspective`,
     /// `targets`), a concern's (`bodies`) or the template's
     /// (`private-files`).
     pub id: String,
@@ -185,8 +189,8 @@ pub struct Questions {
     pub questions: Vec<Question>,
 }
 
-/// What the game is called so far: its folder, its name and its id, each
-/// as given or at its default.
+/// What the game is called so far: its folder, its name, its id and the
+/// folder of its saves, each as given or at its default.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Named {
     /// Its folder, as given.
@@ -195,6 +199,22 @@ pub struct Named {
     pub name: String,
     /// Its reverse-DNS id: `--id`, else `com.example.<crate name>`.
     pub id: String,
+    /// The name of the folder its saves are kept in: `--storage`, else its
+    /// id.
+    pub storage: String,
+}
+
+impl Named {
+    /// The game in folder `dir` called `name`, of id `id`, keeping its saves
+    /// under `storage`, else under its id.
+    pub fn new(dir: String, name: String, id: String, storage: Option<String>) -> Self {
+        Self {
+            dir,
+            name,
+            storage: storage.unwrap_or_else(|| id.clone()),
+            id,
+        }
+    }
 }
 
 /// The template's questions another question answers, each with why it
@@ -333,21 +353,11 @@ fn concern_question(
     }
 }
 
-/// The questions `shuyi new` asks of the game `named`, with `template` over
-/// `catalog`'s concerns and the engine's `targets`, for the answers `given`
-/// so far: the folder, the name and the id; the perspectives, always asked;
-/// one question per concern the catalog asks (all but `time`), in its
-/// order; the template's own; then the targets. A question that isn't
-/// asked says why in [`Question::skipped`].
-pub fn questions(
-    catalog: &Catalog,
-    template: &Template,
-    targets: &[Target],
-    named: &Named,
-    given: &Answers,
-) -> Vec<Question> {
+/// The engine's text questions of the game `named`: its folder, its name,
+/// its id and the folder of its saves, each at what it is so far.
+fn named_questions(named: &Named) -> Vec<Question> {
     let krate = super::crate_name(&named.name).unwrap_or_else(|_| "game".to_owned());
-    let mut out = vec![
+    vec![
         text_question(DIR, "Which folder is the game made in?", None, &named.dir),
         text_question(
             NAME,
@@ -364,7 +374,31 @@ pub fn questions(
             Some("--id"),
             &named.id,
         ),
-    ];
+        text_question(
+            STORAGE,
+            "Which folder are the game's saves kept in, on the player's computer? The id is the \
+             default, since it is nearly sure to be unique.",
+            Some("--storage"),
+            &named.storage,
+        ),
+    ]
+}
+
+/// The questions `shuyi new` asks of the game `named`, with `template` over
+/// `catalog`'s concerns and the engine's `targets`, for the answers `given`
+/// so far: the folder, the name, the id and the saves' folder (the id by
+/// default); the perspectives, always asked; one question per concern the
+/// catalog asks (all but `time`), in its order; the template's own; then
+/// the targets. A question that isn't asked says why in
+/// [`Question::skipped`].
+pub fn questions(
+    catalog: &Catalog,
+    template: &Template,
+    targets: &[Target],
+    named: &Named,
+    given: &Answers,
+) -> Vec<Question> {
+    let mut out = named_questions(named);
     let concerns = &catalog.concerns.concerns;
     let asked = |id: &str| concerns.iter().find(|c| c.id == id && c.pick.is_some());
     let mut picked = Vec::new();
@@ -475,11 +509,12 @@ fn list(cwd: &Path, input: &NewInput) -> Result<Questions, (Code, String)> {
     let catalog = catalog_of(cwd, input)?;
     let given = answers_of(cwd, &template, input).map_err(refused)?;
     let targets = engine_targets().map_err(|e| (codes::FILE, e))?;
-    let named = Named {
-        dir: input.dir.clone(),
+    let named = Named::new(
+        input.dir.clone(),
         name,
-        id: input.id.clone().unwrap_or_else(|| default_id(&krate)),
-    };
+        input.id.clone().unwrap_or_else(|| default_id(&krate)),
+        input.storage.clone(),
+    );
     Ok(Questions {
         template: template.id.clone(),
         questions: questions(&catalog, &template, &targets, &named, &given),
@@ -564,7 +599,7 @@ fn set(words: &mut Vec<String>, flag: Option<&str>, id: &str, picked: &[String])
 
 /// The command that makes the game `input` made again, named `name`, with
 /// no question: `shuyi new <dir> --no-input --name <name>`, `--id` if given,
-/// each concern of `concerns` that `answers` answers by its flag (none as
+/// `--storage` if given and not the id, each concern of `concerns` that `answers` answers by its flag (none as
 /// `--set <id>=`), `--targets`, `--examples` or `--no-examples`, `--set`
 /// for `template`'s other questions, then the engine and `--private-url`;
 /// each word quoted by [`quote`]. With it, whether every word could be
@@ -580,6 +615,12 @@ pub fn command(
     words.extend(["--no-input".into(), "--name".into(), name.to_owned()]);
     if let Some(id) = &input.id {
         words.extend(["--id".into(), id.clone()]);
+    }
+    let id = input.id.clone().unwrap_or_else(|| {
+        super::crate_name(name).map_or_else(|_| String::new(), |krate| default_id(&krate))
+    });
+    if let Some(storage) = input.storage.as_ref().filter(|s| **s != id) {
+        words.extend(["--storage".into(), storage.clone()]);
     }
     for concern in concerns.concerns.iter().filter(|c| c.pick.is_some()) {
         if let Some(picked) = answers.0.get(&concern.id) {

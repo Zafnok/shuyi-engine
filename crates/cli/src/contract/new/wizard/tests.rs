@@ -80,11 +80,12 @@ fn targets() -> Vec<Target> {
 }
 
 fn named() -> Named {
-    Named {
-        dir: "moon".into(),
-        name: "Moon".into(),
-        id: "com.example.moon".into(),
-    }
+    Named::new(
+        "moon".into(),
+        "Moon".into(),
+        "com.example.moon".into(),
+        None,
+    )
 }
 
 fn answers(ron: &str) -> Answers {
@@ -121,6 +122,7 @@ fn the_questions_come_in_order_and_time_is_never_asked() {
             "dir",
             "name",
             "id",
+            "storage",
             "perspective",
             "bodies",
             "online",
@@ -130,21 +132,23 @@ fn the_questions_come_in_order_and_time_is_never_asked() {
         ]
     );
     let askers: Vec<Asker> = questions.iter().map(|q| q.asker).collect();
-    assert_eq!(askers[..4], [Asker::Engine; 4]);
-    assert_eq!(askers[4..6], [Asker::Catalog; 2]);
-    assert_eq!(askers[6..8], [Asker::Template; 2]);
-    assert_eq!(askers[8], Asker::Engine);
-    // The text questions' defaults are the folder, its name and the id.
-    let defaults: Vec<&[String]> = questions[..3].iter().map(|q| &q.default[..]).collect();
+    assert_eq!(askers[..5], [Asker::Engine; 5]);
+    assert_eq!(askers[5..7], [Asker::Catalog; 2]);
+    assert_eq!(askers[7..9], [Asker::Template; 2]);
+    assert_eq!(askers[9], Asker::Engine);
+    // The text questions' defaults are the folder, its name, the id and
+    // the id again, for the saves' folder.
+    let defaults: Vec<&[String]> = questions[..4].iter().map(|q| &q.default[..]).collect();
     assert_eq!(
         defaults,
         [
             &["moon".to_owned()][..],
             &["Moon".to_owned()],
+            &["com.example.moon".to_owned()],
             &["com.example.moon".to_owned()]
         ]
     );
-    assert!(questions[..3].iter().all(|q| q.takes == Takes::Text));
+    assert!(questions[..4].iter().all(|q| q.takes == Takes::Text));
     let flags: Vec<Option<&str>> = questions.iter().map(|q| q.flag.as_deref()).collect();
     assert_eq!(
         flags,
@@ -152,6 +156,7 @@ fn the_questions_come_in_order_and_time_is_never_asked() {
             None,
             Some("--name"),
             Some("--id"),
+            Some("--storage"),
             Some("--perspective"),
             Some("--bodies"),
             Some("--online"),
@@ -296,10 +301,14 @@ fn the_questions_read_for_people() {
     };
     let text = text(&listed);
     assert!(
-        text.starts_with("new: 9 question(s), from shuyi-default\n"),
+        text.starts_with("new: 10 question(s), from shuyi-default\n"),
         "{text}"
     );
     assert!(text.contains("Which folder is the game made in? (<dir>, now moon)\n"));
+    assert!(text.contains(
+        "Which folder are the game's saves kept in, on the player's computer? The id is the \
+         default, since it is nearly sure to be unique. (--storage, now com.example.moon)\n"
+    ));
     assert!(text.contains(
         "Which perspectives? (--perspective, now top-down-grid)\n  any of: top-down-grid, \
          top-down, side-view (parked: 1127)\n"
@@ -388,6 +397,60 @@ fn the_command_names_every_answer_by_its_flag() {
         line.ends_with(" --examples --engine-path '../shuyi engine'"),
         "{line}"
     );
+}
+
+#[test]
+fn the_command_names_the_saves_folder_after_the_id_unless_it_is_the_id() {
+    let mut input = NewInput::new("moon");
+    input.id = Some("org.example.moon".into());
+    input.storage = Some("Moon Saves".into());
+    let (line, alike) = command_for(&input, "Moon", "{}");
+    assert!(alike);
+    assert!(
+        line.starts_with(
+            "shuyi new moon --no-input --name Moon --id org.example.moon --storage 'Moon Saves' \
+             --perspective "
+        ),
+        "{line}"
+    );
+    // Without --id, after the name; the same as the id (given or not), not
+    // at all.
+    input.id = None;
+    let (line, _) = command_for(&input, "Moon", "{}");
+    assert!(
+        line.starts_with("shuyi new moon --no-input --name Moon --storage 'Moon Saves' "),
+        "{line}"
+    );
+    input.storage = Some("com.example.moon".into());
+    let (line, _) = command_for(&input, "Moon", "{}");
+    assert!(!line.contains("--storage"), "{line}");
+    input.id = Some("org.example.moon".into());
+    input.storage = Some("org.example.moon".into());
+    let (line, _) = command_for(&input, "Moon", "{}");
+    assert!(!line.contains("--storage"), "{line}");
+}
+
+#[test]
+fn the_saves_folder_follows_the_id_unless_given() {
+    let questions = asked(FREE, "{}");
+    let storage = question(&questions, "storage");
+    assert_eq!(storage.default, ["com.example.moon"]);
+    assert_eq!(storage.takes, Takes::Text);
+    assert_eq!(storage.flag.as_deref(), Some("--storage"));
+    let named = Named::new(
+        "moon".into(),
+        "Moon".into(),
+        "org.example.moon".into(),
+        Some("Moon Saves".into()),
+    );
+    assert_eq!(named.storage, "Moon Saves");
+    let named = Named::new(
+        "moon".into(),
+        "Moon".into(),
+        "org.example.moon".into(),
+        None,
+    );
+    assert_eq!(named.storage, "org.example.moon");
 }
 
 #[test]

@@ -60,6 +60,11 @@ Change `hz` and the note is higher or lower; change `hold_ms` and it lasts longe
 number out of its range is a problem `cargo shuyi check` gives with its line, like
 any other file's.
 
+You don't write one from nothing. `cargo shuyi sfx coin --out
+crates/game/files/sfx/coin.sfx.ron` starts one from the engine's coin (`cargo shuyi
+sfx nope` lists the others), and `--wav coin.wav` turns it into a sound file you can
+play, to hear it before the game does. A cue of `files/audio.ron` then names it.
+
 ## A kind of the game's own
 
 The garden's plan is a kind of the game's own, plain data with a name for messages:
