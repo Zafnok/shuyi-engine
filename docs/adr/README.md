@@ -97,7 +97,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0082](0082-one-input-script-the-steps-and-their-frames-in-shuyi-platform-for-the-harness-the-contract-the-live-link-and-capture-plans.md) | One input script: the steps and their frames in shuyi-platform, for the Harness, the contract, the live link and capture plans | Accepted; amends ADR-0047 §7 and ADR-0052 |
 | [0083](0083-a-crash-report-says-whether-the-panic-ended-the-game-and-only-those-are-offered.md) | A crash report says whether the panic ended the game, and only those are offered | Accepted; extends ADR-0079 §6 |
 | [0084](0084-one-description-of-a-games-types.md) | One description of a game's types: serde for values, `schemars` for shapes in the tools, names given at registration, and views as the game's own types | Accepted; extends ADR-0005 §1, ADR-0009 §8 and ADR-0022 §5 |
-| [0085](0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md) | The debug view: gizmos as data from screens, in channels turned on from the debug menu | Accepted; amends ADR-0082 (a `debug` step) |
+| [0085](0085-the-debug-view-gizmos-as-data-from-screens-in-channels-turned-on-from-the-debug-menu.md) | The debug view: gizmos as data from screens, in channels turned on from the debug menu | Accepted; amends ADR-0082 (a `debug` step); extended by ADR-0153 |
 | [0086](0086-wide-glyph-sets-named-beside-the-unnamed-one-the-languages-set-and-widths-carried-in-cellwidths.md) | Wide glyph sets: named sets beside the unnamed one, and the language's set and widths carried in `CellWidths` | Accepted; extends 2301's wide glyphs |
 | [0087](0087-sounds-made-at-run-time-samples-as-a-cue-through-the-queue-which-keeps-the-limits-and-a-provided-backend-method.md) | Sounds made at run time: samples as a cue through the queue, which keeps the limits, and a provided backend method | Accepted; extends ADR-0063 |
 | [0088](0088-one-operation-plays-a-games-bots-playtest-keeps-the-commands-and-record-of-each-try-and-the-entrant-gives-the-record.md) | One operation plays a game's bots: `playtest` keeps each try's commands and record, and the entrant gives the record | Accepted; `bots` (ticket 1129) folded into `playtest` |
@@ -164,6 +164,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0150](0150-the-contracts-version-rises-only-on-a-break.md) | The contract's version rises only on a break, and every other schema change is a fingerprint under it | Accepted; amends ADR-0022 §5 |
 | [0151](0151-constructors-take-no-two-neighbouring-numbers.md) | Constructors take no two neighbouring numbers, checked by `cargo xtask api` | Accepted; amends ADR-0039 kinds 2 to 5 |
 | [0152](0152-publishing-the-engine-crates-the-workspaces-list-exact-pins.md) | Publishing the engine crates: the workspace is the list, the pins are exact, and the version moves only at release time | Accepted |
+| [0153](0153-the-debug-pause-a-step-slow-motion-and-the-top-screens-readout.md) | The debug pause: a step, slow motion, and the top screen's readout | Accepted; extends ADR-0085 |
 | [0153](0153-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md) | The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

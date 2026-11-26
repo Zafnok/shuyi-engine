@@ -4,7 +4,7 @@
 //! answers are its list; its `planned` and `parked` ones are shown under
 //! it, greyed, each with its status and tickets, and can't be picked. A
 //! question that isn't asked isn't shown: `shuyi new <dir> --questions`
-//! lists every question, each skipped one with why (Nick, 2026-11-25).
+//! lists every question, each skipped one with why.
 //!
 //! Each prompt goes through a [`Prompter`], one method per kind, so a test
 //! answers them from a script; a terminal's is [`Terminal`], `dialoguer`'s.

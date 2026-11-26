@@ -90,7 +90,7 @@ impl Arg {
 
 /// A value a message is given, borrowed ([`Arg`] without its `String`):
 /// what [`ToArg::with_arg_ref`] lends a walk ([`Message::walk_lent`]), so
-/// a select and a `{name}` filled with text copy nothing (ticket 2268).
+/// a select and a `{name}` filled with text copy nothing.
 ///
 /// A set that grows, as [`Arg`] does (ADR-0039, kind 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -603,8 +603,7 @@ impl<'a> Message<'a> {
 /// plural, select or number), a space (`{ n }`, which a message trims),
 /// another `{`, or any letter outside ASCII (which may be a space too). A
 /// text without any of them fills the same either way, in one pass over
-/// its bytes, never parsed: plain text ([`Form::Plain`], tickets 3219 and
-/// 2266).
+/// its bytes, never parsed: plain text ([`Form::Plain`]).
 pub fn has_message_syntax(text: &str) -> bool {
     let bytes = text.as_bytes();
     let mut in_braces = false;
@@ -664,7 +663,7 @@ impl<'a> Form<'a> {
 }
 
 /// How many [`Message::parse`] calls the thread has made: what a test
-/// reads to check that no frame parses a text (ticket 2266). Only with the
+/// reads to check that no frame parses a text. Only with the
 /// `parse-count` feature, which only tests turn on.
 #[cfg(feature = "parse-count")]
 pub mod parse_count {

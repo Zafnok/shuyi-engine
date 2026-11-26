@@ -189,7 +189,8 @@ commands:
   frame-png <out.png> [steps]        render a scripted game frame to a PNG; with --every and
                                      --count, frames over time as a sheet, an APNG or a
                                      GIF; --preview: the game's preview.png from its
-                                     {file}'s `preview` (frame-png --help)
+                                     {file}'s `preview`; --shot NAME, --shots: its
+                                     pictures in shots/ from its `shots` (frame-png --help)
   bench [--target <id>] [--scenario <name>] [--out <dir>] [--no-instructions]
                                      gate each *.bench.ron scenario's instructions (Valgrind),
                                      heap peak and package size against its targets' budgets;
@@ -605,7 +606,7 @@ const NO_TEXT: &str = "--no-text";
 /// `font-atlas`'s option naming the wide font.
 const WIDE: &str = "--wide";
 
-/// `font-atlas`'s option naming the font's bold face (ticket 3216).
+/// `font-atlas`'s option naming the font's bold face.
 const BOLD: &str = "--bold";
 
 /// `args` (paths), each relative one made relative to `project`'s root
@@ -762,11 +763,17 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
         println!("{}", usage());
         return 0;
     }
+    let kept = ["--preview", "--shot", "--shots"];
     let parsed = match args {
         [only] if only == "--preview" => frame_png::preview::options(project, game.frame_options()),
-        _ if args.iter().any(|a| a == "--preview") => {
-            Err("--preview takes no other argument".to_owned())
+        [only] if only == "--shots" => return frame_png_shots(project, game),
+        [flag, name] if flag == "--shot" => {
+            frame_png::kept::shot_options(project, name, game.frame_options())
         }
+        _ if args.iter().any(|a| kept.contains(&a.as_str())) => Err(
+            "--preview and --shots take no other argument, and --shot only the shot's name"
+                .to_owned(),
+        ),
         _ => frame_png::parse_args(args, game.frame_options()),
     };
     let options = match parsed {
@@ -776,6 +783,49 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
             return 2;
         }
     };
+    frame_png_write(project, &options, game)
+}
+
+/// `frame-png --shots`: writes every shot of `project`'s `shots` part, each
+/// with its summary, then fails on each file of `shots/` no shot names,
+/// which it leaves.
+fn frame_png_shots(project: &Project, game: &dyn GameTools) -> u8 {
+    if project.config.shots.is_empty() {
+        eprintln!("frame-png: {} has no `shots`", project::FILE);
+        return 2;
+    }
+    for name in project.config.shots.keys() {
+        let options = match frame_png::kept::shot_options(project, name, game.frame_options()) {
+            Ok(options) => options,
+            Err(e) => {
+                eprintln!("frame-png: {e}");
+                return 2;
+            }
+        };
+        let code = frame_png_write(project, &options, game);
+        if code != 0 {
+            return code;
+        }
+    }
+    match frame_png::kept::orphans(project) {
+        Ok(found) if found.is_empty() => 0,
+        Ok(found) => {
+            for orphan in found {
+                eprintln!("frame-png: {}", frame_png::kept::orphan_problem(&orphan));
+            }
+            1
+        }
+        Err(e) => {
+            eprintln!("frame-png: {e}");
+            1
+        }
+    }
+}
+
+/// Writes what `options` ask of `game`, printing its summary, with the
+/// exit code: that of the target's problem ([`contract::codes::exit_code`]),
+/// or 1 when the frame isn't written.
+fn frame_png_write(project: &Project, options: &frame_png::Options, game: &dyn GameTools) -> u8 {
     let target = match options
         .target
         .as_deref()
@@ -788,7 +838,7 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
             return contract::codes::exit_code(Some(code.0));
         }
     };
-    match frame_png::run(&project.root, &options, game, target.as_ref()) {
+    match frame_png::run(&project.root, options, game, target.as_ref()) {
         Ok(summary) => {
             println!("{summary}");
             0

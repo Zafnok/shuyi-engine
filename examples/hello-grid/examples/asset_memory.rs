@@ -1,5 +1,5 @@
 //! What stays in memory when a game holds its pack, measured (ticket 2906,
-//! `docs/research/asset-memory.md`).
+//! `docs/research/2906-asset-memory.md`).
 //!
 //! Each pack is held in each of the ways a game can hold one, under the
 //! heap counter (`shuyi-alloc-count`):

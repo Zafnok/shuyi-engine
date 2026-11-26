@@ -1,4 +1,4 @@
-//! Whether the window has the player's focus (ticket 3042, ADR-0076):
+//! Whether the window has the player's focus (ADR-0076):
 //! the system's [`SystemEvent::FocusLost`] and
 //! [`FocusGained`](SystemEvent::FocusGained), from what miniquad reports.
 //!

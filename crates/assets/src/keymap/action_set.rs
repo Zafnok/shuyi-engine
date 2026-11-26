@@ -1,4 +1,4 @@
-//! What a game's input actions are to the input mechanism (ticket 1106):
+//! What a game's input actions are to the input mechanism:
 //! [`ActionSet`], implemented by the game's own action enum, and
 //! [`UiAction`], the few actions the generic widgets and screens react to.
 //! `UiAction` is an action set too, ready-made for a game that plays with
@@ -32,6 +32,25 @@ pub enum UiAction {
     Cancel,
     /// Open the developer's debug screens.
     Debug,
+    /// Pause the running game, or let it run again: the debug view's
+    /// pause (ADR-0153). Only with debug tools on.
+    DebugPause,
+    /// While the game is paused, run one update of it: the debug view's
+    /// step (ADR-0153). Only with debug tools on.
+    DebugStep,
+}
+
+impl UiAction {
+    /// Whether it is one of the developer's debug actions ([`Debug`],
+    /// [`DebugPause`], [`DebugStep`]): none is in a game's play, and no
+    /// player can rebind one.
+    ///
+    /// [`Debug`]: Self::Debug
+    /// [`DebugPause`]: Self::DebugPause
+    /// [`DebugStep`]: Self::DebugStep
+    pub fn is_debug(self) -> bool {
+        matches!(self, Self::Debug | Self::DebugPause | Self::DebugStep)
+    }
 }
 
 /// Everything a player can ask for in one game: the game's action enum.
@@ -40,7 +59,7 @@ pub enum UiAction {
 /// actions.
 pub trait ActionSet: Copy + Ord + Eq + Hash + Debug + 'static {
     /// Which actions may share a key or button: a key is on at most one
-    /// action of each group (game ADR-0068). `()` for a game where no two
+    /// action of each group. `()` for a game where no two
     /// actions share one.
     type Group: Copy + Ord + Eq + Debug;
 
@@ -117,6 +136,8 @@ impl ActionSet for UiAction {
             Self::Confirm => "Confirm",
             Self::Cancel => "Cancel",
             Self::Debug => "Debug",
+            Self::DebugPause => "DebugPause",
+            Self::DebugStep => "DebugStep",
         }
     }
 
@@ -127,11 +148,11 @@ impl ActionSet for UiAction {
 
     /// The six must keep a key: the game can't be played without one.
     fn is_required(self) -> bool {
-        self != Self::Debug
+        !self.is_debug()
     }
 
     fn is_rebindable(self) -> bool {
-        self != Self::Debug
+        !self.is_debug()
     }
 
     fn group(self) {}
@@ -213,6 +234,17 @@ mod tests {
         assert_eq!(UiAction::for_ui(UiAction::Debug), None);
         assert!(!UiAction::Debug.is_required() && !UiAction::Debug.is_rebindable());
         assert!(!UiAction::Debug.is_repeatable());
+        for (action, name) in [
+            (UiAction::DebugPause, "DebugPause"),
+            (UiAction::DebugStep, "DebugStep"),
+        ] {
+            assert_eq!(action.name(), name);
+            assert_eq!(UiAction::from_name(name), None, "not in ALL");
+            assert_eq!(action.ui(), Some(action));
+            assert!(action.is_debug() && !action.is_required() && !action.is_rebindable());
+            assert!(!action.is_repeatable());
+        }
+        assert!(!UiAction::ALL.iter().any(|a| a.is_debug()));
         assert_eq!(
             UiAction::fixed_keys(),
             [(Chord::plain(Key::Escape), UiAction::Cancel)]

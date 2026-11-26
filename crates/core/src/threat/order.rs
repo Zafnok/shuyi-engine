@@ -4,7 +4,7 @@
 //! A planner tries only the first few of hundreds of legal commands. Cut
 //! at ten, the legal order holds one piece's attack in every flavour and
 //! no piece's move, and a planner whose pieces never step towards the
-//! goal or out of danger stalls (game ADR-0095). So a capped list gives
+//! goal or out of danger stalls. So a capped list gives
 //! every piece its say before any piece's second, and keeps a step
 //! towards the goal, a step to safety and the end of the turn. The game
 //! tags each legal command with a [`Kind`] ([`OrderHooks::classify`]),

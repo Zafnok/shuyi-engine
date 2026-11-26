@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2034 — No game documents, tickets or Nick in rustdoc, and `check-links` on Rust comments
@@ -190,20 +190,21 @@ lands first.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "docs/design" crates examples templates skills` finds
+- [x] `grep -rn "docs/design" crates examples templates skills` finds
       nothing.
-- [ ] `cargo xtask check-links` reports a `docs/…` path in a `///`
+- [x] `cargo xtask check-links` reports a `docs/…` path in a `///`
       comment that doesn't exist, with its file and line (a unit test
       over a temporary tree, as `links.rs`' tests build one), and
       passes on the repository.
-- [ ] A path in backticks outside a comment (a string literal) is not
+- [x] A path in backticks outside a comment (a string literal) is not
       read, and a glob is skipped (unit tests).
-- [ ] `cargo xtask check-links` reports `game ticket` in a `///` line
+- [x] ~~`cargo xtask check-links` reports `game ticket` in a `///` line
       of a crate's source, with its file and line, and passes on the
-      repository.
-- [ ] The same words in a `//` comment, in a `tests.rs` file or under
-      `crates/xtask/` are not reported (unit test).
-- [ ] All gates in the `run-gates` skill pass.
+      repository.~~ (not done: split to 3538 at the **Split:** line)
+- [x] ~~The same words in a `//` comment, in a `tests.rs` file or under
+      `crates/xtask/` are not reported (unit test).~~ (not done: split
+      to 3538)
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -217,5 +218,40 @@ lands first.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- Every `docs/design/` citation in `crates/` is gone: each now cites
+  the engine's home of the rule (ADR-0036, ADR-0026, or the
+  `shuyi-input` skill's *The rules* and *The player's keys*), or says
+  the rule in a sentence (button names on screen, the last device
+  pressed, the backdrop's whole-step zoom). Process asides on the same
+  lines went with them.
+- `asset_memory.rs` and `examples/hello-grid/Cargo.toml` cite
+  `docs/research/2906-asset-memory.md`.
+- `check-links` reads `docs/` paths in Rust comments: `comment_paths` in
+  `crates/xtask/src/links.rs`, run on every `*.rs` under `crates/` and
+  `examples/`, with unit tests (each kind of comment, an anchor and a
+  trailing `.` or `,` cut, a glob, a string, code before `//` and a span
+  its line doesn't close skipped; `run` over a temporary tree, which
+  skips `templates/` and `target/`). It passes on the repository.
+- Every `//!` and `///` line of the crates other than `shuyi-ui` (and
+  `xtask`, and tests) that named a ticket, a game ADR, Nick or
+  `AGENTS.md` is rewritten: about 180 lines in about 85 files. Most lost
+  the aside; `AGENTS.md` rule 5 became ADR-0008 §2, rule 9 ADR-0002 §4,
+  game ADR-0013's license rule ADR-0002 §8.
+- Deviation, the ticket's **Split:**: the PR would have passed 900
+  lines, so the rewrite of `shuyi-ui`'s rustdoc (144 lines in 62 files)
+  and the `process_words` check moved to ticket 3538. The acceptance
+  criteria on `process_words` (the fourth and fifth) are 3538's.
+- Docs: the module's docs, `cargo xtask`'s usage and the `run-gates`
+  skill's line on `check-links` say it reads Rust comments' `docs/`
+  paths.
+- Game: nothing to adopt, comments and an xtask check of this
+  repository only.
+- No break.
+
+Book: none, only doc comments changed there, and no behaviour.
+Skills: none, only doc comments changed there, and no behaviour.
+Templates: none, only doc comments changed there, and no behaviour.
+Formats: none, only doc comments changed there, and no behaviour.
+Backends: none, only doc comments changed there, and no behaviour.
+Crash: none, only doc comments changed there, and no behaviour.
+Playdate: none, only doc comments changed there, and no behaviour.

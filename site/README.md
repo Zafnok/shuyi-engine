@@ -26,10 +26,13 @@ cards' statuses, and serve the site:
 ```bash
 bash errors.sh
 cargo xtask site-data --site .
+bash copy-shots.sh
 zola serve --drafts
 ```
 
-and open <http://127.0.0.1:1111>. `--drafts` shows the posts marked
+and open <http://127.0.0.1:1111>. `copy-shots.sh` copies the examples'
+shots the book's chapters show ([The rules](#the-rules)): without them,
+the build fails on the first. `--drafts` shows the posts marked
 `draft = true`. An example's page shows how to build it: the Pages build
 copies each example's web build there.
 
@@ -78,6 +81,7 @@ python -m http.server --directory public 1111
 | `templates/playground.html`, `templates/playground-macros.html`, `static/playground.js` | Hello, Grid's playground page, the playground every page shows (a step's too), and its script, which runs the exercises' checks too ([The playground](#the-playground), [Exercises](#exercises)) |
 | `static/ron-paint.js`, `tests/ron-paint.mjs` | The playground's RON colors: a tokenizer by `syntaxes/ron.sublime-syntax`'s rules, and its test against Zola's own output, which CI's `site` job runs with Node ([The playground](#the-playground)) |
 | `copy-previews.sh`, `static/previews/` | `copy-previews.sh` copies each example's `preview.png` to `static/previews/<name>.png`, which its Examples card plays, **never committed**; `pages.yml` and CI run it before `zola build` |
+| `copy-shots.sh`, `static/shots/` | `copy-shots.sh` copies each example's `shots/*.png` to `static/shots/<name>/`, which the `shot` shortcode shows, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `copy-playground.sh`, `static/playground/`, `static/learn/` | `copy-playground.sh` copies the playgrounds' files: Hello, Grid's from `examples/hello-grid/files/` into `static/playground/files/`, and each step's from its project into `static/learn/book/box-pusher/<step>/files/`, **never committed**; `pages.yml` and CI run it before `zola build` |
 | `static/style.css` | The one stylesheet: system fonts, light and dark, the newcomer's mark (`.newcomer`), the quick checks (`.check`), the exercises (`.exercise`), the reader's filter (`.book-bar`, `.book-welcome`, `.newcomer-stub`) and the lists beside a page of the book (`.book-layout`, `.book-side`, `.book-toc`). A `<button>` that acts on the page wears a button's box, never a link's underline: the reader's filter's small actions share one small-button rule, at least 24 px tall (ticket 2831), and an `<a>` drawn as a button (`.button`) goes to another page. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
@@ -165,6 +169,26 @@ python -m http.server --directory public 1111
   holds gets a **Try this here** button; a try of the Rust code says it
   needs a build on the reader's own machine
   ([The playground](#the-playground)).
+- A picture of an example (its screens, its skins, a target's display)
+  is one of its shots, never a file made by hand: a still frame in
+  `examples/<name>/shots/<shot>.png`, which `cargo shuyi frame-png --shots`
+  makes from the `shots` part of its `shuyi.ron` (Hello, Grid's is the
+  model), each shot named and holding `frame-png`'s arguments. An example
+  gets shots with that part, the files it makes and a test line,
+  `frame_png::kept::check_shots(&project, &tools)`, which fails when a
+  file is stale or `shots/` holds one no shot names. `copy-shots.sh`
+  copies them to `static/shots/<name>/`; under `zola serve`, run it first.
+  Show one with
+
+  ```text
+  {{ shot(example="hello-grid", name="stage", alt="Hello, Grid's stage: …") }}
+  ```
+
+  `alt` says what is on screen, and a shot without it, or whose file
+  isn't there, fails the build; `caption`, if given, goes under it. Two
+  shots side by side are two in a row inside `<div
+  class="figure-pair">`, a blank line around each, and stand one above
+  the other on a narrow screen.
 - A new engine crate gets its row in `data/api.toml`, or the build
   checks fail.
 
@@ -672,7 +696,9 @@ the shape of <https://llmstxt.org/>:
 - a Markdown twin of each Learn page that isn't a draft, at its URL with
   `index.md` on the end (`/learn/book/quick-start/index.md`): its title,
   a `Source:` line, and its text, each `snippet` shortcode replaced by the
-  code it shows, each passage marked for a newcomer a blockquote under its
+  code it shows, each `try_it` and `shot` by its pictures as Markdown
+  images (a `shot`'s caption a line in italics under it, and a shot not in
+  `static/shots/` an error naming the page and the line), each passage marked for a newcomer a blockquote under its
   label and topic (`` > **New to Rust?** `match` ``), and each link made absolute (a `@/` link to a Learn page
   goes to that page's twin). The page's HTML links its twin
   (`templates/base.html`);
@@ -711,6 +737,7 @@ CI's `site` job, on every pull request:
 bash errors.sh
 bash copy-playground.sh
 bash copy-previews.sh
+bash copy-shots.sh
 cargo xtask check-book
 zola check --skip-external-links
 bash check-build.sh
@@ -737,7 +764,9 @@ a passage is marked for an audience the filter's `AUDIENCES` or
 a page loads anything from another host, if a code block's language is
 unknown, or if a page with a Rust block has no `z-keyword`, which is
 highlighting turned off, or if an example's preview isn't in the build as
-the example has it, or isn't in its card. The `test` job builds and
+the example has it, or isn't in its card, or if an example's shot isn't
+in the build as the example has it, or a page that shows one has no
+picture of it with alt text. The `test` job builds and
 tests `snippets/`.
 `cargo xtask check-links` reads `content/` like the rest of the
 repository's Markdown, and leaves the `@/` links to Zola.

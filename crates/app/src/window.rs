@@ -1,4 +1,4 @@
-//! The window as the player left it (ticket 3044): a record per computer of
+//! The window as the player left it: a record per computer of
 //! its last windowed size and its mode, kept by the backend beside the
 //! game's storage (never in a profile), read as the window opens and
 //! written once it has settled. All of it is pure: the backend reads the
@@ -270,7 +270,7 @@ impl Place {
 }
 
 /// How long the mouse rests, neither moved nor clicked, before the cursor
-/// hides (ticket 3314). *Tunable*.
+/// hides. *Tunable*.
 pub(crate) const CURSOR_IDLE: Duration = Duration::from_secs(2);
 
 /// How long after the window's mode changes a change of the mouse's
@@ -303,7 +303,7 @@ pub(crate) struct CursorSeen {
     pub keep_shown: bool,
 }
 
-/// Whether the system's cursor shows over the window (ticket 3314): it
+/// Whether the system's cursor shows over the window: it
 /// hides once the mouse has rested [`CURSOR_IDLE`], and at once as the
 /// window fills the screen, and shows again when the mouse moves or a
 /// button is pressed. It shows while the window lacks focus, so it is never

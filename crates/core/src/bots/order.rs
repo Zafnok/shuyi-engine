@@ -5,7 +5,7 @@
 //! tries only the first `candidates` commands of its [`Order`](super::Order).
 //! The legal order cut at ten holds one piece's attack in every flavour
 //! and nothing else, and a planner that never tries its other pieces, a
-//! step towards the goal or the end of its turn stalls (game ADR-0095).
+//! step towards the goal or the end of its turn stalls.
 //! [`ranked_order`] is the generic cure: the game tags each legal command
 //! with a [`Ranked`] group, value and key (or leaves it out), and gets
 //! back

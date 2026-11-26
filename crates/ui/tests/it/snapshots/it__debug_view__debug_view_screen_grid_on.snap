@@ -12,16 +12,16 @@ expression: h.snapshot()
                                         
                                         
                Debug view               
-                                        
+        Game running · F3 pause         
           ┌──────────────────┐          
           │ Grid layout   on │          
+          │ Readout   off    │          
+          │ Slow motion   1x │          
           └──────────────────┘          
                                         
                                         
                                         
-                                        
-                                        
-    arrows move · f on/off · d back     
+    arrows move · f change · d back     
 --- colours ---
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -33,19 +33,21 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaabbbbbbbbbbaaaaaaaaaaaaaaa
+aaaaaaaacccccccccccccccccccccccaaaaaaaaa
+aaaaaaaaaaddddddddddddddddddddaaaaaaaaaa
+aaaaaaaaaadeeeeeeeeeeeeeeeeeedaaaaaaaaaa
+aaaaaaaaaadfffffffffgggggffffdaaaaaaaaaa
+aaaaaaaaaadfffffffffffffggggfdaaaaaaaaaa
+aaaaaaaaaaddddddddddddddddddddaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaccccccccccccccccccccaaaaaaaaaa
-aaaaaaaaaacddddddddddddddddddcaaaaaaaaaa
-aaaaaaaaaaccccccccccccccccccccaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeaaaaa
+aaaacccccccccccccccccccccccccccccccaaaaa
 --- legend ---
 a = fg:text bg:background
 b = fg:highlight bg:background
-c = fg:border bg:panel
-d = fg:panel bg:focus
-e = fg:text_dim bg:background
+c = fg:text_dim bg:background
+d = fg:border bg:panel
+e = fg:panel bg:focus
+f = fg:text bg:panel
+g = fg:text_dim bg:panel

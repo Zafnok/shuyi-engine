@@ -1,4 +1,4 @@
-//! Where each operation's command-line flags go (ticket 3429). The MCP
+//! Where each operation's command-line flags go. The MCP
 //! server's tools are made from each op's input schema ([`crate::mcp::tools`]),
 //! so a flag that is not a field of the input never reaches MCP. Each flag
 //! an op's usage names is a field of its input (its name with `-` read as

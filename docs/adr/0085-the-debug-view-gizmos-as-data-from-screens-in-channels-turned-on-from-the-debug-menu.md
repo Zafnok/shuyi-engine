@@ -1,6 +1,6 @@
 # ADR-0085: The debug view: gizmos as data from screens, in channels turned on from the debug menu
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0153 (the pause, the step, slow motion and the readout)
 - **Date:** 2026-11-05
 - **Related tickets:** 2315 (this), 2316 (pause and step), 2317–2320
   (collision, world layers, skeletons, 3D), 2375 (the log), 1140 (the

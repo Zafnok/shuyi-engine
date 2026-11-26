@@ -1,6 +1,6 @@
 //! `trim-targets`: frees the disk the build output of a repository's idle
 //! worktrees takes, and never removes, prunes or archives a worktree
-//! (ticket 2076, ADR-0121).
+//! (ADR-0121).
 //!
 //! It lists the repository's worktrees (`git worktree list --porcelain`),
 //! and leaves alone the one it runs in, one with no `target/`, one whose
@@ -12,7 +12,7 @@
 //! whole content of `target/` of a worktree whose branch is merged. With
 //! [`Options::stale_hashes`], it also deletes the older hashes of a crate
 //! in those profile folders' `deps/` that no build read in days
-//! (ticket 2092, ADR-0123).
+//! (ADR-0123).
 //!
 //! Nothing outside `<worktree>/target/` is ever deleted, no link is
 //! followed, no folder holding `.git` is entered, and deletes are
@@ -31,8 +31,8 @@ use super::seed::LOCKS;
 /// How many days without a build make a worktree idle, by default.
 pub const DEFAULT_IDLE_DAYS: u64 = 3;
 
-/// The [`Options::roots`] of a game's worktrees (`shuyi trim-targets`,
-/// ticket 3403): `target/` itself, so `target/debug`, `target/release`,
+/// The [`Options::roots`] of a game's worktrees (`shuyi trim-targets`):
+/// `target/` itself, so `target/debug`, `target/release`,
 /// a triple's `target/<triple>/<profile>` and the web build's
 /// `target/wasm32-unknown-unknown/release`. No folder of the engine's own
 /// builds is named (its `gates/`, `tutorial/`, `skill-examples*`), and a
@@ -76,7 +76,7 @@ pub struct Options {
     /// Also delete, in the `deps/` of the same profile folders, the older
     /// hashes of a crate last accessed more than [`Options::idle_days`]
     /// before the worktree's last build, keeping the newest-accessed one
-    /// of each crate and kind (ticket 2092). Skipped, with a note, where
+    /// of each crate and kind. Skipped, with a note, where
     /// the system doesn't update last access.
     pub stale_hashes: bool,
 }

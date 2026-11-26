@@ -29,7 +29,7 @@ pub mod view;
 
 pub use camera::{CameraLayout, SceneCameraScreen};
 pub use gizmo::{Channel, DebugView, Gizmo, GizmoRole, Gizmos};
-pub use view::DebugViewScreen;
+pub use view::{DebugViewScreen, ViewRow};
 
 use crate::prelude::*;
 use core::fmt;

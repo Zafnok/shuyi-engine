@@ -121,6 +121,11 @@ pub struct Config {
     /// `frame-png --preview`: the animated `preview.png` a README and the
     /// website's Examples card show ([`crate::frame_png::preview`]).
     pub preview: Option<Preview>,
+    /// `frame-png --shot <name>` and `--shots`: the game's pictures, by
+    /// name, each `shots/<name>.png` in the project's root
+    /// ([`crate::frame_png::kept`]); empty when absent. A name is lowercase
+    /// letters, digits and `-` ([`Shot::check_name`]).
+    pub shots: BTreeMap<String, Shot>,
     /// `reveal prepare`: what the reveal kit holds, the game's evidence
     /// before its first public footage.
     pub reveal: Option<Reveal>,
@@ -200,10 +205,14 @@ impl Config {
     /// Parses the text of a `shuyi.ron`. A part is written as it is, not
     /// in `Some(…)` (RON's `implicit_some` is on).
     pub fn parse(text: &str) -> Result<Self, String> {
-        ron::Options::default()
+        let config: Self = ron::Options::default()
             .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME)
             .from_str(text)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+        for name in config.shots.keys() {
+            Shot::check_name(name).map_err(|e| format!("shots: {e}"))?;
+        }
+        Ok(config)
     }
 
     /// The tool's name in what it prints.
@@ -480,6 +489,41 @@ impl Preview {
     /// The preview `frame-png` makes with `args`.
     pub fn new(args: Vec<String>) -> Self {
         Self { args }
+    }
+}
+
+/// `frame-png --shot <name>`: one of the game's pictures, a still frame in
+/// `shots/<name>.png` at the project's root, which a test of the game keeps
+/// equal to what these arguments make ([`crate::frame_png::kept`]). Build
+/// it with [`Shot::new`] (ADR-0039).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Shot {
+    /// `frame-png`'s arguments, as typed after the output path: the steps,
+    /// `--scale`, `--target` and the game's own options.
+    pub args: Vec<String>,
+}
+
+impl Shot {
+    /// The shot `frame-png` makes with `args`.
+    pub fn new(args: Vec<String>) -> Self {
+        Self { args }
+    }
+
+    /// Whether `name` may name a shot: one or more lowercase letters,
+    /// digits and `-`, so its file's name is the same on every system.
+    ///
+    /// # Errors
+    /// The name, and what a name may be.
+    pub fn check_name(name: &str) -> Result<(), String> {
+        let fits = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-';
+        if !name.is_empty() && name.chars().all(fits) {
+            return Ok(());
+        }
+        Err(format!(
+            "`{name}` is no shot's name: lowercase letters, digits and - only"
+        ))
     }
 }
 
@@ -942,6 +986,32 @@ mod tests {
         );
         assert_eq!(Config::parse("()").unwrap().preview, None);
         assert!(Config::parse(r#"(preview: (args: [], out: "a.png"))"#).is_err());
+    }
+
+    #[test]
+    fn the_shots_part_holds_frame_pngs_args_by_name() {
+        let text = r#"(shots: {
+            "title": (args: ["--scale", "1"]),
+            "stage-2": (args: ["--stage", "--target", "playdate"]),
+        })"#;
+        let shots = Config::parse(text).unwrap().shots;
+        assert_eq!(
+            shots.keys().map(String::as_str).collect::<Vec<_>>(),
+            ["stage-2", "title"]
+        );
+        assert_eq!(
+            shots["title"],
+            Shot::new(vec!["--scale".to_owned(), "1".to_owned()])
+        );
+        assert!(Config::parse("()").unwrap().shots.is_empty());
+        assert!(Config::parse(r#"(shots: {"a": (args: [], out: "a.png")})"#).is_err());
+        for bad in ["Title", "the title", "a_b", "", "../up", "é"] {
+            let text = format!(r#"(shots: {{"{bad}": (args: [])}})"#);
+            assert_eq!(
+                Config::parse(&text).unwrap_err(),
+                format!("shots: `{bad}` is no shot's name: lowercase letters, digits and - only"),
+            );
+        }
     }
 
     #[test]

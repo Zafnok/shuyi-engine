@@ -486,6 +486,41 @@ fn frame_of(h: &Harness<Toy>) -> Answer {
     }
 }
 
+/// The toy's grid field with its hooks.
+fn field() -> Game<Toy> {
+    let field = shuyi_ui::toy::grid::Field::glyphs();
+    Game::new(toy::ctx(), Box::new(field), toy::hooks())
+}
+
+/// A client pauses a running build and steps it with the game's actions
+/// for `DebugPause` and `DebugStep` (ADR-0153), and it ends as the same
+/// updates run with no pause: each `act` is a press and a release, a step
+/// runs one update on its press, and the unpause press and its release
+/// run one each.
+#[test]
+fn a_build_paused_and_stepped_over_the_link_ends_as_its_updates_run_straight() {
+    let mut b = build_of(field());
+    let paused = b.play(vec![
+        keys("f Right"),
+        act("DebugPause"),
+        act("DebugStep"),
+        act("DebugStep"),
+        act("DebugStep"),
+    ]);
+    assert!(matches!(paused, Answer::Played(_)), "{paused:?}");
+    assert!(b.game().ctx().debug_view.paused());
+    assert_eq!(b.game().ctx().debug_view.steps(), 3);
+    let resumed = b.play(vec![act("DebugPause")]);
+    assert!(matches!(resumed, Answer::Played(_)), "{resumed:?}");
+    assert!(!b.game().ctx().debug_view.paused());
+
+    let mut straight = Harness::new(field());
+    straight.keys("f Right").wait(5.0 / 60.0);
+    assert_eq!(b.game().screens(), straight.screens());
+    assert_eq!(b.game().state_hash(), straight.game().state_hash());
+    assert_eq!(frame(&b.app), frame_of(&straight));
+}
+
 #[test]
 fn a_request_after_a_play_waits_for_its_answer() {
     let mut b = toy_build();

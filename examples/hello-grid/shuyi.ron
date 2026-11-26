@@ -82,6 +82,30 @@
                "--apng"],
     ),
 
+    // `cargo shuyi frame-png --shots`: `shots/`, the book's pictures, each
+    // `shots/<name>.png`, a still frame of 384 × 384 (the Playdate's 400 ×
+    // 240) at most 256 KiB; a test fails when one is stale
+    // (`tests/it/files.rs`). These are `frame-png`'s arguments after the
+    // output path. `stage` is your piece picked up, steered up and right and
+    // sent, the foe's step after it; `leave`, `tiles` and `playdate` start
+    // from it.
+    shots: {
+        "title": (args: ["--scale", "1"]),
+        "stage": (args: ["--stage", "--keys", "Enter Up Right Right Enter",
+                         "--wait", "1", "--scale", "1"]),
+        "leave": (args: ["--stage", "--keys", "Enter Up Right Right Enter",
+                         "--wait", "1", "--act", "Cancel", "--wait", "0.5",
+                         "--scale", "1"]),
+        "dialogue": (args: ["--keys", "Enter", "--wait", "2", "--scale", "1"]),
+        "options": (args: ["--keys", "Down Enter", "--wait", "0.5",
+                           "--keys", "Down Down Down Enter", "--wait", "0.5",
+                           "--keys", "Enter", "--wait", "0.5", "--scale", "1"]),
+        "tiles": (args: ["--stage", "--tiles", "--keys", "Enter Up Right Right Enter",
+                         "--wait", "1", "--scale", "1"]),
+        "playdate": (args: ["--stage", "--keys", "Enter Up Right Right Enter",
+                            "--wait", "1", "--scale", "1", "--target", "playdate"]),
+    },
+
     // `cargo shuyi check --target all`: the targets it ships on, each with
     // its frame (48 × 24 cells of 8 × 16; on the Playdate 50 × 15, its
     // `hello_grid::PLAYDATE_CONSOLE`), its scale and its smallest text (the

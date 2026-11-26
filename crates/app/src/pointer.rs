@@ -1,4 +1,4 @@
-//! The mouse and touches (ticket 2413, ADR-0134): reads macroquad's mouse
+//! The mouse and touches (ADR-0134): reads macroquad's mouse
 //! each frame and gives [`RawInputEvent`]'s pointer events, in console
 //! pixels of the frame last drawn.
 //!

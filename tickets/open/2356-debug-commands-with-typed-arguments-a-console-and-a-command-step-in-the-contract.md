@@ -286,10 +286,11 @@ None.
       not routed to it.
     - The look is a skin (rule 9): a `ConsoleView` plain-data struct,
       painted by `debug::glyph::paint_console`.
-  - **While paused (2316):** the console still takes typing and runs
-    commands. 2316 keeps the debug screens updating while paused (edit
-    requested there). If the 2316 that landed does not, make them
-    update here.
+  - **While paused. From 2316 (done):** the console still takes typing
+    and runs commands. `Game::pace` runs a debug tools' screen on top
+    as usual on a paused game, with the frame's input (`debug_on_top`
+    in `crates/ui/src/game.rs`, which reads `GameHooks::debug_screens`):
+    make it count the console too, listed or not.
 - **Commands for tick games. From 2137 (done):** a tick screen's
   `Screen::debug_command` queues the game's debug inputs for its next
   step: `TickInput` (`shuyi_core::tick`) carries them, as the game's

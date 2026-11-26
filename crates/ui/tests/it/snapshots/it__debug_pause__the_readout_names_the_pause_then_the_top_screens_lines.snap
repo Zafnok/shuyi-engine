@@ -1,0 +1,68 @@
+---
+source: crates/ui/tests/it/debug_pause.rs
+expression: h.snapshot()
+---
+paused, step 2                          
+cursor 2,3                              
+piece 2,3                               
+clock 34 ms                             
+                                        
+                                        
+          .,.,.,.,.,~~.,.,.,.,          
+          .,.,.,.,.,~~.,.,.,.,          
+          .,.,.,.,.,==.,.,.,.,          
+          .,.,y,.,.,~~.,.,.,.,          
+          .,.,.,f,.,~~.,.,.,.,          
+          .,.,.,.,.,~~.,.,.,.,          
+          .,:.:..,.,~~.,.,.,.,          
+          .,.,:..,.,~~.,.,.,.,          
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+--- colours ---
+aaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbb
+aaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+aaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+aaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbccccccccccddccccccccbbbbbbbbbb
+bbbbbbbbbbccccccccccddccccccccbbbbbbbbbb
+bbbbbbbbbbcccccccccceeccccccccbbbbbbbbbb
+bbbbbbbbbbccccfcccccddccccccccbbbbbbbbbb
+bbbbbbbbbbccccccfcccddccccccccbbbbbbbbbb
+bbbbbbbbbbccccccccccddccccccccbbbbbbbbbb
+bbbbbbbbbbccggggccccddccccccccbbbbbbbbbb
+bbbbbbbbbbccccggccccddccccccccbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+--- legend ---
+a = fg:highlight bg:panel
+b = fg:text bg:panel
+c = fg:grass_fg bg:grass_bg
+d = fg:water_fg bg:water_bg
+e = fg:bridge_fg bg:bridge_bg
+f = fg:piece bg:grass_bg
+g = fg:text bg:background
+--- overlays ---
+over  113,158 14x2  piece
+over  129,174 14x2  piece
+over  111,144 3x1  #ffe500
+over  111,144 1x3  #ffe500
+over  125,144 3x1  #ffe500
+over  127,144 1x3  #ffe500
+over  111,157 3x1  #ffe500
+over  111,155 1x3  #ffe500
+over  125,157 3x1  #ffe500
+over  127,155 1x3  #ffe500
+over  gizmo readout note label 0,0 "paused, step 2"
+over  gizmo readout note label 0,16 "cursor 2,3"
+over  gizmo readout note label 0,32 "piece 2,3"
+over  gizmo readout note label 0,48 "clock 34 ms"

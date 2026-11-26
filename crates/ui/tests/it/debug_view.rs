@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use insta::assert_snapshot;
 use shuyi_platform::harness::Harness;
-use shuyi_ui::debug::gizmo::{Channel, Gizmo, GizmoRole, Gizmos};
+use shuyi_ui::debug::gizmo::{Channel, Gizmo, GizmoRole, Gizmos, READOUT};
 use shuyi_ui::debug::{DebugMenuScreen, DebugViewScreen};
 use shuyi_ui::frame::{EngineColor, GizmoItem, GizmoShape, GlyphBuffer, Layer, Overlay, Rect};
 use shuyi_ui::grid::debug::GRID;
@@ -102,7 +102,8 @@ fn with_debug_tools_on_every_screen_drawn_is_asked_bottom_up() {
     let mut h = Harness::new(game);
     h.wait(0.1);
     assert!(base_calls.get() > 0);
-    assert_eq!(h.ctx().debug_view.offered(), [MARKS]);
+    // The readout, the game's own, after the screens' (ADR-0153).
+    assert_eq!(h.ctx().debug_view.offered(), [MARKS, READOUT]);
     assert_eq!(shapes(&h), NONE);
     // On: drawn from the next frame.
     h.ctx_mut().debug_view.set("marks", true);

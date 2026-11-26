@@ -1,4 +1,4 @@
-//! The Harness's pointer (ticket 2405): a test moves it, clicks, turns the
+//! The Harness's pointer: a test moves it, clicks, turns the
 //! wheel and clicks a menu row by its words, each step a frame of
 //! [`FRAME_DT`], as [`Harness::keys`] presses keys.
 

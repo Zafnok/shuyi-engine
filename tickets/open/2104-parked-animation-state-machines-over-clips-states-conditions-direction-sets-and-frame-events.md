@@ -105,9 +105,10 @@ None.
   own clips over the fixture's picture, since that set holds only
   `splash`, `waves` and `wind`) with idle, walk in four directions, and
   a one-shot action that returns to idle when it ends.
-- **The debug readout:** if 2316 is done, a helper that a screen's
-  readout calls to show `state name, clip, frame`. If not, skip it:
-  2316 adds it when it is worked (its scope says so).
+- **The debug readout. From 2316 (done):** screens hand in readout
+  lines from `Screen::debug_readout` (ADR-0153). Add a helper beside
+  the runner that a screen's `debug_readout` calls to show an
+  `AnimState` as `state name, clip, frame`, with a unit test.
 - **The graph panel:** **either order with 2508** (parked): if 2508 is
   done, its panel also shows `*.anim_graph.ron`, read only: states as
   boxes and transitions as wires, each with its conditions. If not,
