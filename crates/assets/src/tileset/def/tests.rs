@@ -74,14 +74,14 @@ fn mixes<const N: usize>(pictures: [(u8, ImageRect); N]) -> [Option<ImageRect>; 
 #[test]
 fn the_farm_resolves_to_the_tiles_built_by_hand() {
     assert_eq!(problems(FARM), Vec::<String>::new());
-    let own = Look {
-        tiles: [
+    let own = Look::new(
+        [
             (TerrainId(0), cell((0, 0))),
             (TerrainId(1), cell((1, 0))),
             (TerrainId(2), cell((2, 0))),
         ]
         .into(),
-        layers: vec![
+        vec![
             Layer::Corners(CornerLayer::new(
                 ids([2]),
                 mixes([(1, cell((0, 1))), (3, cell((1, 1)))]),
@@ -93,19 +93,19 @@ fn the_farm_resolves_to_the_tiles_built_by_hand() {
                 sides: mixes([(5, cell((3, 1)))]),
             }),
         ],
-    };
-    let winter = Look {
-        tiles: [
+    );
+    let winter = Look::new(
+        [
             (TerrainId(0), cell((0, 2))),
             (TerrainId(1), cell((1, 2))),
             (TerrainId(2), cell((2, 2))),
         ]
         .into(),
-        layers: vec![Layer::Corners(CornerLayer::new(
+        vec![Layer::Corners(CornerLayer::new(
             ids([1, 2]),
             mixes([(8, cell((3, 2)))]),
         ))],
-    };
+    );
     let mut tiles = TerrainTiles::new(image(), (16, 16), own);
     tiles.looks = [("winter".to_owned(), winter)].into();
     assert_eq!(resolved(FARM), Ok(tiles));

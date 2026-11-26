@@ -494,7 +494,7 @@ impl Resolving<'_> {
             .zip(layers)
             .map(|(number, layer)| self.layer(&format!("{own}layer {number}"), layer))
             .collect();
-        Look { tiles, layers }
+        Look::new(tiles, layers)
     }
 }
 
