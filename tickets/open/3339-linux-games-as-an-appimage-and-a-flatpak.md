@@ -74,8 +74,9 @@ None.
   comma-separated list of `tar-gz` (the default and today's package),
   `appimage` and `flatpak`. It is a new field `packages: Vec<String>`
   on `ExportInput` (`crates/cli/src/contract/export.rs`, already
-  `#[non_exhaustive]`; the field is additive). The contract's `VERSION`
-  goes up by one (it is 54 today; take whatever is current). Any other
+  `#[non_exhaustive]`; the field is additive). An optional input field
+  breaks no client, so the contract's `VERSION` stays and the schemas
+  only add their line to `versions.json` (ADR-0150). Any other
   target given `--package` fails with a setup error that names the
   targets that take it. `--recipient` with a package other than
   `tar-gz` fails the same way: a recipient's copy stays a `tar.gz`.
@@ -221,8 +222,8 @@ AppImage then ships with the minimal metainfo only.
    left them. Read the AppImage specification (type 2: the magic bytes,
    the ELF-size rule, the environment variables).
 2. Add `packages` to `ExportInput`, `--package` to the CLI, and the
-   setup errors. Bump the contract's version, and regenerate the
-   schemas.
+   setup errors. Regenerate the schemas and add their line to
+   `versions.json`.
 3. Write `export/appimage/runtime.rs`: find the offset, read the
    digest, extract with `backhand` to a temporary folder, rename,
    prune old folders, handle `--appimage-extract` and

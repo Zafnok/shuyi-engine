@@ -290,9 +290,9 @@ None.
   - **The contract:** `Op::MapTypes` in `crates/cli/src/contract.rs`
     (`Op::ALL`, `name`, the schema pair in `schemas()`),
     `map-types.input.json` and `map-types.output.json` under
-    `crates/cli/schemas/`, `contract::VERSION` raised by one from
-    whatever it is when this lands, and its line in `versions.json`
-    (`docs/contract.md`, *The schemas*). The usage text in
+    `crates/cli/schemas/`, and their line in `versions.json`
+    (`docs/contract.md`, *The schemas*). A new operation breaks no
+    client, so `contract::VERSION` stays (ADR-0150). The usage text in
     `crates/cli/src/lib.rs`, and the operations table and the
     `GameTools` table in `docs/contract.md`, get a row. The fake game
     (`crates/cli/src/contract/fake.rs`) offers a type.
@@ -431,8 +431,9 @@ variant and the `Op::ALL` slice an entry. **From 2086 (done):** `Op` is
       Tiled.
 - [ ] `map-types --ldtk` on a fixture with a mismatched field names the
       entity, the field and both types.
-- [ ] The contract's schema test passes with `VERSION` raised and the
-      new schemas checked in.
+- [ ] The contract's schema test passes with the new schemas checked
+      in and their line in `versions.json`, and `cargo xtask contract`
+      passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

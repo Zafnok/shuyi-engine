@@ -40,7 +40,7 @@ layout and those tests.
 
 What the code gives, checked on this commit:
 
-- `TickSim` and `TickInput` (`crates/core/src/tick.rs`); 2612 raises
+- `TickSim` and `TickInput` (`crates/core/src/tick.rs`); 2612 (done) raised
   `MAX_SEATS` to 8, which eight riders need.
 - `TickDriver` (`crates/ui/src/tick.rs`) steps a sim at the platform's
   60 steps a second (`shuyi_core::timer::STEPS_PER_SECOND`) and builds

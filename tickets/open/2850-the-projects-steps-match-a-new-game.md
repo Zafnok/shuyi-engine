@@ -54,11 +54,14 @@ None.
   `files/audio.ron` and the four `files/sfx/*.sfx.ron` as the template
   writes them, the `sfx` feature in its game crate's `Cargo.toml`, and
   `created_with` in its `shuyi.ron`. The steps' `Cargo.lock` files
-  follow. **Either order with 2853:** if 2853 is done, steps 08–10
-  already have the menu sounds (and the push and win sounds): bring
-  steps 01–07 up to them and leave 08–10's audio as 2853 left it; if
-  not, give all ten steps the menu sounds, and 2853 adds only its push
-  and win sounds.
+  follow. **From 2853 (done):** steps 08–10 already have the menu
+  sounds as the template writes them (and the push and win sounds, in
+  the same `audio.ron` and `files/sfx/`): bring steps 01–07 up to them
+  and leave 08–10's audio as 2853 left it. Every step, 01–07 too,
+  already has the `sfx` feature in its game crate's `Cargo.toml` and
+  the workspace's `shuyi-assets` line, as the template writes them:
+  `cargo xtask check-devcontainers` needs the ten steps to resolve one
+  set of features (2839).
 - Step 1's page: its file table names `audio.ron` and `sfx/`, in one
   line each, linking chapter 3; its words on what `shuyi new` asks match
   the quick start's, and the command it shows is the one a reader runs

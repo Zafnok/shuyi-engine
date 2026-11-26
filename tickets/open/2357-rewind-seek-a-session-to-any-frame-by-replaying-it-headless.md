@@ -205,9 +205,11 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   - the next `step` plays on from there. The steps after `frame` are
     dropped from what the host keeps: a branch. A frame past the last
     one run is an error.
-- The schemas regenerated, `contract::VERSION` raised
-  (`crates/cli/src/contract.rs:52`), `crates/cli/schemas/versions.json`
-  updated, and `docs/contract.md` says what `--until` and `seek` do.
+- The schemas regenerated, their line added to
+  `crates/cli/schemas/versions.json`, and `docs/contract.md` says what
+  `--until` and `seek` do. `contract::VERSION`
+  (`crates/cli/src/contract.rs`) rises only if `cargo xtask contract`
+  finds a break (ADR-0150).
 
 **Part 2, going back in a running game (second).**
 
@@ -355,8 +357,9 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   (done):** it is `#[non_exhaustive]`, so a game's `match` on it has a
   `_` arm).
   `DebugView`, `Game` and `Session` gain items; `RunInput` gains a
-  field (a new contract version). Say so in the PR; the game's PR that
-  moves the pin follows.
+  field (a new line in `versions.json`, and a new contract version
+  only if `cargo xtask contract` finds a break). Say so in the PR; the
+  game's PR that moves the pin follows.
 
 **Out (do not do):**
 - snapshots of `App`'s state, and keyframes (a ticket only if the
@@ -397,8 +400,9 @@ A frame number here counts `App::frame` calls from 1, as 2518's
 3. Add `--session`, `--any-stamp` and `--until` to `frame-png`, with
    `GameTools::frame_from_session` if step 1 found it is needed.
 4. Add MCP `seek` and its stdio test.
-5. Regenerate the schemas, raise `VERSION`, update
-   `crates/cli/schemas/versions.json` and `docs/contract.md`.
+5. Regenerate the schemas, add their line to
+   `crates/cli/schemas/versions.json`, and update `docs/contract.md`;
+   raise `VERSION` only if `cargo xtask contract` finds a break.
 6. Add `Start::rerunnable` and `before_each_load`. Move `shuyi-app`,
    `hello_grid::start()`, the grid template and `BasicGame::start` onto
    them. Format the templates as CI's template job checks them
@@ -442,8 +446,9 @@ Part 1:
 - [ ] MCP, a session from Hello, Grid's golden session (2519): `seek N`
       for an N inside it answers with the snapshot that
       `run --session <file> --until N` gives.
-- [ ] The schemas and `contract::VERSION` changed together (the schemas'
-      test passes).
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
+      passes).
 
 Part 2:
 

@@ -99,11 +99,12 @@ None.
   settings file is neither a pack file nor an error, and 2229's tests
   (`a_settings_file_in_a_language_pack_is_no_error`,
   `a_settings_file_among_the_languages_is_no_error`) pass unchanged.
-- **Either order with 2278:** if 2278 is done, both readers accept a
-  pack's `files/` folder: move that into `is_pack_file` (a path under
-  `files/` is a pack file, never read as text), and 2278's tests pass
-  unchanged; if not, nothing to do (2278 adds it once, to
-  `is_pack_file`).
+- **From 2278 (done):** both readers accept a pack's `files/` folder,
+  through `is_copy_file` in `lang.rs`, called beside the settings-file
+  skip in both loops: move that into `is_pack_file` (a path under
+  `files/` is a pack file, never read as text), and 2278's tests
+  (`a_packs_copies_of_files_are_not_read`,
+  `a_language_packs_copies_of_files_are_not_read`) pass unchanged.
 - **From 2348 (done):** `Lang::text_in` and `Lang::data_text_in` hold
   the lookups that `text` and `data_text` are built on: they test an
   entry with `fresh`.

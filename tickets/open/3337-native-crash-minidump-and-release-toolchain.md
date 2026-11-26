@@ -206,8 +206,9 @@ MSVC.
   gains both ADRs' rows.
 - **Either order with 2520:** if 2520 is done, `CrashOutput` also
   carries the report's `fault` and `dump`, `crash::text` shows them,
-  and the `crash` schemas are regenerated with `VERSION` raised by one
-  (`docs/contract.md`, *The schemas*); if not, nothing to do (2520 adds
+  and the `crash` schemas are regenerated with their line in
+  `versions.json` (`docs/contract.md`, *The schemas*); added answer
+  fields keep `VERSION` (ADR-0150). If not, nothing to do (2520 adds
   them).
 
 **Out (do not do):**

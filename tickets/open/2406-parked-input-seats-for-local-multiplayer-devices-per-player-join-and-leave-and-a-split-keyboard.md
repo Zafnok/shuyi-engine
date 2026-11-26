@@ -281,9 +281,10 @@ online)?
     and `Script::check` refuse `x:South` and `9:South` before the game
     starts, not with a panic. The usage text in `frame_png.rs` and
     `contract/run.rs` shows it. `Step::Pad`'s doc comment names the
-    prefix, which changes the schemas' text: raise `contract::VERSION`,
-    regenerate `crates/cli/schemas/` and add the version's line to
-    `versions.json` (ADR-0022 §5). The fake session
+    prefix, which changes the schemas' text: regenerate
+    `crates/cli/schemas/` and add their line to `versions.json`. A
+    reworded description breaks no client, so `contract::VERSION`
+    stays (ADR-0150). The fake session
     (`crates/cli/src/contract/fake.rs`) and whatever else plays a
     `Script` (1133's session `step`) get the prefix with no
     change of their own.
@@ -432,7 +433,7 @@ online)?
       from seat 1).
 - [ ] `frame-png --pad "1:South"` works; `--pad "x:South"` and
       `--pad "9:South"` are errors before the game starts; the schema
-      test passes with the new contract version's line.
+      test passes with the schemas' new line in `versions.json`.
 - [ ] A keymap file whose `split_keyboard` names an unknown layout, the
       same layout twice, or two layouts sharing a chord fails with one
       error each; a baked keymap with the field equals its source.

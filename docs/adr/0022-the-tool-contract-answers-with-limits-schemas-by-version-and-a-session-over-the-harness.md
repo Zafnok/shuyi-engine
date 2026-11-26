@@ -1,6 +1,6 @@
 # ADR-0022: The tool contract: answers with limits, schemas by version, and a session over the Harness
 
-- **Status:** Accepted
+- **Status:** Accepted; §5 amended by ADR-0150 (the version rises only on a break)
 - **Date:** 2026-10-20
 - **Related tickets:** 1129 (the contract and `shuyi new`), 1133 (the MCP
   server), 1134 (the skills), 2501 (templates made of parts), 2207

@@ -6,7 +6,7 @@ use alloc::collections::BTreeSet;
 
 use super::{
     DATA_FILE, INFO_FILE, LangPack, PackRules, PackSources, SourceLang, SourceText, UI_FILE,
-    english_from_source, is_dialogue_file, pack_code, pack_from_files_in,
+    english_from_source, is_copy_file, is_dialogue_file, pack_code, pack_from_files_in,
 };
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
@@ -27,7 +27,9 @@ const NOT_A_LANGUAGE_FILE: &str = "not a file a language has";
 /// (`lang/en/ui.ron`, or the folder of the source the game declares,
 /// [`LangPackRon::source_lang`]), and its `data.ron` and
 /// `dialogue/*.ron`, checked against the game's data text when it gives it
-/// ([`LangPackRon::with_data`]; left out otherwise). Any other file in the
+/// ([`LangPackRon::with_data`]; left out otherwise). Its copies of the
+/// game's files, `files/<path>`, are never read
+/// ([`localized_path`](super::localized_path)). Any other file in the
 /// folder is an error, and the source's folder is no pack. Checked as
 /// [`pack_from_files`](super::pack_from_files) says, with the game's
 /// rules, its limits counting a character of the font atlas's wide glyphs
@@ -186,7 +188,10 @@ impl Format for LangPackRon {
                 .unwrap_or(path);
             if is_dialogue_file(name) {
                 dialogue.extend(read(path));
-            } else if !is_settings_file(name) && ![UI_FILE, INFO_FILE, DATA_FILE].contains(&name) {
+            } else if !is_settings_file(name)
+                && !is_copy_file(name)
+                && ![UI_FILE, INFO_FILE, DATA_FILE].contains(&name)
+            {
                 unknown.push(ContentError::new(cx.shown(path), NOT_A_LANGUAGE_FILE));
             }
         }

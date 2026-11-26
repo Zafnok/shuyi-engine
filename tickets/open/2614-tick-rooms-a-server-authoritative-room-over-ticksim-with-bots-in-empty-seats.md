@@ -27,7 +27,7 @@ completed:
   - `shuyi_core::TickSim` (`crates/core/src/tick.rs`: `type Event`,
     `step(&mut self, &TickInput) -> Vec<Event>`, `hash(&self) -> u64`),
     `TickInput` and `SeatInput` (2137, done);
-  - 2612: `MAX_SEATS` becomes 8, and `SeatInput` and `TickInput` get a
+  - 2612 (done): `MAX_SEATS` is 8, and `SeatInput` and `TickInput` have a
     fixed little-endian byte form (`encode`, `decode`, in
     `crates/core/src/tick/bytes.rs`);
   - 2613: `PeerId`, `NetEvent`, `Transport` and `MemoryNetwork` with

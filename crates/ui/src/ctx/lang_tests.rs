@@ -1,7 +1,8 @@
 //! The language in use ([`Ctx::lang`]): the one the player picked, else
 //! the game's pick at start from the system's languages
 //! ([`FirstLanguage`]), never the debug language; and the languages a row
-//! offers ([`Ctx::languages_offered`]).
+//! offers ([`Ctx::languages_offered`]); and where a language's copy of a
+//! file is ([`Ctx::localized`]).
 
 use super::*;
 
@@ -149,4 +150,30 @@ fn the_languages_offered_are_the_source_then_the_packs_by_their_own_names() {
     assert_eq!(offered(&c), all);
     c.debug_tools = false;
     assert_eq!(offered(&c), [all[0].clone(), all[2].clone()]);
+}
+
+#[test]
+fn a_languages_copy_of_a_file_follows_the_language_in_use() {
+    let mut c = start(toy(FirstLanguage::System), &[]);
+    let copies = [
+        "lang/pt/files/title/end.png",
+        "lang/dbg/files/title/end.png",
+    ];
+    let end = |c: &ToyCtx| c.localized("lang", "title/end.png", |p| copies.contains(&p));
+    assert_eq!(end(&c), "title/end.png");
+    // A change of language gives another path at once.
+    c.change_settings(|s| s.language = Some(code("pt")))
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(end(&c), "lang/pt/files/title/end.png");
+    // A copy `pt-BR` lacks comes from `pt`, along its chain.
+    c.change_settings(|s| s.language = Some(code("pt-BR")))
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(end(&c), "lang/pt/files/title/end.png");
+    // The debug language's copy only with the debug tools.
+    c.change_settings(|s| s.language = Some(code(DEBUG_LANG)))
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    c.debug_tools = true;
+    assert_eq!(end(&c), "lang/dbg/files/title/end.png");
+    c.debug_tools = false;
+    assert_eq!(end(&c), "title/end.png");
 }

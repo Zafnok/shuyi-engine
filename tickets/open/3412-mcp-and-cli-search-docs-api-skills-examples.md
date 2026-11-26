@@ -97,9 +97,10 @@ None.
 - `INSTRUCTIONS` says to call `docs` before guessing a name. The new
   game's `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`, the
   table around line 95) gets a `cargo shuyi docs <query>` row.
-- The contract's `VERSION` rises by one, with the new schemas
-  (`crates/cli/schemas/docs.input.json`, `docs.output.json`) and their
-  fingerprint in the schemas' `versions.json`.
+- The new schemas (`crates/cli/schemas/docs.input.json`,
+  `docs.output.json`) get their fingerprint in the schemas'
+  `versions.json`. A new operation breaks no client, so the contract's
+  `VERSION` stays (ADR-0150).
 - Public types: `DocsInput`, `DocsOutput`, `Hit`, `HitKind` and `HowRow`
   follow `explain.rs`'s pattern for contract types (`deny_unknown_fields`,
   `JsonSchema`, versioned by `VERSION`). `HitKind` is `#[non_exhaustive]`
@@ -198,8 +199,8 @@ new ticket, blocked by this one.
      of `contract.rs`, the `pair::<…>` dispatch (as `Op::Explain` at
      `contract.rs:468`), `takes_project` (no) and `mcp.rs`'s
      `description`. CLI: `shuyi docs <words…> [--limit N] [--kind K]`.
-6. **Schemas and version.** Raise `VERSION`, write the two schemas, add
-   the fingerprint to `versions.json` (the schemas' test says what).
+6. **Schemas.** Write the two schemas and add the fingerprint to
+   `versions.json` (the schemas' test says what).
 7. **MCP resources.** In `server.rs`, declare `"resources": {}` in
    `initialize` (line 780) and handle `resources/list` and
    `resources/read` before the `tools/*` arms (line 222). URIs:
@@ -243,8 +244,9 @@ new ticket, blocked by this one.
       an unknown URI is `-32002`; `prompts/list` is still `-32601`.
 - [ ] Every row of `site/data/how-do-i.toml` resolves to a chunk in the
       corpus (test), and there are at least 30 rows.
-- [ ] The contract's `VERSION` is one over the base, with the schemas and
-      fingerprint (`cargo xtask api` checks the raise).
+- [ ] The schemas have their fingerprint in `versions.json`, and the
+      contract's `VERSION` is the base's (`cargo xtask contract`
+      passes).
 - [ ] The ADR is in `docs/adr/` and indexed in its README.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.

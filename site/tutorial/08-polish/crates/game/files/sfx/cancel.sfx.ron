@@ -1,0 +1,9 @@
+// Backing out (the engine's preset `cancel`).
+(
+    wave: Square(duty: 50),
+    hz: 520,
+    to_hz: 330,
+    hold_ms: 60,
+    fade_ms: 60,
+    volume: 35,
+)

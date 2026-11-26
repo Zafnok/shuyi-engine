@@ -239,8 +239,9 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   `cli::runs_the_game` and `cli::with_game` (`contract/cli.rs`, and the
   list of ops in its test of `runs_the_game`), the usage in
   `crates/cli/src/lib.rs` (beside `playtest`), and
-  `docs/contract.md`'s two tables. `contract::VERSION` goes up by one,
-  with its line in `crates/cli/schemas/versions.json`.
+  `docs/contract.md`'s two tables. The schemas get their line in
+  `crates/cli/schemas/versions.json`; a new operation keeps
+  `contract::VERSION` (ADR-0150).
 - The other places that list the ops gain `soak`: the table in
   `contract.rs`'s module docs, `lib.rs`'s module docs, the
   `description` in `crates/cli/Cargo.toml`, the two rows of `README.md`
@@ -386,8 +387,7 @@ and `Checks`, `Failure` and `Shrunk`.
 4. Write `contract/soak.rs`, the `GameTools` method, `Fake`'s field,
    `Op::Soak`, the CLI parsing and usage, `docs/contract.md` and the
    other lists of ops. Run `cargo shuyi schema --out crates/cli/schemas`
-   from the repository's root, raise `VERSION` and add its line to
-   `versions.json`.
+   from the repository's root and add its line to `versions.json`.
 5. Wire Hello, Grid and the template. `templates/` isn't in the
    workspace, so `cargo fmt --all` doesn't format it: run the template's
    gates by hand (`cargo run -p shuyi-cli -- new grid <dir>
@@ -435,7 +435,8 @@ the op at the follow-up: the `shuyi soak` lines of 2735, 2736, 2737 and
       `turn` makes the soak fail at step 0 with `invariant` on the
       reloaded copy (a manual check, noted in the PR).
 - [ ] `soak --save DIR` writes a record that `shuyi replay` reads.
-- [ ] The schemas test passes with the new `VERSION`, and
+- [ ] The schemas test passes with the schemas' line in
+      `versions.json`, `cargo xtask contract` passes, and
       `docs/contract.md` lists `soak` in both tables, as do the other
       lists of ops named in Scope.
 - [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf`, and its

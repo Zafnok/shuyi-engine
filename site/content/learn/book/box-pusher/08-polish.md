@@ -1,6 +1,6 @@
 +++
 title = "Polish"
-description = "A moves counter from the history, and the engine's options and key-rebinding screens."
+description = "A moves counter from the history, a sound on a push and on a win, and the engine's options and key-rebinding screens."
 weight = 80
 aliases = ["learn/tutorial/08-polish/", "learn/tutorial/08-polish/play/"]
 
@@ -13,20 +13,24 @@ rust = ["crates/game/src/board.rs", "crates/game/src/options.rs", "crates/game/s
 follows = "saves-and-settings"
 +++
 
-The game is whole. This step adds what makes it pleasant: a moves counter, and a way for players to change
-their keys. Both are short, because the work's already been done, by you or by the engine.
+The game is whole. This step adds what makes it pleasant: a moves counter, a sound on a push and on a win,
+and a way for players to change their keys. Each is short, because the work's already been done, by you or
+by the engine.
 
 {{ try_it(name="moves") }}
 
 | File | What changes |
 | ---- | ------------ |
-| `crates/game/src/board.rs` | Shows the moves |
+| `crates/game/src/board.rs` | Shows the moves, and plays a push's sound and a win's |
 | `crates/game/src/options.rs` | New: which options to offer |
 | `crates/game/src/levels.rs` | An Options item on the menu |
 | `crates/game/src/stages.rs` | Names the two new screens |
 | `crates/game/src/lib.rs` | `pub mod options;` |
+| `crates/game/files/sfx/push.sfx.ron`, `win.sfx.ron` | New: the two sounds |
+| `crates/game/files/audio.ron` | Their cues |
 | `crates/game/files/en.ron` | Words for all of it |
-| `crates/game/tests/board.rs` | Tests of both |
+| `crates/game/tests/board.rs` | Tests of all three |
+| `crates/game/tests/it/main.rs` | A test that every sound is there and plays |
 
 ## A moves counter
 
@@ -65,6 +69,72 @@ Or centre it, by changing the sum:
 The test presses keys, and reads the screen's text. It also shows what the counter doesn't count:
 
 {{ snippet(step="08-polish", file="crates/game/tests/board.rs", anchor="test_moves") }}
+
+## Sounds
+
+A push and a win should be heard as well as seen. Your game already makes sounds: its menus play the
+engine's, which `shuyi new` put in `crates/game/files/sfx/`, named by `crates/game/files/audio.ron`.
+The board gets two of its own.
+
+Each is a **sound effect**: a `.sfx.ron` file of a few numbers, a wave, a pitch and how loud it is as it
+holds and fades. The game turns it into a sound as it loads it, so there's no sound file to record. The
+`sfx` switch of `shuyi-assets`, in `crates/game/Cargo.toml`, is what lets it, and `shuyi new` turned it
+on. You don't write one from nothing. Start each from one of the engine's:
+
+```bash
+cargo shuyi sfx hit --out crates/game/files/sfx/push.sfx.ron
+cargo shuyi sfx power_up --out crates/game/files/sfx/win.sfx.ron
+```
+
+`cargo shuyi sfx nope` lists the others. To hear one before the game plays it, turn it into a sound file
+your computer can play:
+
+```bash
+cargo shuyi sfx crates/game/files/sfx/push.sfx.ron --wav push.wav
+```
+
+The engine's `hit` is a crash, too long and too high to hear on every push. Make it a short, low scrape
+by changing its numbers:
+
+{{ snippet(step="08-polish", file="crates/game/files/sfx/push.sfx.ron", language="ron") }}
+
+`hz` is the pitch it starts at and `to_hz` the one it slides to; `hold_ms` and `fade_ms` are how long it
+holds and fades, in thousandths of a second; `volume` is how loud. `wave` is the sound's color:
+`Noise` here, a hiss, or `Square(duty: 50)`, `Triangle`, `Saw` and `Sine`, which are notes. Each field and
+its range is in
+[the engine's formats](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#sound-effects-sfxron),
+and `cargo shuyi check` gives a number out of its range with its line. Run `--wav` again after each change,
+until it sounds right.
+
+The game plays a sound by its **cue**, a name in `files/audio.ron`, which says which file it is and how
+loud. Add two to its `sounds`:
+
+{{ snippet(step="08-polish", file="crates/game/files/audio.ron", anchor="board", language="ron") }}
+
+In `board.rs`, name them once, so a typo is the compiler's to find:
+
+{{ snippet(step="08-polish", file="crates/game/src/board.rs", anchor="sounds") }}
+
+`send` is where a move happens, so it's where its sound is played. It takes the `ctx` now, as that holds
+`ctx.audio`, and it asks the rules what the move did. The move that wins plays `WIN`, and any other push
+plays `PUSH`. A walk, a refused step and an undo play nothing:
+
+{{ snippet(step="08-polish", file="crates/game/src/board.rs", anchor="send") }}
+
+{% newcomer(to="rust", topic="`let ... else` and `matches!`") %}
+`let Ok(events) = ... else { return; };` is a [let-else](@/learn/book/box-pusher/07-save.md#what-is-kept):
+a refused command is an `Err`, and `send` stops there. `events.iter().any(|e| matches!(e, Event::Pushed { .. }))`
+asks whether any of the move's events is a push. `matches!` asks whether a value fits a pattern, and
+`{ .. }` says the push's tiles don't matter.
+{% end %}
+
+`update` hands its `ctx` on, where it used to be `_`:
+
+{{ snippet(step="08-polish", file="crates/game/src/board.rs", anchor="steps") }}
+
+The Harness keeps every cue the game asked for, so a test can check which move made which sound:
+
+{{ snippet(step="08-polish", file="crates/game/tests/board.rs", anchor="test_sounds") }}
 
 ## Options and rebinding
 
@@ -144,10 +214,11 @@ In Rust: tuples, passing a function by name, and `.chain`.
 {% end %}
 
 {% newcomer(to="games", topic="the ideas of making games in this step") %}
-In making games: don't keep two copies of one fact.
+In making games: don't keep two copies of one fact, and a sound can be a few numbers.
 {% end %}
 
-In Shuyi: the engine's options and key-binding screens, and how much a game gets free by using actions.
+In Shuyi: sound effects and their cues, the engine's options and key-binding screens, and how much a game
+gets free by using actions.
 
 Next: the game can test itself.
 
@@ -160,6 +231,15 @@ Undo after a move. What does it count?
 - [x] Nothing for the wall, and one fewer for the Undo. — A refused step is never recorded, and undo takes a command out of the history ([a moves counter](#a-moves-counter)).
 - [ ] One more for each key pressed, the wall and the Undo too. — It counts commands in the history, and a key isn't a command ([a moves counter](#a-moves-counter)).
 - [ ] Nothing for the wall, but the Undo counts as a move. — Undo already takes one command away, so the count goes down ([a moves counter](#a-moves-counter)).
+{% end %}
+
+{% check() %}
+`send` plays `WIN` if `self.puzzle.outcome().is_some()`, and `PUSH` only if not. The player pushes the
+last box onto its target. What do they hear?
+
+- [ ] The push's sound, then the win's. — The two are an `if` and an `else if`: only one of them runs ([sounds](#sounds)).
+- [x] The win's sound alone. — The move that wins plays `WIN` in place of `PUSH` ([sounds](#sounds)).
+- [ ] Nothing, as a winning move isn't a push. — The rules still report the push, and the win's sound comes first ([sounds](#sounds)).
 {% end %}
 
 {% check() %}

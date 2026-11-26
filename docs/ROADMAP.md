@@ -180,7 +180,7 @@ These tickets, in order:
 | 2086 (done) | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
-| 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2088 (done) | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 (done) | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
 | 2094 (done) | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |
@@ -363,7 +363,7 @@ the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
 (game#1013, mod tables merged by id), 2226, 2253 and 2349
 (game#0825, the language option; 2349 done), and 2278 (game#0831, a
-language's own pictures). 2342 (game#0826, the voices' volume)
+language's own pictures; done). 2342 (game#0826, the voices' volume)
 is done.
 
 **Seeing what players see:**
@@ -406,7 +406,8 @@ is done.
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
 | 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
 | 2277 (done) | `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files |
-| 2853 | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how (after 2277) |
+| 2853 (done) | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how |
+| 2279 | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
 
 **Text and languages:**
 
@@ -420,7 +421,7 @@ is done.
 | 2261 (done) | Messages checked when the languages load, and missing forms in `lang-status` |
 | 2253 | Picking the game's language that fits the system's languages |
 | 2349 (done) | The player's language: a setting per profile, an options row, the system's languages at first start |
-| 2278 | A language's own copies of files: a pack's `files/`, `localized_path` and `Ctx::localized` (game#0831, after 2349) |
+| 2278 (done) | A language's own copies of files: a pack's `files/`, `localized_path` and `Ctx::localized` (game#0831, after 2349) |
 | 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
 | 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
 | 2347 | Styled text: key names that stand out, and colour roles inside a line |

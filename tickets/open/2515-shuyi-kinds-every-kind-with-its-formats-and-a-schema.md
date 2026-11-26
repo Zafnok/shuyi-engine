@@ -216,9 +216,9 @@ None.
   - The contract: `Op::Kinds` in `crates/cli/src/contract.rs`
     (`Op::ALL`, `name`, the schema pair in `schemas()`),
     `kinds.input.json` and `kinds.output.json` under
-    `crates/cli/schemas/`, `contract::VERSION` raised by one from
-    whatever it is when this lands, and its line in `versions.json`
-    (`docs/contract.md`, *The schemas*).
+    `crates/cli/schemas/`, and their line in `versions.json`
+    (`docs/contract.md`, *The schemas*). A new operation breaks no
+    client, so `contract::VERSION` stays (ADR-0150).
   - The usage text in `crates/cli/src/lib.rs` (beside `import`, line
     56) gets a `kinds` line. `docs/contract.md` gets a `kinds` row in
     *The operations*, and its *What a game gives* table's `importers`
@@ -330,8 +330,9 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
 - [ ] A format with no schema is named in the answer's limits.
 - [ ] Outside a project, `shuyi kinds` lists the engine's standard
       kinds, with the limit `import` gives.
-- [ ] The contract's schema test passes with `VERSION` raised and
-      `kinds.input.json` and `kinds.output.json` checked in.
+- [ ] The contract's schema test passes with `kinds.input.json` and
+      `kinds.output.json` checked in and their line in `versions.json`,
+      and `cargo xtask contract` passes.
 - [ ] 2507's schema line names this ADR by number and `shuyi kinds`.
 - [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf` without
       default features (the `schema` feature is off there).

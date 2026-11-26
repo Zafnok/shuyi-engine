@@ -1,0 +1,10 @@
+// A box pushed: a short, low scrape (from the engine's preset `hit`, made
+// with `cargo shuyi sfx hit`, then lower and shorter).
+(
+    wave: Noise,
+    hz: 1200,
+    to_hz: 300,
+    hold_ms: 25,
+    fade_ms: 75,
+    volume: 45,
+)

@@ -65,6 +65,11 @@ None.
 
 **In:**
 
+- **From 2612 (done):** the chapter teaches that a step holds up to eight
+  seats (`shuyi_core::tick::MAX_SEATS`), and the byte form of a step's
+  input (`SeatInput::encode` and `decode`, `TickInput::encode` and
+  `decode`, `TooManyActions`, in `crates/core/src/tick/bytes.rs`): 2612
+  left both to it.
 - **The chapter** `site/content/learn/book/online-play.md`, titled
   *Playing online*, with `extra.part = "chapters"`, `extra.chapter = 11`
   and `weight = 110`. That puts it after *Tools for agents* (chapter 10,

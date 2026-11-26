@@ -1276,6 +1276,48 @@ fn a_break_without_its_line_fails() {
 }
 
 #[test]
+fn a_break_of_the_contracts_schemas_needs_a_line_naming_shuyi_cli() {
+    let root = temp_root("contract-break");
+    let schemas = root.join("crates/cli/schemas");
+    fs::create_dir_all(&schemas).unwrap();
+    fs::write(
+        schemas.join("scene.output.json"),
+        r#"{"type":"object","properties":{}}"#,
+    )
+    .unwrap();
+    fs::write(
+        root.join("tickets/done/2100-a.md"),
+        "## Completion notes\n\nBreaking: shuyi-core: state_hash: gone\n\nBook: none, a test\n",
+    )
+    .unwrap();
+    let options = Options {
+        base: Some("abc123".to_string()),
+        pr_branch: Some("t2100-a".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root)
+        .answer(
+            "head: git ls-tree --name-only abc123:crates/cli/schemas",
+            Ok(ok("scene.output.json\nversions.json\n")),
+        )
+        .answer(
+            "head: git show abc123:crates/cli/schemas/scene.output.json",
+            Ok(ok(
+                r#"{"type":"object","properties":{"frames":{"type":"integer"}}}"#,
+            )),
+        );
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    let error = &outcome.errors[0];
+    assert!(
+        error.contains("no `Breaking:` line naming shuyi-cli"),
+        "{error}"
+    );
+    assert!(error.contains("frames: the field is gone"), "{error}");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn a_run_reads_the_books_change_from_git() {
     let root = temp_root("book-changed");
     fs::write(

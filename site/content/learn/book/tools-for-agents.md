@@ -69,6 +69,11 @@ The [contract's page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/cont
 each operation answers, and every input and answer has a **JSON schema**, a description of a
 document's shape that a program can read: `cargo shuyi schema run.output` prints one.
 
+Every answer also says `contract`, the contract's version. It goes up only when an answer loses
+something or an input asks for something new. While it stays the same, a newer engine's answers keep
+every field your script reads, and may add more. So a script that reads `--json` checks that number,
+and skips any field or value it doesn't know instead of stopping on it.
+
 A game gives the tools what they need of it in its tool program
 ([chapter 1](@/learn/book/quick-start.md#what-it-is-made-of)). On the short path that is `BasicTools`:
 its frame, its text, its files' errors and its controls. A game with a scene, records, a playtest or

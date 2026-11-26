@@ -336,8 +336,8 @@ the PR.
   body and the completion notes for every ADR number, ticket id and
   contract version (`contract::VERSION`) they name. A parallel PR may
   have taken one first: renumber with `cargo xtask next-id` (and the
-  contract's to `main`'s plus one), fix the links to it, and edit the
-  PR body to match. The squash message is the PR body (ticket 2052).
+  contract's, when this PR breaks it, to `main`'s plus one: ADR-0150),
+  fix the links to it, and edit the PR body to match. The squash message is the PR body (ticket 2052).
 - **Before the last push, re-read the PR body against the final diff:**
   - the gates it says ran are the gates that ran, named one by one,
     never "all gates" over a shorter list;

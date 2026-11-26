@@ -1,0 +1,8 @@
+// A cursor's step (the engine's preset `tick`).
+(
+    wave: Square(duty: 12),
+    hz: 1320,
+    hold_ms: 5,
+    fade_ms: 20,
+    volume: 25,
+)

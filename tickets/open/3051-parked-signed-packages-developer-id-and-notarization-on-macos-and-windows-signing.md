@@ -86,10 +86,11 @@ re-check when unparked):
   tests fake. Its input, `DoctorInput`, is empty, and it passes only
   when every check does. It knows no signing tool.
 - The contract's version is `VERSION` in `crates/cli/src/contract.rs`
-  (4 today). A change of shape regenerates `crates/cli/schemas/` with
-  `cargo shuyi schema --out crates/cli/schemas`, raises `VERSION` and
-  adds a line to `crates/cli/schemas/versions.json`
-  (`crates/cli/tests/it/schemas.rs` checks all three).
+  (62 today). A change of shape regenerates `crates/cli/schemas/` with
+  `cargo shuyi schema --out crates/cli/schemas` and adds a line to
+  `crates/cli/schemas/versions.json` (`crates/cli/tests/it/schemas.rs`
+  checks them). `VERSION` rises only for a break, which
+  `cargo xtask contract` finds (ADR-0150).
 - CI uses no signing secret: only `SONAR_TOKEN` and `GITHUB_TOKEN`
   (`.github/workflows/ci.yml`). Its `test` job runs on `macos-latest`
   as well as Windows and Linux.
@@ -327,10 +328,11 @@ account, its identity check and a certificate profile).
     `default()`, so `signing` (`false` by default) is additive. The PR
     says so, and if 2010's job reports a break, the completion notes
     carry its `Breaking:` line.
-- **The contract:** `VERSION` goes up, the schemas are regenerated with
+- **The contract:** the schemas are regenerated with
   `cargo shuyi schema --out crates/cli/schemas`, `versions.json` gets
   the new line, and `docs/contract.md`'s `export` and `doctor` rows name
-  `--sign` and `--signing`.
+  `--sign` and `--signing`. Optional input fields and added report
+  fields break no client, so `VERSION` stays (ADR-0150).
 - **A page for a game's owner:** `docs/signing.md`. The templates'
   "Releasing" sections link it (the part on 3050 below). It says:
   - what each option costs, checked that day;
@@ -439,8 +441,8 @@ account, its identity check and a certificate profile).
 6. Write `crates/cli/src/sign/windows.rs`: `find_signing_tools`,
    `WindowsSigner` and `ArtifactSigning`, with their tests.
 7. Add `--sign` to `export`, the report's fields and the changes to
-   `HOW-TO-OPEN.txt`. Raise `VERSION`, regenerate the schemas, add the
-   `versions.json` line and update `docs/contract.md`.
+   `HOW-TO-OPEN.txt`. Regenerate the schemas, add the `versions.json`
+   line and update `docs/contract.md`.
 8. Add `doctor --signing` and `Probe::list`.
 9. Write `crates/cli/tests/sign_macos.rs` and the `sign-macos` job. Keep
    them if `codesign` accepts the self-signed identity.
@@ -482,9 +484,9 @@ account, its identity check and a certificate profile).
 - [ ] `shuyi doctor --signing` gives the right checks on fake macOS,
       Windows and Linux hosts, and plain `doctor`'s output is unchanged
       (test).
-- [ ] `VERSION` is raised, the schemas are regenerated, `versions.json`
-      has the new line, and `docs/contract.md` names `--sign` and
-      `--signing`.
+- [ ] The schemas are regenerated, `versions.json` has the new line,
+      `cargo xtask contract` passes, and `docs/contract.md` names
+      `--sign` and `--signing`.
 - [ ] `docs/signing.md` lists the costs as checked that day, the steps,
       the variables and the workflow step.
 - [ ] Either the `sign-macos` job signs `Fixture.app` with a

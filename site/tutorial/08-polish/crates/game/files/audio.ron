@@ -1,0 +1,21 @@
+// The game's sounds: the cues the engine's menus and cursors play, and the
+// board's two, `push` and `win`, each a sound effect in `sfx/` written as
+// a few numbers (`.sfx.ron`). Change a file's numbers to change its sound,
+// or name a `.wav` or `.ogg` file in its place. `min_gap_ms` keeps a
+// cursor that moves several cells in one frame to one tick.
+(
+    music_fade_ms: 500,
+    sounds: [
+        (id: "ui_move", files: ["sfx/move.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
+        (id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
+        (id: "ui_cancel", files: ["sfx/cancel.sfx.ron"], volume: 80, credit: Own),
+        (id: "ui_cursor", files: ["sfx/cursor.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
+        // ANCHOR: board
+        (id: "push", files: ["sfx/push.sfx.ron"], volume: 80, credit: Own),
+        (id: "win", files: ["sfx/win.sfx.ron"], volume: 80, credit: Own),
+        // ANCHOR_END: board
+    ],
+    music: [],
+    pools: [],
+    credits: [],
+)
