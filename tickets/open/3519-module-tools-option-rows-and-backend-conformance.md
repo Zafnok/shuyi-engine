@@ -127,8 +127,9 @@ None.
   (`in_tools`). An unknown module or name, and an input that its schema
   refuses, get a new problem code (the next free `SH30xx`, its page in
   `crates/cli/errors/`, ADR-0028). A tool's own `Err` answers
-  `ok: false` with its text. Raise `contract::VERSION` and regenerate
-  `crates/cli/schemas/`.
+  `ok: false` with its text. Regenerate `crates/cli/schemas/` and add
+  their line to `versions.json`; a new operation keeps
+  `contract::VERSION` (ADR-0150).
 - **Option rows from modules, saved apart from the game's settings.**
   - `Install::option_row(make: fn(&Ctx<G>) -> OptionRow<G>)`.
   - `InstalledModule` gains `option_rows: Vec<&'static str>`, the rows'
@@ -244,8 +245,8 @@ rows from modules) too.
    say so in the ADR. Add the problem code and its page.
 4. The MCP server: list `tool` through `tool_listing`, and dispatch it
    to the game's tool program as the other in-tools operations are
-   (`crates/cli/src/mcp/host.rs`). Regenerate the schemas, raise
-   `VERSION`, and add the fingerprint to `schemas/versions.json`.
+   (`crates/cli/src/mcp/host.rs`). Regenerate the schemas and add the
+   fingerprint to `schemas/versions.json`.
 5. `crates/ui/src/module.rs`: `Install::option_row`,
    `InstalledModule::option_rows`, and the makers kept on `Ctx`'s module
    list beside the debug-entry makers. `crates/ui/src/settings.rs` (or a
@@ -311,7 +312,9 @@ rows from modules) too.
 - [ ] `shuyi-platform` builds with `--no-default-features --features conformance`
       for the Playdate target in CI's `no-std` job.
 - [ ] `cargo xtask check-layers` passes.
-- [ ] The schemas and `versions.json` match `contract::VERSION`.
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
+      passes).
 - [ ] The ADR is in `docs/adr/`, and ADR-0040 says it is amended by it.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.

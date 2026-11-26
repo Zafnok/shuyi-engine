@@ -100,8 +100,9 @@ None.
   `#[non_exhaustive]`, so the field is additive. If it isn't, the
   field is a break: write a `Breaking:` line in the completion notes.
   `FrameTimes` is in the trace agents read (2553), so the field joins
-  its JSON lines and its schema: regenerate the schemas and raise the
-  contract's version.
+  its JSON lines and its schema: regenerate the schemas and add their
+  line to `versions.json`. An added field keeps `contract::VERSION`
+  (ADR-0150).
 - **The ring** (2325's, in `DebugView`):
   - each frame's slot gains `gpu_us: Option<u32>`;
   - a `Measured` writes its `us` into the slot `frames_ago` frames back

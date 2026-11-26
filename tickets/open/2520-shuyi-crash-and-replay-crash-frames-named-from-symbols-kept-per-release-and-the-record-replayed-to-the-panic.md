@@ -218,9 +218,9 @@ None.
     does for `replay`.
 - **The contract's version:** the `crash` schemas
   (`crash.input.json`, `crash.output.json`) and the `replay` ones
-  regenerated, `VERSION` raised by one, and the line
-  `crates/cli/schemas/versions.json` asks for (the four steps in
-  `docs/contract.md`).
+  regenerated, and the line `crates/cli/schemas/versions.json` asks
+  for (the steps in `docs/contract.md`). `VERSION` rises only if
+  `cargo xtask contract` finds a break (ADR-0150).
 - **Either order:**
   - with 2509 (done, problem codes, ADR-0028): each refusal here is
     `Answer::failed(op, code, error)`. `--crash` with a second record
@@ -313,8 +313,8 @@ None.
 4. Count the changed lines and apply **Size** above.
 5. Add `--symbols` and the lookup with `addr2line` over the frames
    2598 writes.
-6. Regenerate the schemas, raise `VERSION`, add the line to
-   `versions.json`.
+6. Regenerate the schemas and add their line to `versions.json`;
+   raise `VERSION` only if `cargo xtask contract` finds a break.
 7. On the machine at hand (Windows GNU): build hello-grid for release
    with its debug file kept as the docs say, run the stripped copy with
    `SHUYI_PANIC_AT_FRAME=3` (3046), and run `shuyi crash` with
@@ -356,7 +356,8 @@ None.
       a second record exits with 2.
 - [ ] The PR description has step 7's answer, its frames named in
       `shuyi_app` and hello-grid, and the size difference.
-- [ ] The schemas, `VERSION` and `versions.json` agree (the schema test
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
       passes).
 - [ ] `cargo deny check` passes with no change to `deny.toml`.
 - [ ] All gates in the `run-gates` skill pass.

@@ -108,8 +108,9 @@ None.
   them too.
 - **The contract stays as it is:** no type of the answer changes, so
   the schemas in `crates/cli/schemas/` and `contract::VERSION` don't
-  move. If one must change after all, regenerate them and raise
-  `VERSION` (ADR-0022 §5).
+  move. If one must change after all, regenerate them, add their line
+  to `versions.json`, and raise `VERSION` only if `cargo xtask
+  contract` finds a break (ADR-0150).
 - **What changes for the game:** nothing. Two functions are new, and
   `turns` keeps its signature. The PR says so.
 

@@ -179,7 +179,7 @@ These tickets, in order:
 | 2086 (done) | `shuyi-cli`'s contract types that open tickets grow move under ADR-0039, `Op::ALL` becomes a slice, and `check` takes what it reads in its input |
 | 2412 (done) | Every pad event carries its pad: `PadDown` and `PadUp` with the pad's id, `PadRemoved`, split out of parked 2406 |
 | 2087 | No outside crate's type in a game's way in: `run_app`, an engine macro that embeds files, and an ADR on the outside crates the API names |
-| 2088 | What the contract's version promises, and how it follows the crates' semver |
+| 2088 (done) | What the contract's version promises, and how it follows the crates' semver |
 | 2089 (done) | `cargo xtask api` fails a public item that names an outside crate ADR-0119 doesn't list |
 | 2090 (done) | `cargo xtask api`'s outside-crate check reads the crates an outside dependency's types come from (`miniquad` through `macroquad`) |
 | 2094 (done) | `setup-linux.sh` retries a failed package fetch, so a new Codespace's setup doesn't stop at its first boot (found by 2916) |

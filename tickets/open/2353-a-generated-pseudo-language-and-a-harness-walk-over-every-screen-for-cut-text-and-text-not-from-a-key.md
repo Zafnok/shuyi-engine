@@ -158,9 +158,10 @@ None.
     take it. It is a step like the others: every step after it plays in
     that language. In the contract's JSON script it is
     `{"lang": "qps-Ploc"}`, so the MCP server (1133) gets it too.
-  - The contract's schema changes, so raise `contract::VERSION`,
-    regenerate `crates/cli/schemas/` and add the line in
-    `crates/cli/schemas/versions.json` (ADR-0022 §5).
+  - The contract's schema changes, so regenerate `crates/cli/schemas/`
+    and add the line in `crates/cli/schemas/versions.json`. A new
+    step variant breaks no client, so `contract::VERSION` stays
+    (ADR-0150).
   - **From 2566 (done):** the steps are `shuyi_platform::script::Step`
     (`crates/platform/src/script.rs`, re-exported as `frame_png::Step`):
     add `Lang(String)` there, played by `Script::play` with
@@ -293,9 +294,9 @@ None.
 3. Gate `PSEUDO` in `Ctx::effective_lang`, with a test beside the debug
    language's in `crates/ui/src/ctx/tests.rs`. Add the pack in
    `Toy::new`.
-4. Add `Harness::set_lang`, `Step::Lang` and `--lang`; raise the
-   contract's version and regenerate the schemas
-   (`cargo shuyi schema --out crates/cli/schemas`).
+4. Add `Harness::set_lang`, `Step::Lang` and `--lang`; regenerate the
+   schemas (`cargo shuyi schema --out crates/cli/schemas`) and add
+   their line to `versions.json`.
 5. Write the walk, `mod walk;` in `harness.rs`, and its tests in
    `crates/platform/tests/it/walk.rs`: two test screens on the toy
    (`Game::new(toy::ctx(), …, toy::hooks())`, as the other test screens

@@ -175,9 +175,10 @@ None.
     `Step::check` refuses is a usage error, like a bad `--keys`.
   - `contract/fake.rs`: `FakeSession` counts one frame for a
     `Command` step, as `Harness::command` runs.
-  - Regenerate the schemas, raise `contract::VERSION` by one, and add
-    its line to `crates/cli/schemas/versions.json` (`docs/contract.md`,
-    *The schemas*).
+  - Regenerate the schemas and add their line to
+    `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
+    schemas*). A new step variant and a new event break no client, so
+    `contract::VERSION` stays (ADR-0150).
   - **From 2566 (done):** the steps are `shuyi_platform::script::Step`
     (`crates/platform/src/script.rs`, re-exported as `frame_png::Step`):
     add `Command(String)` there, played by `Script::play` with
@@ -342,8 +343,8 @@ None.
    screens in `crates/ui/src/game/tests.rs`.
 5. Add `Harness::command` and its log.
 6. Add `Step::Command`, the flag, the event, the limit and the fake's
-   frame. Regenerate the schemas, raise `VERSION`, add the
-   `versions.json` line, and update `docs/contract.md`.
+   frame. Regenerate the schemas, add the `versions.json` line, and
+   update `docs/contract.md`.
 7. Change the `TurnRules` contract line. Add Hello, Grid's `Place` and
    the stage's `place` command, with the tests below.
 8. Add the MCP `command` tool and the log line. Do the either-order
@@ -391,7 +392,8 @@ None.
 - [ ] No key is named in code beyond the text-box keys of
       `input::fixed` (`check-keys` passes). Debug text carries the
       `check-text` English-only comment.
-- [ ] The schemas, `VERSION` and `versions.json` agree (the schema test
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
       passes).
 - [ ] All gates in the `run-gates` skill pass.
 

@@ -155,9 +155,10 @@ privacy question for Nick (parked 3047 asks it for crash reports).
   - when the report names a session, `replay --crash`'s refusal of a
     report with no record, and its rules-only line in `limits`, add
     "its session plays the whole game: `shuyi run --session <file>`";
-  - the `crash` output schema is regenerated, `VERSION` goes up by one,
-    and `crates/cli/schemas/versions.json` gets its line (the four
-    steps in `docs/contract.md`, *The schemas*);
+  - the `crash` output schema is regenerated and
+    `crates/cli/schemas/versions.json` gets its line (the steps in
+    `docs/contract.md`, *The schemas*); the field is additive, so
+    `VERSION` stays (ADR-0150);
   - `docs/crash-reports.md`'s paragraph on `shuyi crash` names the
     field.
 
@@ -196,7 +197,7 @@ privacy question for Nick (parked 3047 asks it for crash reports).
   game's debug builds now write their session at a panic and name it
   in the report. Release builds without debug tools don't change, and
   nothing in the game's code changes. If the part for 2520 is done
-  here, the contract's version goes up. Say so in the PR; the game's
+  here, the schemas get its line too. Say so in the PR; the game's
   PR that moves the pin follows.
 - **Size:** about 400 changed lines. The field and its tests about 40;
   `cut_at_panic` and `write_at_panic` with their tests about 150;
@@ -274,8 +275,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 - [ ] With 2520's part done here: `shuyi crash` on a report with
       `session` answers it and `crash::text` shows it; `replay
       --crash` on a report with a session and no record names the
-      session in its reason; the schemas, `VERSION` and
-      `versions.json` agree (the schema test passes).
+      session in its reason; the schemas have their line in
+      `versions.json`, and `cargo xtask contract` passes.
 - [ ] The `shuyi-debug-replay` skill has the paragraph, and
       `check-skills` passes.
 - [ ] All gates in the `run-gates` skill pass.

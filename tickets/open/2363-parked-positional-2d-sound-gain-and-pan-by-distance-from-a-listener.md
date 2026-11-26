@@ -265,12 +265,13 @@ None.
   file, and the new `AudioRequest` variant follows its rule for enums.
 - **The contract:** `run`'s `Sound` (`crates/cli/src/contract/session.rs`)
   gains `volume` and `pan`, read from the `PlaySound`, and loses `Eq`
-  with them. Raise `VERSION` (`crates/cli/src/contract.rs`) to the next
-  number, regenerate the schemas with `cargo shuyi schema --out
+  with them. Regenerate the schemas with `cargo shuyi schema --out
   crates/cli/schemas`, add the new fingerprint to
   `crates/cli/schemas/versions.json`, and update the fake session
   (`crates/cli/src/contract/fake.rs`). `docs/contract.md`'s `run` row
-  says the sounds come with their volume and pan.
+  says the sounds come with their volume and pan. Fields added to an
+  answer break no client, so `VERSION` (`crates/cli/src/contract.rs`)
+  stays (ADR-0150).
 - **The toy game** (`crates/ui/src/toy.rs`) gets a sound cue `door`
   with a falloff, for the tests.
 - **An ADR** (the `write-adr` skill, the next free number): positioned
@@ -336,8 +337,9 @@ None.
    3027 is done, to the in-house one (3031's), and `Pan` to
    their profiles if 3017 is done.
 6. Add the grid listener, and 1120's if 1120 is done.
-7. Add `volume` and `pan` to the contract's `Sound`, raise `VERSION`,
-   regenerate the schemas and update `docs/contract.md`.
+7. Add `volume` and `pan` to the contract's `Sound`, regenerate the
+   schemas, add their line to `versions.json` and update
+   `docs/contract.md`.
 8. Write the ADR and run the gates. Expect about 600 changed lines, not
    counting the `pan: 0.0` added to existing tests, the schemas and the
    pack snapshot. If the diff goes well past
@@ -377,8 +379,9 @@ None.
 - [ ] With the player's fake backend, a positioned sound's pan reaches
       `play` on a backend that can pan; on one that can't, the volume
       does and the warning comes once in a run of several such sounds.
-- [ ] `shuyi run`'s answer lists each sound's volume and pan, under the
-      raised contract version, and the schemas test passes.
+- [ ] `shuyi run`'s answer lists each sound's volume and pan, the
+      schemas have their line in `versions.json`, and
+      `cargo xtask contract` passes.
 - [ ] `Cues` passes a positioned sound's pan into
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
 - [ ] The Playdate backend's fake SDK gets the left and right volumes

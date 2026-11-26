@@ -44,8 +44,9 @@ None.
   unknown target is the same error as `bake`'s.
 - `--target all --baked`: each target of `shuyi.ron`'s list.
 - `CheckInput` gains nothing: both fields exist; `parse_args` takes both
-  flags in either order. The contract's version goes up only if a
-  schema changes.
+  flags in either order. A schema that changes gets its line in
+  `versions.json`; the contract's version goes up only if
+  `cargo xtask contract` finds a break (ADR-0150).
 - `docs/contract.md`'s `check` row, and the `shuyi-ship` skill's step on
   packs.
 

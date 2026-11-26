@@ -221,9 +221,9 @@ starts.
   - `ModuleNewInput` and `ModuleNewOutput` are new public types.
     Each is `#[non_exhaustive]` with a constructor, as `NewInput` is
     ([ADR-0039](../../docs/adr/0039-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md)).
-  - Raise `contract::VERSION`, regenerate `crates/cli/schemas/`, and
-    add the line to `versions.json` (`docs/contract.md`, *The
-    schemas*).
+  - Regenerate `crates/cli/schemas/` and add the line to
+    `versions.json` (`docs/contract.md`, *The schemas*). A new
+    operation keeps `contract::VERSION` (ADR-0150).
   - Its MCP tool takes no `project`, like `new`'s.
 - **Either order with 2505:** if 2505 is done, name `module new` as it
   named `template new` and `template check`: the `Op`, the schema
@@ -293,8 +293,8 @@ starts.
    `crates/cli/module/`, and edit the demo game (with `toml_edit` for
    the two `Cargo.toml` files).
 4. Read the catalog and build the answer. Add the license warning.
-5. Settle the clause with 2505. Then add the `Op`, the schemas,
-   `contract::VERSION` and `versions.json`.
+5. Settle the clause with 2505. Then add the `Op`, the schemas and
+   their line in `versions.json`.
 6. Add the CI steps and the `run-gates` lines. Write the docs and the
    skill's lines.
 7. Run the gates.
@@ -321,8 +321,8 @@ starts.
       Nick kept `shuyi-` for the engine, `--crate shuyi-foo` is
       refused, naming the rule.
 - [ ] `--license GPL-3.0-only` writes the module, with the warning.
-- [ ] `shuyi module new --json` matches its schema, and the schemas
-      and `versions.json` match `contract::VERSION`.
+- [ ] `shuyi module new --json` matches its schema, the schemas have
+      their line in `versions.json`, and `cargo xtask contract` passes.
 - [ ] CI's `templates` job and the `run-gates` skill make and check a
       module.
 - [ ] `docs/writing-a-module.md` and `docs/contract.md` name the

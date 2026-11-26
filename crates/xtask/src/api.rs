@@ -10,8 +10,10 @@
 //! `--verdict`, it writes what the change did in one word (ticket 2030), for
 //! CI's `api:` label on the PR. With `--pr-branch` too, a change to the
 //! public API that changes no file of the book needs a `Book:` line in the
-//! PR's ticket (ticket 2815). A change to the contract's `VERSION`
-//! raises it by exactly one over the base's ([`contract`], ticket 2052).
+//! PR's ticket (ticket 2815). A change to the contract's schemas that
+//! breaks a client raises its `VERSION` by exactly one over the base's,
+//! and any other leaves it ([`contract`], ticket 2052, ADR-0150); each such
+//! break is a finding of `shuyi-cli`, and needs its `Breaking:` line.
 //! A head's listing line that names an outside crate [`OUTSIDE_CRATES`]
 //! doesn't allow in its crate fails the run (ADR-0119, ticket 2089): any
 //! crate its normal dependencies reach, not through an engine crate
@@ -487,6 +489,10 @@ pub fn verdict(crates: &[CrateApi]) -> Label {
     }
 }
 
+/// The crate whose release a break of the contract's schemas is
+/// (ADR-0150 §3).
+const CONTRACT_CRATE: &str = "shuyi-cli";
+
 /// What `cargo xtask api` found: the summary (empty when it couldn't
 /// compare), the label (none when it couldn't compare), the errors that
 /// fail it and the warnings that don't.
@@ -512,7 +518,7 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
         let contract = contract::check(root, &base, runner);
         compare(root, &base, runner).map(|crates| (base, crates, contract))
     });
-    let (base, crates, contract) = match compared {
+    let (base, mut crates, contract) = match compared {
         Ok(compared) => compared,
         Err(error) => {
             return Outcome {
@@ -521,6 +527,14 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             };
         }
     };
+    if !contract.breaks.is_empty()
+        && let Some(cli) = crates.iter_mut().find(|c| c.name == CONTRACT_CRATE)
+    {
+        cli.findings.push(Finding {
+            lint: "contract_schema_break".to_owned(),
+            items: contract.breaks.clone(),
+        });
+    }
     let warnings = lost_lines(&crates);
     let pr = options.pr_branch.as_deref().map(|branch| Pr {
         branch,
@@ -539,7 +553,7 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
             _ => None,
         })
         .collect();
-    errors.extend(contract.err());
+    errors.extend(contract.error);
     errors.extend(crates.iter().filter_map(outside_error));
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),

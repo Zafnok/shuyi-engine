@@ -208,10 +208,11 @@ asked in 2005's sign-off.
     `crates/cli/src/contract/cli.rs`, and the usage's "new, doctor and
     schema need none"), and `docs/contract.md`'s op table (needs: "a
     `Cargo.lock`, or `--from`");
-  - `contract::VERSION` goes up by one, the schemas are written again
+  - the schemas are written again
     (`crates/cli/schemas/migrations.input.json` and
     `migrations.output.json`), and `crates/cli/schemas/versions.json`
-    gets the new fingerprint (ADR-0022 §5);
+    gets the new fingerprint. A new operation breaks no client, so
+    `contract::VERSION` stays (ADR-0150);
   - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
 - **The skill, `skills/shuyi-upgrade/SKILL.md`,** in 1134's pack and its
   format (frontmatter, when to use it and when not, the steps, the ops
@@ -376,7 +377,9 @@ asked in 2005's sign-off.
 - [ ] `check-skills` passes on `skills/shuyi-upgrade`, its steps include
       reading and raising the game's Rust, and its worked example runs
       green in CI.
-- [ ] The schemas and `versions.json` match the new `contract::VERSION`.
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
+      passes).
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.
 

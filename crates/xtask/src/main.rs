@@ -16,6 +16,7 @@
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask check-devcontainers`
 //! - `cargo xtask book-pad [--out <dir>] [--no-build]`
+//! - `cargo xtask contract [--base <rev>]`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
@@ -168,9 +169,16 @@ usage:
       ticket (ADR-0038), read from --pr-title first, and a change that
       changes no file under site/content/learn/ or site/snippets/ a `Book:`
       line saying why the book needs none (ticket 2815). A change to the
-      contract's VERSION (crates/cli/src/contract.rs) raises it by exactly
-      one over <rev>'s (ticket 2052). With --verdict, write `none`, `added` or `breaking`
+      contract's schemas that breaks a client raises its VERSION
+      (crates/cli/src/contract.rs) by exactly one over <rev>'s, any other
+      leaves it, and each break is a finding of shuyi-cli (ticket 2052,
+      ADR-0150). With --verdict, write `none`, `added` or `breaking`
       to <file>, for the PR's `api:` label.
+  cargo xtask contract [--base <rev>]
+      List what in the contract's schemas breaks a client against <rev>'s
+      (origin/main), and check that contract::VERSION rose by one for a
+      break and stayed for anything else (ADR-0150): the api job's rule,
+      without its tools.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
@@ -371,6 +379,7 @@ fn main() -> ExitCode {
         }
         Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
+        Some("contract") => contract_check(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("eval-grade") => ExitCode::from(eval::grade::command(
             &root,
@@ -526,6 +535,25 @@ fn next_id(root: &Path, args: &[String]) -> ExitCode {
         }
         Err(errors) => report("next-id", &errors, &[]),
     }
+}
+
+fn contract_check(root: &Path, args: &[String]) -> ExitCode {
+    let base = match args {
+        [] => "origin/main",
+        [flag, value] if flag == "--base" => value,
+        _ => {
+            eprintln!("{USAGE}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let checked = contract::check(root, base, &api::System);
+    for line in &checked.breaks {
+        eprintln!("break: {line}");
+    }
+    if checked.breaks.is_empty() {
+        eprintln!("no break of a client from {base}'s schemas (ADR-0150)");
+    }
+    report("contract", &Vec::from_iter(checked.error), &[])
 }
 
 fn api(root: &Path, args: &[String]) -> ExitCode {

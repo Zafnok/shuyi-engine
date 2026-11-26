@@ -235,9 +235,10 @@ None. The sentence this supersedes is the agent's own technical choice
     `--overstep`, and `usage` lists it.
   - So every game's `GameTools::frame` and the contract's `run` get it
     with no change to `GameTools`.
-  - The step changes the contract's schemas: raise `contract::VERSION`
-    and add the line to `crates/cli/schemas/versions.json`, as
-    `docs/contract.md` says.
+  - The step changes the contract's schemas: add their line to
+    `crates/cli/schemas/versions.json`, as `docs/contract.md` says. A
+    new step variant breaks no client, so `contract::VERSION` stays
+    (ADR-0150).
   - **1133** (done). Its MCP tools take a script, so they play the step
     with nothing more. Its scripted client test
     (`crates/cli/tests/it/mcp.rs`) gains one `overstep` step.
@@ -352,7 +353,8 @@ None. The sentence this supersedes is the agent's own technical choice
 - [ ] `Smoothing`'s doc says that 120 and 240 Hz are already even, that
       60 with VRR needs nothing, and that a smoothed layer is drawn up to
       one step behind.
-- [ ] The contract's schemas test passes with the new `VERSION`.
+- [ ] The contract's schemas test passes with the schemas' line in
+      `versions.json`, and `cargo xtask contract` passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
