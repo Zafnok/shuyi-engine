@@ -118,14 +118,7 @@ pub fn terrain_tiles(image: ImageId) -> TerrainTiles {
     let tiles = (0..TERRAIN_LOOKS.len())
         .map(|i| (TerrainId(u16::try_from(i).unwrap_or(0)), tile_rect(i)))
         .collect();
-    TerrainTiles::new(
-        image,
-        (TILE_PX, TILE_PX),
-        TileLook {
-            tiles,
-            layers: Vec::new(),
-        },
-    )
+    TerrainTiles::new(image, (TILE_PX, TILE_PX), TileLook::new(tiles, Vec::new()))
 }
 
 /// How many times their size the tiles are drawn.

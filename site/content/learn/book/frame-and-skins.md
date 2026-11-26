@@ -126,6 +126,14 @@ turn, painted by the glyph skin and by the sprite skin, which its options switch
 
 </div>
 
+The sprite skin draws the ground from the terrain alone: which picture a tile gets
+follows from what it and its neighbours are. A few things no terrain says, a lamp at a
+gate or a signpost at a crossing, a map places by hand in its file's `look`:
+`look: (props: { (19, 5): "lamp" })`. The tileset's look says what each name is drawn as
+(`Look::props`), and the sprite skin stands it on its tile, so a picture taller than a
+tile reaches up over the one above. They are only a look: the rules never see them, and
+the glyph skin draws none.
+
 ## A picture the skin paints
 
 Pictures from the game's image files are made before the game runs. Some

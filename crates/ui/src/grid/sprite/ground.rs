@@ -1,7 +1,10 @@
 //! The ground a sprite skin paints from its terrain tiles (game
 //! game ADR-0052): each tile's own picture, then the look's layers over them
 //! (pictures between tiles by the [corner rule](crate::grid::corners),
-//! and pictures on tiles), then what tints a tile. The pictures are
+//! and pictures on tiles), then the pictures the map places by hand on
+//! chosen tiles (a lamp, a signpost: standing on their tile, and as tall
+//! as their art, so they may reach up over the tiles above), then what
+//! tints a tile. The pictures are
 //! shaded by the light the scene's map is in (game ADR-0058); the tints
 //! are not.
 //!
@@ -65,6 +68,7 @@ pub(super) fn paint<U>(
             Layer::Tiles(layer) => ground.paint_singles(layer, buf),
         }
     }
+    ground.paint_props(buf);
     ground.paint_tints(looks, show, buf);
 }
 
@@ -209,6 +213,59 @@ impl<U> Ground<'_, U> {
                 buf.add_sprite(self.sprite(picture, rect));
             }
         }
+    }
+
+    /// The pictures the map places on its tiles
+    /// ([`MapLook::props`](shuyi_assets::grid_map::MapLook::props)), each
+    /// as the look says its name is drawn ([`Look::props`]; a name it
+    /// lacks draws nothing): at its own size times the zoom, standing on
+    /// its tile (its bottom on the tile's bottom, centred across), so it
+    /// may reach up over the tiles above. Drawn row by row from the top,
+    /// so a lower one is over what reaches down to it; where its picture
+    /// meets the view, even from a tile outside it, and only inside drawn
+    /// tiles of the map.
+    fn paint_props(&self, buf: &mut GlyphBuffer) {
+        let mut props: Vec<_> = self.scene.look.props.iter().collect();
+        props.sort_by_key(|&(&(x, y), _)| (y, x));
+        for (&(x, y), name) in props {
+            let Some(&rect) = self.look.props.get(name) else {
+                continue;
+            };
+            let Some(dest) = self.prop_rect(x, y, rect) else {
+                continue;
+            };
+            let sprite = self.sprite(self.picture(rect), dest);
+            let (parts, whole) = self.parts(dest, &BTreeSet::new());
+            if whole {
+                buf.add_sprite(sprite);
+            } else {
+                for clip in parts {
+                    buf.add_sprite(Sprite { clip, ..sprite });
+                }
+            }
+        }
+    }
+
+    /// The pixels a picture of `rect` placed on the map tile `(x, y)` is
+    /// drawn on: its own size times the zoom, its bottom on the tile's
+    /// bottom and centred across it (half a pixel left when it can't be
+    /// exactly); `None` if it doesn't meet the view.
+    fn prop_rect(&self, x: i32, y: i32, rect: ImageRect) -> Option<PxRect> {
+        let wide = |v: i32| i64::from(v);
+        let (w, h) = (wide(self.grid.tile.0), wide(self.grid.tile.1));
+        let (left, top) = (wide(self.grid.corner.0), wide(self.grid.corner.1));
+        let zoom = wide(self.grid.zoom());
+        let dx = wide(x) - wide(self.scene.origin.x);
+        let dy = wide(y) - wide(self.scene.origin.y);
+        let (across, down) = (i64::from(rect.w) * zoom, i64::from(rect.h) * zoom);
+        let narrow = |v: i64| i32::try_from(v).ok();
+        let dest = Rect::new(
+            narrow(left + dx * w + (w - across).div_euclid(2))?,
+            narrow(top + (dy + 1) * h - down)?,
+            narrow(across)?,
+            narrow(down)?,
+        );
+        dest.intersect(&self.grid.bounds()).map(|_| dest)
     }
 
     /// What tints each tile, over its pictures, as `show` says (ticket
@@ -726,6 +783,201 @@ mod tests {
         }
     }
 
+    /// A lamp 16 × 32 px: two of the toy's tiles tall, narrower than one.
+    const LAMP: ImageRect = ImageRect {
+        x: 96,
+        y: 96,
+        w: 16,
+        h: 32,
+    };
+
+    /// `terrain` with the picture `lamp` for the name "lamp".
+    fn with_lamp(mut terrain: TerrainTiles, lamp: ImageRect) -> SpriteSkin {
+        terrain.look.props.insert("lamp".to_owned(), lamp);
+        sprite(Some(terrain))
+    }
+
+    /// `scene` with what is named `name` placed on each of `tiles`.
+    fn placed(mut scene: MapScene<Piece>, name: &str, tiles: &[(i32, i32)]) -> MapScene<Piece> {
+        for &tile in tiles {
+            scene.look.props.insert(tile, name.to_owned());
+        }
+        scene
+    }
+
+    #[test]
+    fn a_placed_picture_stands_on_its_tile_after_every_layer() {
+        let kit = Kit::new();
+        let s = with_lamp(layered(kit.tiles_image()), LAMP);
+        let lake = view(["...", ".~.", "..."]);
+        let unlit = painted(&kit, &s, &lake);
+        // On tile (2, 1), at (48, 28): centred across it, its bottom on
+        // the tile's, so its top half on the tile above. One sprite: both
+        // tiles are drawn and on the map.
+        let mut scene = placed(lake.clone(), "lamp", &[(2, 1)]);
+        scene.tint([p(1, 1)], MOVE);
+        let buf = painted(&kit, &s, &scene);
+        let at = unlit.sprites().len();
+        let lamp = sprite_at(&buf, at);
+        let stands = Rect::new(52, 20, 16, 32);
+        assert_eq!(
+            (lamp.src, lamp.dest, lamp.clip),
+            (src_rect(LAMP), stands, stands)
+        );
+        assert_eq!((lamp.layer, lamp.paint), (Depth::Under, Paint::Image));
+        // After the tiles and every layer, the same as without it; then
+        // the range's wash over the water.
+        assert_eq!(buf.sprites()[..at], *unlit.sprites());
+        let wash = sprite_at(&buf, at + 1);
+        assert_eq!(
+            (wash.src, wash.paint),
+            (own(&kit, WATER), Paint::Solid(kit.looks().range(MOVE)))
+        );
+        assert_eq!(buf.sprites().len(), at + 2);
+        // In the map's light, as the ground is.
+        let mut dusk = scene;
+        dusk.look.light = "dusk".to_owned();
+        let shade = kit.lights.get("dusk").unwrap();
+        assert_eq!(
+            sprite_at(&painted(&kit, &s, &dusk), at).paint,
+            Paint::Shaded(shade)
+        );
+        // A name the look lacks draws nothing; and nothing is placed by a
+        // look with no such name.
+        assert_eq!(
+            painted(&kit, &s, &placed(lake.clone(), "well", &[(2, 1)])),
+            unlit
+        );
+        let bare = sprite(Some(layered(kit.tiles_image())));
+        assert_eq!(
+            painted(&kit, &bare, &placed(lake.clone(), "lamp", &[(2, 1)])),
+            painted(&kit, &bare, &lake)
+        );
+        // Two, row by row from the top, so a lower one is drawn over what
+        // reaches down to it: (2, 0) first, cut at the view's top, then
+        // (0, 2) whole.
+        let two = painted(&kit, &s, &placed(lake, "lamp", &[(0, 2), (2, 0)]));
+        assert_eq!(
+            clips(&two, at),
+            [Rect::new(52, 4, 16, 24), Rect::new(4, 44, 16, 32)]
+        );
+    }
+
+    #[test]
+    fn a_placed_picture_is_drawn_where_it_meets_the_view_and_the_map() {
+        let kit = Kit::new();
+        let s = with_lamp(tiles(kit.tiles_image()), LAMP);
+        let field = view(["...", "...", "..."]);
+        let r = Rect::new;
+        // The clips of the lamps on `tiles` of `scene`: after its own tiles.
+        let lamps = |tiles: &[(i32, i32)], scene: &MapScene<Piece>| {
+            let ground = painted(&kit, &s, scene).sprites().len();
+            clips(
+                &painted(&kit, &s, &placed(scene.clone(), "lamp", tiles)),
+                ground,
+            )
+        };
+        // Its tile just below the view: its top shows, on the last row.
+        assert_eq!(lamps(&[(1, 3)], &field), [r(28, 68, 16, 8)]);
+        // Further down, or above the view, or past its sides: nothing.
+        for far in [
+            (1, 4),
+            (1, -1),
+            (-1, 1),
+            (3, 1),
+            (i32::MAX, i32::MAX),
+            (i32::MIN, 0),
+        ] {
+            assert_eq!(lamps(&[far], &field), [], "{far:?}");
+        }
+        // From the view's top row it is cut at the view's top.
+        assert_eq!(lamps(&[(0, 0)], &field), [r(4, 4, 16, 24)]);
+        // Over a tile off the map, none of it.
+        assert_eq!(lamps(&[(1, 1)], &field), [r(28, 20, 16, 32)]);
+        assert_eq!(
+            lamps(&[(1, 1)], &view(["   ", "...", "..."])),
+            [r(28, 28, 16, 24)]
+        );
+        // Off the map itself, only what reaches over the tile above.
+        assert_eq!(
+            lamps(&[(1, 1)], &view(["...", "   ", "..."])),
+            [r(28, 20, 16, 8)]
+        );
+        // The view's origin moves it: map tile (5, 6) is the view's (1, 1).
+        let mut moved = field.clone();
+        moved.origin = p(4, 5);
+        assert_eq!(lamps(&[(5, 6)], &moved), [r(28, 20, 16, 32)]);
+        // Wider than a tile, centred across it: from the tile left of the
+        // view, the part inside it.
+        let wide = ImageRect {
+            w: 48,
+            h: 24,
+            ..LAMP
+        };
+        let s = with_lamp(tiles(kit.tiles_image()), wide);
+        let buf = painted(&kit, &s, &placed(field.clone(), "lamp", &[(-1, 1)]));
+        assert_eq!(clips(&buf, 9), [r(0, 28, 12, 24)]);
+        assert_eq!(buf.sprites()[9].dest, r(-36, 28, 48, 24));
+        // An odd difference: half a pixel left.
+        let odd = ImageRect { w: 15, ..LAMP };
+        let s = with_lamp(tiles(kit.tiles_image()), odd);
+        let buf = painted(&kit, &s, &placed(field.clone(), "lamp", &[(1, 1)]));
+        assert_eq!(buf.sprites()[9].dest, r(28, 20, 15, 32));
+        // A picture of no pixels: nowhere.
+        for empty in [ImageRect { w: 0, ..LAMP }, ImageRect { h: 0, ..LAMP }] {
+            let s = with_lamp(tiles(kit.tiles_image()), empty);
+            let buf = painted(&kit, &s, &placed(field.clone(), "lamp", &[(1, 1)]));
+            assert_eq!(buf.sprites().len(), 9, "{empty:?}");
+        }
+    }
+
+    #[test]
+    fn a_placed_picture_is_its_own_size_times_the_zoom() {
+        let kit = Kit::new();
+        let field = view(["...", "...", "..."]);
+        let scene = placed(field, "lamp", &[(2, 1)]);
+        // At twice the zoom, tiles and a picture of half the pixels land on
+        // the same ones.
+        let mut terrain = tiles(kit.tiles_image());
+        terrain.tile_px = (12, 12);
+        let half = ImageRect {
+            w: 8,
+            h: 16,
+            ..LAMP
+        };
+        let zoomed = with_lamp(terrain, half).zoomed(2);
+        let whole = with_lamp(tiles(kit.tiles_image()), LAMP);
+        let at = |skin: &SpriteSkin| {
+            let buf = painted(&kit, skin, &scene);
+            let lamp = sprite_at(&buf, 9);
+            (lamp.dest, lamp.clip)
+        };
+        assert_eq!(at(&zoomed), at(&whole));
+        assert_eq!(
+            at(&whole),
+            (Rect::new(52, 20, 16, 32), Rect::new(52, 20, 16, 32))
+        );
+        // The same picture at twice the zoom is twice its size: 32 × 64 on
+        // tiles of 24, so it reaches over the tiles beside it and above
+        // the view, which cut it.
+        let mut terrain = tiles(kit.tiles_image());
+        terrain.tile_px = (12, 12);
+        let big = with_lamp(terrain, LAMP).zoomed(2);
+        let buf = painted(&kit, &big, &scene);
+        let lamp = sprite_at(&buf, 9);
+        assert_eq!(lamp.dest, Rect::new(44, -12, 32, 64));
+        let r = Rect::new;
+        assert_eq!(
+            clips(&buf, 9),
+            [
+                r(44, 4, 4, 24),
+                r(48, 4, 24, 24),
+                r(44, 28, 4, 24),
+                r(48, 28, 24, 24)
+            ]
+        );
+    }
+
     #[test]
     fn a_map_is_painted_in_the_look_it_names_if_the_tiles_have_it() {
         let kit = Kit::new();
@@ -990,13 +1242,18 @@ mod tests {
         /// Whatever the scene, the area and the tile size: every tile of
         /// the map that is drawn has exactly one picture of its own, on
         /// its own pixels (none if the tiles have none for what it
-        /// shows); and every picture, or part of one, lies inside drawn
-        /// tiles of the map.
+        /// shows); and every picture, or part of one, placed pictures
+        /// too, lies inside drawn tiles of the map.
         #[test]
         fn every_tile_of_the_map_has_one_picture_of_its_own_and_none_spills(
             scene in any_scene(),
             area in any_area(),
             tile in (8..=64u32, 8..=64u32),
+            props in prop::collection::btree_map(
+                (-3..48i32, -3..42i32),
+                prop::sample::select(vec!["lamp", "well"]),
+                0..6,
+            ),
         ) {
             let kit = Kit::new();
             let mut terrain = with_indoor(layered(kit.tiles_image()));
@@ -1008,9 +1265,14 @@ mod tests {
             face_layer.skip = BTreeSet::from([BRIDGE]);
             face_layer.offset = (5, -7);
             terrain.look.layers.push(Layer::Corners(face_layer));
+            // And a lamp, in every look, for a map to place.
+            for look in core::iter::once(&mut terrain.look).chain(terrain.looks.values_mut()) {
+                look.props.insert("lamp".to_owned(), LAMP);
+            }
             let s = sprite(Some(terrain));
             // The ground alone: nothing on it, nothing tinting it.
             let mut scene = scene;
+            scene.look.props = props.into_iter().map(|(at, name)| (at, name.to_owned())).collect();
             scene.units.clear();
             scene.cursor = None;
             scene.path.clear();

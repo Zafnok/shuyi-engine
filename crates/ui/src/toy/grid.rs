@@ -159,12 +159,12 @@ pub const fn mix_rect(m: u8) -> ImageRect {
 /// A look of each terrain's tile on `row` of [`TILES`], in id order, with
 /// no layers.
 fn row_look(row: u32) -> Look {
-    Look {
-        tiles: (0..4u16)
+    Look::new(
+        (0..4u16)
             .map(|i| (TerrainId(i), tile_at(u32::from(i), row)))
             .collect(),
-        layers: Vec::new(),
-    }
+        Vec::new(),
+    )
 }
 
 /// The toy's terrain tiles in `image`: each terrain's tile on row 0, in id

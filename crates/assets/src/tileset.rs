@@ -2,8 +2,8 @@
 //! sprite skin paints its ground with. For each look a map may ask for
 //! (outdoors, indoors), a tile for every terrain and the layers painted
 //! over those tiles. A layer's picture is chosen from the tiles around it,
-//! so a terrain grid alone says what the map looks like: a map file only
-//! ever names terrain.
+//! so a terrain grid alone says what the map's ground looks like: a map
+//! file names terrain, and only the few pictures placed by hand besides.
 //!
 //! Two kinds of layer:
 //!
@@ -18,6 +18,9 @@
 //! - **Tiles**: one picture on each tile of the layer (a tower, a bridge),
 //!   which may depend on which of its four neighbours are certain terrains
 //!   (a bridge turns to cross the water).
+//!
+//! Over the layers, a look may also have pictures a map places by hand
+//! ([`Look::props`]): a lamp at a gate, where no terrain says one goes.
 //!
 //! These are the tiles as a skin paints them; how a game writes them in a
 //! file, and which terrains it has, are the game's.
@@ -116,12 +119,34 @@ impl TerrainTiles {
 }
 
 /// A terrain look: how one kind of place (outdoors, indoors) is drawn.
+/// Build it with [`Look::new`] or [`Default`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct Look {
     /// Each terrain's own tile, painted first.
     pub tiles: BTreeMap<TerrainId, ImageRect>,
     /// What is painted over the tiles, the first undermost.
     pub layers: Vec<Layer>,
+    /// What each name a map places on a tile
+    /// ([`MapLook::props`](crate::grid_map::MapLook::props)) is drawn as,
+    /// over the layers: a picture at its own size, standing on its tile
+    /// (its bottom on the tile's bottom, centred across), so it may reach
+    /// up over the tiles above. A name it lacks draws nothing. Empty in
+    /// [`new`](Self::new).
+    pub props: BTreeMap<String, ImageRect>,
+}
+
+impl Look {
+    /// The look of the tiles `tiles` with the layers `layers` over them,
+    /// and no picture for a map to place.
+    #[must_use]
+    pub const fn new(tiles: BTreeMap<TerrainId, ImageRect>, layers: Vec<Layer>) -> Self {
+        Self {
+            tiles,
+            layers,
+            props: BTreeMap::new(),
+        }
+    }
 }
 
 /// One layer of a [`Look`].
@@ -281,14 +306,8 @@ mod tests {
             )]
             .into(),
         };
-        let own = Look {
-            tiles: [(TerrainId(0), rect(0))].into(),
-            layers: Vec::new(),
-        };
-        let indoor = Look {
-            tiles: [(TerrainId(0), rect(16))].into(),
-            layers: Vec::new(),
-        };
+        let own = Look::new([(TerrainId(0), rect(0))].into(), Vec::new());
+        let indoor = Look::new([(TerrainId(0), rect(16))].into(), Vec::new());
         let tiles = TerrainTiles {
             image: table.id("tiles.png").unwrap(),
             tile_px: (16, 16),
@@ -301,11 +320,26 @@ mod tests {
     }
 
     #[test]
+    fn a_new_look_places_no_picture() {
+        let tiles = BTreeMap::from([(TerrainId(0), rect(0))]);
+        let layers = vec![Layer::Corners(CornerLayer::new(
+            BTreeSet::new(),
+            [None; MIXES],
+        ))];
+        assert_eq!(
+            Look::new(tiles.clone(), layers.clone()),
+            Look {
+                tiles,
+                layers,
+                props: BTreeMap::new(),
+            }
+        );
+        assert_eq!(Look::default(), Look::new(BTreeMap::new(), Vec::new()));
+    }
+
+    #[test]
     fn new_tiles_are_the_literal_with_no_other_look() {
-        let look = Look {
-            tiles: BTreeMap::new(),
-            layers: alloc::vec::Vec::new(),
-        };
+        let look = Look::new(BTreeMap::new(), alloc::vec::Vec::new());
         let images = ImageTable::new([("tiles.png", crate::image::ImageInfo::new(48, 24))].into());
         let image = images.id("tiles.png").unwrap();
         assert_eq!(

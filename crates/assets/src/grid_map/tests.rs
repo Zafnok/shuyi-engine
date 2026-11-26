@@ -287,6 +287,121 @@ fn an_unknown_look_is_reported_where_it_is_written() {
 }
 
 #[test]
+fn a_map_places_pictures_on_its_tiles_in_its_look() {
+    // None: an empty `props`, written nowhere.
+    let small = format!("{HEADER}.T~\n~T.\n");
+    let plain = parse_map(&small).unwrap();
+    assert!(plain.look.props.is_empty(), "{:?}", plain.look.props);
+    assert!(!print(&plain).unwrap().contains("props"));
+    // Some: kept by tile, and printed back the same.
+    let header = HEADER.replace(
+        ",\n)",
+        ",\n  look: (props: { (2, 1): \"lamp\", (0, 0): \"sign\" }),\n)",
+    );
+    let placed = parse_map(&format!("{header}.T~\n~T.\n")).unwrap();
+    assert_eq!(
+        placed.look.props,
+        BTreeMap::from([((0, 0), "sign".to_owned()), ((2, 1), "lamp".to_owned())])
+    );
+    assert_eq!(
+        (placed.look.tiles.as_str(), placed.look.light.as_str()),
+        ("outdoor", "noon")
+    );
+    assert!(!placed.look.is_default());
+    assert_eq!(placed.tiles, plain.tiles);
+    let printed = print(&placed).unwrap();
+    assert!(
+        printed.contains("look:(tiles:\"outdoor\",props:{(0,0):\"sign\",(2,1):\"lamp\"})"),
+        "{printed}"
+    );
+    assert_eq!(parse_map(&printed), Ok(placed.clone()));
+    assert_eq!(print(&parse_map(&printed).unwrap()), Some(printed));
+    // With the other fields, in any order.
+    let header = HEADER.replace(
+        ",\n)",
+        ",\n  look: (props: { (1, 0): \"lamp\" }, light: \"dusk\", tiles: \"indoor\"),\n)",
+    );
+    let look = parse_map(&format!("{header}.T\n")).unwrap().look;
+    assert_eq!(
+        (look.tiles.as_str(), look.light.as_str(), look.props.len()),
+        ("indoor", "dusk", 1)
+    );
+    // Another light keeps what is placed.
+    assert_eq!(look.clone().lit(Some("noon")).props, look.props);
+}
+
+#[test]
+fn a_picture_placed_off_the_map_is_reported_where_it_is_written() {
+    // 3 × 2 tiles: x 0 to 2, y 0 to 1.
+    let header = HEADER.replace(
+        ",\n)",
+        ",\n  features: { (3, 0): Sign(\"Far\") },\n  look: (\n    props: {\n      (2, 1): \"lamp\",\n      (3, 0): \"lamp\",\n      (0,-1): \"lamp\",\n    },\n  ),\n)",
+    );
+    let src = format!("{header}.T~\n~T.\n");
+    assert_eq!(
+        errors(&src),
+        [
+            "m.map: feature at (3, 0): outside the map",
+            "m.map:9:7: look: prop at (0, -1): outside the map",
+            "m.map:8:7: look: prop at (3, 0): outside the map",
+        ]
+    );
+    assert_eq!(
+        codes_of(&src),
+        [None, Some(codes::OUT_OF_RANGE), Some(codes::OUT_OF_RANGE)]
+    );
+    // On the map, every place reads.
+    let inside = header
+        .replace("(3, 0): Sign", "(2, 0): Sign")
+        .replace("(3, 0): \"lamp\"", "(1, 0): \"lamp\"")
+        .replace("(0,-1)", "(0,1)");
+    let map = parse_map(&format!("{inside}.T~\n~T.\n")).unwrap();
+    assert_eq!(map.look.props.len(), 3);
+    // A tile row that can't be read: the places aren't checked against it.
+    assert_eq!(
+        errors(&format!("{header}\n")),
+        ["m.map:14:1: map has no tiles"]
+    );
+}
+
+#[test]
+fn a_placed_picture_is_found_after_the_word_props() {
+    // Not the feature's place before it, though written the same.
+    let header = [
+        "(",
+        "  features: { (1, 2): Sign(\"x\") },",
+        "  look: (props: { (1, 2): \"lamp\" }),",
+        ")",
+    ];
+    assert_eq!(prop_position(&header, 1, 2), (3, 19));
+    // On the line the word is on, after it.
+    assert_eq!(prop_position(&["(1,2) props:{(1,2):\"a\"}"], 1, 2), (1, 14));
+    // Written another way: the word.
+    assert_eq!(
+        prop_position(&["a", " props: { ( 1 , 2 ): \"a\" }"], 1, 2),
+        (2, 2)
+    );
+    // No word: the start.
+    assert_eq!(prop_position(&["(1, 2)"], 1, 2), (1, 1));
+    // Columns count characters, not bytes.
+    assert_eq!(prop_position(&["é props:{(1, 2):\"a\"}"], 1, 2), (1, 10));
+}
+
+#[test]
+fn a_new_look_is_the_default_in_its_tiles_and_light() {
+    assert_eq!(
+        MapLook::new(DEFAULT_TILES, DEFAULT_LIGHT),
+        MapLook::default()
+    );
+    let look = MapLook::new("indoor", String::from("dusk"));
+    assert_eq!(
+        (look.tiles.as_str(), look.light.as_str()),
+        ("indoor", "dusk")
+    );
+    assert!(look.props.is_empty());
+}
+
+#[test]
 fn positions_are_found_in_the_header() {
     let header = ["(", "  name: \"é x\",", "  x: \"x\",", ")"];
     assert_eq!(header_position(&header, "\"x\""), Some((3, 6)));
@@ -400,33 +515,42 @@ fn arb_map() -> impl Strategy<Value = Map> {
         let cells = proptest::collection::vec(0..n, usize::from(w) * usize::from(h));
         let features =
             proptest::collection::btree_map((0..i32::from(w), 0..i32::from(h)), "[ -~]{1,8}", 0..4);
-        (Just((w, h, n, name)), cells, features, 0usize..2, 0usize..2)
+        let props =
+            proptest::collection::btree_map((0..i32::from(w), 0..i32::from(h)), "[ -~]{0,8}", 0..4);
+        (
+            Just((w, h, n, name)),
+            cells,
+            features,
+            (0usize..2, 0usize..2, props),
+        )
     })
-    .prop_map(|((w, h, n, name), cells, features, tiles, light)| {
-        let names: BTreeMap<char, String> = LEGEND_CHARS
-            .chars()
-            .zip(TERRAINS)
-            .take(n)
-            .map(|(c, t)| (c, t.to_owned()))
-            .collect();
-        let cells = cells
-            .into_iter()
-            .map(|i| u16::try_from(i).unwrap_or(0))
-            .collect();
-        GridMap {
-            name,
-            tiles: Grid::from_cells(w, h, cells).unwrap(),
-            features: features
+    .prop_map(
+        |((w, h, n, name), cells, features, (tiles, light, props))| {
+            let names: BTreeMap<char, String> = LEGEND_CHARS
+                .chars()
+                .zip(TERRAINS)
+                .take(n)
+                .map(|(c, t)| (c, t.to_owned()))
+                .collect();
+            let cells = cells
                 .into_iter()
-                .map(|((x, y), words)| (Pos::new(x, y), Thing::Sign(words)))
-                .collect(),
-            legend: Legend::resolve(names, terrain).unwrap(),
-            look: MapLook {
-                tiles: FORMAT.looks[tiles].to_owned(),
-                light: ["noon", "dusk"][light].to_owned(),
-            },
-        }
-    })
+                .map(|i| u16::try_from(i).unwrap_or(0))
+                .collect();
+            GridMap {
+                name,
+                tiles: Grid::from_cells(w, h, cells).unwrap(),
+                features: features
+                    .into_iter()
+                    .map(|((x, y), words)| (Pos::new(x, y), Thing::Sign(words)))
+                    .collect(),
+                legend: Legend::resolve(names, terrain).unwrap(),
+                look: MapLook {
+                    props,
+                    ..MapLook::new(FORMAT.looks[tiles], ["noon", "dusk"][light])
+                },
+            }
+        },
+    )
 }
 
 proptest! {
