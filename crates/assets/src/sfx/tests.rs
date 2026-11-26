@@ -13,7 +13,7 @@ use crate::audio::{decode_to_wav, format_problem, playable};
 
 /// A square at 441 hz (100 samples a cycle), 100 ms, held at full volume.
 fn plain(wave: Wave) -> SfxDef {
-    SfxDef::new(wave, 441, 100, 0, 100)
+    SfxDef::new(wave, 441).with_hold_ms(100)
 }
 
 /// The problems of `source` read as `a.sfx.ron`, each as `line: message`.
@@ -35,7 +35,10 @@ const GOOD: &str = "    hz: 440,\n    hold_ms: 100,\n    fade_ms: 50,\n    volum
 #[test]
 fn a_file_reads_with_its_defaults() {
     let def = from_source("a.sfx.ron", &file(GOOD)).unwrap();
-    let mut want = SfxDef::new(Wave::Square { duty: 50 }, 440, 100, 50, 50);
+    let mut want = SfxDef::new(Wave::Square { duty: 50 }, 440)
+        .with_hold_ms(100)
+        .with_fade_ms(50)
+        .with_volume(50);
     assert_eq!(def, want);
     assert_eq!((def.to_hz, def.attack_ms, def.seed), (440, 0, 0));
     let every = file(
@@ -153,7 +156,9 @@ fn each_number_out_of_range_is_an_error_on_its_fields_line() {
 
 #[test]
 fn each_range_holds_its_ends() {
-    let mut def = SfxDef::new(Wave::Square { duty: 1 }, MIN_HZ, 1, 0, 0);
+    let mut def = SfxDef::new(Wave::Square { duty: 1 }, MIN_HZ)
+        .with_hold_ms(1)
+        .with_volume(0);
     def.to_hz = MAX_HZ;
     assert_eq!(problems(&def), []);
     def.wave = Wave::Square { duty: 99 };
@@ -223,7 +228,7 @@ fn the_text_reads_back_to_the_same_definition_leaving_defaults_out() {
 
 #[test]
 fn a_render_has_its_lengths_samples_and_the_wav_its_header() {
-    let def = SfxDef::new(Wave::Sine, 441, 7, 3, 100);
+    let def = SfxDef::new(Wave::Sine, 441).with_hold_ms(7).with_fade_ms(3);
     let samples = render(&def);
     // 10 ms at 44 100 samples a second.
     assert_eq!(samples.len(), 441);
@@ -293,7 +298,9 @@ fn the_sine_is_within_a_fifth_of_a_percent_of_a_true_sine() {
 
 #[test]
 fn the_loudness_rises_holds_and_falls_to_nothing() {
-    let mut def = SfxDef::new(Wave::Square { duty: 50 }, 441, 10, 10, 100);
+    let mut def = SfxDef::new(Wave::Square { duty: 50 }, 441)
+        .with_hold_ms(10)
+        .with_fade_ms(10);
     def.attack_ms = 10;
     let samples = render(&def);
     assert_eq!(samples.len(), 1323);
@@ -347,7 +354,10 @@ fn a_slide_and_a_step_change_how_often_the_wave_crosses_zero() {
 
 #[test]
 fn a_definition_out_of_range_renders_bounded() {
-    let mut wild = SfxDef::new(Wave::Square { duty: 0 }, u32::MAX, u32::MAX, u32::MAX, 255);
+    let mut wild = SfxDef::new(Wave::Square { duty: 0 }, u32::MAX)
+        .with_hold_ms(u32::MAX)
+        .with_fade_ms(u32::MAX)
+        .with_volume(255);
     wild.attack_ms = u32::MAX;
     wild.to_hz = 0;
     wild.vibrato = Some(Vibrato {
@@ -362,10 +372,12 @@ fn a_definition_out_of_range_renders_bounded() {
     assert!(!found.is_empty(), "{found:?}");
     assert_eq!(render(&wild).len(), 220_500);
     // The lengths are cut to the longest in their order: the fade last.
-    let mut long = SfxDef::new(Wave::Sine, 440, 3000, 5000, 100);
+    let mut long = SfxDef::new(Wave::Sine, 440)
+        .with_hold_ms(3000)
+        .with_fade_ms(5000);
     long.attack_ms = 1000;
     assert_eq!(render(&long).len(), 220_500);
-    let silent = SfxDef::new(Wave::Sine, 440, 0, 0, 100);
+    let silent = SfxDef::new(Wave::Sine, 440);
     let none = render(&silent);
     assert!(none.is_empty(), "{none:?}");
 }
@@ -404,7 +416,9 @@ fn another_seed_moves_a_preset_within_its_ranges_the_same_each_time() {
         assert_ne!(preset(name, 1), preset(name, 2), "{name}");
     }
     // A step near the end stays inside a hold that shrinks.
-    let mut late = SfxDef::new(Wave::Sine, 440, 100, 0, 50);
+    let mut late = SfxDef::new(Wave::Sine, 440)
+        .with_hold_ms(100)
+        .with_volume(50);
     late.step = Some(Step {
         at_ms: 99,
         percent: 150,
@@ -596,7 +610,10 @@ fn in_range() -> impl Strategy<Value = SfxDef> {
     )
         .prop_map(
             |(wave, (hz, to_hz), (attack_ms, hold_ms, fade_ms), volume, vibrato, step, seed)| {
-                let mut def = SfxDef::new(wave, hz, hold_ms, fade_ms, volume);
+                let mut def = SfxDef::new(wave, hz)
+                    .with_hold_ms(hold_ms)
+                    .with_fade_ms(fade_ms)
+                    .with_volume(volume);
                 def.to_hz = to_hz;
                 def.attack_ms = attack_ms;
                 def.vibrato = vibrato.map(|(hz, percent)| Vibrato { hz, percent });
@@ -656,4 +673,27 @@ proptest! {
             let _ = playable("a.sfx.ron", Some(Cow::Owned(bytes.to_vec())));
         }
     }
+}
+
+#[test]
+fn the_constructor_builds_what_a_literal_built() {
+    let built = SfxDef::new(Wave::Sine, 440)
+        .with_hold_ms(100)
+        .with_fade_ms(50)
+        .with_volume(80);
+    let literal = SfxDef {
+        wave: Wave::Sine,
+        hz: 440,
+        to_hz: 440,
+        attack_ms: 0,
+        hold_ms: 100,
+        fade_ms: 50,
+        volume: 80,
+        vibrato: None,
+        step: None,
+        seed: 0,
+    };
+    assert_eq!(built, literal);
+    let plain = SfxDef::new(Wave::Saw, 220);
+    assert_eq!((plain.hold_ms, plain.fade_ms, plain.volume), (0, 0, 100));
 }

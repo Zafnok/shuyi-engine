@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn read_all_stops_at_the_limit_of_an_endless_source() {
-        let limits = Limits::new(8_000, 10_000);
+        let limits = Limits::DEFAULT.with_max_rate(8_000).with_max_frames(10_000);
         for (channels, chunk) in [(Channels::Mono, 8192), (Channels::Stereo, 4096)] {
             let Err(Error::TooLong { frames, limit }) =
                 read_all(&mut Endless(channels, 0), &limits)
@@ -322,7 +322,10 @@ mod tests {
     fn read_all_refuses_a_known_length_over_the_limit_before_reading() {
         let sound = pcm(Channels::Mono, vec![0; 5]);
         assert_eq!(
-            read_all(&mut sound.source(), &Limits::new(8_000, 4)),
+            read_all(
+                &mut sound.source(),
+                &Limits::DEFAULT.with_max_rate(8_000).with_max_frames(4)
+            ),
             Err(Error::TooLong {
                 frames: 5,
                 limit: 4
@@ -334,7 +337,11 @@ mod tests {
     fn read_all_takes_what_is_exactly_at_the_limit() {
         let sound = pcm(Channels::Mono, vec![3; 5]);
         assert_eq!(
-            read_all(&mut sound.source(), &Limits::new(8_000, 5)).as_ref(),
+            read_all(
+                &mut sound.source(),
+                &Limits::DEFAULT.with_max_rate(8_000).with_max_frames(5)
+            )
+            .as_ref(),
             Ok(&sound)
         );
     }

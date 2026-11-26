@@ -125,7 +125,7 @@ fn a_wav_of_another_kind_is_named() {
 
 #[test]
 fn a_wav_outside_the_limits_stops_at_its_header() {
-    let limits = Limits::new(8_000, 2);
+    let limits = Limits::DEFAULT.with_max_rate(8_000).with_max_frames(2);
     let open = |bytes: &[u8]| WavSource::new(bytes, &limits).err();
     assert_eq!(
         open(&wav16(1, 8_001, &[0])),
@@ -223,14 +223,14 @@ fn chunks_of_any_size_make_the_same_ogg_samples() {
 
 #[test]
 fn an_ogg_file_over_the_limit_stops_early() {
-    let limits = Limits::new(192_000, 1000);
+    let limits = Limits::DEFAULT.with_max_rate(192_000).with_max_frames(1000);
     let mut source = VorbisSource::new(STEREO, &limits).unwrap_or_else(|e| panic!("{e}"));
     let error = read_all(&mut source, &limits);
     assert!(
         matches!(error, Err(Error::TooLong { limit: 1000, frames }) if frames < 1000 + 4096 + 8192),
         "{error:?}"
     );
-    let low = Limits::new(8_000, 1000);
+    let low = Limits::DEFAULT.with_max_rate(8_000).with_max_frames(1000);
     assert_eq!(
         VorbisSource::new(STEREO, &low).err(),
         Some(Error::Rate {
@@ -243,7 +243,7 @@ fn an_ogg_file_over_the_limit_stops_early() {
 /// The source's own limit, not `read_all`'s, and nothing after it.
 #[test]
 fn an_ogg_source_stops_itself_at_its_limit_and_stays_stopped() {
-    let limits = Limits::new(192_000, 1000);
+    let limits = Limits::DEFAULT.with_max_rate(192_000).with_max_frames(1000);
     let mut source = VorbisSource::new(STEREO, &limits).unwrap_or_else(|e| panic!("{e}"));
     let mut out = [0; 2];
     let mut read = 0;
@@ -268,7 +268,9 @@ fn an_ogg_source_stops_itself_at_its_limit_and_stays_stopped() {
 
 #[test]
 fn an_ogg_file_exactly_at_the_limit_is_taken() {
-    let limits = Limits::new(192_000, 57_330);
+    let limits = Limits::DEFAULT
+        .with_max_rate(192_000)
+        .with_max_frames(57_330);
     let pcm = VorbisSource::new(STEREO, &limits).and_then(|mut s| read_all(&mut s, &limits));
     assert_eq!(pcm.map(|p| p.frames()), Ok(57_330));
 }
@@ -485,14 +487,18 @@ fn damaged(bytes: &'static [u8]) -> impl Strategy<Value = Vec<u8>> {
 
 /// Decodes it all, however it goes; a panic escaping is what fails.
 fn survives_ogg(bytes: &[u8]) {
-    let limits = Limits::new(192_000, 1 << 20);
+    let limits = Limits::DEFAULT
+        .with_max_rate(192_000)
+        .with_max_frames(1 << 20);
     if let Ok(mut source) = VorbisSource::new(bytes, &limits) {
         let _ = read_all(&mut source, &limits);
     }
 }
 
 fn survives_wav(bytes: &[u8]) {
-    let limits = Limits::new(192_000, 1 << 20);
+    let limits = Limits::DEFAULT
+        .with_max_rate(192_000)
+        .with_max_frames(1 << 20);
     if let Ok(mut source) = WavSource::new(bytes, &limits) {
         let _ = read_all(&mut source, &limits);
     }

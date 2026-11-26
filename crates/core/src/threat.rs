@@ -255,15 +255,34 @@ pub struct Strike {
 }
 
 impl Strike {
-    /// A forecast of `expected` damage (hundredths), `all_hit` damage if
-    /// every strike hits (points) and `struck_back` damage expected back
-    /// (hundredths).
-    pub const fn new(expected: i64, all_hit: i64, struck_back: i64) -> Self {
-        Self {
-            expected,
-            all_hit,
-            struck_back,
-        }
+    /// A forecast of no damage either way, as [`Default`]. Set each number
+    /// with its `with_` method; no constructor takes two, which a call
+    /// could swap (ADR-0151).
+    pub const DEFAULT: Self = Self {
+        expected: 0,
+        all_hit: 0,
+        struck_back: 0,
+    };
+
+    /// The same forecast, `expected` damage expected (hundredths).
+    #[must_use]
+    pub const fn with_expected(mut self, expected: i64) -> Self {
+        self.expected = expected;
+        self
+    }
+
+    /// The same forecast, `all_hit` damage if every strike hits (points).
+    #[must_use]
+    pub const fn with_all_hit(mut self, all_hit: i64) -> Self {
+        self.all_hit = all_hit;
+        self
+    }
+
+    /// The same forecast, `struck_back` damage expected back (hundredths).
+    #[must_use]
+    pub const fn with_struck_back(mut self, struck_back: i64) -> Self {
+        self.struck_back = struck_back;
+        self
     }
 }
 

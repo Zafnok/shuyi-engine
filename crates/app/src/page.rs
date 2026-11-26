@@ -62,10 +62,10 @@ pub extern "C" fn shuyi_page_files_crate_version() -> u32 {
     PLUGIN_VERSION
 }
 
-/// How big the page's files may be ([`page_layer`]). Build it with
-/// [`PageLimits::new`] or take the [default](PageLimits::default): a struct
-/// literal doesn't compile outside this crate, so a new field never breaks a
-/// game (ADR-0039).
+/// How big the page's files may be ([`page_layer`]). Build it from
+/// [`PageLimits::DEFAULT`] with its `with_` methods: a struct literal doesn't
+/// compile outside this crate, so a new field never breaks a game
+/// (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct PageLimits {
@@ -76,17 +76,33 @@ pub struct PageLimits {
 }
 
 impl PageLimits {
-    /// At most `per_file` bytes a file and `in_all` bytes together.
+    /// 256 KiB a file and 1 MiB together: a game's data files, with room.
+    /// No constructor takes both numbers, which a call could swap
+    /// (ADR-0151).
+    pub const DEFAULT: Self = Self {
+        per_file: 256 * 1024,
+        in_all: 1024 * 1024,
+    };
+
+    /// The same limits, at most `per_file` bytes a file.
     #[must_use]
-    pub const fn new(per_file: u64, in_all: u64) -> Self {
-        Self { per_file, in_all }
+    pub const fn with_per_file(mut self, per_file: u64) -> Self {
+        self.per_file = per_file;
+        self
+    }
+
+    /// The same limits, at most `in_all` bytes together.
+    #[must_use]
+    pub const fn with_in_all(mut self, in_all: u64) -> Self {
+        self.in_all = in_all;
+        self
     }
 }
 
 impl Default for PageLimits {
-    /// 256 KiB a file and 1 MiB together: a game's data files, with room.
+    /// [`PageLimits::DEFAULT`].
     fn default() -> Self {
-        Self::new(256 * 1024, 1024 * 1024)
+        Self::DEFAULT
     }
 }
 
@@ -358,7 +374,7 @@ mod tests {
 
     #[test]
     fn a_file_at_the_limit_is_read_and_one_over_it_is_refused() {
-        let limits = PageLimits::new(4, 100);
+        let limits = PageLimits::DEFAULT.with_per_file(4).with_in_all(100);
         let entries = page(&[("files/a.ron", "1234"), ("files/b.ron", "12345")]);
         let error = layer_from("files", entries, limits).unwrap_err();
         assert!(
@@ -372,7 +388,7 @@ mod tests {
 
     #[test]
     fn files_over_the_limit_in_all_are_refused() {
-        let limits = PageLimits::new(4, 7);
+        let limits = PageLimits::DEFAULT.with_per_file(4).with_in_all(7);
         let entries = page(&[("files/a.ron", "1234"), ("files/b.ron", "123")]);
         assert!(layer_from("files", entries, limits).unwrap().is_some());
         let entries = page(&[("files/a.ron", "1234"), ("files/b.ron", "1234")]);
@@ -399,7 +415,9 @@ mod tests {
     fn the_default_limits_are_256_kib_a_file_and_1_mib_in_all() {
         assert_eq!(
             PageLimits::default(),
-            PageLimits::new(256 * 1024, 1024 * 1024)
+            PageLimits::DEFAULT
+                .with_per_file(256 * 1024)
+                .with_in_all(1024 * 1024)
         );
     }
 
@@ -441,5 +459,15 @@ mod tests {
                 "level 1 has 1 box".to_owned()
             )
         );
+    }
+
+    #[test]
+    fn the_limits_build_what_a_literal_built() {
+        let built = PageLimits::DEFAULT.with_per_file(4).with_in_all(7);
+        let literal = PageLimits {
+            per_file: 4,
+            in_all: 7,
+        };
+        assert_eq!(built, literal);
     }
 }

@@ -116,7 +116,7 @@ where
 
 /// A long track's length is no limit here: it is never all in memory.
 fn track_limits() -> Limits {
-    Limits::new(Limits::DEFAULT_MAX_RATE, u64::MAX)
+    Limits::DEFAULT.with_max_frames(u64::MAX)
 }
 
 /// A source of a track's bytes, decoding as it is asked, going round `region` if it

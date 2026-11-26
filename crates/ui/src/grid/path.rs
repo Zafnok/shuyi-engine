@@ -118,7 +118,7 @@ mod tests {
     /// The glyph skin's 16 px tiles in a 70 × 30-cell map area (560 ×
     /// 480 px): 35 × 30 tiles from the map's corner.
     fn view() -> Grid {
-        Grid::top_down(p(0, 0), (0, 0), (16, 16), (35, 30), 1)
+        Grid::top_down(p(0, 0), (16, 16)).with_tiles((35, 30))
     }
 
     /// The overlays of `path` with the camera at the origin, as
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn the_geometry_follows_the_tile_size() {
         // 24 × 20 tiles: tile (1, 1) spans pixels 24..48 × 20..40.
-        let grid = Grid::top_down(p(0, 0), (0, 0), (24, 20), (10, 10), 1);
+        let grid = Grid::top_down(p(0, 0), (24, 20)).with_tiles((10, 10));
         let r: Vec<_> = path_overlays(&[p(1, 1), p(2, 1), p(2, 2)], &grid, RED)
             .iter()
             .map(|o| (o.layer, o.rect.x, o.rect.y, o.rect.w, o.rect.h))

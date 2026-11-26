@@ -43,7 +43,7 @@ use super::rollout::{
 use crate::rng::SimRng;
 
 /// How a [`TurnPlan`] bot thinks: data, so a persona's settings can be a
-/// file. Build it with [`PlanSettings::new`] (ADR-0039).
+/// file. Build it from [`PlanSettings::DEFAULT`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
@@ -67,25 +67,53 @@ pub struct PlanSettings {
 }
 
 impl PlanSettings {
-    /// A beam `width` wide, trying the first `candidates` commands from
-    /// each partial turn, plans at most `depth` commands long, each partial
-    /// turn played on `samples` copies, the first command's pick straying
-    /// by `temperature`.
+    /// The plainest planner: a beam 1 wide, trying the first command, plans
+    /// 1 command long, played on 1 copy, always picking the best. Set each
+    /// number with its `with_` method; no constructor takes two, which a
+    /// call could swap (ADR-0151).
+    pub const DEFAULT: Self = Self {
+        width: 1,
+        candidates: 1,
+        depth: 1,
+        samples: 1,
+        temperature: 0,
+    };
+
+    /// The same settings, `width` partial turns kept at each depth.
     #[must_use]
-    pub const fn new(
-        width: u32,
-        candidates: u32,
-        depth: u32,
-        samples: u32,
-        temperature: u32,
-    ) -> Self {
-        Self {
-            width,
-            candidates,
-            depth,
-            samples,
-            temperature,
-        }
+    pub const fn with_width(mut self, width: u32) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// The same settings, trying the first `candidates` commands from each
+    /// partial turn.
+    #[must_use]
+    pub const fn with_candidates(mut self, candidates: u32) -> Self {
+        self.candidates = candidates;
+        self
+    }
+
+    /// The same settings, plans at most `depth` commands long.
+    #[must_use]
+    pub const fn with_depth(mut self, depth: u32) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    /// The same settings, each partial turn played on `samples` copies.
+    #[must_use]
+    pub const fn with_samples(mut self, samples: u32) -> Self {
+        self.samples = samples;
+        self
+    }
+
+    /// The same settings, the first command's pick straying by
+    /// `temperature` points.
+    #[must_use]
+    pub const fn with_temperature(mut self, temperature: u32) -> Self {
+        self.temperature = temperature;
+        self
     }
 }
 

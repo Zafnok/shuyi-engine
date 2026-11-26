@@ -71,15 +71,33 @@ pub struct BalanceSettings {
 }
 
 impl BalanceSettings {
-    /// The full run `tries`, quick runs of `quick` tries, and at most
-    /// `evaluations` runs.
+    /// The full run `tries`, quick runs of a fifth of its tries (at least
+    /// 1), and at most 100 runs. Set the two numbers with
+    /// [`with_quick`](Self::with_quick) and
+    /// [`with_evaluations`](Self::with_evaluations); no constructor takes
+    /// both, which a call could swap (ADR-0151).
     #[must_use]
-    pub const fn new(tries: Tries, quick: u32, evaluations: u32) -> Self {
+    pub const fn new(tries: Tries) -> Self {
+        let quick = tries.count / 5;
         Self {
             tries,
-            quick,
-            evaluations,
+            quick: if quick == 0 { 1 } else { quick },
+            evaluations: 100,
         }
+    }
+
+    /// The same search, its own runs of `quick` tries.
+    #[must_use]
+    pub const fn with_quick(mut self, quick: u32) -> Self {
+        self.quick = quick;
+        self
+    }
+
+    /// The same search, making at most `evaluations` runs.
+    #[must_use]
+    pub const fn with_evaluations(mut self, evaluations: u32) -> Self {
+        self.evaluations = evaluations;
+        self
     }
 }
 

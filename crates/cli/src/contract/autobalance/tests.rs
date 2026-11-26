@@ -123,11 +123,13 @@ fn the_arguments_name_the_stage_the_entrants_the_search_and_its_limits() {
 
 #[test]
 fn a_number_not_given_is_the_default_and_the_plan_is_asked_with_them() {
-    let defaults = Tries::new(100, 3, 50);
+    let defaults = Tries::new(100).with_seed(3).with_turns(50);
     let given = AutobalanceInput::default();
     assert_eq!(
         given.settings(&defaults),
-        BalanceSettings::new(defaults, 20, DEFAULT_BUDGET)
+        BalanceSettings::new(defaults)
+            .with_quick(20)
+            .with_evaluations(DEFAULT_BUDGET)
     );
     // A fifth of the tries, at least one.
     let few = AutobalanceInput {

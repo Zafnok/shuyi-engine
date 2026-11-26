@@ -46,7 +46,7 @@ pub const DEFAULT_HISTORY: &str = "target/playtest-history";
 
 /// The tries when neither the input nor the game says: 100 from seed 0,
 /// each stopped at turn 200.
-pub const DEFAULT_TRIES: Tries = Tries::new(100, 0, 200);
+pub const DEFAULT_TRIES: Tries = Tries::new(100);
 
 /// The most tries of each entrant one `playtest` plays.
 pub const MAX_TRIES: u32 = 10_000;
@@ -88,11 +88,9 @@ pub struct PlaytestInput {
 impl PlaytestInput {
     /// The tries it asks for, `defaults` filling in what it leaves out.
     pub fn tries(&self, defaults: &Tries) -> Tries {
-        Tries::new(
-            self.tries.unwrap_or(defaults.count),
-            self.seed.unwrap_or(defaults.seed),
-            self.turns.unwrap_or(defaults.turns),
-        )
+        Tries::new(self.tries.unwrap_or(defaults.count))
+            .with_seed(self.seed.unwrap_or(defaults.seed))
+            .with_turns(self.turns.unwrap_or(defaults.turns))
     }
 }
 

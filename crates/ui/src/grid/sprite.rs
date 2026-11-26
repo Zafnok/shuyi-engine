@@ -144,16 +144,13 @@ impl SpriteSkin {
         let tile = self.tile_size();
         let fit = self.view_tiles(area);
         let margin = |len: i32, n: i32, side: i32| (len.max(0) - n * side) / 2;
-        Grid::top_down(
-            scene.origin,
-            (
+        Grid::top_down(scene.origin, tile)
+            .with_corner((
                 px.x + margin(px.w, fit.0, tile.0),
                 px.y + margin(px.h, fit.1, tile.1),
-            ),
-            tile,
-            (scene.size.0.clamp(0, fit.0), scene.size.1.clamp(0, fit.1)),
-            self.scale(),
-        )
+            ))
+            .with_tiles((scene.size.0.clamp(0, fit.0), scene.size.1.clamp(0, fit.1)))
+            .with_scale(self.scale())
     }
 
     /// The cursor: corner marks in the cursor's color with a dark edge
