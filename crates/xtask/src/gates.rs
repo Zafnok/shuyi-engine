@@ -302,7 +302,8 @@ pub const GATES: &[Gate] = &[
         "cargo xtask check-merges",
         "cargo xtask docs-rules",
     ]),
-    gate("layers", "layers", CODE).steps(&["cargo xtask check-layers"]),
+    // `check-publish --index` needs the network: CI's `layers` job runs it.
+    gate("layers", "layers", CODE).steps(&["cargo xtask check-layers", "cargo xtask check-publish"]),
     // CI runs it on every pull request; it reads the site, the problem
     // codes, Hello, Grid's files, the tickets (the feature cards) and the
     // guides (the book's, copied by `site-data`).

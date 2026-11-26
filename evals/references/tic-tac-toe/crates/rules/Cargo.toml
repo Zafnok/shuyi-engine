@@ -17,11 +17,9 @@ workspace = true
 # `schema`: the rules' types describe their shapes, for the game's tools
 # (`scene --shape`). The game crate's `tools` turns it on; the game
 # itself builds without it.
-schema = ["dep:schemars", "shuyi-core/schema"]
+schema = ["shuyi-core/schema"]
 
 [dependencies]
 # The grid's cells, the turn rules.
 shuyi-core.workspace = true
-# The shapes, with `schema`.
-schemars = { workspace = true, optional = true }
 serde.workspace = true

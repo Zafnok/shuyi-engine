@@ -382,6 +382,19 @@ pub use crate::audio::Chosen as SoundProbeBackend;
 "##,
             with: "",
         ),
+        // Their exact pins (ticket 3510, ADR-0152).
+        Cut(
+            file: "Cargo.toml",
+            from: "shuyi-sound = { path = \"crates/sound\"",
+            to: "shuyi-ui = { path = \"crates/ui\"",
+        ),
+        Replace(
+            file: "crates/xtask/src/publish/tests.rs",
+            find: r##"    assert!(at("shuyi-sound") < at("shuyi-sound-out"));
+    assert!(at("shuyi-sound-out") < at("shuyi-app"));
+"##,
+            with: "",
+        ),
         Cut(
             file: "Cargo.toml",
             from: "# Cargo allows one crate of a build to say",
@@ -407,8 +420,8 @@ in-house-sound = []
         Replace(
             file: "crates/app/Cargo.toml",
             find: r##"# The `in-house-sound` feature's mixer, adapters and output.
-shuyi-sound = { path = "../sound", features = ["wav", "vorbis"], optional = true }
-shuyi-sound-out = { path = "../sound-out", optional = true }
+shuyi-sound = { workspace = true, features = ["default", "wav", "vorbis"], optional = true }
+shuyi-sound-out = { workspace = true, optional = true }
 "##,
             with: "",
         ),
