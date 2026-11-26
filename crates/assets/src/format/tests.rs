@@ -692,10 +692,11 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.ids::<Names>(), ["names"]);
     assert_eq!(formats.ids::<DialogueFile>(), ["dlg"]);
     assert_eq!(formats.ids::<TargetProfile>(), ["target-ron"]);
+    assert_eq!(formats.ids::<crate::atlas::Atlas>(), ["atlas"]);
     assert_eq!(formats.limits, Limits::NONE);
     // Every kind: nothing else.
     let kinds = format!("{formats:?}").matches("\", [\"").count();
-    assert_eq!(kinds, 15);
+    assert_eq!(kinds, 16);
     // And the engine's one section of import settings.
     assert_eq!(formats.import_settings_sections(), ["onebit"]);
     // Registered again, the first is refused.

@@ -99,9 +99,10 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// 2263, ADR-0128 §2), version 19's index holds the span of each
 /// folder laid first (ticket 2265, ADR-0128 §3), version 20's music cue
 /// holds a loop region (ticket 2397), version 21's sound cue holds its
-/// rules (ticket 2345, ADR-0139), and version 22's target profile its
-/// graphics tier (ticket 3347).
-pub const VERSION: u32 = 22;
+/// rules (ticket 2345, ADR-0139), version 22's target profile its
+/// graphics tier (ticket 3347), and version 23's target profile its
+/// texture limit, beside the atlas kind (ticket 2222).
+pub const VERSION: u32 = 23;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";

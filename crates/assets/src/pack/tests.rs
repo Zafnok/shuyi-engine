@@ -11,6 +11,7 @@ use std::sync::OnceLock;
 use proptest::prelude::*;
 
 use super::*;
+use crate::atlas::Atlas;
 use crate::audio::{AudioManifest, MusicTrack, Sound};
 use crate::bundle::Bundle;
 use crate::cinematic::{CinematicFile, CinematicRon};
@@ -72,8 +73,21 @@ pub(super) fn sources() -> &'static Bundle {
             ("data/table.ron", TABLE.into()),
             ("targets/playdate.ron", PLAYDATE.into()),
             ("readme.txt", b"kept as it is".to_vec()),
+            // An atlas, packed from its folder (ticket 2222).
+            ("sprites/atlas.ron", sprite_file("sprites/atlas.ron")),
+            ("sprites/coin.png", sprite_file("sprites/coin.png")),
+            ("sprites/heart.png", sprite_file("sprites/heart.png")),
+            ("sprites/wide.png", sprite_file("sprites/wide.png")),
         ])
     })
+}
+
+/// The file at `path` of the atlas tests' game.
+fn sprite_file(path: &str) -> Vec<u8> {
+    crate::atlas::tests::sprites()
+        .bytes(path)
+        .unwrap_or_default()
+        .into_owned()
 }
 
 /// The tests' game's formats: the standard ones, with pixels, and its own.
@@ -114,6 +128,7 @@ pub(super) fn every_kind() -> Bake {
         .asset::<LangPack>("lang/xx/lang")
         .asset::<Table>("data/table")
         .asset::<TargetProfile>("targets/playdate")
+        .asset::<Atlas>("sprites/atlas.ron")
 }
 
 /// The pack of the tests' game, baked once.
@@ -154,8 +169,8 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     assert_eq!(bake.load(&formats, sources()), []);
     assert_eq!(bake.load(&formats, &pack), []);
     let unbaked = bundle(vec![("data/names.ron", b"[".to_vec())]);
-    // One error for each asset asked for by id: eleven missing, one broken.
-    assert_eq!(bake.load(&formats, unbaked).len(), 12);
+    // One error for each asset asked for by id: twelve missing, one broken.
+    assert_eq!(bake.load(&formats, unbaked).len(), 13);
     // Each kind, by hand, read through the registry as a loader reads it.
     let palette = formats.load::<PaletteDef>(&pack, "data/palette").unwrap();
     assert_eq!(palette.colors.get("grass"), Some(&[0, 255, 0]));
@@ -167,6 +182,15 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
         .load_under::<DialogueFile<Cue>>(&pack, "dialogue")
         .unwrap();
     assert_eq!(scenes["dialogue/gate.dlg"].scenes[0].scene.id, "gate");
+    // An atlas packed at load equals the baked one, its pages and table.
+    let atlas = formats.load::<Atlas>(&pack, "sprites/atlas.ron").unwrap();
+    assert_eq!(
+        atlas,
+        formats
+            .load::<Atlas>(sources(), "sprites/atlas.ron")
+            .unwrap()
+    );
+    assert_eq!(atlas.sprites().count(), 3);
     let image = formats.load::<Image>(&pack, "images/card").unwrap();
     assert_eq!(image.rgba, [1, 2, 3, 255, 4, 5, 6, 255]);
     // The kinds go in the file of each, and every other file as it was.
@@ -176,6 +200,7 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     };
     assert_eq!(kinds("images/card.png"), ["image", "image pixels"]);
     assert_eq!(kinds("fonts/atlas.png"), Vec::<&str>::new());
+    assert_eq!(kinds("sprites/atlas.ron"), ["atlas"]);
     assert_eq!(
         pack.bytes("readme.txt").as_deref(),
         Some(&b"kept as it is"[..])
@@ -455,7 +480,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 22: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 23: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -704,6 +729,7 @@ fn the_binary_form_of_every_engine_kind_is_pinned_by_the_pack_version() {
     form!(CinematicFile<Shot, ()>, "films/title.ron");
     form!(LangPack, "lang/xx/lang.ron");
     form!(TargetProfile, "targets/playdate.ron");
+    form!(Atlas, "sprites/atlas.ron");
     insta::assert_snapshot!(out);
 }
 

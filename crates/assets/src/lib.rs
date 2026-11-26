@@ -13,7 +13,8 @@
 //! ([`dialogue`]), voice clips by line ([`voice`]), tips ([`tip`]) and
 //! word wrap for text boxes ([`text`]); and
 //! cinematics, timed shots of a game's own kinds ([`cinematic`]); and
-//! export targets' profiles ([`target`]). With the `sfx` feature, sound
+//! export targets' profiles ([`target`]); and sprite atlases, images
+//! packed into pages ([`atlas`]). With the `sfx` feature, sound
 //! effects written as a few numbers (`sfx`). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
@@ -42,6 +43,7 @@ mod prelude {
     pub use alloc::{format, vec};
 }
 
+pub mod atlas;
 pub mod audio;
 pub mod bitmap;
 pub mod bundle;

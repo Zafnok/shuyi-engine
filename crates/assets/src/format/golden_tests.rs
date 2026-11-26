@@ -15,6 +15,7 @@ use super::builtin_tests::{
 };
 use super::codec_tests::{FLAC, JPEG, JPEG_XL, MP3, QOI, WEBP};
 use super::*;
+use crate::atlas::{Atlas, AtlasRon};
 use crate::audio::{
     self, AudioManifest, AudioManifestRon, Flac, FlacTrack, Mp3, Mp3Track, MusicTrack, OggVorbis,
     OggVorbisTrack, Sound, Wav,
@@ -112,6 +113,7 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     kind::<CinematicFile<Shot>>(formats, rows, &mut missing);
     kind::<LangPack>(formats, rows, &mut missing);
     kind::<Table>(formats, rows, &mut missing);
+    kind::<Atlas>(formats, rows, &mut missing);
     missing
 }
 
@@ -190,6 +192,9 @@ fn check_rows() -> Rows {
     );
     let profile = crate::target::tests::profile("small", "");
     rows.format(&TargetRon, "targets/small.ron", profile.as_bytes(), None);
+    let sprites = crate::atlas::tests::sprites();
+    let spec = sprites.bytes("sprites/atlas.ron").unwrap_or_default();
+    rows.format(&AtlasRon::new(), "sprites/atlas.ron", &spec, Some(sprites));
     rows.format(&map_text(), "maps/field.map", MAP.as_bytes(), None);
     let keymap = KeymapRon::<sample::Action>::new();
     rows.format(&keymap, "keymap.ron", sample::SOURCE.as_bytes(), None);

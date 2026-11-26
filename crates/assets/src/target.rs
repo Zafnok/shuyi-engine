@@ -122,6 +122,16 @@ pub struct Display {
     /// device that is always full screen.
     #[serde(default)]
     pub windowed: bool,
+    /// The longest side of a texture it takes, in pixels: an atlas's
+    /// pages are never bigger ([`crate::atlas`]). [`MAX_SIDE`](crate::image::MAX_SIDE)
+    /// (4096) unless said; 2048 on the web, WebGL 2's least (ADR-0136 §3).
+    #[serde(default = "max_texture_side")]
+    pub max_texture_side: u32,
+}
+
+/// [`Display::max_texture_side`] unless a profile says.
+const fn max_texture_side() -> u32 {
+    crate::image::MAX_SIDE
 }
 
 /// A screen's size, in device pixels.
@@ -325,6 +335,7 @@ impl Display {
                 left: 0,
             },
             windowed: false,
+            max_texture_side: crate::image::MAX_SIDE,
         }
     }
 
@@ -687,6 +698,7 @@ pub(crate) mod tests {
             good_text_px: 10,
             safe_area: Insets::default(),
             windowed: false,
+            max_texture_side: 4096,
         };
         assert_eq!(
             Display::new(Color::OneBit)

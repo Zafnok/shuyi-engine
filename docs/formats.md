@@ -112,6 +112,7 @@ The standard ones, in `Formats::standard()`:
 | names table | `names::Names` | `names::NamesRon` | `names` | `ron` | none | 4 MiB |
 | target profile | `target::TargetProfile` | `target::TargetRon` | `target-ron` | `ron` | none | 4 MiB |
 | dialogue | `dialogue::DialogueFile` (a file's scenes) | `dialogue::Dlg` | `dlg` | `dlg` | none | 4 MiB |
+| atlas | `atlas::Atlas` (pages and a table of sprites) | `atlas::AtlasRon` (an `atlas.ron`: every image of a folder, packed) | `atlas` | `ron` | none | 4 MiB |
 
 With a feature of `shuyi-assets` on, `Formats::standard()` has its
 formats too ([below](#formats-behind-a-feature)):
@@ -614,12 +615,38 @@ manifest names it like any sound file:
 - **The pack** keeps a `.sfx.ron` as its own bytes, as any sound
   ([The pack](#the-pack)): it is rendered after it is read.
 
+### Sprite atlases (`atlas.ron`)
+
+An `atlas.ron` packs every image directly inside a folder into square
+pages ([ADR-0153](adr/0153-sprite-atlas-pages-as-painted-pictures-a-skyline-packer.md)):
+
+```ron
+(from: "sprites/", page_size: 1024, padding: 1)
+```
+
+- **`from`** is the folder, from the bundle's root; folders below it are
+  not read. Each image is read through the picture formats whose features
+  are on (PNG with `png`), and named by its path (`sprites/coin.png`).
+- **`page_size`** is a page's side, at most 4096, and at most the
+  target's `display.max_texture_side` (2048 on `web`) when the game
+  registers `AtlasRon::new().with_max_side(..)` for it. **`padding`**
+  (0 unless said) is kept clear between sprites and from a page's edges.
+- **The same images give the same atlas**, whatever order they come in
+  (tallest first, then by name), so the pack holds it baked
+  (`Bake::asset::<Atlas>("sprites/atlas.ron")`) and `Bake::check` proves it
+  equal to the one packed at load.
+- **While the game runs**, `Atlas::insert` adds a sprite in free space
+  or on a new page, moving none. In the frame,
+  `shuyi_ui::frame::atlas::show` puts the pages among the painted
+  pictures, `insert` writes the page that changed, and `sprite` places one.
+
 ### The kinds of ADR-0007 §1
 
 | Kind | Type |
 | ---- | ---- |
 | `Image` | `image::ImageInfo` (its size, for the image table) and `image::Image` (its pixels) |
-| `Atlas`, `AnimationSet` | ticket 1123, with Aseprite and TexturePacker as formats |
+| `Atlas` | `atlas::Atlas` (2222): pages and a table of name to page and rectangle; Aseprite and TexturePacker are its formats in 1123 |
+| `AnimationSet` | ticket 2231's, whose Docs item names its type |
 | `TileMap` | `grid_map::GridMap<T, F>` for the grid kit's `.map`; Tiled's and LDtk's layered map is ticket 1124's, with both as formats |
 | `Tileset` | `tileset::TerrainTiles`; how a game writes its tiles is its own format |
 | `Font` | `font::FontAtlasDef` |

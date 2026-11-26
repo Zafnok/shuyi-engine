@@ -14,7 +14,10 @@
 //! a texture of its own, uploaded only in a frame whose revision moved
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 //! An image's texture is made the first frame a sprite draws it
-//! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5).
+//! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5). A sprite
+//! atlas's page is a painted picture (`shuyi_ui::frame::atlas`, ticket
+//! 2222): uploaded the first frame a sprite draws it, and again in a frame
+//! whose page changed.
 //!
 //! A picture's pixels come from `pixels`: a PNG decoded by macroquad, any
 //! other file by the formats of `Formats::standard()`, those whose feature
@@ -505,11 +508,9 @@ impl Renderer {
         if width == 0 || height == 0 {
             return;
         }
-        let make = |rgba: &[u8]| {
-            let texture = Texture2D::from_rgba8(width, height, rgba);
-            texture.set_filter(FilterMode::Nearest);
-            texture
-        };
+        // A sprite atlas's page is one of these pictures (ticket 2222):
+        // made the first frame a sprite draws it, again when it changed.
+        let make = |rgba: &[u8]| upload_rgba(width, height, rgba);
         let update = |texture: &Texture2D, rgba: &[u8]| {
             texture.update_from_bytes(width.into(), height.into(), rgba);
         };

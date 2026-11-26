@@ -704,6 +704,7 @@ impl Formats {
         self.register(names::NamesRon)?;
         self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
         self.register(target::TargetRon)?;
+        self.register(crate::atlas::AtlasRon::new())?;
         self.register_import_settings::<bitmap::dither::OneBitSettings>()?;
         Ok(())
     }
