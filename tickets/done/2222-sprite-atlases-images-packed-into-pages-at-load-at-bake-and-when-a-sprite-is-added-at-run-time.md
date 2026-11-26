@@ -149,7 +149,7 @@ None.
   `AtlasRon::with_max_side`.
 - Bake: `Atlas` is `Bakeable`; the pack's test bakes `sprites/atlas.ron`
   and checks the atlas read from the pack equals the one packed at load.
-  `pack::VERSION` is 23 (the target profile's binary form grew), and the
+  `pack::VERSION` is 24 (the target profile's binary form grew; 23 went to 2280 on `main` first), and the
   binary form of `Atlas` is pinned beside the others.
 - `shuyi_ui::frame::atlas::{show, insert, sprite, page_id}`: a page is a
   painted picture of the frame (ADR-0078) named by the page, so
@@ -185,13 +185,13 @@ None.
 - The `render` job (2018) is CI's: the render card example compares the
   window with the raster there; it wasn't run locally.
 
-Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `max_texture_side`, and a baked pack is of version 23; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `max_texture_side`, and a baked pack is of version 24; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
 ```migration
 since: 0.1.0
-what: The pack format is version 23, its target profiles with a texture limit; a pack of version 22 is refused.
-old: "pack::VERSION == 22"
-new: "pack::VERSION == 23"
+what: The pack format is version 24, its target profiles with a texture limit; a pack of version 23 is refused.
+old: "pack::VERSION == 23"
+new: "pack::VERSION == 24"
 before: |
   cargo shuyi bake   # with the engine before 2222
 after: |
