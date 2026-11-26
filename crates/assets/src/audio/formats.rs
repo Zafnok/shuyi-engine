@@ -13,7 +13,7 @@ use super::NO_MP3_LENGTH;
 use super::samples_ms;
 use super::{
     AudioManifest, Files, NO_LENGTH, from_source, ogg_length_ms, playable_problem, vorbis_format,
-    wav_format,
+    wav_format, wav_length_ms,
 };
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
@@ -36,25 +36,39 @@ pub struct Sound {
     pub channels: u16,
     /// Samples a second.
     pub sample_rate: u32,
+    /// How long it plays, in milliseconds (to the nearest), if its file
+    /// tells: [`sound_length_ms`](super::sound_length_ms).
+    #[serde(default)]
+    pub length_ms: Option<u32>,
 }
 
 impl Sound {
-    /// A mono sound of `sample_rate` samples a second.
+    /// A mono sound of `sample_rate` samples a second, of no known length.
     #[must_use]
     pub const fn mono(sample_rate: u32) -> Self {
         Self {
             channels: 1,
             sample_rate,
+            length_ms: None,
         }
     }
 
-    /// A stereo sound of `sample_rate` samples a second.
+    /// A stereo sound of `sample_rate` samples a second, of no known
+    /// length.
     #[must_use]
     pub const fn stereo(sample_rate: u32) -> Self {
         Self {
             channels: 2,
             sample_rate,
+            length_ms: None,
         }
+    }
+
+    /// The same sound, `length_ms` milliseconds long (`None`: unknown).
+    #[must_use]
+    pub const fn with_length_ms(mut self, length_ms: Option<u32>) -> Self {
+        self.length_ms = length_ms;
+        self
     }
 }
 
@@ -77,12 +91,13 @@ impl AssetKind for MusicTrack {
     const NAME: &'static str = "music track";
 }
 
-/// A sound of `(channels, rate)`, from the format of a file `file` that
-/// isn't one if `format` is `None` (then `not_one` says so), or every
-/// problem with it.
+/// A sound of `(channels, rate)`, `length_ms` long, from the format of a
+/// file `file` that isn't one if `format` is `None` (then `not_one` says
+/// so), or every problem with it.
 fn sound(
     file: &AssetPath,
     format: Option<(u16, u32)>,
+    length_ms: Option<u32>,
     not_one: &str,
 ) -> Result<Sound, Vec<ContentError>> {
     let error = |message: String| vec![ContentError::new(file.shown(), message)];
@@ -92,6 +107,7 @@ fn sound(
         None => Ok(Sound {
             channels,
             sample_rate,
+            length_ms,
         }),
     }
 }
@@ -125,7 +141,8 @@ impl Format for Wav {
         bytes: &[u8],
         _cx: &DecodeCx<'_>,
     ) -> Result<Sound, Vec<ContentError>> {
-        sound(file, wav_format(bytes), "not a PCM WAV file")
+        let length = wav_length_ms(bytes);
+        sound(file, wav_format(bytes), length, "not a PCM WAV file")
     }
 }
 
@@ -161,7 +178,8 @@ impl Format for OggVorbis {
         bytes: &[u8],
         _cx: &DecodeCx<'_>,
     ) -> Result<Sound, Vec<ContentError>> {
-        sound(file, vorbis_format(bytes), "not an OGG Vorbis file")
+        let length = ogg_length_ms(bytes);
+        sound(file, vorbis_format(bytes), length, "not an OGG Vorbis file")
     }
 }
 
@@ -198,9 +216,10 @@ impl Format for OggVorbisTrack {
         let Sound {
             channels,
             sample_rate,
+            length_ms,
         } = OggVorbis.decode(file, bytes, cx)?;
         let length_ms =
-            ogg_length_ms(bytes).ok_or_else(|| vec![ContentError::new(file.shown(), NO_LENGTH)])?;
+            length_ms.ok_or_else(|| vec![ContentError::new(file.shown(), NO_LENGTH)])?;
         Ok(MusicTrack {
             channels,
             sample_rate,
@@ -279,8 +298,10 @@ impl Format for Flac {
         bytes: &[u8],
         _cx: &DecodeCx<'_>,
     ) -> Result<Sound, Vec<ContentError>> {
-        let format = flac_format(bytes).map(|(channels, rate, _)| (channels, rate));
-        sound(file, format, "not a FLAC file")
+        let read = flac_format(bytes);
+        let length = read.and_then(|(_, rate, samples)| samples_ms(samples?, rate));
+        let format = read.map(|(channels, rate, _)| (channels, rate));
+        sound(file, format, length, "not a FLAC file")
     }
 }
 
@@ -346,7 +367,7 @@ fn mp3_format(bytes: &[u8], scan: bool) -> Option<(u16, u32, Option<u64>)> {
 }
 
 /// MP3 (`mp3`, `.mp3`), read for a sound, with the `mp3` feature: its
-/// first frame's header, by `nanomp3`.
+/// first frame's header, and every frame for its length, by `nanomp3`.
 #[cfg(feature = "mp3")]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Mp3;
@@ -377,8 +398,10 @@ impl Format for Mp3 {
         bytes: &[u8],
         _cx: &DecodeCx<'_>,
     ) -> Result<Sound, Vec<ContentError>> {
-        let format = mp3_format(bytes, false).map(|(channels, rate, _)| (channels, rate));
-        sound(file, format, "not an MP3 file")
+        let read = mp3_format(bytes, true);
+        let length = read.and_then(|(_, rate, samples)| samples_ms(samples?, rate));
+        let format = read.map(|(channels, rate, _)| (channels, rate));
+        sound(file, format, length, "not an MP3 file")
     }
 }
 

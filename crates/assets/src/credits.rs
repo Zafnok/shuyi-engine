@@ -458,6 +458,7 @@ mod tests {
             looped: false,
             group: None,
             rules: CueRules::DEFAULT,
+            lengths_ms: Vec::new(),
         }
     }
 

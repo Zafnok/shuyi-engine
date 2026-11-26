@@ -131,6 +131,22 @@ impl AudioManifest {
             .with_in_ms(self.music_fade_in_ms)
             .with_overlap(self.music_overlap)
     }
+
+    /// Measures how long each sound cue's files play into its
+    /// [`lengths_ms`](SoundCue::lengths_ms), each file read by `read` by
+    /// its name in the manifest (`sfx/hit.wav`): for a manifest built in
+    /// code, which [`from_source`] didn't check. A file `read` doesn't
+    /// find, or whose length can't be told ([`sound_length_ms`]), is
+    /// `None`.
+    pub fn measure_sounds(&mut self, read: &dyn Fn(&str) -> Bytes) {
+        for cue in self.sounds.values_mut() {
+            cue.lengths_ms = cue
+                .files
+                .iter()
+                .map(|file| read(file).and_then(|bytes| sound_length_ms(file, &bytes)))
+                .collect();
+        }
+    }
 }
 
 /// How one music track gives way to the next (ADR-0054): the old one
@@ -214,6 +230,15 @@ pub struct SoundCue {
     /// random at `volume` every time, unless the manifest says otherwise.
     #[serde(default)]
     pub rules: CueRules,
+    /// How long each file plays, in milliseconds, by its place in `files`
+    /// (ADR-0139 §4): measured when the manifest is checked
+    /// ([`sound_length_ms`]) or by [`AudioManifest::measure_sounds`], and
+    /// never written in its file. `None`, or no entry (a list shorter than
+    /// `files`), for a file whose length is unknown: one this build leaves
+    /// out, one not found or not measured. Read it with
+    /// [`length_ms`](Self::length_ms).
+    #[serde(default)]
+    pub lengths_ms: Vec<Option<u32>>,
 }
 
 impl SoundCue {
@@ -228,7 +253,15 @@ impl SoundCue {
             looped: false,
             group: None,
             rules: CueRules::DEFAULT,
+            lengths_ms: Vec::new(),
         }
+    }
+
+    /// How long its file `file` (an index into `files`) plays, in
+    /// milliseconds, if that is known ([`lengths_ms`](Self::lengths_ms)).
+    #[must_use]
+    pub fn length_ms(&self, file: usize) -> Option<u32> {
+        self.lengths_ms.get(file).copied().flatten()
     }
 
     /// The same cue, played by `rules`.
@@ -746,23 +779,70 @@ fn u32_at(bytes: &[u8], at: usize) -> Option<u32> {
     Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
 }
 
-/// A WAV's (channels, sample rate), from its `fmt ` chunk.
-fn wav_format(bytes: &[u8]) -> Option<(u16, u32)> {
+/// Where the first chunk `want` of a WAV starts its body, and the size its
+/// header gives; `None` if `bytes` aren't a WAV or have no such chunk.
+fn wav_chunk(bytes: &[u8], want: [u8; 4]) -> Option<(usize, usize)> {
     if bytes.get(..4)? != b"RIFF" || bytes.get(8..12)? != b"WAVE" {
         return None;
     }
-    let mut at = 12;
+    let mut at: usize = 12;
     loop {
         let id = bytes.get(at..at + 4)?;
         let size = usize::try_from(u32_at(bytes, at + 4)?).ok()?;
-        if id == b"fmt " {
-            // 1 = integer PCM, 3 = float: what quad-snd's decoder reads.
-            let encoding = u16_at(bytes, at + 8)?;
-            return [1, 3]
-                .contains(&encoding)
-                .then_some((u16_at(bytes, at + 10)?, u32_at(bytes, at + 12)?));
+        if id == want.as_slice() {
+            return Some((at + 8, size));
         }
         at = at.checked_add(size.checked_add(8 + size % 2)?)?;
+    }
+}
+
+/// A WAV's (channels, sample rate), from its `fmt ` chunk.
+fn wav_format(bytes: &[u8]) -> Option<(u16, u32)> {
+    let (fmt, _) = wav_chunk(bytes, *b"fmt ")?;
+    // 1 = integer PCM, 3 = float: what quad-snd's decoder reads.
+    let encoding = u16_at(bytes, fmt)?;
+    [1, 3]
+        .contains(&encoding)
+        .then_some((u16_at(bytes, fmt + 2)?, u32_at(bytes, fmt + 4)?))
+}
+
+/// How long a WAV plays, in milliseconds (to the nearest): its `data`
+/// chunk's frames (its size over the block align of its `fmt ` chunk)
+/// over its sample rate. A `data` chunk that says more than the file
+/// holds counts what it holds. `None` with no `fmt ` or `data` chunk, or a
+/// block align or a rate of 0.
+fn wav_length_ms(bytes: &[u8]) -> Option<u32> {
+    let (fmt, _) = wav_chunk(bytes, *b"fmt ")?;
+    let rate = u32_at(bytes, fmt + 4)?;
+    let block = u64::from(u16_at(bytes, fmt + 12)?);
+    let (data, size) = wav_chunk(bytes, *b"data")?;
+    let held = u64::try_from(size.min(bytes.len().saturating_sub(data))).ok()?;
+    samples_ms(held.checked_div(block)?, rate)
+}
+
+/// How long the sound file `name`, whose bytes are `bytes`, plays, in
+/// milliseconds (to the nearest), in integers: a WAV's (by its bytes,
+/// whatever its name: a game's hook may have decoded or rendered it) from
+/// its `data` chunk, a sound effect's (`.sfx.ron`, with the `sfx` feature)
+/// the length it renders to, a FLAC's or an MP3's (by its name) as
+/// [`track_length_ms`] reads it, and any other's as an OGG's, from its
+/// last page ([`ogg_length_ms`]).
+/// `None` when it can't be told: no `data` chunk, a block align or a rate
+/// of 0, no last Ogg page, numbers that don't read, or a format whose
+/// feature is off.
+///
+/// The cue rules end a copy of a sound at its start plus this (ADR-0139
+/// §4): the manifest keeps it per file ([`SoundCue::lengths_ms`]).
+#[must_use]
+pub fn sound_length_ms(name: &str, bytes: &[u8]) -> Option<u32> {
+    if decode::is_wav(bytes) {
+        wav_length_ms(bytes)
+    } else if is_sfx(name) {
+        decode::sfx_length_ms(bytes)
+    } else if decode::is_coded(name) {
+        track_length_ms(name, bytes)
+    } else {
+        ogg_length_ms(bytes)
     }
 }
 
@@ -791,7 +871,7 @@ pub fn ogg_length_ms(bytes: &[u8]) -> Option<u32> {
 
 /// How long `samples` samples a channel play at `rate` Hz, in milliseconds
 /// (to the nearest); `None` at 0 Hz or past `u32::MAX` ms.
-fn samples_ms(samples: u64, rate: u32) -> Option<u32> {
+pub(crate) fn samples_ms(samples: u64, rate: u32) -> Option<u32> {
     let rate = u64::from(rate);
     let ms = samples
         .checked_mul(1000)?
@@ -940,8 +1020,10 @@ impl Check<'_> {
         if s.files.is_empty() {
             self.err(&id, format!("sound \"{id}\" has no files"));
         }
+        let mut lengths_ms = Vec::with_capacity(s.files.len());
         for f in &s.files {
             let path = (self.files.sound_shown)(f);
+            let mut length = None;
             if !has_extension(f, &SOUND_EXTENSIONS) && !is_sfx(f) {
                 let why = "must be .ogg, .wav, .flac, .mp3 or .sfx.ron";
                 self.err(&id, format!("sound \"{id}\": \"{f}\" {why}"));
@@ -952,9 +1034,11 @@ impl Check<'_> {
                         if let Some(why) = format_problem(f, &bytes) {
                             self.err(&id, format!("sound \"{id}\": {path}: {why}"));
                         }
+                        length = sound_length_ms(f, &bytes);
                     }
                 }
             }
+            lengths_ms.push(length);
         }
         self.volume(&id, s.volume);
         if let Some(min) = s.volume_min.filter(|&min| min > s.volume) {
@@ -976,6 +1060,7 @@ impl Check<'_> {
             looped: s.looped,
             group: s.group,
             rules,
+            lengths_ms,
         };
         self.manifest.sounds.insert(id, entry);
     }
@@ -1142,13 +1227,15 @@ pub(crate) mod tests {
             Sound {
                 channels: 1,
                 sample_rate: SAMPLE_RATE,
+                length_ms: None,
             }
         );
         assert_eq!(
-            Sound::stereo(22_050),
+            Sound::stereo(22_050).with_length_ms(Some(250)),
             Sound {
                 channels: 2,
                 sample_rate: 22_050,
+                length_ms: Some(250),
             }
         );
     }
@@ -1716,6 +1803,138 @@ pub(crate) mod tests {
         assert_eq!(ogg_length_ms(&ogg(2, 44_100)), None);
     }
 
+    /// The start of [`wav`]'s file, of 16-bit samples (its block align
+    /// `2 × channels`), then a `data` chunk of `frames` frames of silence.
+    fn wav_of_frames(channels: u16, rate: u32, frames: u32) -> Vec<u8> {
+        let mut w = wav(channels, rate, 1);
+        // `fmt `'s body starts at byte 34: its block align is at 12 in it.
+        w[46..48].copy_from_slice(&(channels * 2).to_le_bytes());
+        w[48..50].copy_from_slice(&16_u16.to_le_bytes());
+        let size = frames * u32::from(channels) * 2;
+        w.extend_from_slice(b"data");
+        w.extend_from_slice(&size.to_le_bytes());
+        w.resize(w.len() + usize::try_from(size).unwrap_or(0), 0);
+        w
+    }
+
+    #[test]
+    fn a_wavs_length_is_its_data_over_its_block_align_and_rate() {
+        let length = |bytes: &[u8]| sound_length_ms("sfx/a.wav", bytes);
+        assert_eq!(length(&wav_of_frames(1, 44_100, 22_050)), Some(500));
+        assert_eq!(length(&wav_of_frames(2, 44_100, 22_050)), Some(500));
+        assert_eq!(length(&wav_of_frames(2, 44_100, 441)), Some(10));
+        assert_eq!(length(&wav_of_frames(1, 22_050, 22_050)), Some(1000));
+        assert_eq!(length(&wav_of_frames(1, 44_100, 0)), Some(0));
+        // To the nearest millisecond: 66 frames are 1.497 ms, 67 are 1.519.
+        assert_eq!(length(&wav_of_frames(1, 44_100, 66)), Some(1));
+        assert_eq!(length(&wav_of_frames(1, 44_100, 67)), Some(2));
+        // A block left over counts for nothing.
+        let mut odd = wav_of_frames(2, 44_100, 441);
+        odd.extend_from_slice(&[0; 3]);
+        let size = u32::try_from(441 * 4 + 3).unwrap_or(0);
+        let at = odd.len() - 441 * 4 - 3 - 4;
+        odd[at..at + 4].copy_from_slice(&size.to_le_bytes());
+        assert_eq!(length(&odd), Some(10));
+        // A `data` chunk that says more than the file holds counts what it
+        // holds.
+        let cut = wav_of_frames(1, 44_100, 44_100);
+        assert_eq!(length(&cut[..cut.len() - 44_100]), Some(500));
+        // What the engine writes ([`pcm16_wav`]) has its length too.
+        assert_eq!(length(&pcm16_wav(2, 44_100, &[0; 882])), Some(10));
+        // No `data` chunk, a block align of 0, a rate of 0, no `fmt `.
+        assert_eq!(length(&wav(2, 44_100, 1)), None);
+        let mut no_block = wav_of_frames(2, 44_100, 441);
+        no_block[46..48].fill(0);
+        assert_eq!(length(&no_block), None);
+        assert_eq!(length(&wav_of_frames(2, 0, 441)), None);
+        assert_eq!(length(&pcm16_wav(2, 44_100, &[0; 4])[..36]), None);
+        assert_eq!(length(b"RIFF"), None);
+    }
+
+    #[test]
+    fn a_sounds_length_is_read_by_its_bytes_then_its_name() {
+        let half = wav_of_frames(1, 44_100, 22_050);
+        assert_eq!(
+            sound_length_ms("a.ogg", &ogg_file(44_100, 22_050)),
+            Some(500)
+        );
+        assert_eq!(sound_length_ms("a.ogg", &ogg(2, 44_100)), None);
+        // A WAV is one by its bytes, whatever its name: a game's hook
+        // decoded or rendered it.
+        for name in ["a.wav", "a.flac", "a.mp3", "a.sfx.ron", "a.ogg"] {
+            assert_eq!(sound_length_ms(name, &half), Some(500), "{name}");
+        }
+        // An OGG too, its name aside (the manifest's check refuses it).
+        assert_eq!(
+            sound_length_ms("a.wav", &ogg_file(44_100, 22_050)),
+            Some(500)
+        );
+        assert_eq!(sound_length_ms("a.wav", b"RIFF"), None);
+        assert_eq!(sound_length_ms("a.sfx.ron", b"(wave: Sine)"), None);
+    }
+
+    #[test]
+    fn a_cue_keeps_the_length_of_each_of_its_files() {
+        let step = |p: &str| match p {
+            "sfx/ui_tick.wav" => Some(Cow::Owned(wav_of_frames(2, SAMPLE_RATE, 4_410))),
+            "sfx/step_2.ogg" => None,
+            _ => Some(Cow::Owned(good(p))),
+        };
+        let files = Files {
+            sound_left_out: &|p: &str| p == "sfx/step_2.ogg",
+            ..reading(&step, None)
+        };
+        let m = from_source("a.ron", FULL, &files).unwrap_or_default();
+        assert_eq!(m.sounds["ui_tick"].lengths_ms, [Some(100)]);
+        let footfall = &m.sounds["footfall"];
+        assert_eq!(footfall.lengths_ms, [Some(2000), None], "one left out");
+        assert_eq!(
+            (0..3).map(|f| footfall.length_ms(f)).collect::<Vec<_>>(),
+            [Some(2000), None, None],
+            "past the list is unknown"
+        );
+        // A WAV with no `data` chunk has none.
+        let m = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(m.sounds["ui_tick"].lengths_ms, [None]);
+        // The Sound kind reads the same lengths.
+        let read = |bytes: &[u8], name: &str| {
+            crate::format::Formats::standard()
+                .decode::<Sound>(
+                    &crate::format::AssetPath::new(name),
+                    bytes,
+                    &crate::format::DecodeCx::new(),
+                )
+                .map(|sound| sound.length_ms)
+        };
+        assert_eq!(
+            read(&wav_of_frames(2, SAMPLE_RATE, 4_410), "a.wav"),
+            Ok(Some(100))
+        );
+        assert_eq!(read(&good("a.ogg"), "a.ogg"), Ok(Some(2000)));
+    }
+
+    #[test]
+    fn a_manifest_built_in_code_measures_its_sounds() {
+        let mut m = AudioManifest::default();
+        let files = ["a.wav", "b.ogg", "gone.wav", "c.wav"].map(String::from);
+        m.sounds.insert(
+            "hit".into(),
+            SoundCue::new(files.to_vec(), 100, CreditRef::Own),
+        );
+        assert_eq!(m.sounds["hit"].lengths_ms, [], "new measures nothing");
+        assert_eq!(m.sounds["hit"].length_ms(0), None);
+        m.measure_sounds(&|name: &str| match name {
+            "a.wav" => Some(Cow::Owned(wav_of_frames(1, SAMPLE_RATE, 11_025))),
+            "b.ogg" => Some(Cow::Owned(good(name))),
+            "c.wav" => Some(Cow::Owned(wav(1, SAMPLE_RATE, 1))),
+            _ => None,
+        });
+        assert_eq!(
+            m.sounds["hit"].lengths_ms,
+            [Some(250), Some(2000), None, None]
+        );
+    }
+
     /// [`FULL`] with the `sting` track's `length_ms` changed.
     fn with_sting_length(length_ms: u32) -> String {
         FULL.replace(
@@ -2200,6 +2419,7 @@ pub(crate) mod tests {
                 looped: false,
                 group: None,
                 rules: CueRules::default(),
+                lengths_ms: alloc::vec![],
             }
         );
         assert!(

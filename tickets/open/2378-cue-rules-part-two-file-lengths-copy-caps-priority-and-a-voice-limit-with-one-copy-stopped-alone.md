@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2345"]
+blocked_by: ["2345", "2280"]
 nick_input: none
 completed:
 ---
@@ -42,15 +42,11 @@ What the code has since 2345 (done):
   `DropWhy::word`).
 - `SoundRequest::Sound` is `{ cue, volume, variant, cue_volume }`.
   Nothing counts the copies playing.
-- `shuyi-app`'s `Backend::play` (`crates/app/src/audio.rs`) returns
-  nothing, and `Backend::stop(sound)` stops every copy of a sound.
-  quad-snd 0.2.8's `Sound::play` returns a `Playback` that stops one
-  copy, but macroquad's `play_sound` throws it away.
-- The `Sound` kind (`crates/assets/src/audio/formats.rs`) is `channels`
-  and `sample_rate`, with no length. `ogg_length_ms`
-  (`crates/assets/src/audio.rs`) measures a whole OGG file, and
-  `wav_format` reads a WAV's `fmt ` chunk. The tests' `wav` helper
-  writes no `data` chunk.
+- The shared player's `Backend` (`crates/platform/src/audio/player.rs`)
+  has `play` returning `Self::Playing`, `stop(sound)` (every copy of a
+  sound) and `stop_playing(playing)` (one playback, 2344).
+- **From 2280 (done):** each file's length is measured
+  (`SoundCue::lengths_ms`, below).
 
 Why it matters:
 
@@ -110,38 +106,16 @@ None.
     cue), `max_voices: 0`, and a file that is read but whose length
     can't be measured, when its cue has `max_copies` or the manifest has
     `max_voices` (naming the cue and the file).
-- **Lengths** (`crates/assets/src/audio.rs`):
-  - `pub fn sound_length_ms(name: &str, bytes: &[u8]) -> Option<u32>`,
-    to the nearest millisecond, in checked `u64` integers. A WAV's
-    length is its `data` chunk's size over the block align of its
-    `fmt ` chunk, times 1 000, over its sample rate. It is `None` with
-    no `data` chunk, or a block align or a rate of 0. An OGG's is
-    `ogg_length_ms`;
-  - `SoundCue::lengths_ms: Vec<Option<u32>>`, one per file, filled by
-    `Check::sound` (`None` for a file `sound_left_out` leaves out) and
-    never written in the RON. `SoundCue::new` leaves it empty and stays
-    `const`. A list shorter than `files` means the rest are unknown;
-  - `AudioManifest::measure_sounds(&mut self, read: &dyn Fn(&str) ->
-    Bytes)` fills the lengths of a manifest built in code;
-  - the `Sound` kind gains `length_ms: Option<u32>`, from
-    `sound_length_ms`. Fix its literal in
-    `crates/assets/src/format/builtin_tests.rs` and its pattern in
-    `formats.rs`. **From 2095 (done):** the kind is
-    `#[non_exhaustive]`, so `Sound::mono` and `Sound::stereo` start
-    `length_ms` at `None`, and the field is additive;
-  - the manifest's binary form changes, so `pack::VERSION`
-    (`crates/assets/src/pack.rs`) becomes the next number, and the
-    pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted;
-  - **From 2225 (done):** `sound_length_ms` gives a `.sfx.ron` (a name
-    `audio::SFX_SUFFIX` ends) the length it renders to (`n × 1000 /
-    SAMPLE_RATE`, `n` from its `SfxDef`: `sfx::render`'s count), whether
-    the bytes are its RON text (as `AudioManifestRon` reads the bundle)
-    or the WAV a game's hook rendered (`audio::playable`), and
-    `sfx::SfxRon` fills the `Sound` kind's `length_ms`. Both behind the
-    `sfx` feature, as the format is.
-  - **From 2234 (done):** `sound_length_ms` gives a `.flac` or `.mp3`
-    file the length of `audio::track_length_ms`, so a FLAC sound of a
-    cue with `max_copies` has a length.
+- **From 2280 (done):** the lengths are measured. `sound_length_ms(name,
+  bytes)` gives a sound file's length (a WAV's from its `data` chunk, an
+  OGG's, a FLAC's or MP3's, a `.sfx.ron`'s with the `sfx` feature);
+  `SoundCue::lengths_ms` holds one per file, filled by `Check::sound`, and
+  `SoundCue::length_ms(file)` reads it (`None` for one unknown);
+  `AudioManifest::measure_sounds` fills a manifest built in code; the
+  `Sound` kind has `length_ms`; `pack::VERSION` is 23. This ticket's
+  `CueRules` fields change the binary form again, so `pack::VERSION`
+  becomes the next number, and the pinned snapshot in
+  `crates/assets/src/pack/tests.rs` is accepted.
 - **Copies in `Cues`** (`crates/platform/src/audio/cues.rs`, `no_std`,
   integers only):
   - `CopyId`: a `Copy`, `Ord` id around a `u64` counter that `Cues`
@@ -248,12 +222,13 @@ None.
   (game#1170), stops the one copy `StopCopy` names. The PR says so, and
   the game's PR that moves the pin follows it.
 
-**Size.** If the PR passes about 600 changed lines (fixtures and
-snapshots not counted), the lengths go first as a ticket of their own
-(`write-ticket`, 23xx, After MVP, blocked by 2345): `sound_length_ms`,
-`lengths_ms`, `measure_sounds`, the `Sound` kind's `length_ms`, the pack
-version and the `.sfx.ron` lengths (*From 2225*). That PR adds it to this
-ticket's `blocked_by`.
+**Estimated size:** about 1,400 lines (code 550, tests 700, docs 150),
+the lengths already done (2280).
+
+**Split:** past 1,000 lines, split off `shuyi-app`'s and the Playdate's
+handle per copy (*`shuyi-app` stops one copy alone* and *From 3029*) into
+a new ticket, blocked by this one, and say in the PR what those backends
+do with a `StopCopy` until it lands.
 
 **Out (do not do):**
 - what 2345 does: the cue rules' place in `App`, variants, the random
@@ -281,14 +256,10 @@ ticket's `blocked_by`.
    `crates/app/src/audio.rs` and `backend.rs`; and
    `crates/cli/src/contract/run.rs`. Check whether 2218, 2225, 2344,
    3017, 3029 and 3031 are done (the either-order clauses).
-2. Lengths: `sound_length_ms`, `lengths_ms` filled in `Check::sound`,
-   `measure_sounds`, and the `Sound` kind's `length_ms`. Give the tests
-   a WAV helper with a `data` chunk of a known number of frames.
+2. (Done by 2280: the lengths.)
 3. The data: `max_copies`, `WhenFull`, `priority`, `max_voices`, the
    RON fields, the checks, the hand-written `Default` and
-   `CueRules::DEFAULT`, the pack version and its snapshot. Measure the
-   diff here: if steps 2 to 6 look like more than about 600 lines, split
-   as **Size** says.
+   `CueRules::DEFAULT`, the pack version and its snapshot.
 4. `Cues`: `CopyId`, the copies sounding, the cap, the voice rule and
    the new `DropWhy`s, with the unit tests and the property test.
 5. `SoundRequest::Sound`'s `copy`, `SoundRequest::StopCopy`, the
@@ -310,11 +281,6 @@ ticket's `blocked_by`.
       values. `max_copies: 0`, `max_voices: 0`, and a cue with
       `max_copies` whose WAV has no `data` chunk, are errors at their
       line.
-- [ ] `sound_length_ms` gives the length to the millisecond of mono and
-      stereo WAV bytes with a `data` chunk and of OGG bytes, built in
-      the tests; it gives `None` for a WAV with no `data` chunk and for
-      a block align of 0. `Check::sound` fills `lengths_ms`, and the
-      `Sound` kind's `length_ms` agrees.
 - [ ] At no time do more than `max_copies` copies of a cue, or
       `max_voices` in all, sound: a property test over random rules,
       lengths and timed plays, checked by a model that rebuilds the
@@ -350,8 +316,7 @@ ticket's `blocked_by`.
 ## Tests required
 
 - Unit: the RON fields, written bare, and the checks; `Default` and
-  `CueRules::DEFAULT` equal; `sound_length_ms` on built WAV and OGG
-  bytes; `measure_sounds`; the `Sound` kind's `length_ms`; `Skip`,
+  `CueRules::DEFAULT` equal; `Skip`,
   `StopOldest`, the voice rule, ends, unknown lengths; the `Speaker`
   records `StopCopy`.
 - Property: the caps against the model; a dropped play draws nothing;

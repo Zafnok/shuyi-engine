@@ -228,6 +228,18 @@ What each one reads:
   `sounds`), and listed with why (`Harness::dropped_sounds`). A sound started with a handle is picked the same way, and is
   never dropped. In Rust a cue takes them with `SoundCue::with_rules`
   (`CueRules::DEFAULT.with_min_gap_ms(40)`).
+  **A sound's length** (ticket 2280, ADR-0139 §4) is measured, never
+  written: the check keeps each file's in the cue's `lengths_ms` (read
+  with `SoundCue::length_ms(file)`), from `audio::sound_length_ms`, in
+  whole milliseconds, to the nearest. A WAV's (by its bytes, whatever its
+  name) is its `data` chunk's frames over its rate, an OGG's from its last
+  page, a FLAC's or an MP3's as its track reads, and a sound effect's the
+  samples it renders to. It is `None` for a file left out of the build or
+  not found, a WAV with no `data` chunk or a block align or a rate of 0,
+  and an OGG with no last page. A manifest built in code measures its
+  sounds with `AudioManifest::measure_sounds(read)`. The `Sound` kind has
+  the same `length_ms`. The cue rules end a copy of a sound at its start
+  plus its file's length (ticket 2378).
   **A loop region** (ticket 2397): a looped track may say `loop_start_ms`
   and `loop_end_ms`, both or neither, with `0 <= start < end <=
   length_ms`. It plays from its start up to `loop_end_ms` once, then

@@ -277,7 +277,9 @@ fn broken_bytes_are_an_error_that_names_the_format() {
 
 #[test]
 fn flac_reads_a_sounds_header_and_a_tracks_length() {
-    assert_eq!(alone(&Flac, "a.flac", FLAC), Ok(Sound::stereo(44_100)));
+    let sound = Sound::stereo(44_100).with_length_ms(Some(50));
+    assert_eq!(alone(&Flac, "a.flac", FLAC), Ok(sound));
+    assert_eq!(crate::audio::sound_length_ms("sfx/a.flac", FLAC), Some(50));
     let track = MusicTrack {
         channels: 2,
         sample_rate: 44_100,
@@ -298,6 +300,7 @@ fn flac_reads_a_sounds_header_and_a_tracks_length() {
     unknown[21] &= 0xf0;
     unknown[22..26].fill(0);
     assert_eq!(alone(&Flac, "a.flac", &unknown), Ok(Sound::stereo(44_100)));
+    assert_eq!(crate::audio::sound_length_ms("a.flac", &unknown), None);
     assert_eq!(
         shown(alone(&FlacTrack, "a.flac", &unknown)),
         ["a.flac: its length can't be read (its STREAMINFO has no sample count)"]
@@ -306,7 +309,9 @@ fn flac_reads_a_sounds_header_and_a_tracks_length() {
 
 #[test]
 fn mp3_reads_a_sounds_header_and_a_tracks_length_without_the_encoders_padding() {
-    assert_eq!(alone(&Mp3, "a.mp3", MP3), Ok(Sound::mono(44_100)));
+    let sound = Sound::mono(44_100).with_length_ms(Some(50));
+    assert_eq!(alone(&Mp3, "a.mp3", MP3), Ok(sound));
+    assert_eq!(crate::audio::sound_length_ms("sfx/a.mp3", MP3), Some(50));
     // 2,205 samples: the LAME tag's delay and padding are taken off.
     let track = MusicTrack {
         channels: 1,
@@ -319,7 +324,8 @@ fn mp3_reads_a_sounds_header_and_a_tracks_length_without_the_encoders_padding() 
         length_ms: 78,
         ..track
     };
-    assert_eq!(alone(&Mp3, "a.mp3", MP3_UNTAGGED), Ok(Sound::mono(44_100)));
+    let sound = Sound::mono(44_100).with_length_ms(Some(78));
+    assert_eq!(alone(&Mp3, "a.mp3", MP3_UNTAGGED), Ok(sound));
     assert_eq!(alone(&Mp3Track, "a.mp3", MP3_UNTAGGED), Ok(untagged));
     assert_eq!(
         shown(alone(&Mp3Track, "a.mp3", b"\xff\xfb")),
@@ -342,11 +348,11 @@ fn the_standard_registry_knows_every_codec_by_its_magic_bytes() {
     let file = AssetPath::new("a.ogg");
     assert_eq!(
         formats.decode::<Sound>(&file, FLAC, &cx),
-        Ok(Sound::stereo(44_100))
+        Ok(Sound::stereo(44_100).with_length_ms(Some(50)))
     );
     assert_eq!(
         formats.decode::<Sound>(&file, MP3, &cx),
-        Ok(Sound::mono(44_100))
+        Ok(Sound::mono(44_100).with_length_ms(Some(50)))
     );
 }
 
