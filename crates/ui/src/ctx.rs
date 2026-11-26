@@ -714,6 +714,24 @@ impl<G: GameData> Ctx<G> {
         &self.lang
     }
 
+    /// Where the game's file at `path` is read in the language text is
+    /// shown in ([`effective_lang`](Self::effective_lang)): the first copy
+    /// of it along that language's fallback chain, in the folder
+    /// `languages` (`lang/pt/files/<path>`), that `has`, else `path`
+    /// ([`localized_path`]). A screen asks each time it draws, so a change
+    /// of language shows at once:
+    ///
+    /// ```ignore
+    /// let path = ctx.localized("lang", "title/end.png", |p| images.id(p).is_some());
+    /// let end = images.id(&path);
+    /// ```
+    ///
+    /// [`localized_path`]: shuyi_assets::lang::localized_path
+    pub fn localized(&self, languages: &str, path: &str, has: impl Fn(&str) -> bool) -> String {
+        let chain = self.game.lang().chain(self.effective_lang());
+        shuyi_assets::lang::localized_path(languages, &chain, path, has)
+    }
+
     /// Whether `code` is the game's debug language ([`GameData::debug_lang`]).
     fn is_debug_lang(&self, code: &LangCode) -> bool {
         self.game.debug_lang() == Some(code.as_str())

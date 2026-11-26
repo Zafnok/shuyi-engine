@@ -304,10 +304,20 @@ What each one reads:
   (`lang/en/ui.ron`, or the folder of the source a game declares:
   `lang::from_files_in`, `LangPackRon::source_lang`), and its `data.ron`
   and `dialogue/*.ron`, checked against the game's data text when the
-  format has it (`LangPackRon::with_data`) and left out otherwise. Any
-  other file in its folder is an error, except import settings files
-  (below), which are skipped; the source's folder holds its `ui.ron`
-  only. A key a pack lacks, or has stale, shows from the pack of the
+  format has it (`LangPackRon::with_data`) and left out otherwise. Its
+  `files/` holds its copies of the game's files, each at the game's path
+  (`lang/ja/files/title/end.png` is the Japanese `title/end.png`, as
+  Unreal's `L10N/<culture>/<path>`), never read as text: a picture with
+  words in it, say. `lang::localized_path` finds the first copy along a
+  chain that the bundle has, else the plain path, and `Ctx::localized`
+  does it along the language in use, so a screen that asks each time it
+  draws shows the right one at once. A target's own copy of a language's
+  file sits at the same path in its layer
+  (`assets@playdate/lang/ja/files/title/end.png`); without one, the
+  language's copy wins over the target's plain file. Any other file in
+  its folder is an error, except import settings files (below), which
+  are skipped; the source's folder holds its `ui.ron` only, and no
+  copies. A key a pack lacks, or has stale, shows from the pack of the
   next shorter tag the game has (`pt-BR`, then `pt`), then from the
   source (`Lang::chain`). Its `lang.ron` holds its `name`, `made_by`, and
   two fields for wide text, both optional: `wide_font`, the font atlas's

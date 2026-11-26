@@ -33,6 +33,11 @@
 //! can say where each key's text is drawn ([`Place`]: its width in cells
 //! and a note for translators), and [`Lang::overflow`] lists a pack's
 //! entries too wide for it.
+//!
+//! **A language's own copies of files.** A pack's folder may hold
+//! `files/<path>`, that language's copy of the game's file at `<path>` (a
+//! picture with words in it), which no reader of a pack reads.
+//! [`localized_path`] finds the first one along a chain that a bundle has.
 use crate::prelude::*;
 
 mod formats;
@@ -87,6 +92,10 @@ const DIALOGUE_DIR: &str = "dialogue/";
 
 /// Extension of a pack's dialogue files.
 const DIALOGUE_EXTENSION: &str = ".ron";
+
+/// Directory of a pack's own copies of the game's files
+/// ([`localized_path`]).
+const FILES_DIR: &str = "files/";
 
 /// How many cells of the screen `text` takes: one per character, two for a
 /// character `widths` has wide (a Japanese or Chinese one, from the font
@@ -846,6 +855,38 @@ fn is_dialogue_file(name: &str) -> bool {
         .is_some_and(|stem| !stem.is_empty() && !stem.contains('/'))
 }
 
+/// Whether `name` (a path inside a pack's directory) is the pack's copy of
+/// one of the game's files, `files/<path>`, which no reader of a pack
+/// reads ([`localized_path`] finds it).
+fn is_copy_file(name: &str) -> bool {
+    name.strip_prefix(FILES_DIR)
+        .is_some_and(|path| !path.is_empty())
+}
+
+/// Where the file at `path` is read in the language whose fallback chain
+/// is `chain` ([`Lang::chain`]): the first `<languages>/<tag>/files/<path>`
+/// along it that `has`, else `path` itself. `languages` is the languages'
+/// folder (`lang`). A pack's copy of a game's file is that language's
+/// version of it, as Unreal's `L10N/<culture>/<path>`: a picture with
+/// words in it, say. The source's folder holds no copies, so its tag at
+/// the chain's end finds none. A bundle answers `has` through its layers in
+/// order, so a target's layer can hold its own copy of a language's file.
+pub fn localized_path(
+    languages: &str,
+    chain: &[LangCode],
+    path: &str,
+    has: impl Fn(&str) -> bool,
+) -> String {
+    chain
+        .iter()
+        .map(|tag| {
+            let pack = crate::format::join(languages, tag.as_str());
+            crate::format::join(&pack, &format!("{FILES_DIR}{path}"))
+        })
+        .find(|copy| has(copy))
+        .unwrap_or_else(|| path.to_owned())
+}
+
 /// The tag a pack's folder `dir` names, or what its error says: a folder is
 /// named by a tag as BCP 47 writes it, so `pt-br` is refused rather than
 /// becoming a second language where file names ignore case.
@@ -876,8 +917,9 @@ pub fn from_files(
 /// places, [`english_and_places_from_source`]), and a pack for every other
 /// folder, named by its tag, which needs its `lang.ron` and `ui.ron` and
 /// may have a `data.ron` and `dialogue/<file>.ron` files (checked against
-/// `data`; left out without it). Import settings files are skipped
-/// (ADR-0057); any other file is an error, a `lang.ron` in the source's
+/// `data`; left out without it) and its copies of the game's files,
+/// `files/<path>`, never read ([`localized_path`]). Import settings files
+/// are skipped (ADR-0057); any other file is an error, a `lang.ron` in the source's
 /// folder too. `display` gives the name a path is reported under. Reports
 /// every problem found; with the source's screen text broken the packs are
 /// not checked (each entry would be an unknown key).
@@ -906,7 +948,9 @@ pub fn from_files_in(
             Some((dir, name)) if dir == source.code.as_str() => name == UI_FILE,
             Some((dir, name)) => {
                 dirs.insert(dir);
-                [UI_FILE, INFO_FILE, DATA_FILE].contains(&name) || is_dialogue_file(name)
+                [UI_FILE, INFO_FILE, DATA_FILE].contains(&name)
+                    || is_dialogue_file(name)
+                    || is_copy_file(name)
             }
             None => false,
         };
@@ -982,6 +1026,8 @@ pub fn from_files_in(
 
 #[cfg(test)]
 mod chain_tests;
+#[cfg(test)]
+mod copies_tests;
 #[cfg(test)]
 mod pack_tests;
 
@@ -1331,6 +1377,41 @@ mod tests {
             ("xx/ui.ron", UI),
         ]);
         assert!(read.is_ok(), "{read:?}");
+    }
+
+    #[test]
+    fn a_packs_copies_of_files_are_not_read() {
+        let binary = |path| LangFile { path, source: None };
+        let text = |path, source| LangFile {
+            path,
+            source: Some(source),
+        };
+        let pack = [
+            text("en/ui.ron", ENGLISH_SOURCE),
+            text("xx/lang.ron", INFO),
+            text("xx/ui.ron", UI),
+            binary("xx/files/x.png"),
+            text("xx/files/x.png.meta", "()"),
+        ];
+        let read = from_files(&pack, None, str::to_owned, &RULES);
+        assert!(read.is_ok(), "{read:?}");
+        // The source's folder has no copies, and a pack no other files.
+        let stray = [
+            text("en/ui.ron", ENGLISH_SOURCE),
+            binary("en/files/x.png"),
+            text("xx/lang.ron", INFO),
+            text("xx/ui.ron", UI),
+            text("xx/files", ""),
+        ];
+        let errors = from_files(&stray, None, str::to_owned, &RULES).unwrap_err();
+        let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        assert_eq!(
+            errors,
+            [
+                "en/files/x.png: not a file a language has",
+                "xx/files: not a file a language has",
+            ]
+        );
     }
 
     #[test]

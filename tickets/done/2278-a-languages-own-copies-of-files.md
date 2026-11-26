@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2349"]
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 2278 — A language's own copies of files
@@ -118,19 +118,19 @@ accepts more. game#0831 builds on `Ctx::localized`.
 
 ## Acceptance criteria
 
-- [ ] `localized_path` finds `lang/pt/files/x.png` for `pt-BR`, prefers
+- [x] `localized_path` finds `lang/pt/files/x.png` for `pt-BR`, prefers
       `lang/pt-BR/files/x.png` when that exists, and gives `x.png`
       otherwise. With `lang/pt/` left out of the bundle, it gives
       `x.png`. A copy read back from a pack equals the loose one (unit
       tests).
-- [ ] A pack with `files/x.png` and `files/x.png.meta` passes both
+- [x] A pack with `files/x.png` and `files/x.png.meta` passes both
       readers; a pack with another unknown file still fails both (unit
       tests).
-- [ ] `Ctx::localized` gives another path as soon as the language
+- [x] `Ctx::localized` gives another path as soon as the language
       changes, and the plain path for the debug language without debug
       tools (unit test).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -141,5 +141,38 @@ accepts more. game#0831 builds on `Ctx::localized`.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Done.** A pack's folder may hold `files/<path>`: `is_copy_file` in
+  `crates/assets/src/lang.rs`, called beside the settings-file skip in
+  both readers (`from_files_in`, `LangPackRon::decode`); the source's
+  folder still takes none. `shuyi_assets::lang::localized_path` (pure,
+  beside `Lang::chain`) and `Ctx::localized` (along `Lang::chain` of
+  `effective_lang`) find the first copy the bundle has, else the plain
+  path.
+- **Tests.** `lang::copies_tests`: a copy along `pt-BR`'s chain, its own
+  first, the plain path with none and with `lang/pt/` left out, a
+  target's layer (`assets@playdate`) holding its own copy while another
+  language keeps the base copy, and a copy read back from a baked pack
+  equal to the loose one. Both readers with `files/x.png` and
+  `files/x.png.meta`, and a stray file (`files` with no folder, a copy in
+  the source's folder) still failing. `Ctx::localized` across a change of
+  language and the debug language with and without debug tools
+  (`ctx::lang_tests`).
+- **Either order with 2238:** 2238 is not done, so `files/` is accepted
+  in both readers; 2238's clause now says to move it into
+  `is_pack_file`.
+- **Deviations.** None. The ticket was written today, so it needed no
+  check against the code.
+- **Docs.** `docs/formats.md` (a pack's `files/`), the module docs of
+  `lang.rs`, the doc comments of both readers, the book's chapter 3 (*A
+  language's own pictures*) and the `shuyi-import-art` skill's table.
+- **Searched the game** (`gh search code --repo Zafnok/visions-of-shuyi
+  'not a file a language has'`, and `'localized'`): no hits, so nothing
+  there relies on the refusal this loosens.
+
+No break: two new functions.
+
+Behaviour: shuyi-assets: a language pack's folder with a `files/` folder (`lang/ja/files/title/end.png`) no longer fails with "not a file a language has", in `lang::from_files_in` and `LangPackRon`; the source's folder still refuses one.
+
+Game: game#0831 builds on `Ctx::localized`.
+
+Nick input: none.
