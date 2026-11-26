@@ -169,7 +169,9 @@ draft measured about 600.
   (206 events and their hash), which CI's wasm32 `determinism` job runs;
   `crates/net/tests/links.rs`: a disconnect under delays, loss,
   duplicates and reordering over 200 seeds, and the closing end told at
-  the next step under a delay of 5.
+  the next step under a delay of 5. They pass on wasm32-wasip1 under
+  wasmtime too, the pinned session with them (the two `should_panic`
+  tests are skipped there, as WASI can't unwind).
 - **Docs:** the crate's rustdoc (a faults example, checked as a
   doctest), `MemoryNetwork`'s *Faults* section, the README's opening,
   cost and how-to-start sections, and the crate's line in
