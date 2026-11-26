@@ -99,8 +99,12 @@ finds nothing):
   rules.
 - 3414 adds `crates/mcp-launch` and edits `crates/cli/src/mcp`, which
   stays where it is here.
-- 2005 publishes the crates and lists them by hand. 3510 makes the
-  publish list come from the workspace.
+- **From 3510 (done):** the publish list is the workspace's engine
+  crates (ADR-0152). `shuyi-contract` is published once it is a member:
+  it takes `version.workspace = true` and `publish.workspace = true`, an
+  entry in `[workspace.dependencies]` pinned `=` the workspace's version
+  (`shuyi-cli` depends on it), and `cargo xtask check-publish` holds it.
+  CI's `check-publish --index` fails until its name is on crates.io.
 
 ## Nick input
 
@@ -164,8 +168,9 @@ None.
   split one further when the ratchet or a rebuild time asks for it.
 - A shared test-support crate across `xtask`, `shuyi-app` and
   `shuyi-embed`. Five helpers outside `shuyi-cli` do not need a crate.
-- Claiming the new crate's name on crates.io. 3510 claims every crate
-  name in the workspace.
+- Claiming the new crate's name on crates.io: Nick's (a 0.0.0
+  placeholder, asked with the `ask-nick` skill before the PR merges,
+  since CI's `check-publish --index` fails until it is held).
 - Counting lines in Markdown, data or snapshots. Only `.rs` files count.
 - Byte budgets on the Markdown files agents read whole (AGENTS.md, the
   docs map, the work-ticket, run-gates, write-ticket and document
