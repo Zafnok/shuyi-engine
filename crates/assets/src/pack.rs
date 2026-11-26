@@ -101,7 +101,7 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// holds a loop region, version 21's sound cue holds its
 /// rules (ADR-0139), version 22's target profile its
 /// graphics tier, and version 23's target profile its texture limit,
-/// beside the atlas kind (ADR-0154).
+/// beside the atlas kind (ADR-0155).
 pub const VERSION: u32 = 23;
 
 /// The bytes a baked file in a pack starts with.

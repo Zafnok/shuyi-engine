@@ -46,7 +46,7 @@ None.
   offset and its size before trimming, as TexturePacker's
   `spriteSourceSize` and `sourceSize` give) is added here as optional
   fields of an entry. **From 2222 (done):** `Atlas` is in
-  `crates/assets/src/atlas.rs` (ADR-0154): add those fields to it, in
+  `crates/assets/src/atlas.rs` (ADR-0155): add those fields to it, in
   this crate since its fields are private. `Placed { page, rect }` is
   the table's entry, with public fields and no `#[non_exhaustive]`: an
   optional field on it is a break (a `Breaking:` line), or put the
