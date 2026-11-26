@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2613"]
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2620 — MemoryNetwork's seeded faults
@@ -101,29 +101,29 @@ draft measured about 600.
 
 ## Acceptance criteria
 
-- [ ] The same `Faults` seed and the same sends give the same delivery
+- [x] The same `Faults` seed and the same sends give the same delivery
       order, event for event, in two runs, and a session's events are
       pinned (count and hash) by a test CI's wasm32 `determinism` job
       runs (`-p shuyi-net` is on its line since 2613).
-- [ ] Reliable messages are never lost, duplicated or reordered under
+- [x] Reliable messages are never lost, duplicated or reordered under
       any fault setting (a property test over at least 200 seeds with
       loss, duplicates and reordering each at 500 per-mille).
-- [ ] Over 10,000 Unreliable messages at 100 per-mille each, the
+- [x] Over 10,000 Unreliable messages at 100 per-mille each, the
       measured loss, duplicate and reorder rates are each within 70–130
       per-mille.
-- [ ] Every delivery lands between `delay_min` and `delay_max` steps
+- [x] Every delivery lands between `delay_min` and `delay_max` steps
       after its send (Reliable may wait longer only behind an earlier
       message).
-- [ ] A disconnect under delays gives `Disconnected { reason: Closed }`
+- [x] A disconnect under delays gives `Disconnected { reason: Closed }`
       on both ends, after the Reliable messages sent before it; nothing
       arrives at an end after it was told.
-- [ ] A chance over 1,000 counts as 1,000; a delay of 0 as 1; a
+- [x] A chance over 1,000 counts as 1,000; a delay of 0 as 1; a
       `delay_max` below `delay_min` as `delay_min` (a case each).
-- [ ] `set_faults` with the same seed keeps the draws going, and with a
+- [x] `set_faults` with the same seed keeps the draws going, and with a
       new seed starts them afresh.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not (2854 writes the online chapter).
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534; 2855 rewrites `skills/shuyi-net`).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not (2854 writes the online chapter).
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534; 2855 rewrites `skills/shuyi-net`).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -138,3 +138,76 @@ draft measured about 600.
 - Integration: a disconnect under delays and loss, over many seeds.
 
 ## Completion notes
+
+**What was done:**
+
+- **`Faults`** (`crates/net/src/faults.rs`, exported from `lib.rs`):
+  `#[non_exhaustive]`, `Copy`, `Faults::none()` and `Default`, `const fn
+  with_seed`, `with_loss`, `with_duplicate`, `with_reorder`,
+  `with_delay_min`, `with_delay_max`, and a getter for each. Chances over
+  1,000 are clamped at the setter; the getters give the delays as set,
+  and the network uses them with 0 as 1 and a `delay_max` below
+  `delay_min` as `delay_min`.
+- **`MemoryNetwork::with_faults`**, `set_faults` and `faults`; `new()` is
+  `with_faults(Faults::none())` and delivers as before. The draws come
+  from one `SimRng::new(seed)`: five `roll_below` draws for each
+  `Unreliable` send (loss, duplicate, reordering, delay, the copy's
+  delay), one for a `Reliable` send and one for a disconnect; `connect`
+  draws none, and each end is told at the next step. Deliveries are
+  ordered by step, then held back last, then send order. Each direction
+  of a link keeps the due step of its last `Reliable` item (a later one
+  is never earlier) and whether its receiver was told the sender is
+  gone (what else arrives is thrown away).
+- **Tests:** unit tests of the clamps (a case each), `set_faults`' seed
+  rule, the draws per send, reordering at 1,000, and `stats()`'s
+  `dropped` and `duplicated` at 1,000 (`crates/net/src/memory/tests.rs`);
+  `crates/net/tests/faults.rs`: the Reliable property and the delay
+  bounds over 256 cases each (loss, duplicates and reordering at 500
+  per mille, delays of 1 to 12 steps, random send scripts), the
+  Unreliable rates over 10,000 messages for three seeds (measured 95 to
+  109 per mille), two runs of a session equal, and that session pinned
+  (206 events and their hash), which CI's wasm32 `determinism` job runs;
+  `crates/net/tests/links.rs`: a disconnect under delays, loss,
+  duplicates and reordering over 200 seeds, and the closing end told at
+  the next step under a delay of 5.
+- **Docs:** the crate's rustdoc (a faults example, checked as a
+  doctest), `MemoryNetwork`'s *Faults* section, the README's opening,
+  cost and how-to-start sections, and the crate's line in
+  `site/data/api.toml`.
+- **Size** measured on 2026-11-26, Hello, Grid's web release build
+  (`cargo build -p hello-grid --release --target wasm32-unknown-unknown`)
+  with a live `MemoryNetwork` using faults, against without the `net`
+  feature: **+29,301 bytes** (3,928,020 → 3,957,321). The same use of
+  2613's fault-free network is 3,939,257, so the faults add 18,064, and
+  `MemoryNetwork::new()` builds them too (3,957,193). The README says
+  so.
+
+**Deviations:**
+
+- **Size:** 1,048 counted lines against the 800 estimated: the tests
+  are 526 of them (the draft's property, statistics and pinned session,
+  and 2613's unit tests kept). It would split cleanly between the code
+  with its unit tests and `tests/faults.rs`; under 1,500 it stays one.
+
+- `crates/net/Cargo.toml` takes `shuyi-core = { workspace = true }`, not
+  the ticket's `path` line: `cargo xtask check-publish` wants engine
+  crates from `[workspace.dependencies]` since 3510, and the workspace's
+  entry is already `default-features = false`.
+- The draft on `t2620-memory-network-faults` was taken. It replaced
+  `new()` with `new(faults)` and dropped five of 2613's unit tests; here
+  `new()` stays and every test of 2613 is kept.
+
+Behaviour: none. `MemoryNetwork::new()` delivers as it did, everything
+at the next step, in the order sent.
+
+No break: every item is new. Searches of the game (`gh search code
+--repo Zafnok/visions-of-shuyi` for `MemoryNetwork` and `shuyi_net`)
+found nothing.
+
+Game: nothing to adopt, the crate is behind the front door's `net`
+feature, off by default, and the game builds none of it.
+
+Book: none, 2854 writes the online chapter, over this crate.
+
+Skills: none, no schema, template, format or problem code changed; 2855
+rewrites `skills/shuyi-net`.

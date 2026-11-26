@@ -1,6 +1,6 @@
 //! Shuyi Engine's networking, pure: the [`Transport`] trait a game's online
-//! play talks through, and [`MemoryNetwork`], an in-memory network for
-//! tests.
+//! play talks through, and [`MemoryNetwork`], an in-memory network with
+//! seeded [`Faults`] for tests.
 //!
 //! A transport links this end to peers, each a [`PeerId`]. It sends bytes
 //! to one on a [`Channel`] (`Reliable`, ordered and lossless as a WebSocket
@@ -8,7 +8,8 @@
 //! since: [`NetEvent`]s of peers connected, messages and disconnects. The
 //! sockets live in the backends (ADR-0155): a server's in `shuyi-server`,
 //! a native client's and a web client's in `shuyi-app`. This crate has no
-//! I/O, no clock, no threads and no floats.
+//! I/O, no clock, no threads and no floats, so the same sends, and the
+//! same faults' seed, give the same deliveries on every target.
 //!
 //! ```
 //! use shuyi_net::{Channel, MemoryNetwork, NetEvent, Transport};
@@ -33,12 +34,46 @@
 //! );
 //! # Ok::<(), shuyi_net::SendError>(())
 //! ```
+//!
+//! [`MemoryNetwork::with_faults`] puts the same code under a bad network:
+//! it loses, duplicates and reorders `Unreliable` messages at chances per
+//! mille, and delays every delivery by `delay_min` to `delay_max` steps.
+//! `Reliable` messages are delayed but stay ordered and lossless. The same
+//! seed and the same sends give the same deliveries, on every target:
+//!
+//! ```
+//! use shuyi_net::{Channel, Faults, MemoryNetwork, Transport};
+//!
+//! let faults = Faults::none()
+//!     .with_seed(7)
+//!     .with_loss(100) // 10 % of unreliable messages lost
+//!     .with_duplicate(50)
+//!     .with_reorder(50)
+//!     .with_delay_min(1)
+//!     .with_delay_max(4); // 1 to 4 steps
+//! let mut net = MemoryNetwork::with_faults(faults);
+//! let mut server = net.endpoint();
+//! let mut client = net.endpoint();
+//! net.connect(server.id(), client.id());
+//! for step in 0..100u32 {
+//!     let _ = client.send(server.id(), Channel::Unreliable, &step.to_le_bytes());
+//!     net.step();
+//! }
+//! for _ in 0..4 {
+//!     net.step();
+//! }
+//! let lost = client.stats().dropped();
+//! assert!(lost > 0);
+//! assert_eq!(server.stats().messages_in() + lost, 100 + client.stats().duplicated());
+//! ```
 #![forbid(unsafe_code)]
-// No floats anywhere: delivery is in whole steps.
+// No floats anywhere: delivery is in whole steps, chances in per mille.
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
+mod faults;
 mod memory;
 mod transport;
 
+pub use faults::Faults;
 pub use memory::{MemoryEndpoint, MemoryNetwork};
 pub use transport::{Channel, DisconnectReason, NetEvent, NetStats, PeerId, SendError, Transport};
