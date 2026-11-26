@@ -66,9 +66,9 @@ pub(crate) fn platform_folder(folder: &str) -> String {
 /// The real backend: quad-snd, which macroquad's audio is. Sound effects
 /// load into a quad-snd context of the player's own, where each playback
 /// stops and changes its volume alone; a FLAC or MP3 sound comes to it as
-/// a WAV (`Backend::load_sound_file`, ticket 2234). On native, music is
-/// decoded on a worker thread into contexts of its own ([`native_music`],
-/// game ADR-0028), a FLAC or MP3 track first to a WAV; on the web the
+/// a WAV (`Backend::load_sound_file`). On native, music is
+/// decoded on a worker thread into contexts of its own
+/// ([`native_music`]), a FLAC or MP3 track first to a WAV; on the web the
 /// browser decodes it asynchronously, whatever its format, so it goes
 /// through macroquad's.
 #[cfg(not(feature = "in-house-sound"))]
@@ -106,7 +106,7 @@ pub(crate) mod device {
         /// A music track or voice clip on the web, in macroquad's context,
         /// with its length in milliseconds if it is an OGG, FLAC or MP3
         /// file. The browser decodes it, off the page's thread: a FLAC or
-        /// MP3 track goes to it as it is (ticket 2234).
+        /// MP3 track goes to it as it is.
         #[cfg(target_arch = "wasm32")]
         Shared(Sound, Option<u32>),
         /// A native music track or voice clip in a context of its own.

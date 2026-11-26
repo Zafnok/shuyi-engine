@@ -1,5 +1,5 @@
 //! Plans: the input a backend's capture mode plays, and the frames whose
-//! pixels it compares with the raster's (ADR-0052, ticket 2018). The
+//! pixels it compares with the raster's (ADR-0052). The
 //! raster (`shuyi_ui::frame::raster`) is the reference picture of a frame;
 //! a capture mode (`shuyi-app`'s `capture` feature) runs its game frame by
 //! frame as a plan says, paints the frames the plan names with the raster
@@ -22,7 +22,7 @@
 //! )
 //! ```
 //!
-//! Its input steps are a script's ([`script::Step`], ticket 2566), with
+//! Its input steps are a script's ([`script::Step`]), with
 //! the same names and meaning as `frame-png`'s, and one more, `capture`,
 //! names the frame before it: the one on the screen. Every frame is
 //! [`FRAME_DT`](script::FRAME_DT) long.

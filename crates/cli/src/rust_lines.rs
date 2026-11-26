@@ -1,7 +1,7 @@
 //! Rust (and RON) source split into lines of code, comments and strings,
 //! and the `#[cfg(test)]` items found by counting brackets on them: the
 //! scanner `check-keys` and `check-text` read source with, and that
-//! `cargo xtask template-lines` counts a game's lines with (ticket 2512).
+//! `cargo xtask template-lines` counts a game's lines with.
 //!
 //! It is a line-based scanner, not a parser: good enough to tell a `//`,
 //! a `/*` or a brace inside a string or a char from one in code.

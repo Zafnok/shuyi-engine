@@ -79,7 +79,7 @@ pub(crate) mod tests {
     }
 
     /// A fixed bundle of two layers. Its fingerprint is the row
-    /// `fingerprint` of `tests/golden/formats.ron` (ticket 2116): a change
+    /// `fingerprint` of `tests/golden/formats.ron`: a change
     /// there changes every stamp a game wrote, whose records then read as
     /// made with other content.
     pub(crate) fn fixed() -> Bundle {

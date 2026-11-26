@@ -1,4 +1,4 @@
-//! The projects' own servers (ticket 2546): a call whose project is in
+//! The projects' own servers: a call whose project is in
 //! another cargo workspace than the server's goes to a `shuyi mcp` built
 //! from that workspace's engine, a **forwarded server**, so an agent in a
 //! worktree plays and checks the worktree's code, whichever checkout the

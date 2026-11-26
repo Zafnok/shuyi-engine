@@ -99,9 +99,9 @@ pub fn jobs(audio: &GameAudio, root: &Path) -> Result<Vec<Job>, String> {
 }
 
 /// The mono samples of the audio file `bytes` named `name` (`.wav`; a
-/// `.flac` or `.mp3`, through the WAV `audio::decode_to_wav` makes of it,
-/// ticket 2234; a `.sfx.ron` sound effect, rendered from its numbers the
-/// same way, ticket 2225; or else OGG Vorbis), at [`SAMPLE_RATE`]: a stereo
+/// `.flac` or `.mp3`, through the WAV `audio::decode_to_wav` makes of it;
+/// a `.sfx.ron` sound effect, rendered from its numbers the
+/// same way; or else OGG Vorbis), at [`SAMPLE_RATE`]: a stereo
 /// file's channels are averaged.
 pub fn decode(name: &str, bytes: &[u8]) -> Result<Vec<i16>, String> {
     let extension = Path::new(name).extension().and_then(|ext| ext.to_str());

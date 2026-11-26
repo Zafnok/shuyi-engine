@@ -1,4 +1,4 @@
-//! More picture formats (ticket 2203, ADR-0007 §3): JPEG, WebP, QOI and
+//! More picture formats (ADR-0007 §3): JPEG, WebP, QOI and
 //! JPEG XL, each behind its own feature. Each is two formats, as PNG is:
 //! one reads the size ([`ImageInfo`]) from the file's header, the other
 //! the pixels ([`Image`]), after checking that size, so a picture too big

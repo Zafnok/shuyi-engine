@@ -108,7 +108,7 @@ pub struct Display {
     #[serde(default)]
     pub sizes: Vec<Size>,
     /// How many colours it shows. ADR-0012 moves this into the target's
-    /// capabilities (ticket 3017).
+    /// capabilities.
     pub color: Color,
     /// Text shorter than this, in device pixels, is an error.
     pub min_text_px: u16,

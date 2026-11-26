@@ -421,7 +421,7 @@ impl Against {
 ///    command of `shuyi`;
 /// 3. every relative link of its Markdown files names a file of the pack,
 ///    and none names the engine's repository on `main` (a skill sends an
-///    agent to the project's `AGENTS.md`, which names the engine's docs at
+///    agent to the project's agent instructions, which name the engine's docs at
 ///    the version the game builds with);
 /// 4. its name, description, compatibility and `SKILL.md` are within the
 ///    format's lengths ([`MAX_NAME`], [`MAX_DESCRIPTION`],

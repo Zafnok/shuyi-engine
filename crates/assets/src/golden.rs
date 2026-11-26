@@ -1,4 +1,4 @@
-//! Golden tables (ticket 2116): values a build gives, pinned in a file
+//! Golden tables: values a build gives, pinned in a file
 //! beside the tests, so a change that moves one fails a test and is made
 //! on purpose. CI checks them on x64 and ARM64 (the `test` job) and on
 //! wasm32 under wasmtime (the `determinism` job): the same inputs give
@@ -27,7 +27,7 @@
 //!
 //! - What a simulation, a seeded generator or a decoder gives: a state's
 //!   hash after each step of a record, a decoded asset's `state_hash`.
-//!   Never the pixels of a look (graphics are a skin, `AGENTS.md` rule 9:
+//!   Never the pixels of a look (graphics are a skin, ADR-0002 §4:
 //!   those are `frame-png` snapshots), and never bytes a compressor may
 //!   write differently on another platform (a pack's own bytes, ADR-0023).
 //! - Rows never depend on the target or the features: every platform
@@ -62,8 +62,8 @@
 //! longer gives what an earlier one gave, so a game's record replays
 //! differently or its asset reads as another. The PR that blesses it adds
 //! a `Breaking:` line naming the table to its ticket's completion notes
-//! (the version policy counts it as a break; ticket 2035 makes CI's
-//! `determinism` job check the line). An example's table whose example
+//! (the version policy counts it as a break, and CI's `determinism` job
+//! checks the line). An example's table whose example
 //! changed its own files in the same PR moved with its own rules, not the
 //! engine's: no line.
 //!

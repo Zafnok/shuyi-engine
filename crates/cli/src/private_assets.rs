@@ -386,7 +386,7 @@ mod tests {
     /// Settings that keep git's own housekeeping out of a scratch
     /// repository. A commit or a push starts it in the background, and its
     /// repack then moves files under `objects/` while the next command
-    /// copies them (ticket 0120: seen on a Mac runner with git 2.55).
+    /// copies them (seen on a Mac runner with git 2.55).
     const NO_UPKEEP: [&str; 2] = ["gc.auto=0", "maintenance.auto=false"];
 
     /// `git <args>` in `dir`, which must work.

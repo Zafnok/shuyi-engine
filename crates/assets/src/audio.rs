@@ -12,13 +12,13 @@
 //! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
 //! ([`OggVorbisTrack`]), and the manifest is read by
 //! [`AudioManifestRon`]. FLAC and MP3 are formats of both kinds too, each
-//! behind its own feature (`flac`, `mp3`; ticket 2203): `Flac` and
+//! behind its own feature (`flac`, `mp3`): `Flac` and
 //! `FlacTrack`, `Mp3` and `Mp3Track`. A sound may be a `.ogg`, `.wav`,
 //! `.flac` or `.mp3` file, a track a `.ogg`, `.flac` or `.mp3` one. The
 //! platform plays a FLAC or MP3 sound as the WAV [`decode_to_wav`] makes
-//! of it (ticket 2234). With the `sfx` feature a sound may also be a
-//! `.sfx.ron` file, a sound effect written as a few numbers (`sfx`,
-//! ticket 2225), which the sound hook renders to a WAV once as the game
+//! of it. With the `sfx` feature a sound may also be a
+//! `.sfx.ron` file, a sound effect written as a few numbers (`sfx`),
+//! which the sound hook renders to a WAV once as the game
 //! loads it ([`playable`]).
 //!
 //! Every cue plays in a sound group (ADR-0091): the one its `group` names,
@@ -72,7 +72,7 @@ pub use formats::{Flac, FlacTrack};
 pub use formats::{Mp3, Mp3Track};
 pub use groups::{DuckRule, GroupDef};
 
-/// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
+/// Licenses a credit may have. `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
 
 /// The license of work we made ourselves.
@@ -342,7 +342,7 @@ pub struct MusicCue {
     /// Whether it loops (the default) or plays once.
     pub looped: bool,
     /// How long the track plays, in milliseconds (never 0): where the music
-    /// clock wraps a looped track (game ADR-0037). The game can't measure it
+    /// clock wraps a looped track. The game can't measure it
     /// (the player library gives no length), so it is data, checked
     /// against the file by a test.
     pub length_ms: u32,
@@ -350,7 +350,7 @@ pub struct MusicCue {
     pub credit: CreditRef,
     /// The sound group it plays in: `None` is `music`.
     pub group: Option<String>,
-    /// Where a looped track's region starts, in milliseconds (ticket 2397):
+    /// Where a looped track's region starts, in milliseconds:
     /// it plays from its start up to [`loop_end_ms`](Self::loop_end_ms)
     /// once, then from here to there again and again. With `loop_end_ms`
     /// or not at all: [`loop_region`](Self::loop_region) gives both.
@@ -365,8 +365,8 @@ pub struct MusicCue {
 }
 
 /// Part of a track, from `start_ms` up to, not including, `end_ms`: a
-/// looped track plays what comes before it once, then goes round it
-/// (ticket 2397). A value (ADR-0039, kind 3): build it with
+/// looped track plays what comes before it once, then goes round it.
+/// A value (ADR-0039, kind 3): build it with
 /// [`LoopRegion::new`].
 ///
 /// **Frames.** A backend plays it in frames of the file: a millisecond `ms`
@@ -659,7 +659,7 @@ pub fn without_extension(file: &str) -> &str {
 }
 
 /// The sample rate every file must have: quad-snd (native) plays at
-/// 44.1 kHz and resamples anything else crudely (game ADR-0026).
+/// 44.1 kHz and resamples anything else crudely.
 pub const SAMPLE_RATE: u32 = 44_100;
 
 /// The end of a sound effect's file name (`sfx/coin.sfx.ron`).

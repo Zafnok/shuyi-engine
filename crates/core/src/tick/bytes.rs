@@ -1,6 +1,6 @@
 //! The byte form of a step's input: fixed, compact and little-endian, and
 //! never serde's, so a wire stays the same whatever serde does. Its one
-//! user so far is the room's wire (ticket 2614), which sends each step's
+//! user so far is the room's wire, which sends each step's
 //! [`TickInput`] to every client.
 //!
 //! - A seat ([`SeatInput::encode`]) is one header byte whose bits 0, 1 and

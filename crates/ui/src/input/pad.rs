@@ -1,8 +1,9 @@
-//! Controllers (ticket 0219, game ADR-0034): from each connected pad's raw state
+//! Controllers: from each connected pad's raw state
 //! to the [`Button`] presses and releases [`InputState`] is fed. Pure:
 //! `app` fills a [`PadState`] per pad every frame (gilrs on native, the
 //! browser's Gamepad API on web) and [`Pads::update`] does the rest, so both
-//! platforms share these rules (`docs/design/controls.md`, *Controller*):
+//! platforms share these rules (rule 7 of the `shuyi-input` skill's *The
+//! rules*):
 //!
 //! - **Sticks are 4-way buttons.** A stick pushed far enough counts as one
 //!   held direction button, the direction it is pushed furthest, so it
@@ -110,8 +111,7 @@ impl PadKind {
     }
 
     /// What help text calls the button at binding position `button` on
-    /// this kind of pad (`docs/design/controls.md`, *Button names on
-    /// screen*): Xbox letters (also on generic pads), Sony's shapes,
+    /// this kind of pad: Xbox letters (also on generic pads), Sony's shapes,
     /// or Nintendo's letters (a PS4 pad says `Share` where later Sony pads
     /// say `Create`). The Playdate's `A` is `East` and its `B` is `West`, as
     /// printed on it; every other name is the Xbox one, its D-pad's and its
