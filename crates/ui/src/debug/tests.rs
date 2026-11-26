@@ -322,7 +322,10 @@ fn the_debug_view_moves_slow_motion_through_its_speeds_and_says_the_game_is_paus
     c.debug_view.set_slow(4);
     let s = DebugViewScreen::new(&c);
     let item = &s.view(&c).menu.items[1];
-    assert_eq!(item.suffix.as_ref().map(|(t, _)| t.as_str()), Some("  1/4x"));
+    assert_eq!(
+        item.suffix.as_ref().map(|(t, _)| t.as_str()),
+        Some("  1/4x")
+    );
     c.debug_view.set_paused(true);
     assert_eq!(s.view(&c).status, "Game paused · F4 step · F3 run");
     c.debug_view.step();

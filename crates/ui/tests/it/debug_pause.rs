@@ -50,7 +50,9 @@ fn up(name: &str) -> RawInputEvent {
 }
 
 fn hash(h: &Harness<Toy>) -> shuyi_core::StateHash {
-    h.game().state_hash().unwrap_or_else(|| panic!("the field has a hash"))
+    h.game()
+        .state_hash()
+        .unwrap_or_else(|| panic!("the field has a hash"))
 }
 
 #[test]
@@ -67,7 +69,11 @@ fn a_step_runs_one_update_of_a_sixtieth_and_pausing_none() {
     h.frame(&[down("F4")], 0.25).frame(&[up("F4")], FRAME_DT);
     assert_eq!(log.borrow().len(), ran + 1);
     let stepped = log.borrow().last().cloned().unwrap();
-    assert!((stepped.dt - STEP_DT).abs() < f32::EPSILON, "{}", stepped.dt);
+    assert!(
+        (stepped.dt - STEP_DT).abs() < f32::EPSILON,
+        "{}",
+        stepped.dt
+    );
     // Neither debug action reaches a screen.
     assert!(stepped.actions.is_empty(), "{:?}", stepped.actions);
     assert_eq!(h.ctx().debug_view.steps(), 1);
@@ -370,7 +376,10 @@ fn a_step_of_a_tick_stage_is_one_fixed_step_and_its_readout_names_it() {
     // A long frame steps once all the same.
     h.frame(&[down("F4")], 0.25).frame(&[up("F4")], FRAME_DT);
     assert_eq!(steps(&h), paused + 1);
-    assert_eq!(readout(&h)[..2], ["paused, step 1", &format!("step {}", paused + 1)]);
+    assert_eq!(
+        readout(&h)[..2],
+        ["paused, step 1", &format!("step {}", paused + 1)]
+    );
 }
 
 /// A screen that does nothing, drawn as nothing.

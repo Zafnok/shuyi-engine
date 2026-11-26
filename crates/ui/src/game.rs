@@ -1003,9 +1003,7 @@ impl<G: GameData> Game<G> {
             return;
         }
         let pause = self.ctx.debug_view.pause_line();
-        let lines = pause
-            .into_iter()
-            .chain(self.stack.debug_readout(&self.ctx));
+        let lines = pause.into_iter().chain(self.stack.debug_readout(&self.ctx));
         let frame = gizmos.frame();
         let (_, cell_h) = self.ctx.console.cell_px();
         let mut y = frame.y;
