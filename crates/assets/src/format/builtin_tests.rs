@@ -37,6 +37,9 @@ use crate::names::{self, Names, NamesRon};
 use crate::onebit::{PatternMapDef, PatternMapRon};
 use crate::palette::{PaletteDef, PaletteRon};
 use crate::ron::{Ron, parse_ron};
+use crate::tileset::{TerrainTilesRon, TileRules};
+use shuyi_core::TerrainId;
+use std::collections::BTreeMap;
 
 /// The errors of `result`, each with its file and place.
 fn shown<T>(result: Result<T, Vec<ContentError>>) -> Vec<String> {
@@ -155,6 +158,51 @@ pub(crate) const MAP_FORMAT: MapFormat<'static> = MapFormat {
 /// The `.map` format of the tests' terrains.
 pub(crate) fn map_text() -> MapText<u8> {
     MapText::new(MAP_FORMAT, terrain)
+}
+
+/// The looks a map of these tests may name.
+pub(crate) const TILE_LOOKS: &[&str] = &["outdoor", "winter", "cave"];
+
+/// The rules of these tests, as a game writes them in a `const`.
+pub(crate) const TILE_RULES: TileRules<'static> = TileRules::new(TILE_LOOKS, 8..=64);
+
+/// A farm's terrain tiles: two looks, a corners and a tiles layer, in
+/// [`terrain_tiles_images`]' image.
+pub(crate) const TERRAIN_TILES: &str = r##"(
+    image: "tiles/farm.png",
+    tile_px: (16, 16),
+    terrain: { "soil": (0, 0), "tilled": (1, 0), "water": (2, 0) },
+    layers: [
+        Corners(of: ["water"], tiles: [
+            (corners: "...#", at: (0, 1)),
+            (corners: "..##", at: (1, 1)),
+        ]),
+        Tiles(of: ["tilled"], at: (3, 0), beside: ["water"],
+              sides: [(sides: ".#.#", at: (3, 1))]),
+    ],
+    looks: {
+        "winter": (terrain: { "soil": (0, 2), "tilled": (1, 2), "water": (2, 2) }, layers: [
+            Corners(of: ["water", "tilled"], tiles: [(corners: "#...", at: (3, 2))]),
+        ]),
+    },
+)"##;
+
+/// The terrains of [`TERRAIN_TILES`]: soil, tilled soil and water.
+pub(crate) fn tile_terrains() -> BTreeMap<String, TerrainId> {
+    [("soil", 0), ("tilled", 1), ("water", 2)]
+        .into_iter()
+        .map(|(name, id)| (name.to_owned(), TerrainId(id)))
+        .collect()
+}
+
+/// The image of [`TERRAIN_TILES`]: 4 × 3 tiles of 16 px.
+pub(crate) fn terrain_tiles_images() -> ImageTable {
+    ImageTable::new([("tiles/farm.png", ImageInfo::new(64, 48))].into())
+}
+
+/// The terrain tiles format of the tests' rules.
+pub(crate) const fn terrain_tiles() -> TerrainTilesRon {
+    TerrainTilesRon::new(TILE_RULES)
 }
 
 /// The language packs of a game with no tokens and the tests' limits.
@@ -316,6 +364,7 @@ fn every_built_in_has_its_id_extensions_and_limit() {
     named(&NamesRon, "names", &["ron"], TEXT_MAX_BYTES);
     named(&Dlg::<NoDirective>::new(), "dlg", &["dlg"], TEXT_MAX_BYTES);
     named(&map_text(), "map", &["map"], TEXT_MAX_BYTES);
+    named(&terrain_tiles(), "terrain-tiles", &["ron"], TEXT_MAX_BYTES);
     named(
         &KeymapRon::<sample::Action>::new(),
         "keymap",
@@ -1191,6 +1240,7 @@ fn every_text_format_refuses_bytes_that_arent_utf8() {
     refuses(&NamesRon);
     refuses(&Dlg::<NoDirective>::new());
     refuses(&map_text());
+    refuses(&terrain_tiles());
     refuses(&KeymapRon::<sample::Action>::new());
     refuses(&CinematicRon::<Shot>::new());
     refuses(&lang_pack());
@@ -1467,6 +1517,21 @@ proptest! {
     ) {
         for bytes in [random.as_slice(), text.as_bytes(), map.as_bytes(), shaped.as_bytes()] {
             decodes(&map_text(), "maps/a.map", bytes);
+        }
+    }
+
+    #[test]
+    fn no_bytes_panic_the_terrain_tiles_format(
+        random in bytes(),
+        text in TEXT,
+        tiles in edited(TERRAIN_TILES),
+    ) {
+        let terrains = tile_terrains();
+        for bytes in [random.as_slice(), text.as_bytes(), tiles.as_bytes()] {
+            // What the file alone passes resolves without a panic too.
+            if let Ok(def) = alone(&terrain_tiles(), "tiles/farm.ron", bytes) {
+                let _ = def.resolve("tiles/farm.ron", &terrain_tiles_images(), &terrains);
+            }
         }
     }
 

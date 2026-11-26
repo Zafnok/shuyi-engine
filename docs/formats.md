@@ -138,6 +138,7 @@ The ones a game registers with its own types or rules:
 | Kind | Type of the kind | Format | Id | Extensions | What the game gives |
 | ---- | ---------------- | ------ | -- | ---------- | ------------------- |
 | map | `grid_map::GridMap<T, F>` | `grid_map::MapText<T, F>` | `map` | `map` | its `MapFormat` and what a terrain id resolves to |
+| terrain tiles | `tileset::TerrainTilesDef`: a tileset's ground as written | `tileset::TerrainTilesRon` | `terrain-tiles` | `ron` | its `TileRules`: the looks its maps may name, the sides a tile may have |
 | keymap | `keymap::KeymapDef<A>` | `keymap::KeymapRon<A>` | `keymap` | `ron` | its actions |
 | cinematic | `cinematic::CinematicFile<S, P>` | `cinematic::CinematicRon<S, P>` | `cinematic` | `ron` | its shots and shared lists |
 | dialogue | `dialogue::DialogueFile<D>` | `dialogue::Dlg<D>` | `dlg` | `dlg` | its directives |
@@ -420,6 +421,19 @@ What each one reads:
   `how` must parse too, and each text they can show
   (`Message::forms`) fits the box's lines and cells; `device` and
   `target` are always known placeholders there (`tip::from_source`).
+- **Terrain tiles** (`terrain-tiles`, ticket 2243) are a tileset's
+  ground: its `image`, `tile_px`, a tile per terrain (`terrain`), the
+  `layers` painted over them and other `looks` by the name a map's look
+  gives, each picture a `(column, row)` cell of `tile_px` cells. A corner
+  layer may give its pictures a `size` (left out, `tile_px`), an
+  `offset` and terrains to `skip`. The module docs of `tileset` have a
+  file. The format checks the file alone (`TerrainTilesDef::problems`): a
+  side of `tile_px` or a `size` outside the rules' `side_px`; a look's
+  name not one of the rules' `looks`, or `outdoor` (the own look, written
+  at the top); a layer whose `of` is empty; a mix not four of `#` and
+  `.`, or listed twice; a corner layer with a picture for `....`, or with
+  none. Each problem names its look and layer (`look "winter": layer 2:
+  …`).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
@@ -633,7 +647,7 @@ manifest names it like any sound file:
 | `Image` | `image::ImageInfo` (its size, for the image table) and `image::Image` (its pixels) |
 | `Atlas`, `AnimationSet` | ticket 1123, with Aseprite and TexturePacker as formats |
 | `TileMap` | `grid_map::GridMap<T, F>` for the grid kit's `.map`; Tiled's and LDtk's layered map is ticket 1124's, with both as formats |
-| `Tileset` | `tileset::TerrainTiles`; how a game writes its tiles is its own format |
+| `Tileset` | `tileset::TerrainTiles`, made from the `terrain-tiles` file (`tileset::TerrainTilesDef`) after loading, or read by a game's own format |
 | `Font` | `font::FontAtlasDef` |
 | `Sound`, `MusicTrack` | `audio::Sound`, `audio::MusicTrack`; a sound effect's numbers are `sfx::SfxDef` |
 | `DialogueScene` | `dialogue::DialogueFile<D>`: the scenes of one file |
@@ -669,6 +683,14 @@ assets loaded, with the functions that were there before the registry:
   against its palette (`onebit::check`, [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)), a theme against
   the default (`palette::theme_problems`), and the credits merged with the
   audio manifest (`credits::merge`);
+- terrain tiles against the image table and the game's terrains, by
+  name: `TerrainTilesDef::resolve(file, &images, &terrains)` makes the
+  `TerrainTiles` a sprite skin paints, or reports every problem: the
+  image not in the table, a picture outside it (a corner layer's at its
+  `size`), a terrain named (`terrain`, `of`, `beside`, `skip`) that the
+  game lacks, a terrain of the game with no tile in a look. The terrains
+  are a map of name to `TerrainId`, not a function as `MapText` takes,
+  since "every terrain has a tile" needs them all;
 - every language at once, with its directory's other rules:
   `lang::from_files`.
 

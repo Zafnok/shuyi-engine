@@ -16,6 +16,8 @@
 //!   the game installs once.
 //! - `script` (feature `script`): `shuyi-script`, rules from scripts,
 //!   which the game's rules call.
+//! - `net` (feature `net`): `shuyi-net`, the transport a game's online
+//!   play talks through, and an in-memory network for its tests.
 //! - `system-languages` (feature, on by default): the macroquad backend
 //!   reads the system's preferred languages on a desktop (`sys-locale`),
 //!   so a new player starts in the system's language when the game has
@@ -33,6 +35,8 @@ pub use shuyi_assets as assets;
 /// makes a layer of.
 pub use shuyi_assets::files;
 pub use shuyi_core as core;
+#[cfg(feature = "net")]
+pub use shuyi_net as net;
 pub use shuyi_platform as platform;
 #[cfg(feature = "script")]
 pub use shuyi_script as script;

@@ -327,7 +327,7 @@ fn on_this_repository_the_catalog_is_its_own_with_the_modules_it_builds() {
         .iter()
         .map(|m| (m.name.as_str(), m.feature.as_str()))
         .collect();
-    assert_eq!(built, [("shuyi-script", "script")]);
+    assert_eq!(built, [("shuyi-net", "net"), ("shuyi-script", "script")]);
     assert_eq!(catalog.on, Vec::<String>::new());
     let answer = add(&project, &AddInput::new("physics"));
     assert_eq!(answer.code.as_deref(), Some("SH0003"));

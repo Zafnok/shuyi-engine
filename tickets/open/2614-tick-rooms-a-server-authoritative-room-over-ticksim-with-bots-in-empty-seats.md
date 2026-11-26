@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
-blocked_by: ["2612", "2613"]
+blocked_by: ["2612", "2613", "2620"]
 nick_input: none
 completed:
 ---
@@ -18,7 +18,7 @@ completed:
 - Nick's decision of 2026-11-25 (`docs/decisions.md`): trails, an
   online light-trail arena with capped rooms, bots in empty seats, and
   players dropping in and out.
-- ADR-0150 (2613) chose an authoritative server that broadcasts each
+- ADR-0155 (2613) chose an authoritative server that broadcasts each
   step's resolved inputs, with a hash every 15 steps and a catch-up from
   the round's start. This ticket builds that room, sans-IO, in
   `shuyi-net`. The server (2616) and the clients (2790) both use it, and
@@ -30,8 +30,8 @@ completed:
   - 2612 (done): `MAX_SEATS` is 8, and `SeatInput` and `TickInput` have a
     fixed little-endian byte form (`encode`, `decode`, in
     `crates/core/src/tick/bytes.rs`);
-  - 2613: `PeerId`, `NetEvent`, `Transport` and `MemoryNetwork` with
-    seeded faults;
+  - 2613: `PeerId`, `NetEvent`, `Transport` and `MemoryNetwork`, and
+    2620: its seeded faults;
   - `shuyi_core::SimRng` and `shuyi_core::Made`.
 - `grep -rnw` over `tickets/open` for `RoomGame`, `RoomClient`, `Room`
   and `Outbox`: only the new tickets of this set (2615 writes into this
@@ -145,7 +145,7 @@ None.
   1142 (clients).
 - Client-side prediction of the player's own rider, rollback and
   interpolation: 1147 (and 2604's measured costs).
-- Connections that only watch by choice, names and chat (ADR-0150).
+- Connections that only watch by choice, names and chat (ADR-0155).
 - Trails' own rules and bot: 2788, 2789.
 - A `cargo fuzz` target for `room::wire`: 2020's harness isn't built
   (2020 is open), so the seeded random-bytes test below covers decoding.
@@ -166,7 +166,7 @@ and the room's tests, and 2790's `blocked_by` gains the new ticket.
 4. `RoomClient`: frames, the jitter buffer, `advance`, hash checks and
    `Resync`.
 5. `room::testing::Dots`, and the integration tests over 2613's
-   `MemoryNetwork` with faults on.
+   `MemoryNetwork` with 2620's faults on.
 6. Write the `Book:` (2854) and `Skills:` (2855) lines in the completion
    notes.
 

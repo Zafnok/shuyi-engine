@@ -1,6 +1,11 @@
 # ADR-0006: Networking in layers: transports, sessions, sync models, services; determinism is the contract
 
 - **Status:** Accepted (Nick chose plan B, 2026-10-14; see `docs/decisions.md`). First proposed as the game repository's ADR-0067 (game ticket 1101)
+- **Amended by [ADR-0155](0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md):** §1 (the Transport row's order, and
+  server-authoritative input broadcast as the first sync model for
+  ticks), §5 (a systemd service on a free host beside Docker images) and
+  §6 (real time over WebSocket in the browser is built now, not left to
+  1147)
 - **Date:** 2026-10-14
 - **Related tickets:** 1140–1150; 0053 (which multiplayer modes our game
   has, after launch)
