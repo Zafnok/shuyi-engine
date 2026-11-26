@@ -69,7 +69,9 @@ targets through `shuyi_embed::Table` (`crates/cli/build.rs`), so an
 edit to a skill in the engine repository reaches the server only after
 a rebuild and a reconnect.
 
-Related: 2905 (research: code hot reload by patching, or a rebuild that
+Related: 3436 (the long tools, `start`'s build among them, answer an
+MCP task the client polls, so a `tools/call` no longer waits on a cold
+build; the server's own first contact stays this ticket's), 2905 (research: code hot reload by patching, or a rebuild that
 replays to the same moment), 2269 (BasicGame reloads its own files under
 `run --watch`), 2270 (a `disk-files` development build that embeds
 nothing), 3415 (build failures as structured diagnostics). From the

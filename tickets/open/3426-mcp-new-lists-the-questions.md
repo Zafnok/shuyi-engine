@@ -97,7 +97,9 @@ None.
 - the wizard's prompts in a terminal (3423);
 - the repository flags (`--github`, `--owner` and the rest), which the
   contract leaves out on purpose;
-- the other tools' descriptions and the MCP docs' other drift (3427).
+- the other tools' descriptions and the MCP docs' other drift (3427);
+- the server asking the person the questions itself, by MCP
+  elicitation: 3437, which builds on this ticket's `questions`.
 
 ## Implementation steps
 
