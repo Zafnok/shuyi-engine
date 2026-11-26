@@ -56,7 +56,7 @@ pub enum ViewRow {
 /// frames: 1×, ½×, ¼×, ⅛×, then 1× again.
 const SPEEDS: [u8; 4] = [1, 2, 4, 8];
 
-/// The speed after one update in `every` frames, in [`SPEEDS`]'s order:
+/// The speed after one update in `every` frames, in the order 1, 2, 4, 8:
 /// the next one up, or 1 after the slowest.
 pub fn next_slow(every: u8) -> u8 {
     SPEEDS.into_iter().find(|&s| s > every).unwrap_or(1)
