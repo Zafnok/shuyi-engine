@@ -53,7 +53,7 @@ text = "a module: rules written as Rhai scripts, run on a read-only view, intege
 
 [[crate]]
 name = "shuyi_net"
-text = "a module: the `Transport` trait a game's online play talks through, and an in-memory network for tests"
+text = "a module: the `Transport` trait a game's online play talks through, and an in-memory network with seeded faults for tests"
 
 [[crate]]
 name = "shuyi_sound"

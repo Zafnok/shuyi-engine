@@ -209,3 +209,175 @@ fn steps_count_the_steps_run() {
     net.step();
     assert_eq!(net.steps(), 2);
 }
+
+#[test]
+fn new_is_with_faults_none() {
+    assert_eq!(MemoryNetwork::new().faults(), Faults::none());
+    assert_eq!(Faults::default(), Faults::none());
+    assert_eq!(Faults::none().delays(), (1, 1));
+}
+
+#[test]
+fn stats_count_what_the_faults_did_at_chances_of_a_thousand() {
+    let (mut net, mut a, mut b) = linked();
+    net.set_faults(Faults::none().with_loss(1_000));
+    a.send(b.id(), Channel::Unreliable, b"lost").unwrap();
+    // Faults hit Unreliable messages only.
+    a.send(b.id(), Channel::Reliable, b"sure").unwrap();
+    net.set_faults(Faults::none().with_duplicate(1_000));
+    a.send(b.id(), Channel::Unreliable, b"twice").unwrap();
+    net.step();
+    let twice = NetEvent::Message {
+        peer: a.id(),
+        channel: Channel::Unreliable,
+        bytes: b"twice".to_vec(),
+    };
+    let sure = NetEvent::Message {
+        peer: a.id(),
+        channel: Channel::Reliable,
+        bytes: b"sure".to_vec(),
+    };
+    assert_eq!(b.poll(), [sure, twice.clone(), twice]);
+    let stats = a.stats();
+    assert_eq!(
+        (stats.messages_out(), stats.dropped(), stats.duplicated()),
+        (3, 1, 1)
+    );
+    assert_eq!(b.stats().messages_in(), 3);
+}
+
+#[test]
+fn a_reorder_of_a_thousand_holds_a_message_behind_its_step() {
+    let (mut net, mut a, mut b) = linked();
+    net.set_faults(Faults::none().with_reorder(1_000));
+    a.send(b.id(), Channel::Unreliable, b"held").unwrap();
+    a.send(b.id(), Channel::Reliable, b"first").unwrap();
+    net.step();
+    let bytes: Vec<Vec<u8>> = b
+        .poll()
+        .into_iter()
+        .map(|event| match event {
+            NetEvent::Message { bytes, .. } => bytes,
+            other => panic!("only messages: {other:?}"),
+        })
+        .collect();
+    assert_eq!(bytes, [b"first".to_vec(), b"held".to_vec()]);
+}
+
+#[test]
+fn chances_over_a_thousand_count_as_a_thousand() {
+    let faults = Faults::none()
+        .with_loss(5_000)
+        .with_duplicate(1_001)
+        .with_reorder(1_000);
+    assert_eq!(
+        (faults.loss(), faults.duplicate(), faults.reorder()),
+        (1_000, 1_000, 1_000)
+    );
+    assert_eq!(Faults::none().with_loss(999).loss(), 999);
+}
+
+#[test]
+fn a_delay_of_zero_counts_as_one() {
+    let zero = Faults::none().with_delay_min(0).with_delay_max(0);
+    assert_eq!((zero.delay_min(), zero.delay_max()), (0, 0), "kept as set");
+    assert_eq!(zero.delays(), (1, 1));
+    let (mut net, mut a, mut b) = linked();
+    net.set_faults(zero);
+    a.send(b.id(), Channel::Reliable, b"x").unwrap();
+    a.send(b.id(), Channel::Unreliable, b"y").unwrap();
+    assert_eq!(b.poll(), [], "nothing happens between steps");
+    net.step();
+    assert_eq!(b.poll().len(), 2);
+}
+
+#[test]
+fn a_delay_max_below_the_min_counts_as_the_min() {
+    let faults = Faults::none().with_delay_min(4).with_delay_max(2);
+    assert_eq!(
+        (faults.delay_min(), faults.delay_max()),
+        (4, 2),
+        "kept as set"
+    );
+    assert_eq!(faults.delays(), (4, 4));
+    assert_eq!(Faults::none().with_delay_max(3).delays(), (1, 3));
+    let (mut net, mut a, mut b) = linked();
+    net.set_faults(faults);
+    a.send(b.id(), Channel::Unreliable, b"x").unwrap();
+    for _ in 0..3 {
+        net.step();
+        assert_eq!(b.poll(), []);
+    }
+    net.step();
+    assert_eq!(b.poll().len(), 1, "at four steps, not two");
+}
+
+#[test]
+fn set_faults_with_the_same_seed_keeps_drawing_and_a_new_seed_starts_afresh() {
+    let faults = Faults::none().with_seed(3).with_delay_max(9);
+    let mut net = MemoryNetwork::with_faults(faults);
+    assert_eq!(net.shared.borrow().rng, SimRng::new(3));
+    net.shared.borrow_mut().rng.next_u32();
+    let drawn = net.shared.borrow().rng.clone();
+    assert_ne!(drawn, SimRng::new(3));
+    net.set_faults(faults.with_loss(10));
+    assert_eq!(net.shared.borrow().rng, drawn, "the same seed keeps going");
+    assert_eq!(net.faults(), faults.with_loss(10));
+    net.set_faults(faults.with_seed(4));
+    assert_eq!(net.shared.borrow().rng, SimRng::new(4), "a new seed afresh");
+}
+
+#[test]
+fn an_unreliable_send_draws_five_and_a_reliable_one_draws_one() {
+    let faults = Faults::none().with_seed(11);
+    let mut net = MemoryNetwork::with_faults(faults);
+    let mut a = net.endpoint();
+    let b = net.endpoint();
+    net.connect(a.id(), b.id());
+    let mut want = SimRng::new(11);
+    assert_eq!(net.shared.borrow().rng, want, "connect draws nothing");
+    a.send(b.id(), Channel::Unreliable, b"x").unwrap();
+    for _ in 0..5 {
+        want.next_u32();
+    }
+    assert_eq!(net.shared.borrow().rng, want);
+    a.send(b.id(), Channel::Reliable, b"x").unwrap();
+    want.next_u32();
+    assert_eq!(net.shared.borrow().rng, want);
+    a.disconnect(b.id());
+    want.next_u32();
+    assert_eq!(net.shared.borrow().rng, want, "a disconnect draws one");
+}
+
+#[test]
+fn a_chance_of_zero_never_comes_up() {
+    // 5,000 sends draw 15,000 chances: a draw of 0 comes up about 15
+    // times, and counts for nothing at a chance of 0.
+    let (mut net, mut a, b) = linked();
+    net.set_faults(Faults::none().with_seed(5).with_delay_max(4));
+    for _ in 0..5_000 {
+        a.send(b.id(), Channel::Unreliable, b"x").unwrap();
+    }
+    assert_eq!((a.stats().dropped(), a.stats().duplicated()), (0, 0));
+}
+
+#[test]
+fn a_step_delivers_in_the_order_things_happened_across_links() {
+    let (mut net, mut a, mut b) = linked();
+    let c = net.endpoint();
+    b.send(a.id(), Channel::Reliable, b"first").unwrap();
+    net.connect(a.id(), c.id());
+    net.step();
+    assert_eq!(
+        a.poll(),
+        [
+            NetEvent::Message {
+                peer: b.id(),
+                channel: Channel::Reliable,
+                bytes: b"first".to_vec(),
+            },
+            NetEvent::Connected(c.id()),
+        ]
+    );
+    assert_eq!(b.poll(), []);
+}
