@@ -356,7 +356,7 @@ keeps no list of operations (searched `Zafnok/visions-of-shuyi` for
 Game: nothing to adopt, the game gets `cargo shuyi docs` with its next
 pin move, and its code uses none of it.
 
-Size: 2,614 counted lines, the chunker, the index and the operation (about
+Size: 2,629 counted lines, the chunker, the index and the operation (about
 1,900 of them, with their tests) answer nothing apart: an index with no
 operation is dead code, and an operation with no corpus finds nothing.
 The rest, the "how do I" table and the twins' parity test, are this
