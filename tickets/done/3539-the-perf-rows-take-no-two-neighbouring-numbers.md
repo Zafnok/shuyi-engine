@@ -156,6 +156,10 @@ Book: none, no chapter of `site/content/learn/` or snippet of `site/snippets/` b
 
 Skills: none, the schemas changed only a description naming a constructor, and no skill builds or names these types
 
+Contract: none, only `HeapDiff`'s description changed (it names `HeapDiff::until`); no operation or field did, and `docs/contract.md` names no constructor
+
+Playdate: none, the backend only builds its heap's counts through the new `HeapCounts::new` shape; nothing it does or reads changed
+
 Breaking: shuyi-ui: `perf::HeapCounts::new`: takes only the live bytes (peak the same, no call); set the rest with `with_peak_bytes` and `with_allocs`
 
 ```migration
