@@ -1,0 +1,55 @@
+// The constructors allowed to take two neighbouring numbers (ticket 3503,
+// ADR-0151). `cargo xtask api` (crates/xtask/src/api/constructors.rs) reads
+// it.
+//
+// - The rule: a `pub fn` of a `#[non_exhaustive]` type that returns `Self`
+//   and takes no receiver takes no two neighbouring integers (of any widths),
+//   two floats, or two tuples of one type: a call could swap them and still
+//   compile. Name them instead: a named constructor, a `with_<field>`, or a
+//   plain value whose fields name them.
+// - A constructor whose order is its meaning stays, listed here with why: a
+//   width then a height, an `x` then a `y`.
+// - `path` is the function's path as the head's listing names it (where it
+//   is defined, not where it is re-exported), without generic arguments.
+// - The check fails an entry that no longer breaks the rule, or that no
+//   listing has: this list only shrinks as constructors change.
+(
+    allowed: [
+        // The order is the meaning.
+        (path: "shuyi_assets::font::FontAtlasDef::new", why: "a cell's width then its height (from 2095)"),
+        (path: "shuyi_assets::image::ImageInfo::new", why: "a width then a height"),
+        (path: "shuyi_ui::frame::painted::Painted::rgba", why: "a width then a height"),
+        (path: "shuyi_ui::frame::painted::Painted::one_bit", why: "a width then a height"),
+        (path: "shuyi_ui::frame::painted::Painted::indexed", why: "a width then a height"),
+        (path: "shuyi_platform::platform::DisplayInfo::new", why: "a width then a height"),
+        (path: "shuyi_app::Window::new", why: "a width then a height"),
+        (path: "shuyi_ui::input::pointer::PointerInput::at", why: "an x then a y"),
+        (path: "shuyi_ui::dialogue::text_box::glyph::BoxPlace::new", why: "the text's column then its row: an x then a y"),
+        (path: "shuyi_ui::input::pad::PadKind::from_ids", why: "a USB vendor id then a product id, in the order every tool writes them (045e:028e)"),
+        (
+            path: "shuyi_app::Window::console",
+            why: "the console's scale then a margin in pixels, as every template writes it (`Window::console(\"Boxes\", CONSOLE, 2, 16)`): a swap opens a window sixteen times the console, seen at once",
+        ),
+        // Ticket 3537 changes these: the bots' settings, the perf rows and
+        // the rest this one left for size.
+        (path: "shuyi_core::bots::plan::PlanSettings::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_core::bots::rollout::RolloutSettings::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_core::bots::balance::BalanceSettings::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_core::bots::playtest::Tries::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_core::threat::Strike::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::HeapCounts::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::HeapDiff::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::HeapSnapshot::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::SpanEvent::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::TagDelta::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::perf::TagRow::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_cli::contract::perf::PerfRead::of", why: "ticket 3537 changes it"),
+        (path: "shuyi_alloc_count::Counts::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_alloc_count::TagCounts::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_ui::grid::layout::Grid::top_down", why: "ticket 3537 changes it"),
+        (path: "shuyi_assets::sfx::SfxDef::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_app::page::PageLimits::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_cli::contract::bake::PackSpan::new", why: "ticket 3537 changes it"),
+        (path: "shuyi_sound::pcm::Limits::new", why: "ticket 3537 changes it"),
+    ],
+)

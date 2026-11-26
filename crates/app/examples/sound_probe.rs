@@ -184,7 +184,7 @@ async fn player(
         bytes.insert(file.clone(), read(&format!("corpus/{file}")).await?);
     }
     for (cue, (file, length_ms)) in &plan.music {
-        let music = MusicCue::new(file.clone(), 100, *length_ms, CreditRef::Own);
+        let music = MusicCue::new(file.clone(), *length_ms, CreditRef::Own);
         manifest.music.insert(cue.clone(), music);
     }
     let sound = |file: &str| bytes.get(file).map(|b| Cow::Owned(b.clone()));

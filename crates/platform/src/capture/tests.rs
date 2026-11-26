@@ -83,7 +83,7 @@ fn each_step_reads_and_the_tolerance_defaults() {
     assert!(read.presses_actions());
     assert_eq!(read.tolerance(), Tolerance::default());
     let strict = Plan::parse("(steps: [], tolerance: (channel: 0, pixels: 3))").unwrap();
-    assert_eq!(strict.tolerance(), Tolerance::new(0, 3));
+    assert_eq!(strict.tolerance(), Tolerance::new(0).with_pixels(3));
     assert_eq!(strict.frames(&keymap()), Ok(Vec::new()));
     assert!(!strict.presses_actions());
 }

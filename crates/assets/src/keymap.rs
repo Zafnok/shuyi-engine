@@ -531,9 +531,10 @@ impl Default for RepeatDef {
 /// `release_percent` is below `press_percent`, so a stick resting near the
 /// edge of the dead zone doesn't flicker.
 ///
-/// Read from keymap files (ADR-0039, kind 5, built as kind 2): built with
-/// [`new`](Self::new) or [`Default`], and a field added later is
-/// `#[serde(default)]`, so keymap files keep loading.
+/// Read from keymap files (ADR-0039, kind 5, built as kind 2): built from
+/// [`DEFAULT`](Self::DEFAULT) with the `with_` methods (no constructor takes
+/// both percents, which a call could swap: ADR-0151), and a field added
+/// later is `#[serde(default)]`, so keymap files keep loading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -545,19 +546,32 @@ pub struct StickDef {
 }
 
 impl StickDef {
-    /// The thresholds: a direction starts at `press_percent` of the stick's
-    /// travel and ends below `release_percent`.
-    pub const fn new(press_percent: u8, release_percent: u8) -> Self {
-        Self {
-            press_percent,
-            release_percent,
-        }
+    /// A direction starts at half the stick's travel and ends below 35
+    /// percent of it. Equal to `StickDef::default()`, for a `const`.
+    pub const DEFAULT: Self = Self {
+        press_percent: 50,
+        release_percent: 35,
+    };
+
+    /// The same thresholds, a direction starting at `press_percent` of the
+    /// stick's travel.
+    #[must_use]
+    pub const fn with_press_percent(mut self, press_percent: u8) -> Self {
+        self.press_percent = press_percent;
+        self
+    }
+
+    /// The same thresholds, a held direction ending below `release_percent`.
+    #[must_use]
+    pub const fn with_release_percent(mut self, release_percent: u8) -> Self {
+        self.release_percent = release_percent;
+        self
     }
 }
 
 impl Default for StickDef {
     fn default() -> Self {
-        Self::new(50, 35)
+        Self::DEFAULT
     }
 }
 

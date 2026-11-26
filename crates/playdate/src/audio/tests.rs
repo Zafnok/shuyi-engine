@@ -26,7 +26,9 @@ fn manifest() -> AudioManifest {
         .insert("hum".into(), sound("sfx/hum.ogg", 100).with_looped(true));
     m.sounds.insert("step".into(), sound("sfx/hum.ogg", 100));
     let track = |file: &str, volume, looped| {
-        MusicCue::new(file.into(), volume, 60_000, CreditRef::Own).with_looped(looped)
+        MusicCue::new(file.into(), 60_000, CreditRef::Own)
+            .with_volume(volume)
+            .with_looped(looped)
     };
     m.music.insert("theme".into(), track("theme.ogg", 80, true));
     m.music

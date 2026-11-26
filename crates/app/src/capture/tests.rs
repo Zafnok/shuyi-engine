@@ -94,7 +94,7 @@ fn a_report_writes_each_capture_and_a_line() {
 fn a_line_names_both_sizes_when_they_differ() {
     let reference = solid(4, 2, [0, 0, 0]);
     let window = solid(3, 2, [0, 0, 0]);
-    let comparison = compare(&window, &reference, Tolerance::new(0, 5));
+    let comparison = compare(&window, &reference, Tolerance::new(0).with_pixels(5));
     assert_eq!(
         line("card", &window, &reference, &comparison, 1),
         "card: window 3 × 2, raster 4 × 2 at scale 1; 0 pixels over (channel 0, pixels 5); worst 0; first none; FAILED"
@@ -112,7 +112,7 @@ fn a_console_line_is_the_files_line_after_the_prefix() {
     let cases = [
         (&close, Tolerance::default(), "passed"),
         (&far, Tolerance::default(), "FAILED"),
-        (&narrow, Tolerance::new(0, 5), "FAILED"),
+        (&narrow, Tolerance::new(0).with_pixels(5), "FAILED"),
     ];
     for (window, tolerance, verdict) in cases {
         let comparison = compare(window, &reference, tolerance);
