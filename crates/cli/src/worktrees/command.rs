@@ -1,4 +1,4 @@
-//! `shuyi trim-targets` and `shuyi seed-target` (ticket 3403): [`trim`] and
+//! `shuyi trim-targets` and `shuyi seed-target`: [`trim`] and
 //! [`seed`] on the worktrees of the game's git repository, the one its
 //! project's root is in, with a game's roots ([`trim::GAME_ROOTS`]). Each
 //! answers in text or, with `--json`, as `{ ok, result, code, error, help

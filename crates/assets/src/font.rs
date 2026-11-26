@@ -136,7 +136,7 @@ pub struct FontAtlasDef {
     /// an atlas of one wide set or none, and left out of its file.
     #[serde(default)]
     pub wide_sets: BTreeMap<String, WideSet>,
-    /// The bold face (ticket 3216, ADR-0125): a narrow glyph → the cell of
+    /// The bold face (ADR-0125): a narrow glyph → the cell of
     /// its bold shape, which a key cap's name is drawn in. Empty in an
     /// atlas made without a bold font, and left out of its file; a
     /// renderer then draws bold by drawing the glyph twice, 1 px apart
@@ -144,7 +144,7 @@ pub struct FontAtlasDef {
     #[serde(default)]
     pub bold: BTreeMap<char, u32>,
     /// Where the glyphs put ink in their cell ([`FontInk`]): what a key
-    /// cap places its name by (ticket 3215). `None` in an atlas without
+    /// cap places its name by. `None` in an atlas without
     /// capitals, or made before, and left out of its file.
     #[serde(default)]
     pub ink: Option<FontInk>,
@@ -154,7 +154,7 @@ pub struct FontAtlasDef {
     pub bold_ink: Option<FontInk>,
 }
 
-/// Where a font's glyphs put ink in their cell (ticket 3215): its
+/// Where a font's glyphs put ink in their cell: its
 /// capitals' box, and the columns of each printable ASCII glyph whose ink
 /// doesn't span the capitals'. A key cap centres its name by the
 /// capitals' rows, and fits its box to its name's first and last glyph.
@@ -195,7 +195,7 @@ impl FontInk {
 /// The pixels of a cell a font's capitals put ink in: columns
 /// `left..=right` and rows `top..=bottom`, from the cell's top-left
 /// corner. Terminus 8 × 16's is columns 1 to 6, rows 2 to 11. A key cap
-/// places its name by it (ticket 3215).
+/// places its name by it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct InkBox {
     /// The leftmost column with ink.
@@ -276,7 +276,7 @@ impl FontAtlasDef {
     }
 
     /// What a renderer draws for glyph `c`, which it found at `rect`, and
-    /// how many times, 1 px apart (ticket 3216): with `bold`, its bold
+    /// how many times, 1 px apart: with `bold`, its bold
     /// shape ([`bold_rect`](Self::bold_rect)) once, or without one `rect`
     /// twice; else `rect` once. Every renderer draws bold so.
     pub fn bold_strikes(&self, c: char, rect: AtlasRect, bold: bool) -> (AtlasRect, u8) {
@@ -563,14 +563,14 @@ impl FontAtlasDef {
 /// a key's name as a cap, the cells a cap takes beyond its name
 /// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts,
 /// and the cells of the picture of the arrow keys it draws in their place
-/// ([`arrows_cells`](Self::arrows_cells), ticket 3217).
+/// ([`arrows_cells`](Self::arrows_cells)).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CellWidths {
     /// The wide characters; `None` when there are none.
     wide: Option<Rc<BTreeSet<char>>>,
     /// The first of [`wide`](Self::wide): a character before it is never
     /// in the set, which [`is_wide`](Self::is_wide) answers without a
-    /// search (Latin text, ticket 3244).
+    /// search (Latin text).
     first_wide: char,
     /// Whether [`WIDE_PUNCTUATION`] is wide.
     punctuation: bool,

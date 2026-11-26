@@ -19,7 +19,7 @@
 //!
 //! `shuyi export --recipient` and `--detect` are its only callers, so it
 //! lives here, private to `shuyi-cli`, and reads only [`Image`]'s public
-//! fields and a [`Code`] (ticket 2098).
+//! fields and a [`Code`].
 
 use std::collections::BTreeMap;
 use std::fmt;

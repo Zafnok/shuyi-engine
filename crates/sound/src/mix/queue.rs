@@ -6,7 +6,7 @@
 //! with `Release`, the reader loads the head with `Acquire` and then the words, and
 //! the same the other way for the tail. Only loads and stores: they are what the
 //! smallest targets have. The writer may hold slots back, written but not yet in the
-//! head, and publish them together ([`Remote::hold`], ticket 3089).
+//! head, and publish them together ([`Remote::hold`]).
 //!
 //! [`Mixer::remote`] makes the two ends. The [`Remote`] on the game's side decides
 //! which voice a play goes to, so it can answer [`Full`] on the spot, and the
@@ -366,7 +366,7 @@ impl Remote {
     /// Holds back what is sent from here, until [`publish`](Self::publish): the
     /// audio thread may apply commands between any two that are sent, so the plays
     /// of one frame would start in different blocks, a few milliseconds apart, and
-    /// copies meant to sound as one wouldn't (ticket 3089). What is held takes room
+    /// copies meant to sound as one wouldn't. What is held takes room
     /// in the queue as before.
     pub fn hold(&mut self) {
         self.held = true;

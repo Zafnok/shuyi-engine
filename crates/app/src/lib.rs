@@ -1,4 +1,4 @@
-//! Shuyi Engine's macroquad backend (ADR-0008 §2, game ADR-0004): the
+//! Shuyi Engine's macroquad backend (ADR-0008 §2): the
 //! window, blitting the frame ([`render`]), the keyboard ([`keys`]) and
 //! controllers ([`pads`]), the audio player and storage ([`storage`]),
 //! behind `shuyi_platform`'s `Platform`, and the loop ([`run_app`]) that calls
@@ -104,7 +104,7 @@
 //! when the plan can't run. Without the feature the variable is never
 //! read. On the web a build with the feature always runs the plan
 //! `capture.ron` beside the page, writes no files and logs each capture's
-//! line to the browser's console instead (ticket 2019).
+//! line to the browser's console instead.
 //!
 //! With the `sound-probe` feature, `SoundProbeBackend` names the sound
 //! backend, for the example `sound_probe` that the parity gates record. It
@@ -133,7 +133,7 @@
 //! written into `exports/` in the game's data folder, which the game may
 //! open in the system's file manager, and the player drops a file on the
 //! window to give one; on the web it is a download, and the browser's file
-//! picker opens (ticket 3309).
+//! picker opens.
 //!
 //! A desktop debug build keeps its last sessions in `sessions/` under the
 //! game's data folder (the `sessions` module, ADR-0074): the record of a run,
@@ -384,7 +384,7 @@ impl Window {
 /// `shuyi_platform`'s, which a game's `AppInfo` carries (ADR-0061).
 pub use shuyi_platform::WindowIcon as Icon;
 
-/// Where a game's voice clips are (game ADR-0046): a folder shipped beside the
+/// Where a game's voice clips are: a folder shipped beside the
 /// game (not embedded), with a folder per language holding the manifest
 /// and the clips.
 #[derive(Debug, Clone, Copy)]
@@ -438,7 +438,7 @@ pub struct AppConfig {
     /// Where the voice clips are; `None` for a game without voices.
     pub voices: Option<VoiceFiles>,
     /// The system's own keyboard for text, if the game's build has one
-    /// (Steam's on-screen keyboard is the game's: its ticket 0903);
+    /// (Steam's on-screen keyboard is a game's to bring);
     /// `None` where the player types on keys.
     pub text_input: Option<Box<dyn TextInput>>,
     /// Whether a panic writes a crash report, and the game's version in it
@@ -1503,7 +1503,7 @@ mod link;";
     }
 
     /// This crate copies the workspace lints because one of them differs
-    /// (`unsafe_code`, game ADR-0034); the copy must not drift. Every other
+    /// (`unsafe_code`); the copy must not drift. Every other
     /// crate inherits the workspace's `forbid`.
     #[test]
     fn the_lints_are_the_workspace_lints_except_unsafe_code() {

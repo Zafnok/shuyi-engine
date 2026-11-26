@@ -1,4 +1,4 @@
-//! The window's size on Windows, read from the system (ticket 3044).
+//! The window's size on Windows, read from the system.
 //!
 //! miniquad 0.4.11 keeps the framebuffer's size as the client area divided
 //! by the display's scale, cut to a whole number, then multiplied back

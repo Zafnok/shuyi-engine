@@ -1,6 +1,8 @@
 //! `cargo xtask check-links`: every relative link in the repository's
-//! Markdown points at a file or folder that exists. Links to the web are not
-//! fetched (no network); a link's `#anchor` is not checked.
+//! Markdown points at a file or folder that exists, and so does every
+//! path under `docs/` a Rust comment under `crates/` or `examples/` names in
+//! backticks. Links to the web are not fetched (no network); a link's
+//! `#anchor` is not checked.
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -41,6 +43,40 @@ pub fn run(repo_root: &Path) -> Vec<String> {
             Err(e) => errors.push(format!("{display}: {e}")),
         }
     }
+    errors.extend(comment_errors(repo_root));
+    errors
+}
+
+/// The folders whose Rust files' comments are read for path under `docs/`s.
+const RUST_DIRS: &[&str] = &["crates", "examples"];
+
+/// Every path under `docs/` a comment of a `*.rs` file under [`RUST_DIRS`]
+/// names that doesn't exist from the repository's root.
+fn comment_errors(repo_root: &Path) -> Vec<String> {
+    let mut files = Vec::new();
+    let mut errors = Vec::new();
+    for dir in RUST_DIRS {
+        let dir = repo_root.join(dir);
+        if dir.is_dir()
+            && let Err(e) = files_with_extension(repo_root, &dir, "rs", &mut files)
+        {
+            errors.push(format!("{}: {e}", dir.display()));
+        }
+    }
+    files.sort();
+    for file in files {
+        let display = display_path(repo_root, &file);
+        match fs::read_to_string(&file) {
+            Ok(text) => {
+                for (line, path) in comment_paths(&text) {
+                    if !link_exists(repo_root, &file, &format!("/{path}")) {
+                        errors.push(format!("{display}:{line}: no such file `{path}`"));
+                    }
+                }
+            }
+            Err(e) => errors.push(format!("{display}: {e}")),
+        }
+    }
     errors
 }
 
@@ -64,18 +100,60 @@ pub(crate) fn markdown_files(
     dir: &Path,
     out: &mut Vec<PathBuf>,
 ) -> std::io::Result<()> {
+    files_with_extension(root, dir, "md", out)
+}
+
+/// Every file under `dir` whose extension is `ext`, but in the folders
+/// [`is_skipped_dir`] skips.
+fn files_with_extension(
+    root: &Path,
+    dir: &Path,
+    ext: &str,
+    out: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
         if entry.file_type()?.is_dir() {
             if !is_skipped_dir(root, &path) {
-                markdown_files(root, &path, out)?;
+                files_with_extension(root, &path, ext, out)?;
             }
-        } else if path.extension().is_some_and(|ext| ext == "md") {
+        } else if path.extension().is_some_and(|e| e == ext) {
             out.push(path);
         }
     }
     Ok(())
+}
+
+/// The path under `docs/`s the comments of a Rust text name, with their lines:
+/// on each line whose text after the indent starts with `//` (so `//`,
+/// `///` and `//!`), every span in backticks that starts with `docs/`,
+/// with a `#anchor` and a trailing `.` or `,` cut off. A span with a `*`
+/// in it is a glob and is left out, and so is a span its line doesn't
+/// close.
+pub(crate) fn comment_paths(text: &str) -> Vec<(usize, String)> {
+    let mut paths = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let Some(comment) = line.trim_start().strip_prefix("//") else {
+            continue;
+        };
+        let pieces: Vec<&str> = comment.split('`').collect();
+        // The odd pieces are in backticks; the last one, if odd, isn't
+        // closed on this line.
+        for span in pieces
+            .iter()
+            .skip(1)
+            .step_by(2)
+            .take((pieces.len() - 1) / 2)
+        {
+            if !span.starts_with("docs/") || span.contains('*') {
+                continue;
+            }
+            let path = span.split('#').next().unwrap_or(span);
+            paths.push((i + 1, path.trim_end_matches(['.', ',']).to_string()));
+        }
+    }
+    paths
 }
 
 /// The relative links and images of a Markdown text, with the line each one
@@ -260,6 +338,59 @@ mod tests {
         assert_eq!(
             errors,
             vec!["docs/guide.md:4: broken link `nope.md`".to_string()]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn comment_paths_reads_every_kind_of_comment() {
+        let text = "//! See `docs/a.md`.\n/// And `docs/b.md#part`, then `docs/c/`,\n    // indented `docs/d.md`\nfn f() {}\n";
+        assert_eq!(
+            comment_paths(text),
+            vec![
+                (1, "docs/a.md".to_string()),
+                (2, "docs/b.md".to_string()),
+                (2, "docs/c/".to_string()),
+                (3, "docs/d.md".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn comment_paths_skips_code_globs_other_paths_and_unclosed_spans() {
+        let text = "let s = \"`docs/in-a-string.md`\";\n/// `docs/**/*.md`, `crates/x.rs` and `ticket`\nf(); // `docs/after-code.md`\n/// `docs/wraps\n/// /onto-the-next.md` here\n";
+        assert!(comment_paths(text).is_empty(), "{:?}", comment_paths(text));
+    }
+
+    #[test]
+    fn comment_paths_cuts_a_trailing_comma() {
+        assert_eq!(
+            comment_paths("/// (`docs/a.md,` and so on)\n"),
+            vec![(1, "docs/a.md".to_string())]
+        );
+    }
+
+    #[test]
+    fn run_reports_a_missing_path_in_a_rust_comment() {
+        let root = temp_repo("rust");
+        fs::create_dir_all(root.join("crates/c/src")).unwrap();
+        fs::create_dir_all(root.join("examples/e")).unwrap();
+        fs::create_dir_all(root.join("templates/t")).unwrap();
+        fs::write(
+            root.join("crates/c/src/lib.rs"),
+            "//! Fine: `docs/adr/0001-a b.md`.\n\n/// Gone: `docs/design/controls.md`, *Keys*.\npub fn f() {}\n",
+        )
+        .unwrap();
+        fs::write(root.join("examples/e/main.rs"), "// `docs/gone.md`\n").unwrap();
+        fs::write(root.join("templates/t/main.rs"), "// `docs/game-only.md`\n").unwrap();
+        fs::create_dir_all(root.join("crates/c/target")).unwrap();
+        fs::write(root.join("crates/c/target/x.rs"), "// `docs/built.md`\n").unwrap();
+        assert_eq!(
+            run(&root),
+            vec![
+                "crates/c/src/lib.rs:3: no such file `docs/design/controls.md`".to_string(),
+                "examples/e/main.rs:1: no such file `docs/gone.md`".to_string(),
+            ]
         );
         let _ = fs::remove_dir_all(&root);
     }

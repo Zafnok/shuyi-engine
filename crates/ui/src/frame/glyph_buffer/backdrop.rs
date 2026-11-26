@@ -11,8 +11,8 @@ use alloc::rc::Rc;
 use super::{GlyphBuffer, PxRect, Rect};
 use crate::frame::console::ConsoleSpec;
 
-/// The biggest zoom: whole steps 1× to 4× only
-/// (`docs/design/title-screen.md`, *Intro cinematic*).
+/// The biggest zoom of a backdrop: whole steps only, 1× to 4×, so each
+/// of the scene's pixels covers the same number of screen pixels.
 pub const MAX_ZOOM: u8 = 4;
 
 /// A scene shown through a window of a [`GlyphBuffer`]'s cells.

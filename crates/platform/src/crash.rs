@@ -112,7 +112,7 @@ pub struct CrashReport {
     pub record: Option<String>,
 }
 
-/// A frame of a report's stack (ticket 2598): where its call returns to,
+/// A frame of a report's stack: where its call returns to,
 /// as an offset from the start of the executable in memory. The program
 /// loads at another address each run, so the offset, not the address, is
 /// what reads against its debug file.

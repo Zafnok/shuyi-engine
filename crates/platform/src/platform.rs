@@ -60,8 +60,8 @@ impl Millis {
 }
 
 /// What a backend's display is (ADR-0008 §2). One screen for now; a
-/// device with more (the DS) reports them here once ticket 3023 adds
-/// surfaces.
+/// device with more (the DS) will report them here, once this
+/// type has surfaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
@@ -332,7 +332,7 @@ impl LoadSlice {
 /// callback, a console's main loop) and calls [`App::frame`] once per
 /// frame with its clock; `App` calls these methods from inside it, in the
 /// order `docs/platform-backends.md` gives. Only a backend touches a device
-/// (`AGENTS.md` rule 5): the engine's other crates see this trait.
+/// (ADR-0008 §2): the engine's other crates see this trait.
 ///
 /// [`present`]: Self::present
 /// [`App::frame`]: crate::App::frame

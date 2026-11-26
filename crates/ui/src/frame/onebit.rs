@@ -19,8 +19,7 @@
 //! half of a wide one in its own cell: the font's one-bit atlas keeps the
 //! halves as two cells),
 //! `Over` items, and last the [flipping](Shade::flips) rectangles, which flip what
-//! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
-//! *One-bit pictures*). A painted picture (ADR-0078) is looked up in the
+//! is under them. Pictures are one-bit [`Image`]s (ADR-0026). A painted picture (ADR-0078) is looked up in the
 //! frame's table: a one-bit one is drawn as a one-bit sprite, an RGBA or
 //! indexed one dithered as it is drawn ([`dither_row`]). Nothing here
 //! allocates.
@@ -1083,7 +1082,7 @@ fn widen(byte: u8, scale: i32) -> u64 {
 }
 
 /// The Bayer 4 × 4 order a sprite's pixels fade out in, as its opacity
-/// falls (`docs/design/playdate.md` dithers in the same pattern).
+/// falls: Bayer's order, as the one-bit shades of ADR-0026 use.
 const BAYER: [[u32; 4]; 4] = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
 
 /// Whether a pixel of a sprite of `opacity` is drawn at screen `(x, y)`:
@@ -1535,8 +1534,8 @@ fn draw_one_bit(
             let white = white & light;
             let bits = match (solid, sprite.paint) {
                 (Some(shade), _) => shade.row(y),
-                // One-bit has no dimming: every other pixel goes white
-                // (`docs/design/playdate.md`, the faded listener).
+                // One-bit has no dimming: every other pixel goes white,
+                // so a dimmed picture reads as greyed out.
                 (None, Paint::Dimmed) => white | GREY.row(y),
                 (None, _) => white,
             };

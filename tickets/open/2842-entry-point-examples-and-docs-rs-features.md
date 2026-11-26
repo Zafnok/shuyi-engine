@@ -108,7 +108,8 @@ None.
 - Examples on items outside the list. The list grows in the ticket that
   adds a new entry point.
 - Removing ticket numbers, game tickets and other repository process
-  from rustdoc. 2034 removes the dead `docs/design` citations; the wider
+  from rustdoc. 2034 removed the dead `docs/design` citations and the process
+  outside `shuyi-ui`, and 3538 does `shuyi-ui` and the check; the wider
   cleanup is not this ticket's.
 - Publishing. 2005 publishes; docs.rs builds on publish.
 - Any change to the stable docs gate's own command, beyond adding the
