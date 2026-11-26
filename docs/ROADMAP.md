@@ -954,7 +954,7 @@ parked below.
 | ------ | ---- |
 | 2612 | `TickInput` holds eight seats, and a seat's input has a byte form |
 | 2613 (done) | `shuyi-net`: the `Transport` trait and an in-memory network |
-| 2620 | The in-memory network's seeded faults: loss, duplicates, reordering and delay |
+| 2620 (done) | The in-memory network's seeded faults: loss, duplicates, reordering and delay |
 | 2614 | Tick rooms: a server-authoritative room over TickSim with bots in empty seats |
 | 2615 | Quick play: a black-box director that seats a player in a room with a free seat |
 | 2616 | `shuyi-server`: a director's rooms over WebSocket, with TLS, limits, health and a cost guard |

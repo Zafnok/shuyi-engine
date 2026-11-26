@@ -1995,6 +1995,10 @@ dependencies = [
 [[package]]
 name = "shuyi-net"
 version = "0.1.0"
+dependencies = [
+ "proptest",
+ "shuyi-core",
+]
 
 [[package]]
 name = "shuyi-platform"
