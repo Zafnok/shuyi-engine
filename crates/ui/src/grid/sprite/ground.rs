@@ -169,27 +169,20 @@ impl<U> Ground<'_, U> {
     /// from the top-left; and whether those are all the tiles it covers
     /// (so it can be drawn whole).
     fn parts(&self, dest: PxRect, skip: &BTreeSet<TerrainId>) -> (Vec<PxRect>, bool) {
-        if dest.w <= 0 || dest.h <= 0 {
-            return (Vec::new(), false);
-        }
         // Never 0: the skin fits its view by dividing by it.
         let (w, h) = self.grid.tile;
         let (left, top) = self.grid.corner;
-        let (across, down) = self.grid.tiles;
-        // The tiles the first and last pixels of `from..from + len` are
-        // on, of tiles `side` long from `start`, kept to the `n` drawn.
-        let span = |from: i32, len: i32, start: i32, side: i32, n: i32| {
-            let last = from.saturating_add(len - 1);
-            let first = from.saturating_sub(start).div_euclid(side);
-            let last = last.saturating_sub(start).div_euclid(side);
-            let kept = (first.max(0), last.min(n - 1));
-            (kept, kept == (first, last))
+        // The tiles from the one of the first pixel of `from..from + len`
+        // to the one of its last, of tiles `side` long from `start`. A
+        // tile outside the view isn't drawn, so the picture is cut there.
+        let span = |from: i32, len: i32, start: i32, side: i32| {
+            let tile = |px: i32| px.saturating_sub(start).div_euclid(side);
+            tile(from)..=tile(from.saturating_add(len - 1))
         };
-        let ((dx0, dx1), all_across) = span(dest.x, dest.w, left, w, across);
-        let ((dy0, dy1), all_down) = span(dest.y, dest.h, top, h, down);
-        let mut whole = all_across && all_down;
+        let (across, down) = (span(dest.x, dest.w, left, w), span(dest.y, dest.h, top, h));
+        let mut whole = true;
         let mut parts = Vec::new();
-        for (dx, dy) in (dy0..=dy1).flat_map(|dy| (dx0..=dx1).map(move |dx| (dx, dy))) {
+        for (dx, dy) in down.flat_map(|dy| across.clone().map(move |dx| (dx, dy))) {
             let skipped = self.shown.at(dx, dy).is_some_and(|id| skip.contains(&id));
             let part = self.tile(dx, dy).filter(|_| !skipped);
             match part.and_then(|tile| tile.intersect(&dest)) {
@@ -197,6 +190,8 @@ impl<U> Ground<'_, U> {
                 None => whole = false,
             }
         }
+        // A picture of no pixels covers no tile: nothing to draw.
+        let whole = whole && !parts.is_empty();
         (parts, whole)
     }
 
@@ -612,13 +607,43 @@ mod tests {
             clips(&painted(&kit, &zoomed, &lake), 9),
             clips(&painted(&kit, &s, &lake), 9)
         );
-        // A picture of no pixels is drawn nowhere.
-        for empty in [ImageRect { w: 0, ..face }, ImageRect { h: 0, ..face }] {
-            let mut none = CornerLayer::new(BTreeSet::from([WATER]), [None; MIXES]);
-            none.tiles[0b1100] = Some(empty);
-            let buf = painted(&kit, &with_corners(&kit, none), &lake);
-            assert_eq!(buf.sprites().len(), 9, "{empty:?}");
+        // A picture of no pixels is drawn nowhere, even with an edge on
+        // a tile's.
+        for offset in [(0, 0), (12, 12)] {
+            for empty in [ImageRect { w: 0, ..face }, ImageRect { h: 0, ..face }] {
+                let mut none = CornerLayer::new(BTreeSet::from([WATER]), [None; MIXES]);
+                none.tiles[0b1100] = Some(empty);
+                none.offset = offset;
+                let buf = painted(&kit, &with_corners(&kit, none), &lake);
+                assert_eq!(buf.sprites().len(), 9, "{empty:?} at {offset:?}");
+            }
         }
+    }
+
+    #[test]
+    fn a_picture_on_whole_tiles_is_drawn_whole() {
+        let kit = Kit::new();
+        // Two tiles wide, moved half a tile right and down: from the
+        // water's down-right point it covers exactly the water's tile and
+        // the one to its right, and ends where they end.
+        let wide = ImageRect {
+            x: 0,
+            y: 96,
+            w: 48,
+            h: 24,
+        };
+        let mut pictures = [None; MIXES];
+        pictures[0b0001] = Some(wide);
+        let mut layer = CornerLayer::new(BTreeSet::from([WATER]), pictures);
+        layer.offset = (12, 12);
+        let buf = painted(
+            &kit,
+            &with_corners(&kit, layer),
+            &view(["...", ".~.", "..."]),
+        );
+        let whole = Rect::new(24, 28, 48, 24);
+        assert_eq!(drawn(&buf, 9), [(src_rect(wide), whole)]);
+        assert_eq!(buf.sprites()[9].dest, whole);
     }
 
     #[test]
