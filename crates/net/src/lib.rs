@@ -6,7 +6,7 @@
 //! to one on a [`Channel`] (`Reliable`, ordered and lossless as a WebSocket
 //! is, or `Unreliable`), and [`Transport::poll`] hands back what happened
 //! since: [`NetEvent`]s of peers connected, messages and disconnects. The
-//! sockets live in the backends (ADR-0153): a server's in `shuyi-server`,
+//! sockets live in the backends (ADR-0154): a server's in `shuyi-server`,
 //! a native client's and a web client's in `shuyi-app`. This crate has no
 //! I/O, no clock, no threads and no floats.
 //!

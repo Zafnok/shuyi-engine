@@ -83,7 +83,7 @@ None.
     still parked; local play, `shuyi-stage-arcade` or
     `shuyi-stage-grid`);
   - the model in a paragraph: the server decides, and broadcasts each
-    step's inputs; clients step the same rules (ADR-0153);
+    step's inputs; clients step the same rules (ADR-0154);
   - the steps: `impl RoomGame` beside the game's `TickSim`, with the bot
     hook kept pure in the rules (no floats, a seeded `SimRng`); a server
     binary behind a `server` feature calling `shuyi_server::run`; the
@@ -133,7 +133,7 @@ None.
     answers, say "a game server" too.
   - `cargo xtask check-modules` passes.
 - **The docs map, `docs/README.md`**:
-  - the `26xx` row's "read first" gains ADR-0153, 2618's ADR and the
+  - the `26xx` row's "read first" gains ADR-0154, 2618's ADR and the
     book's online chapter (2854, linked by path once it exists);
   - a row for how this repository's own servers are deployed and
     watched: `deploy/trails/README.md` (2618) and the monitor workflow
@@ -162,7 +162,7 @@ and its files 250, modules, guides and the docs map 100).
 
 ## Implementation steps
 
-1. Read ADR-0153, the completion notes of 2613–2617, 2789 and 2790, and
+1. Read ADR-0154, the completion notes of 2613–2617, 2789 and 2790, and
    `examples/trails`. Note the names that landed and the byte costs of
    the `net` feature.
 2. Rewrite `skills/shuyi-net/SKILL.md` and set `version` and

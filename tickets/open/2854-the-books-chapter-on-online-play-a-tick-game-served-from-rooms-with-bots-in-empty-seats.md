@@ -27,7 +27,7 @@ does.
 
 What it builds on:
 
-- **ADR-0153** (written by 2613): the sync model. The server runs the
+- **ADR-0154** (written by 2613): the sync model. The server runs the
   real `TickSim` headless and decides everything: seats, which input
   counts at which step, the bots, and when a round starts and with
   which seed. Each step it broadcasts the step's resolved `TickInput`.
@@ -81,7 +81,7 @@ None.
      works only because the rules are deterministic (chapter 5's hash).
      It also says why not rollback: it needs no server, but a game with
      bots and drop-in needs one anyway, and the browser has only
-     WebSocket. Link ADR-0153.
+     WebSocket. Link ADR-0154.
   2. **A room.** `RoomGame` and its consts (`SEATS` and the others 2614
      defines), on Moon Garden's bees.
   3. **Bots in empty seats.** The game's own bot hook,
@@ -152,7 +152,7 @@ tests 300, glossary and links 50).
 
 ## Implementation steps
 
-1. Read ADR-0153, 2614's and 2615's completion notes, and
+1. Read ADR-0154, 2614's and 2615's completion notes, and
    `examples/trails` (its README, `src/`, `trails-server`). Write the
    chapter's outline against the names that actually landed. A name in
    this ticket that changed is used as it landed.
@@ -184,7 +184,7 @@ tests 300, glossary and links 50).
       leaves, with the room still stepping.
 - [ ] `cargo xtask check-book` passes, with a glossary row for each
       bold term the chapter uses.
-- [ ] The link checks pass, and the chapter links ADR-0153, 2618's ADR
+- [ ] The link checks pass, and the chapter links ADR-0154, 2618's ADR
       and trails' files.
 - [ ] The chapter never calls the genre or the example by an existing
       game's name.

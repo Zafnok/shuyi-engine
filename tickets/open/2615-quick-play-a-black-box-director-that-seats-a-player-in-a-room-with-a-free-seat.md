@@ -26,7 +26,7 @@ seats are ridden by bots, and players drop in and out of them (2614).
 - **ADR-0006** (networking in layers) puts "who is in a match" in its
   Session layer and matchmaking in its Services layer. Quick play sits
   between them: it is a session the server picks, with no lobby.
-- **ADR-0153** (written by 2613) is the sync model this rests on: an
+- **ADR-0154** (written by 2613) is the sync model this rests on: an
   authoritative server runs each room's `TickSim` headless and
   broadcasts the resolved inputs.
 - **2614** builds the room this ticket directs: `RoomGame`, the sans-IO
@@ -82,7 +82,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
     ones, closes after this long;
   - `msgs_per_second: u16`, default 30: a peer's message budget. Past it
     the peer is disconnected. A client sends `Input` on change and
-    `Alive` once a second (ADR-0153), so 30 is far above honest play at
+    `Alive` once a second (ADR-0154), so 30 is far above honest play at
     15 steps a second;
   - `hello_timeout_s: u16`, default 5: a peer that sends no `Hello` in
     this long is dropped;

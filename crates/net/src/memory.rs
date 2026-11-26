@@ -70,11 +70,9 @@ struct Shared {
     ends: Vec<End>,
     /// Each linked pair, the lower id first: whether it is closed.
     links: BTreeMap<(PeerId, PeerId), bool>,
-    /// What is on its way, by the step it is due, then the order it was
-    /// sent.
-    flight: BTreeMap<(u64, u64), Item>,
-    /// The next item's number: the order of sends.
-    next_seq: u64,
+    /// What is on its way, in the order it was sent: all of it arrives at
+    /// the next step.
+    flight: Vec<Item>,
 }
 
 /// One endpoint's state.
@@ -115,8 +113,7 @@ impl MemoryNetwork {
                 max_message: DEFAULT_MAX_MESSAGE,
                 ends: Vec::new(),
                 links: BTreeMap::new(),
-                flight: BTreeMap::new(),
-                next_seq: 0,
+                flight: Vec::new(),
             })),
         }
     }
@@ -165,12 +162,7 @@ impl MemoryNetwork {
     pub fn step(&mut self) {
         let mut shared = self.shared.borrow_mut();
         shared.now += 1;
-        let now = shared.now;
-        while let Some(entry) = shared.flight.first_entry() {
-            if entry.key().0 > now {
-                break;
-            }
-            let item = entry.remove();
+        for item in std::mem::take(&mut shared.flight) {
             shared.deliver(item);
         }
     }
@@ -196,10 +188,7 @@ impl MemoryNetwork {
 impl Shared {
     /// Puts an item on its way, due at the next step.
     fn push(&mut self, from: PeerId, to: PeerId, what: What) {
-        let seq = self.next_seq;
-        self.next_seq += 1;
-        self.flight
-            .insert((self.now + 1, seq), Item { from, to, what });
+        self.flight.push(Item { from, to, what });
     }
 
     /// Hands `item` to its endpoint. Nothing is sent after a close, so

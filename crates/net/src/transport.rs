@@ -299,3 +299,6 @@ pub trait Transport {
     /// What this end has carried.
     fn stats(&self) -> NetStats;
 }
+
+#[cfg(test)]
+mod tests;

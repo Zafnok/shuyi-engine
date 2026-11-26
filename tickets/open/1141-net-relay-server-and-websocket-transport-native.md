@@ -26,7 +26,7 @@ each other: one creates a room and passes its code. Vendors have closed
 or shrunk in 2026, so we don't depend on one.
 
 Nick's decision of 2026-11-25 (`docs/decisions.md`) unparked an online
-example, trails, played in rooms of a server with quick play (ADR-0153).
+example, trails, played in rooms of a server with quick play (ADR-0154).
 That work builds what this ticket needed underneath it, so this ticket
 stays parked and builds on it:
 

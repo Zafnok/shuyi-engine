@@ -80,7 +80,7 @@ behind 2618 (re-check each on the day this ticket is worked, step 2):
   (credits for 6 months), Azure (12 months), Render (spins down when
   idle), Railway ($1 a month). These were not re-checked on 2026-11-25.
 - **Bandwidth, estimated before any code**: about 88 to 112 B on the
-  wire per player per step (ADR-0153's frame, and the infra check's
+  wire per player per step (ADR-0154's frame, and the infra check's
   36 B payload with WebSocket, TLS and TCP headers), at 15 steps a
   second, so about 1.3 to 1.7 KB/s a player. 80 players around the
   clock is about 275 to 350 GB a month, against 10 TB. Sending the

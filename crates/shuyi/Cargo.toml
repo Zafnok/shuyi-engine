@@ -35,7 +35,7 @@ schema = ["shuyi-core/schema", "shuyi-ui/schema", "shuyi-platform/schema"]
 # `shuyi-script` (ADR-0093): rules from scripts, a library the rules call,
 # so no `Module`. It needs `std`.
 script = ["std", "dep:shuyi-script"]
-# `shuyi-net` (ADR-0153): the transport a game's online play talks
+# `shuyi-net` (ADR-0154): the transport a game's online play talks
 # through, and an in-memory network for its tests; a library, so no
 # `Module`. It needs `std`.
 net = ["std", "dep:shuyi-net"]

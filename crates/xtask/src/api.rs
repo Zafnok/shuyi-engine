@@ -199,7 +199,7 @@ pub const API_CRATES: &[ApiCrate] = &[
         name: "shuyi-script",
         features: Features::Only(&[]),
     },
-    // The transport and the in-memory network (ADR-0153) have no feature.
+    // The transport and the in-memory network (ADR-0154) have no feature.
     ApiCrate {
         name: "shuyi-net",
         features: Features::Only(&[]),
