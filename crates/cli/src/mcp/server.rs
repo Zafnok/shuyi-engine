@@ -38,7 +38,9 @@ const INSTRUCTIONS: &str = "Shuyi Engine's tool contract on a game. Each operati
     the frames' times), `reset` to start over, `stop` at the end; call `start` again after changing the game's code. `start` \
     with `link` attaches the session to a debug build running in its window instead. A failed \
     answer is an error result with a `code` (`SH0001`): branch on it, and `explain` says what \
-    it means.";
+    it means. Before guessing a type's, a function's or a file's name, call `docs` (`query`: \
+    `play a sound`, `Sprite`): it searches the engine's Learn pages, skills, examples and \
+    problem codes at the game's engine revision.";
 
 /// The id of the server's `roots/list` request.
 pub const ROOTS: &str = "shuyi-roots";

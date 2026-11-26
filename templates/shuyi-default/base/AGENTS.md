@@ -94,6 +94,7 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi seed-target --into <worktree>` | run in the main checkout: starts a new worktree's `target/` from its build, so the new one's first build compiles the game's own crates, not every dependency (the `shuyi-worktrees` skill) |
 | `cargo shuyi trim-targets` | deletes the incremental caches of the game's idle worktrees' `target/` (no build in 3 days), never a worktree; `--dry-run` says what it would delete |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
+| `cargo shuyi docs <query>` | searches the engine's book, skills, examples and problem codes, as the engine this game pins has them (`docs play a sound`, `docs Sprite`): run it before guessing a type's or a function's name |
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one. The dev container runs it for you when it is created |
 
 `scene`, `replay` and `playtest` need a stage and rules: a stage's own

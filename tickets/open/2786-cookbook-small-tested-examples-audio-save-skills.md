@@ -130,11 +130,14 @@ None.
   game: 2842.
 - Publishing the recipes as how-to pages on the website, and site
   search: 2843's job.
-- **Either order with 3412:** if 3412 is done, add a row to
-  `site/data/how-do-i.toml` for each recipe (`go =
-  "example/cookbook/examples/<task>.rs"`, with the task phrases from its
-  `//!` line), and run its how-do-I table test; if not, nothing to do
-  for the rows (3412 adds a row for each cookbook example).
+- **From 3412 (done):** add a row to `site/data/how-do-i.toml` for
+  each recipe (`go = "example/cookbook/examples/<task>.rs"`, with the
+  task phrases from its `//!` line), and run its how-do-I table test
+  (`every_how_do_i_row_goes_to_a_chunk_of_the_corpus`,
+  `crates/cli/src/contract/docs/tests.rs`). `docs` indexes `examples/`
+  by walking it (`crates/cli/build.rs`'s `examples` table), so a recipe
+  is found with no other change; its chunk is its `//!` lines and its
+  public items' names.
 - **From 2225 (done):** `shuyi-audio` and a `sound_from_files` recipe
   use a sound named in the game's `audio.ron` on the short path
   (`BasicData::load` reads it, `run_game` plays it), such as a `.sfx.ron`

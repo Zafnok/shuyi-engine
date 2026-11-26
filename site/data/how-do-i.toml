@@ -1,0 +1,209 @@
+# The "how do I" table `shuyi docs` answers beside its hits (ticket 3412,
+# ADR-0154): a row's `ask` lists task phrases, and `go` the one place that
+# answers them. A query matches a row when it holds every word of one of
+# its phrases (the common words, "a", "the", "to"…, left out).
+#
+# `go` is `learn/<path under site/content/>[#anchor]`, `skill/<name>` or
+# `example/<path under examples/>`. The anchor is the heading's, as Zola
+# makes it. A test fails a row whose place the embedded docs don't hold
+# (crates/cli/src/contract/docs/tests.rs).
+
+[[row]]
+ask = ["play a sound", "sound effect", "play audio", "play music"]
+go = "learn/book/games-and-screens.md#the-context"
+
+[[row]]
+ask = ["make a sound effect", "new sound", "sfx file"]
+go = "skill/shuyi-new-game"
+
+[[row]]
+ask = ["make a new game", "start a game", "new project"]
+go = "learn/book/quick-start.md#make-a-game"
+
+[[row]]
+ask = ["run the game", "run my game"]
+go = "learn/book/quick-start.md#run-it"
+
+[[row]]
+ask = ["install rust", "install the tools", "set up"]
+go = "learn/book/quick-start.md#install-the-tools"
+
+[[row]]
+ask = ["add a screen", "make a screen", "screen trait"]
+go = "skill/shuyi-screen"
+
+[[row]]
+ask = ["open a screen", "close a screen", "screen stack", "push a screen"]
+go = "learn/book/games-and-screens.md#the-stack"
+
+[[row]]
+ask = ["show text", "translate text", "language file", "localize"]
+go = "learn/book/games-and-screens.md#text-by-key"
+
+[[row]]
+ask = ["react to a key", "read input", "handle input", "key press", "button press"]
+go = "learn/book/actions.md#reacting-to-an-action"
+
+[[row]]
+ask = ["add an action", "new action", "action of my own"]
+go = "learn/book/actions.md#actions-of-a-game-s-own"
+
+[[row]]
+ask = ["change the keys", "default keys", "keymap"]
+go = "learn/book/actions.md#the-keymap-file"
+
+[[row]]
+ask = ["name a key in text", "key in text", "help line"]
+go = "learn/book/actions.md#naming-a-key-in-text"
+
+[[row]]
+ask = ["rebind keys", "rebinding", "let the player rebind"]
+go = "learn/book/actions.md#rebinding"
+
+[[row]]
+ask = ["mouse", "touch", "tap", "click"]
+go = "learn/book/actions.md#the-mouse-and-taps"
+
+[[row]]
+ask = ["controller", "gamepad", "pad buttons"]
+go = "skill/shuyi-input"
+
+[[row]]
+ask = ["draw a sprite", "show a picture", "add a sprite", "sprites"]
+go = "learn/book/frame-and-skins.md#a-picture-the-skin-paints"
+
+[[row]]
+ask = ["draw the frame", "skin", "paint the view"]
+go = "learn/book/frame-and-skins.md#the-skin"
+
+[[row]]
+ask = ["animate", "tween", "ease", "particles"]
+go = "skill/shuyi-animate"
+
+[[row]]
+ask = ["import art", "load images", "aseprite", "tiles from an image"]
+go = "skill/shuyi-import-art"
+
+[[row]]
+ask = ["save the game", "save file", "load a save"]
+go = "learn/book/saves-and-settings.md#a-save"
+
+[[row]]
+ask = ["settings", "options screen", "store settings"]
+go = "learn/book/saves-and-settings.md#settings"
+
+[[row]]
+ask = ["undo", "undo history", "undo a move"]
+go = "learn/book/rules-as-commands.md#history-and-undo"
+
+[[row]]
+ask = ["random", "luck", "random number", "dice"]
+go = "learn/book/rules-as-commands.md#luck"
+
+[[row]]
+ask = ["game rules", "rules as commands", "turn rules", "turnrules"]
+go = "learn/book/rules-as-commands.md#turnrules"
+
+[[row]]
+ask = ["fixed step", "tick game", "real time"]
+go = "learn/book/rules-as-commands.md#rules-in-fixed-steps"
+
+[[row]]
+ask = ["timer", "time in rules", "wait seconds"]
+go = "learn/book/rules-as-commands.md#time-in-rules"
+
+[[row]]
+ask = ["new file format", "format of my own", "custom format"]
+go = "learn/book/assets-and-formats.md#a-format-of-your-own"
+
+[[row]]
+ask = ["load a file", "read data", "asset kind", "kind of my own"]
+go = "learn/book/assets-and-formats.md#a-kind-of-the-game-s-own"
+
+[[row]]
+ask = ["hot reload", "reload files", "reload while running"]
+go = "learn/book/assets-and-formats.md#reloading-while-the-game-runs"
+
+[[row]]
+ask = ["voice", "voice acting", "spoken lines"]
+go = "learn/book/assets-and-formats.md#voices"
+
+[[row]]
+ask = ["dialogue", "conversation", "dlg file"]
+go = "skill/shuyi-dialogue"
+
+[[row]]
+ask = ["cutscene", "cinematic"]
+go = "skill/shuyi-cinematic"
+
+[[row]]
+ask = ["write a test", "test a screen", "harness"]
+go = "learn/book/testing.md#the-harness"
+
+[[row]]
+ask = ["test the rules", "rules test"]
+go = "learn/book/testing.md#the-rules"
+
+[[row]]
+ask = ["golden values", "snapshot test", "golden test"]
+go = "learn/book/testing.md#golden-values"
+
+[[row]]
+ask = ["replay a bug", "replay a record", "record and replay", "desync"]
+go = "skill/shuyi-debug-replay"
+
+[[row]]
+ask = ["balance", "playtest", "bots", "difficulty"]
+go = "skill/shuyi-balance-bots"
+
+[[row]]
+ask = ["grid stage", "tile map", "grid game", "turn based grid"]
+go = "skill/shuyi-stage-grid"
+
+[[row]]
+ask = ["export the game", "package the game", "ship the game", "make a release"]
+go = "learn/book/targets-and-export.md#export"
+
+[[row]]
+ask = ["web build", "browser", "play in the browser"]
+go = "learn/book/targets-and-export.md#the-web-build"
+
+[[row]]
+ask = ["check a target", "platforms", "which targets"]
+go = "learn/book/targets-and-export.md#the-targets-a-game-ships-on"
+
+[[row]]
+ask = ["licenses", "notices", "third party"]
+go = "skill/shuyi-ship"
+
+[[row]]
+ask = ["slow frames", "performance", "profile frames", "heap"]
+go = "skill/shuyi-perf"
+
+[[row]]
+ask = ["compile faster", "slow build", "fast compiles"]
+go = "learn/book/fast-compiles.md#the-setup"
+
+[[row]]
+ask = ["mcp server", "agent tools", "connect an agent"]
+go = "learn/book/tools-for-agents.md#the-mcp-server"
+
+[[row]]
+ask = ["problem code", "error code", "what does this error mean"]
+go = "learn/book/tools-for-agents.md#problem-codes"
+
+[[row]]
+ask = ["before commit", "gates", "ci fails"]
+go = "skill/shuyi-gates"
+
+[[row]]
+ask = ["online", "multiplayer", "network", "lockstep"]
+go = "skill/shuyi-net"
+
+[[row]]
+ask = ["worktree", "worktrees"]
+go = "skill/shuyi-worktrees"
+
+[[row]]
+ask = ["example game", "hello grid"]
+go = "example/hello-grid/src/lib.rs"

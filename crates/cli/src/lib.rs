@@ -1,6 +1,6 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
 //! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`,
-//! `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]),
+//! `import`, `bake`, `export`, `doctor`, `explain`, `docs`, `attach`, each with `--json`; [`contract`]),
 //! the exporters `export` runs ([`export`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
@@ -26,7 +26,7 @@
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
-//! `doctor`, `explain`, `attach`, `schema` and `check-skills` need none. The commands that run the game itself
+//! `doctor`, `explain`, `docs`, `attach`, `schema` and `check-skills` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them. A game on the short path gives [`BasicTools`]
@@ -150,6 +150,8 @@ the tool contract (each also with --json; a wrong argument prints its usage):
                                      a sound effect from a preset or a file: its text,
                                      length and peak; --out writes it, --wav renders it
   explain [<code>]                   every problem code (SH2003), or one code's page
+  docs <words…> [--limit N] [--kind K]
+                                     search the engine's docs, skills, examples and codes
   attach <host:port> --token <t> [steps] [--screenshot <file.png>]
                                      a running debug build over the live link: play steps
                                      as a player, then its screens, frame, log and picture
@@ -218,7 +220,7 @@ commands:
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, sfx, explain, attach, schema, check-skills, mcp, reveal verify
+{file} (new, doctor, sfx, explain, docs, attach, schema, check-skills, mcp, reveal verify
 and reveal open need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix

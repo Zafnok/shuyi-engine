@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "type": "string",
+      "const": "docs"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DocsOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "DocsOutput": {
+      "description": "What `docs` answers.",
+      "type": "object",
+      "properties": {
+        "hits": {
+          "description": "The chunks it matched, best first, then by path and position.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Hit"
+          }
+        },
+        "how": {
+          "description": "The \"how do I\" rows the query asked, in the table's order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HowRow"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "how",
+        "hits"
+      ]
+    },
+    "Hit": {
+      "description": "A chunk of the docs that the query matched.",
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "description": "Its section's anchor in the page (`naming-a-key-in-text`); none at a\npage's start.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "excerpt": {
+          "description": "Its text from where it first holds the query's rarest term, at most\n400 bytes, with `…` where it was cut.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "What it is from.",
+          "$ref": "#/$defs/HitKind"
+        },
+        "path": {
+          "description": "Its source in the engine's repository\n(`site/content/learn/book/actions.md`).",
+          "type": "string"
+        },
+        "score": {
+          "description": "How well it matched: BM25 in thousandths. Higher is better; only\ncomparable within one answer.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "title": {
+          "description": "Its page's or skill's title, and its section's heading.",
+          "type": "string"
+        },
+        "url": {
+          "description": "The Markdown twin of its Learn page on the engine's site; none for\nother kinds.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "title",
+        "path",
+        "score",
+        "excerpt"
+      ]
+    },
+    "HitKind": {
+      "description": "What a hit is from.",
+      "oneOf": [
+        {
+          "description": "A Learn page's section (`site/content/learn`).",
+          "type": "string",
+          "const": "learn"
+        },
+        {
+          "description": "A skill's section or file (`skills/`).",
+          "type": "string",
+          "const": "skill"
+        },
+        {
+          "description": "An example's file (`examples/`).",
+          "type": "string",
+          "const": "example"
+        },
+        {
+          "description": "A problem code's page (`crates/cli/errors`).",
+          "type": "string",
+          "const": "code"
+        }
+      ]
+    },
+    "HowRow": {
+      "description": "A row of the \"how do I\" table whose task the query asked.",
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "description": "Its section's anchor, if it names one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ask": {
+          "description": "The row's task phrase the query holds (`play a sound`).",
+          "type": "string"
+        },
+        "go": {
+          "description": "Where it is answered, as the table writes it\n(`learn/book/games-and-screens.md#the-context`, `skill/shuyi-input`,\n`example/hello-grid/src/lib.rs`).",
+          "type": "string"
+        },
+        "kind": {
+          "description": "What that is.",
+          "$ref": "#/$defs/HitKind"
+        },
+        "path": {
+          "description": "Its source in the engine's repository.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Its title.",
+          "type": "string"
+        },
+        "url": {
+          "description": "The Markdown twin of its Learn page; none for other kinds.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ask",
+        "go",
+        "kind",
+        "title",
+        "path"
+      ]
+    }
+  }
+}

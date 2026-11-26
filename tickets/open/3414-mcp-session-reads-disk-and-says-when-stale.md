@@ -61,8 +61,8 @@ game's tool program with `cargo run … mcp-host` (`Cargo::launch` in
    seeding still rebuilds every workspace crate with its own paths
    (2078's study). The handshake waits on the build either way.
 
-There is a fourth, smaller piece. 3412 plans a docs-and-API search corpus
-embedded in the `shuyi` binary, and its **Out** leaves "reading the
+There is a fourth, smaller piece. 3412 embeds a docs search corpus in
+the `shuyi` binary, and its **Out** leaves "reading the
 corpus from disk in a debug build instead of the embedded copy" to this
 ticket. The server already embeds the template, the skill pack and the
 targets through `shuyi_embed::Table` (`crates/cli/build.rs`), so an
@@ -186,10 +186,14 @@ None.
 - **The search corpus from disk.** 3412 embeds the Learn pages, the
   book's snippets and the examples for its `docs` index. Reading that
   corpus from disk in a debug build is this ticket's, as step 6 reads
-  the other embedded tables. **Either order with 3412:** if 3412 is
-  done, read its corpus tables through step 6's helper, with a test that
-  an edited Learn page is found without a rebuild. If not, nothing to do
-  (3412 reads its corpus through step 6's helper when it lands).
+  the other embedded tables. **From 3412 (done):** read its corpus
+  tables (`learn`, `snippets`, `tutorial` and `examples` in
+  `crates/cli/build.rs`, read as `LEARN`, `SNIPPETS`, `TUTORIAL` and
+  `EXAMPLES` in `crates/cli/src/contract/docs/corpus.rs`) through step
+  6's helper, with a test that an edited Learn page is found without a
+  rebuild. The index is built once per process (`Index::embedded`, a
+  `OnceLock` in `docs/index.rs`): from disk it is built again when a
+  file changes, or per call.
 
 **Out (do not do):**
 - Rebuilding and replaying the session to the same moment after a code
