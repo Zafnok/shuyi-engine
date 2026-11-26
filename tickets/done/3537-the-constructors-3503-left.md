@@ -140,12 +140,12 @@ lands.
 - Split at the ticket's **Split:** point: with all 19 changed the PR
   counted 1,368 lines, so the perf rows (`HeapCounts`, `HeapDiff`,
   `HeapSnapshot`, `SpanEvent`, `TagDelta`, `TagRow`, `PerfRead::of`,
-  `Counts`, `TagCounts`) went to 3538, with the shapes this ticket had
-  given them, and stay in `tools/constructors.ron` as "ticket 3538
+  `Counts`, `TagCounts`) went to 3539, with the shapes this ticket had
+  given them, and stay in `tools/constructors.ron` as "ticket 3539
   changes it". So the first acceptance criterion holds for this ticket's
-  id, and 3538 carries the rest.
+  id, and 3539 carries the rest.
 
-**Follow-up tickets.** 3538 (the perf rows).
+**Follow-up tickets.** 3539 (the perf rows).
 
 **For the game's pin move.** It calls `Tries::new` in
 `crates/tools/src/skirmish.rs` and `crates/tools/src/game_tools.rs`, and

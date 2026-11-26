@@ -1,5 +1,5 @@
 ---
-id: "3538"
+id: "3539"
 title: "The perf rows take no two neighbouring numbers"
 type: infra
 milestone: MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3538 — The perf rows take no two neighbouring numbers
+# 3539 — The perf rows take no two neighbouring numbers
 
 ## Context
 
@@ -20,7 +20,7 @@ says a constructor of a `#[non_exhaustive]` type takes no two neighbouring
 integers, floats or tuples of one type, and `cargo xtask api` checks it
 against `tools/constructors.ron`. 3537 changed the bots' settings and five
 other constructors, and split these off at its **Split:** point (1,000
-lines). Each is listed in the file as "ticket 3538 changes it":
+lines). Each is listed in the file as "ticket 3539 changes it":
 
 - `shuyi-ui`'s `perf::HeapCounts::new(u64, u64, u32)`,
   `HeapDiff::new(u32, u32)`, `HeapSnapshot::new(u64, u64, Vec<TagRow>)`,
@@ -84,7 +84,7 @@ None.
 
 ## Acceptance criteria
 
-- [ ] No entry of `tools/constructors.ron` says "ticket 3538 changes it".
+- [ ] No entry of `tools/constructors.ron` says "ticket 3539 changes it".
 - [ ] `cargo xtask api` passes on the branch.
 - [ ] For each constructor that changes, a test shows it builds what a
       literal built.
