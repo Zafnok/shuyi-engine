@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: networking"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 2612 — TickInput holds up to eight seats, and a seat's input has a byte form
@@ -117,25 +117,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `MAX_SEATS` is 8; an 8-seat `TickInput` steps a `TickSim`, and
+- [x] `MAX_SEATS` is 8; an 8-seat `TickInput` steps a `TickSim`, and
       `TickInput::new` with nine seats keeps the first eight, as
       documented.
-- [ ] A RON record with a step of nine seats fails to load with an error
+- [x] A RON record with a step of nine seats fails to load with an error
       naming the limit of eight.
-- [ ] Every existing golden test and record replays bit for bit.
-- [ ] `TickInput::decode(&encode(x)) == Some((x, len))` for every input
+- [x] Every existing golden test and record replays bit for bit.
+- [x] `TickInput::decode(&encode(x)) == Some((x, len))` for every input
       the tests generate, and the encoded length of an idle 8-seat step
       is 9.
-- [ ] `decode` never panics on any bytes, and refuses a seat count of 9,
+- [x] `decode` never panics on any bytes, and refuses a seat count of 9,
       a reserved header bit, a zero count and a short input.
-- [ ] The no_std build (`cargo xtask check-no-std` and CI's no_std leg)
+- [x] The no_std build (`cargo xtask check-no-std` and CI's no_std leg)
       passes.
-- [ ] The completion notes have a `Breaking:` line with a `migration`
+- [x] The completion notes have a `Breaking:` line with a `migration`
       block, and a `Behaviour:` line.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -153,5 +153,53 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `MAX_SEATS` is 8 (`crates/core/src/tick.rs`), its doc says why, and
+  `TickInput`'s doc names the limit and the byte form. No other doc
+  comment said four.
+- A record's step of more seats than `MAX_SEATS` is refused as it loads:
+  `TickInput::seats` reads through a `deserialize_with` that fails with
+  "a step holds 9 seats; at most 8". Every record under
+  `examples/*/tests/records/` and the golden tables load and replay as
+  before (their tests pass unchanged).
+- The byte form is `crates/core/src/tick/bytes.rs`: `SeatInput::encode`
+  and `decode`, `TickInput::encode` and `decode`, and the public error
+  `TooManyActions` (private field, `#[non_exhaustive]`, `Display` and
+  `core::error::Error`), re-exported from `tick`. `no_std` + `alloc`, no
+  serde, no float. An idle 8-seat step is 9 bytes, a press adds 3.
+- Deviation: `TickInput::seats` is a public field, so a game can build a
+  step of more than eight seats without `new`. `TickInput::encode` keeps
+  the first `MAX_SEATS` of them, as `new` does, rather than failing with
+  an error the ticket didn't name; its doc says so and a test covers it.
+- Deviation: the 8-seat record test is a unit test in `tick/tests.rs`
+  over the toy dot (it records 40 steps, writes the RON, reads it back
+  and replays both to the same hashes), not a file under `tests/`.
+- Rejected: a seat count chosen per game (a const generic on
+  `TickInput`), for the reason the ticket's Out gives.
+- The property tests run on a fixed proptest seed (2612).
+- Docs: the module's and items' doc comments, with doc examples; no
+  guide in `docs/guides/` names the seat count or a wire.
+
+Breaking: shuyi-core: `tick::MAX_SEATS`: is 8, not 4; a game that sized something by it holds twice as many seats
+
+```migration
+since: 0.1.0
+what: tick::MAX_SEATS is 8, not 4, so a TickInput may hold up to eight seats.
+old: "pub const MAX_SEATS: usize = 4"
+new: "pub const MAX_SEATS: usize = 8"
+before: |
+  let mut scores = [0_u32; 4]; // one per seat
+  scores[seat] += 1;
+after: |
+  let mut scores = [0_u32; MAX_SEATS]; // one per seat
+  scores[seat] += 1;
+find: ["[0_u32; 4]"]
+```
+
+Behaviour: shuyi-core: a `TickRecord` (or a `TickInput`) read from text with a step of more than eight seats is refused, "a step holds N seats; at most 8"; before it loaded with every seat
+Behaviour: shuyi-core: `TickInput::new` keeps the first eight seats, not four
+
+Game: nothing to adopt, a search of the game (`gh search code --repo Zafnok/visions-of-shuyi 'MAX_SEATS'`, and `'TickInput'`) finds no use of the constant and `TickInput` only in its skills' text.
+
+Book: none, the book's chapter on fixed steps (`rules-as-commands.md`) names no seat count, and the byte form is taught by 2854's chapter, which comes later.
+
+Skills: none, the skill pack names no seat count, and the byte form is taught by 2855's skill, which comes later.

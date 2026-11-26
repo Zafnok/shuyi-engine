@@ -44,8 +44,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::made::{Made, Mismatch};
 
-/// The most seats a [`TickInput`] holds: four players at one machine.
-pub const MAX_SEATS: usize = 4;
+/// The most seats a [`TickInput`] holds: eight riders in a room, a couch
+/// of four, or a room of humans and bots online.
+pub const MAX_SEATS: usize = 8;
 
 /// An action, by its place in the game's list of actions (`ActionSet::ALL`
 /// in `shuyi-assets`): 0 is the first. The core names no game's actions,
@@ -118,14 +119,32 @@ impl SeatInput {
 
 /// What one step of a [`TickSim`] is given: one [`SeatInput`] per seat,
 /// indexed by seat number from 0, at most [`MAX_SEATS`]. A game with one
-/// player has seat 0 alone.
+/// player has seat 0 alone. Its text (in a [`TickRecord`]) with more seats
+/// than that is refused, naming the limit; its byte form, for a wire, is
+/// [`TickInput::encode`]'s.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // It may grow (ADR-0039): built with `new` or `one`.
 #[non_exhaustive]
 pub struct TickInput {
     /// Each seat's input, by seat number.
+    #[serde(deserialize_with = "at_most_max_seats")]
     pub seats: Vec<SeatInput>,
+}
+
+/// Reads a step's seats, refusing more than [`MAX_SEATS`].
+fn at_most_max_seats<'de, D>(deserializer: D) -> Result<Vec<SeatInput>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let seats = Vec::<SeatInput>::deserialize(deserializer)?;
+    if seats.len() > MAX_SEATS {
+        return Err(serde::de::Error::custom(format_args!(
+            "a step holds {} seats; at most {MAX_SEATS}",
+            seats.len()
+        )));
+    }
+    Ok(seats)
 }
 
 impl TickInput {
@@ -320,6 +339,10 @@ pub fn replay<S: TickSim>(
         })
         .collect())
 }
+
+mod bytes;
+
+pub use bytes::TooManyActions;
 
 #[cfg(test)]
 mod tests;

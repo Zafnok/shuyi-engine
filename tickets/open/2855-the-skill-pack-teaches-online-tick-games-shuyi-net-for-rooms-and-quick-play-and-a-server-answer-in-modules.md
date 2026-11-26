@@ -69,6 +69,11 @@ None.
 
 **In:**
 
+- **From 2612 (done):** the skill teaches that a step holds up to eight
+  seats (`shuyi_core::tick::MAX_SEATS`), and the byte form of a step's
+  input (`SeatInput::encode` and `decode`, `TickInput::encode` and
+  `decode`, `TooManyActions`, in `crates/core/src/tick/bytes.rs`): 2612
+  left both to it.
 - **Rewrite `skills/shuyi-net/SKILL.md`** for what exists, and set its
   `version` to `"2.0"`. Its description names online play for real-time
   games through rooms and quick play. It teaches, with the names that
