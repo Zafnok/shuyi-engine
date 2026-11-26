@@ -1871,6 +1871,7 @@ dependencies = [
  "shuyi-app",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-net",
  "shuyi-platform",
  "shuyi-script",
  "shuyi-ui",
@@ -1990,6 +1991,10 @@ version = "0.1.0"
 dependencies = [
  "shuyi-embed",
 ]
+
+[[package]]
+name = "shuyi-net"
+version = "0.1.0"
 
 [[package]]
 name = "shuyi-platform"

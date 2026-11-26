@@ -2178,6 +2178,8 @@ fn the_prompts_game_is_the_printed_commands_game() {
         typed("org.example.moon"),
         typed("Moon Saves"),
         Step::Enter,
+        // Online play: `none`, its one ready answer.
+        picked(&["none"]),
         picked(&["none"]),
         picked(&["no"]),
         picked(&["desktop", "playdate"]),

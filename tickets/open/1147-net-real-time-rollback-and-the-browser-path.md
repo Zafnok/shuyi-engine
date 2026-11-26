@@ -30,7 +30,7 @@ The web build's loader blocks most browser crates. GGRS on wasm pulls
 WebTransport need `wasm-bindgen`. naia has a macroquad feature.
 
 **A third model is built already, by the decision of 2026-11-25**
-(`docs/decisions.md`, the online example trails). Under ADR-0150, which
+(`docs/decisions.md`, the online example trails). Under ADR-0155, which
 amends ADR-0006 §6, a server runs the real `TickSim` and broadcasts
 each step's resolved inputs, with a hash every 15 steps and a catch-up
 from the round's start on join (2614 the rooms, 2615 quick play, 2616
@@ -94,7 +94,7 @@ None.
    server is native) against our own snapshots over `Transport`. Our own
    version is delta-compressed state per client, interpolation buffers,
    and client prediction for the local player.
-3. **The browser.** WebSocket already carries ADR-0150's rooms (1142).
+3. **The browser.** WebSocket already carries ADR-0155's rooms (1142).
    For rollback and snapshots, where loss-tolerant datagrams matter,
    weigh three options:
    - more JS plugins (WebRTC data channels through a signaling server,
@@ -134,7 +134,7 @@ None.
 - committing spike code;
 - MMO concerns beyond what snapshots need (1150);
 - the input-broadcast rooms, quick play and their server (2614–2616,
-  ADR-0150): built, not re-decided here.
+  ADR-0155): built, not re-decided here.
 
 ## Implementation steps
 

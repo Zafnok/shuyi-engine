@@ -1621,15 +1621,15 @@ fn the_catalog_is_the_real_workspaces_engine_crates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let real = packages(&root, &System).unwrap().into_keys().collect();
     assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
-    assert_eq!(API_CRATES.len(), 14);
+    assert_eq!(API_CRATES.len(), 15);
 }
 
 #[test]
 fn an_engine_member_left_out_is_named() {
     let mut names = catalog_names();
-    names.extend(["shuyi-net", "shuyi-gba"]);
+    names.extend(["shuyi-physics", "shuyi-gba"]);
     let error = check_catalog(&members(&names), API_CRATES).unwrap_err();
-    assert!(error.contains(": shuyi-gba, shuyi-net."), "{error}");
+    assert!(error.contains(": shuyi-gba, shuyi-physics."), "{error}");
 }
 
 #[test]
@@ -1653,7 +1653,7 @@ fn an_entry_that_is_no_member_is_named() {
 fn a_run_on_an_engine_member_left_out_fails_before_any_listing() {
     let root = temp_root("left-out");
     let mut names = catalog_names();
-    names.push("shuyi-net");
+    names.push("shuyi-physics");
     let fake = Fake::new(&root)
         .with_tools()
         .with_base("abc123")
@@ -1662,7 +1662,7 @@ fn a_run_on_an_engine_member_left_out_fails_before_any_listing() {
     let outcome = run(&root, &Options::default(), &fake);
     assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
     assert!(
-        outcome.errors[0].contains("shuyi-net"),
+        outcome.errors[0].contains("shuyi-physics"),
         "{:?}",
         outcome.errors
     );
@@ -1848,7 +1848,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-cli", &["toy", "jis"]),
     (
         "shuyi",
-        &["std", "app", "schema", "script", "system-languages"],
+        &["std", "app", "schema", "script", "net", "system-languages"],
     ),
     ("shuyi-sound", &["std", "wav", "vorbis"]),
     ("shuyi-sound-out", &[]),
@@ -1857,6 +1857,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-embed", &[]),
     ("shuyi-embed-macros", &[]),
     ("shuyi-script", &[]),
+    ("shuyi-net", &[]),
 ];
 
 /// The features a crate's manifest has that its check leaves out, each for

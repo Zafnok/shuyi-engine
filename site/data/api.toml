@@ -52,6 +52,10 @@ name = "shuyi_script"
 text = "a module: rules written as Rhai scripts, run on a read-only view, integer only, with no clock, no luck and no files, inside limits"
 
 [[crate]]
+name = "shuyi_net"
+text = "a module: the `Transport` trait a game's online play talks through, and an in-memory network for tests"
+
+[[crate]]
 name = "shuyi_sound"
 text = "decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which only the backend of `shuyi-app`'s `in-house-sound` feature plays through yet"
 

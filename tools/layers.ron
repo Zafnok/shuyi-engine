@@ -159,6 +159,15 @@
             devices: false,
             floats: false,
         ),
+        "shuyi-net": (
+            // The transport trait and the in-memory network (ADR-0155), a
+            // module: pure, with no I/O, no clock and no threads; the
+            // sockets are the backends'.
+            engine: [],
+            outside: Only([]),
+            devices: false,
+            floats: false,
+        ),
         "shuyi-app": (
             // The macroquad backend: the one crate that reaches devices.
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count", "shuyi-sound", "shuyi-sound-out"],
@@ -218,7 +227,7 @@
         "shuyi": (
             // The front door (ADR-0009 §6): the default engine's crates,
             // the backend among them, and each module behind its feature.
-            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-app", "shuyi-script"],
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-app", "shuyi-script", "shuyi-net"],
             outside: Only([]),
             devices: true,
             floats: true,
