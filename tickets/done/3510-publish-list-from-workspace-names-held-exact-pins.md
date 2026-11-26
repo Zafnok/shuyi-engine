@@ -377,4 +377,8 @@ engine's manifests (`gh search code --repo Zafnok/visions-of-shuyi
 Book: none, nothing a game names changed. Publishing is the engine's
 own process, and the book gets its install line from crates.io in 2005.
 
+Playdate: none, `crates/playdate/Cargo.toml` changes only how its
+engine dependencies are written (`workspace = true`, the same features),
+and the Playdate build and backend are unchanged.
+
 Nick: nothing to do. All fourteen names were held on 2026-11-24.
