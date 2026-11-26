@@ -11,7 +11,8 @@ use shuyi_core::state_hash;
 
 use super::builtin_tests::{
     ATLAS, CREDITS, FILM, LIGHTS, MANIFEST, MAP, NAMES, PALETTE, PATTERN_MAP, SCRIPT, Shot, TABLE,
-    Table, bundle, lang_pack, map_text, ogg, ogg_file, pack_files, png_file, wav,
+    TERRAIN_TILES, Table, bundle, lang_pack, map_text, ogg, ogg_file, pack_files, png_file,
+    terrain_tiles, wav,
 };
 use super::codec_tests::{FLAC, JPEG, JPEG_XL, MP3, QOI, WEBP};
 use super::*;
@@ -196,6 +197,12 @@ fn check_rows() -> Rows {
     let spec = sprites.bytes("sprites/atlas.ron").unwrap_or_default();
     rows.format(&AtlasRon::new(), "sprites/atlas.ron", &spec, Some(sprites));
     rows.format(&map_text(), "maps/field.map", MAP.as_bytes(), None);
+    rows.format(
+        &terrain_tiles(),
+        "tiles/farm.ron",
+        TERRAIN_TILES.as_bytes(),
+        None,
+    );
     let keymap = KeymapRon::<sample::Action>::new();
     rows.format(&keymap, "keymap.ron", sample::SOURCE.as_bytes(), None);
     rows.format(

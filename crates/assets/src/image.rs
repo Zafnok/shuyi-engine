@@ -85,6 +85,15 @@ impl ImageInfo {
         }
         Ok(Self { width, height })
     }
+
+    /// Whether `rect` lies inside an image of this size: its right and
+    /// bottom edges at most the width and the height (summed in `u64`, so
+    /// no rectangle overflows into one that fits).
+    pub fn holds(self, rect: ImageRect) -> bool {
+        let right = u64::from(rect.x) + u64::from(rect.w);
+        let bottom = u64::from(rect.y) + u64::from(rect.h);
+        right <= u64::from(self.width) && bottom <= u64::from(self.height)
+    }
 }
 
 impl AssetKind for ImageInfo {
@@ -252,6 +261,22 @@ pub struct ImageRect {
     pub w: u32,
     /// Height.
     pub h: u32,
+}
+
+impl ImageRect {
+    /// Cell `(column, row)` of a grid of `(w, h)` cells whose `(0, 0)`
+    /// starts at pixel `(ox, oy)`: `w × h` from `(ox + column × w, oy +
+    /// row × h)`. Saturates rather than overflow: a cell past `u32` then
+    /// lies outside every image ([`ImageInfo::holds`]).
+    #[must_use]
+    pub const fn cell((column, row): (u32, u32), (w, h): (u32, u32), (ox, oy): (u32, u32)) -> Self {
+        Self {
+            x: ox.saturating_add(column.saturating_mul(w)),
+            y: oy.saturating_add(row.saturating_mul(h)),
+            w,
+            h,
+        }
+    }
 }
 
 /// A picture: a rectangle of an image.
@@ -647,5 +672,42 @@ mod tests {
                 images: [("a.png", SIZE)].into(),
             }
         );
+    }
+
+    const fn rect(x: u32, y: u32, w: u32, h: u32) -> ImageRect {
+        ImageRect { x, y, w, h }
+    }
+
+    #[test]
+    fn a_cell_is_its_column_and_row_in_cell_steps_from_the_origin() {
+        assert_eq!(
+            ImageRect::cell((0, 0), (16, 16), (0, 0)),
+            rect(0, 0, 16, 16)
+        );
+        assert_eq!(
+            ImageRect::cell((2, 1), (16, 24), (0, 0)),
+            rect(32, 24, 16, 24)
+        );
+        assert_eq!(ImageRect::cell((1, 3), (8, 8), (4, 48)), rect(12, 72, 8, 8));
+        // Past `u32`: saturated, so outside every image.
+        let far = ImageRect::cell((u32::MAX, 2), (16, 16), (5, 0));
+        assert_eq!(far, rect(u32::MAX, 32, 16, 16));
+        assert!(!ImageInfo::new(u32::MAX, u32::MAX).holds(far));
+        let low = ImageRect::cell((0, u32::MAX), (16, 2), (0, 1));
+        assert_eq!(low, rect(0, u32::MAX, 16, 2));
+    }
+
+    #[test]
+    fn an_image_holds_a_rectangle_whose_right_and_bottom_edges_are_inside() {
+        assert!(SIZE.holds(rect(0, 0, 16, 8)));
+        assert!(SIZE.holds(rect(8, 4, 8, 4)));
+        assert!(SIZE.holds(rect(16, 8, 0, 0)));
+        assert!(!SIZE.holds(rect(1, 0, 16, 8)));
+        assert!(!SIZE.holds(rect(0, 1, 16, 8)));
+        assert!(!SIZE.holds(rect(0, 0, 17, 8)));
+        assert!(!SIZE.holds(rect(0, 0, 16, 9)));
+        // Summed in `u64`: no edge wraps round to fit.
+        assert!(!SIZE.holds(rect(u32::MAX, 0, 2, 1)));
+        assert!(!SIZE.holds(rect(0, u32::MAX, 1, 2)));
     }
 }
