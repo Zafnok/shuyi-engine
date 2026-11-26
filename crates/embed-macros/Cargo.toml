@@ -15,4 +15,4 @@ workspace = true
 proc-macro = true
 
 [dependencies]
-shuyi-embed = { path = "../embed" }
+shuyi-embed = { workspace = true }

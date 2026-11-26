@@ -33,13 +33,13 @@ print_stdout = "warn"
 
 [dependencies]
 # `no_std`: the Playdate has no standard library (ADR-0008 §2).
-shuyi-assets = { path = "../assets", default-features = false }
+shuyi-assets = { workspace = true }
 # `storage-conformance`: a debug build checks its storage on the device's real
 # files at start (`storage::check`).
-shuyi-ui = { path = "../ui", default-features = false, features = ["storage-conformance"] }
-shuyi-platform = { path = "../platform", default-features = false }
+shuyi-ui = { workspace = true, features = ["storage-conformance"] }
+shuyi-platform = { workspace = true }
 # The debug build's heap counter around the SDK's allocator (`src/device/`).
-shuyi-alloc-count = { path = "../alloc-count", default-features = false }
+shuyi-alloc-count = { workspace = true }
 
 [dev-dependencies]
 # The toy game the backend's tests run.

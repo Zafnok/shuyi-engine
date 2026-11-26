@@ -170,11 +170,14 @@ built already.
   `write-adr` skill).
 - **Public API:** CI's `api` job finds the breaks on every PR, before
   and after the first crates.io release (ADR-0038): a break needs a
-  `Breaking:` line (§5). After that release, a break also needs a
-  version bump and a line in `CHANGELOG.md`. The game's pin update is a
-  game PR. A public type you add, or add to, follows ADR-0039 (2013),
-  and its constructors take no two neighbouring numbers (ADR-0151): `cargo
-  xtask api` fails one that `tools/constructors.ron` doesn't list.
+  `Breaking:` line (§5). A PR never raises the version or edits
+  `CHANGELOG.md`, before or after a release: the version is raised at
+  release time from the `Breaking:` lines since the last tag (2028), and
+  `cargo xtask changelog` writes `CHANGELOG.md` (2804, ADR-0152 §5).
+  The game's pin update is a game PR. A public type you add, or add to,
+  follows ADR-0039 (2013), and its constructors take no two neighbouring
+  numbers (ADR-0151): `cargo xtask api` fails one that
+  `tools/constructors.ron` doesn't list.
 
 ## 4. Verify
 

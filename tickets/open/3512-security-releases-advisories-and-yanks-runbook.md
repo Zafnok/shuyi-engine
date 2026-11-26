@@ -120,7 +120,7 @@ nothing goes to `rustsec/advisory-db` by PR or issue (rule 12), and that
 
 **Out (do not do):**
 - A publish that stops part way (resume, or the next patch and a yank
-  of the half set): 3510's runbook. This ticket's yank and
+  of the half set): 3510's runbook, `docs/releasing.md`. This ticket's yank and
   security-release runbook links it.
 - Checking a release against the last version on crates.io: 2028.
 - A backup crates.io owner, a successor, and a promised response time:
@@ -177,7 +177,7 @@ nothing goes to `rustsec/advisory-db` by PR or issue (rule 12), and that
    the GHSA id>`).
 8. If 2005 is done, add the `SECURITY.md` line (Scope). If 2846 is
    done, link the ADR from `docs/cyber-resilience.md` (Scope). Link
-   3510's runbook for a half-finished publish from the skill's yank
+   3510's runbook for a half-finished publish (`docs/releasing.md`) from the skill's yank
    step.
 
 ## Acceptance criteria
