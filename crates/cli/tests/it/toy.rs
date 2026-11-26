@@ -7,8 +7,8 @@ use std::path::Path;
 use shuyi_cli::codec::{decode_apng, decode_png, encode_apng, encode_png};
 use shuyi_cli::contract::perf;
 use shuyi_cli::contract::run::{self as run_op, RunInput, RunOutput};
-use shuyi_cli::frame_png::{self, Capture, Image, preview};
-use shuyi_cli::project::Preview;
+use shuyi_cli::frame_png::{self, Capture, Image, kept, preview};
+use shuyi_cli::project::{Preview, Shot};
 use shuyi_cli::toy::ToyTools;
 use shuyi_cli::{GameTools, Project, run};
 use shuyi_ui::perf::PerfLine;
@@ -258,6 +258,107 @@ fn frame_png_writes_the_preview_and_check_names_what_differs() {
     fs::remove_file(&file).unwrap();
     let error = preview::check(&project, &ToyTools).unwrap_err();
     assert!(error.ends_with(remake), "{error}");
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The toy's shots: `frame-png --shots` writes `shots/<name>.png` for each
+/// of the project's `shots`, which `check_shots` passes, and `check_shots`
+/// names what differs in each file that is no longer what its shot makes,
+/// each ending with the command that remakes it, and a file no shot names,
+/// which no command removes. `--shot <name>` writes one.
+#[test]
+fn frame_png_writes_the_shots_and_check_shots_names_what_differs() {
+    let dir = scratch("toy-shots");
+    let mut project = toy_project(&dir);
+    let shot = |list: &[&str]| Shot::new(list.iter().map(|a| (*a).to_owned()).collect());
+    project.config.shots.insert(
+        "lobby".to_owned(),
+        shot(&["--lobby", "--keys", "Down", "--scale", "1"]),
+    );
+    project.config.shots.insert(
+        "plasma".to_owned(),
+        shot(&[
+            "--plasma", "--wait", "0.2", "--scale", "1", "--target", "playdate",
+        ]),
+    );
+    let remake = |name: &str| format!("\nremake it: shuyi frame-png --shot {name}");
+    let error = kept::check_shots(&project, &ToyTools).unwrap_err();
+    assert!(
+        error.contains("shots/lobby.png") && error.contains(&remake("lobby")),
+        "{error}"
+    );
+    assert!(error.contains(&remake("plasma")), "{error}");
+
+    // A file no shot names: `--shots` writes the shots, fails on it and
+    // leaves it, as it may be the game's own; and a project with no shots
+    // writes nothing.
+    fs::create_dir_all(dir.join("shots")).unwrap();
+    fs::write(dir.join("shots/old.png"), b"old").unwrap();
+    let shots = args(&["frame-png", "--shots"]);
+    let none = toy_project(&dir);
+    assert_eq!(run(&none, &shots, Some(&ToyTools)), 2);
+    assert!(!dir.join("shots/lobby.png").exists());
+    assert_eq!(run(&project, &shots, Some(&ToyTools)), 1);
+    assert!(dir.join("shots/old.png").exists());
+    assert_eq!(
+        kept::check_shots(&project, &ToyTools).unwrap_err(),
+        "shots/old.png: no shot of shuyi.ron's `shots` makes it: remove it, or name it in \
+         `shots`; shots/ holds the shots alone"
+    );
+    fs::remove_file(dir.join("shots/old.png")).unwrap();
+    assert_eq!(run(&project, &shots, Some(&ToyTools)), 0);
+    assert_eq!(kept::check_shots(&project, &ToyTools), Ok(()));
+    let lobby = dir.join("shots/lobby.png");
+    let (width, height, made) = decode_png(&fs::read(&lobby).unwrap()).unwrap();
+    // The Playdate's display, black and white.
+    let (pw, ph, _) = decode_png(&fs::read(dir.join("shots/plasma.png")).unwrap()).unwrap();
+    assert_eq!((pw, ph), (400, 240));
+
+    // `--shot` and `--shots` take no other argument, and `--shot` a name
+    // there is.
+    for bad in [
+        &["frame-png", "--shots", "--scale", "2"][..],
+        &["frame-png", "--shot"],
+        &["frame-png", "--shot", "lobby", "--scale", "2"],
+        &["frame-png", "out.png", "--shots"],
+        &["frame-png", "--shot", "nope"],
+    ] {
+        assert_eq!(run(&project, &args(bad), Some(&ToyTools)), 2, "{bad:?}");
+    }
+
+    let failed = |name: &str| {
+        let error = kept::check_shot(&project, &ToyTools, name).unwrap_err();
+        assert!(error.ends_with(&remake(name)), "{error}");
+        assert!(kept::check_shots(&project, &ToyTools).is_err());
+        error
+    };
+    // One pixel.
+    let mut changed = made.clone();
+    changed[4 * (width as usize * 2 + 5)] ^= 0xff;
+    fs::write(&lobby, encode_png(width, height, &changed).unwrap()).unwrap();
+    assert_eq!(
+        failed("lobby"),
+        format!(
+            "shots/lobby.png is stale: its pixels differ from what shuyi.ron's `shots` makes of \
+             `lobby`, first at (5, 2){}",
+            remake("lobby")
+        )
+    );
+    // Another size.
+    let wider = vec![0; made.len() + 4 * height as usize];
+    fs::write(&lobby, encode_png(width + 1, height, &wider).unwrap()).unwrap();
+    assert!(failed("lobby").starts_with(&format!(
+        "shots/lobby.png is stale: it is {}×{height}, and shuyi.ron's `shots` makes `lobby` \
+             {width}×{height}",
+        width + 1
+    )));
+    // `--shot` remakes it.
+    let one = args(&["frame-png", "--shot", "lobby"]);
+    assert_eq!(run(&project, &one, Some(&ToyTools)), 0);
+    assert_eq!(kept::check_shots(&project, &ToyTools), Ok(()));
+    // No file.
+    fs::remove_file(&lobby).unwrap();
+    assert!(failed("lobby").starts_with(&lobby.display().to_string()));
     fs::remove_dir_all(&dir).unwrap();
 }
 

@@ -918,6 +918,98 @@ fn a_try_s_missing_picture_unknown_name_or_argument_fails() {
     assert!(argument.contains("no argument `color`"), "{argument}");
     fs::remove_dir_all(&root).unwrap();
 }
+// -- the examples' shots (ticket 2813) --
+
+/// A site with the shots `shots` copied into its `static/shots/`.
+fn shots_site(name: &str, shots: &[&str]) -> PathBuf {
+    let root = std::env::temp_dir().join(format!("llms-shots-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    for shot in shots {
+        put(&root, &format!("static/shots/{shot}"), "png");
+    }
+    root
+}
+
+#[test]
+fn a_shot_is_its_image_and_its_caption_in_italics() {
+    let root = shots_site("both", &["hello-grid/menu.png"]);
+    let snippets = root.join("snippets");
+    let plain = shot(
+        r#"example="hello-grid", name="menu", alt="The stage, and a question over it""#,
+        &snippets,
+    );
+    assert_eq!(
+        plain.unwrap(),
+        "![The stage, and a question over it](/shots/hello-grid/menu.png)"
+    );
+    let captioned = shot(
+        r#"example="hello-grid", name="menu", alt="A menu", caption="Two screens on the stack""#,
+        &snippets,
+    );
+    assert_eq!(
+        captioned.unwrap(),
+        "![A menu](/shots/hello-grid/menu.png)\n\n*Two screens on the stack*"
+    );
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_shot_s_missing_file_alt_or_unknown_argument_fails() {
+    let root = shots_site("missing", &["hello-grid/menu.png"]);
+    let snippets = root.join("snippets");
+    let file = shot(r#"example="hello-grid", name="stage", alt="A""#, &snippets).unwrap_err();
+    assert!(
+        file.starts_with("shot: site/static/shots/hello-grid/stage.png isn't there"),
+        "{file}"
+    );
+    assert!(file.contains("frame-png --shot stage"), "{file}");
+    let alt = shot(r#"example="hello-grid", name="menu""#, &snippets).unwrap_err();
+    assert_eq!(alt, "shot: `hello-grid/menu` has no `alt`");
+    let empty = shot(r#"example="hello-grid", name="menu", alt="""#, &snippets).unwrap_err();
+    assert_eq!(empty, alt);
+    let argument = shot(
+        r#"example="hello-grid", name="menu", alt="A", size="2""#,
+        &snippets,
+    );
+    assert!(argument.unwrap_err().contains("no argument `size`"));
+    fs::remove_dir_all(&root).unwrap();
+}
+
+/// A page of the fixture with a shot: its twin has the image at the site's
+/// address, and a shot the site lacks fails with the page and its line.
+#[test]
+fn the_fixture_s_twin_of_a_page_with_a_shot() {
+    let fixture = Fixture::new("shot");
+    let page = "site/content/learn/book/later.md";
+    let text = fs::read_to_string(fixture.root.join(page)).unwrap();
+    let call = "{{ shot(example=\"hello-grid\", name=\"stage\", alt=\"The stage\", \
+                caption=\"Your piece and the foe\") }}";
+    put(&fixture.root, page, &format!("{text}\n{call}\n"));
+    let line = text.lines().count() + 2;
+    let errors = fixture.run().errors;
+    assert!(
+        has(
+            &errors,
+            &format!("later.md:{line}: shot: site/static/shots/hello-grid/stage.png isn't there")
+        ),
+        "{errors:#?}"
+    );
+    put(
+        &fixture.root,
+        "site/static/shots/hello-grid/stage.png",
+        "png",
+    );
+    fixture.passes();
+    let twin = fixture.read("learn/book/later/index.md");
+    assert!(
+        twin.contains(&format!(
+            "![The stage]({BASE}shots/hello-grid/stage.png)\n\n*Your piece and the foe*"
+        )),
+        "{twin}"
+    );
+}
+
 // -- the book's projects, and the pages for newcomers (ADR-0090 §3, §5) --
 
 /// The fixture with a project of the book, `book/box-pusher/`, its landing

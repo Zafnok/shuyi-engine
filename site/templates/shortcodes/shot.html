@@ -1,0 +1,14 @@
+{#- A picture of an example (ticket 2813): shot `name` of `example`,
+    `examples/<example>/shots/<name>.png`, which `cargo shuyi frame-png
+    --shots` makes from the example's shuyi.ron and a test of it keeps
+    current; `copy-shots.sh` copies it to `static/shots/<example>/`. `alt`
+    says what is on screen, and is required; `caption`, if given, goes under
+    it. A shot that isn't there fails the build. Two in a row inside a
+    `<div class="figure-pair">` stand side by side. `cargo xtask llms`
+    expands it too. -#}
+{%- if alt is undefined or alt == "" -%}
+{{ throw(message="shot: `" ~ example ~ "/" ~ name ~ "` has no `alt`: say what is on screen") }}
+{%- endif -%}
+{%- set path = "shots/" ~ example ~ "/" ~ name ~ ".png" -%}
+{%- set meta = get_image_metadata(path=path) -%}
+<figure class="shot"><img src="{{ get_url(path=path) | safe }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy" alt="{{ alt }}">{% if caption is defined and caption != "" %}<figcaption>{{ caption }}</figcaption>{% endif %}</figure>

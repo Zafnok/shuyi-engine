@@ -15,6 +15,7 @@ use crate::codec::{Animation, decode_apng};
 use crate::game::{GameOption, GameTools};
 use crate::project::Project;
 
+use super::kept::{check_size, first_difference, remake};
 use super::{Options, Output, parse_args};
 
 /// The preview's file, in the project's root.
@@ -75,35 +76,20 @@ pub fn check(project: &Project, game: &dyn GameTools) -> Result<(), String> {
         return Err(format!("{PART}: a preview is an APNG"));
     };
     let shots = game.frames(&options.game, &options.script, options.scale, capture)?;
-    let remake = |problem: String| {
-        format!(
-            "{problem}\nremake it: {} frame-png --preview",
-            project.config.command()
-        )
-    };
+    let remake = |problem: String| remake(project, "--preview", &problem);
     let path = project.root.join(FILE);
     let bytes = fs::read(&path).map_err(|e| remake(format!("{}: {e}", path.display())))?;
-    check_size(u64::try_from(bytes.len()).unwrap_or(u64::MAX), MAX_BYTES).map_err(remake)?;
+    let len = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+    check_size(FILE, len, MAX_BYTES, "a preview", ADVICE).map_err(remake)?;
     let animation = decode_apng(&bytes).map_err(|e| remake(format!("{FILE}: {e}")))?;
     let every = u64::from(capture.every);
     let want: Vec<_> = shots.iter().map(|shot| &shot.image).collect();
     compare(&animation, &want, every).map_err(|e| remake(format!("{FILE} is stale: {e}")))
 }
 
-/// Whether a file of `len` bytes is within `cap`; the error gives its size
-/// and how to make it smaller.
-fn check_size(len: u64, cap: u64) -> Result<(), String> {
-    if len <= cap {
-        return Ok(());
-    }
-    Err(format!(
-        "{FILE} is {} KiB, more than the {} KiB a preview may be: take frames \
-         further apart (a longer --every), fewer (a smaller --count) or smaller \
-         (--scale 1)",
-        len.div_ceil(1024),
-        cap / 1024
-    ))
-}
+/// How a preview too large is made smaller.
+const ADVICE: &str = "take frames further apart (a longer --every), fewer (a smaller --count) \
+     or smaller (--scale 1)";
 
 /// The first difference between `animation` and the frames `want`, each
 /// shown `every` frames of 1/60 s, looping forever.
@@ -127,17 +113,9 @@ fn compare(
                 have.width, have.height, want.width, want.height
             ));
         }
-        if let Some(pixel) = have
-            .rgba
-            .chunks(4)
-            .zip(want.rgba.chunks(4))
-            .position(|(a, b)| a != b)
-        {
-            let width = usize::try_from(have.width).unwrap_or(usize::MAX).max(1);
+        if let Some((x, y)) = first_difference(have, want) {
             return Err(format!(
-                "frame {n}'s pixels differ from what {PART} makes, first at ({}, {})",
-                pixel % width,
-                pixel / width
+                "frame {n}'s pixels differ from what {PART} makes, first at ({x}, {y})"
             ));
         }
         let (num, den) = animation.delays[i];
@@ -220,8 +198,9 @@ mod tests {
 
     #[test]
     fn the_size_is_checked_against_the_cap() {
-        assert!(check_size(2048, 2048).is_ok());
-        let error = check_size(2049, 2048).unwrap_err();
+        let size = |len| check_size(FILE, len, 2048, "a preview", ADVICE);
+        assert!(size(2048).is_ok());
+        let error = size(2049).unwrap_err();
         assert!(
             error.starts_with("preview.png is 3 KiB, more than the 2 KiB a preview may be"),
             "{error}"

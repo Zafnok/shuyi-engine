@@ -37,6 +37,19 @@ smallest text:
 
 {{ snippet(file="project/shuyi.ron", anchor="targets", language="ron") }}
 
+The same game shows on each target's display. Here is Hello, Grid's stage on the
+desktop, 384 by 384 pixels in its colours, and on the Playdate, 400 by 240 in black and
+white, each colour of the palette drawn in the pattern its one-bit map gives it
+([chapter 2](@/learn/book/frame-and-skins.md#on-a-target-s-screen)):
+
+<div class="figure-pair">
+
+{{ shot(example="hello-grid", name="stage", alt="Hello, Grid's stage in colour on the desktop: grey walls, a dark floor, the goal in yellow in the top right, your piece in blue and the foe in red", caption="The desktop") }}
+
+{{ shot(example="hello-grid", name="playdate", alt="The same stage on the Playdate's display, wider and shorter, in black and white: the walls in a dotted pattern, the floor black, the text white", caption="The Playdate") }}
+
+</div>
+
 ## Where the game runs
 
 A running game knows its target: `ctx.platform` (`shuyi::ui::PlatformFacts`) holds the

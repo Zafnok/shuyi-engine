@@ -55,6 +55,9 @@ Never edit these by hand; a test fails when one is stale.
 - `preview.png` (the picture above, which the website's Examples card
   plays too: an APNG of 2 s of the stage, made from `shuyi.ron`'s
   `preview` part): `cargo shuyi frame-png --preview`.
+- `shots/` (the book's pictures of the game, each a still frame made from
+  its line of `shuyi.ron`'s `shots` part): `cargo shuyi frame-png --shots`,
+  or one of them with `--shot <name>`.
 - A picture of a frame, to look at: `cargo shuyi frame-png stage.png
   --stage --keys "Enter Up Right"` (`--tiles` for the other look).
 

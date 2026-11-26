@@ -115,7 +115,16 @@ A second skin of the same view (sprites in place of glyphs, a one-bit look for a
 handheld) is a second function, picked by a setting, and nothing else in the game
 changes. The grid kit's map (`shuyi::ui::grid`) works this way: a **scene** of the
 visible tiles, painted by a glyph skin or a sprite skin, with the game's units by a
-painter of its own. Hello, Grid shows both.
+painter of its own. Hello, Grid shows both. Here is the same view of its stage, the same
+turn, painted by the glyph skin and by the sprite skin, which its options switch between:
+
+<div class="figure-pair">
+
+{{ shot(example="hello-grid", name="stage", alt="Hello, Grid's stage in glyphs: walls drawn as shaded blocks, the floor as dots, the goal as square brackets in the top right, your piece as an at sign and the foe as an ampersand", caption="The glyph skin") }}
+
+{{ shot(example="hello-grid", name="tiles", alt="The same stage in tiles: each wall and floor cell a square picture from the tileset, the goal, your piece and the foe in the same cells as in glyphs", caption="The sprite skin") }}
+
+</div>
 
 ## A picture the skin paints
 

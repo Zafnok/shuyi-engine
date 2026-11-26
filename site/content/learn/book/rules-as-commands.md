@@ -29,7 +29,11 @@ The **state** is everything that's true right now and could change.
 The chain is short, and worth learning by heart. A key press becomes an **action** (the
 keymap, [chapter 4](@/learn/book/actions.md)), an action becomes a **command** (the
 screen, [chapter 6](@/learn/book/games-and-screens.md)), and a command changes the
-**state** (the rules, this chapter), which the screen then shows.
+**state** (the rules, this chapter), which the screen then shows. In Hello, Grid, your keys
+steer your piece and send it, which is one command, to move it; the rules move it, then the
+foe takes its step, and the stage shows the new state, on turn 2:
+
+{{ shot(example="hello-grid", name="stage", alt="Hello, Grid's stage on turn 2: a walled grid, your piece (an at sign) two cells right of where it started and one up, the foe (an ampersand) one cell lower than it started, and the goal in the top right corner") }}
 
 A turn game sends a command for each thing a player does. A real-time game sends its
 inputs once per fixed step instead, 60 steps a second, counted from whole nanoseconds

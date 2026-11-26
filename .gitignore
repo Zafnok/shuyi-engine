@@ -45,6 +45,9 @@ lcov.info
 # The Examples cards' previews, which site/copy-previews.sh copies from each
 # examples/<name>/preview.png (ticket 2811).
 /site/static/previews/
+# The book's shots of the examples, which site/copy-shots.sh copies from
+# each examples/<name>/shots/ (ticket 2813).
+/site/static/shots/
 # What the agent eval's grader writes (tickets 2524 and 3421): `eval-grade`'s
 # result, and `eval-reference`'s folders of them.
 /eval-result.json
