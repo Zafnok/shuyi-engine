@@ -276,7 +276,7 @@ Deviations:
   the sample and the toy only. No ticket: a game maps them when it
   wants a debug pause, as the book's new section says.
 
-Size: 1,408 counted lines, under the cap. It would have split cleanly
+Size: 1,420 counted lines, under the cap. It would have split cleanly
 between the pause (actions, `Game`, the screen's row) and the readout
 (`Screen::debug_readout`, the channel, the toy's readouts).
 
@@ -302,6 +302,7 @@ why: The sample keymap maps the debug pause and step.
 
 Behaviour: shuyi-ui: with debug tools on, the game offers the `readout` channel every frame, after the screens' channels: `DebugView::offered` and the "Debug view" screen list it.
 Behaviour: shuyi-ui: the "Debug view" screen shows a status line under its title, a "Slow motion" row after the channels, the no-channel line under the menu, and its help says `change` where it said `on/off`.
+Behaviour: shuyi-cli, shuyi-platform: `frame-png --debug all` and a script's `debug("all")` draw the readout too: the top screen's lines in the top-left corner, over the frame.
 Behaviour: shuyi-ui: an action a game maps to `UiAction::DebugPause` or `DebugStep` never reaches a screen, with debug tools on or off.
 
 Book: site/content/learn/book/frame-and-skins.md gains *Stopping on the frame that goes wrong*.

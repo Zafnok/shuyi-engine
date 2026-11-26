@@ -279,7 +279,10 @@ fn frame_png_draws_the_grid_channel_over_the_field() {
     assert_ne!(grid, plain);
     // A channel no screen offers draws nothing.
     assert_eq!(png("none.png", &["--debug", "collision"]), plain);
-    assert_eq!(png("all.png", &["--debug", "all"]), grid);
+    // Every channel: the grid and the game's readout (ADR-0153).
+    let readout = png("readout.png", &["--debug", "grid,readout"]);
+    assert_ne!(readout, grid);
+    assert_eq!(png("all.png", &["--debug", "all"]), readout);
     insta::assert_binary_snapshot!("field_debug_grid.png", grid.clone());
     // On every frame of a sheet: each cell of a two-frame sheet differs
     // from the plain one's, and the first is the one picture's.
