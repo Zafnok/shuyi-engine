@@ -781,7 +781,7 @@ fn u32_at(bytes: &[u8], at: usize) -> Option<u32> {
 
 /// Where the first chunk `want` of a WAV starts its body, and the size its
 /// header gives; `None` if `bytes` aren't a WAV or have no such chunk.
-fn wav_chunk(bytes: &[u8], want: &[u8; 4]) -> Option<(usize, usize)> {
+fn wav_chunk(bytes: &[u8], want: [u8; 4]) -> Option<(usize, usize)> {
     if bytes.get(..4)? != b"RIFF" || bytes.get(8..12)? != b"WAVE" {
         return None;
     }
@@ -789,7 +789,7 @@ fn wav_chunk(bytes: &[u8], want: &[u8; 4]) -> Option<(usize, usize)> {
     loop {
         let id = bytes.get(at..at + 4)?;
         let size = usize::try_from(u32_at(bytes, at + 4)?).ok()?;
-        if id == want {
+        if id == want.as_slice() {
             return Some((at + 8, size));
         }
         at = at.checked_add(size.checked_add(8 + size % 2)?)?;
@@ -798,7 +798,7 @@ fn wav_chunk(bytes: &[u8], want: &[u8; 4]) -> Option<(usize, usize)> {
 
 /// A WAV's (channels, sample rate), from its `fmt ` chunk.
 fn wav_format(bytes: &[u8]) -> Option<(u16, u32)> {
-    let (fmt, _) = wav_chunk(bytes, b"fmt ")?;
+    let (fmt, _) = wav_chunk(bytes, *b"fmt ")?;
     // 1 = integer PCM, 3 = float: what quad-snd's decoder reads.
     let encoding = u16_at(bytes, fmt)?;
     [1, 3]
@@ -812,10 +812,10 @@ fn wav_format(bytes: &[u8]) -> Option<(u16, u32)> {
 /// holds counts what it holds. `None` with no `fmt ` or `data` chunk, or a
 /// block align or a rate of 0.
 fn wav_length_ms(bytes: &[u8]) -> Option<u32> {
-    let (fmt, _) = wav_chunk(bytes, b"fmt ")?;
+    let (fmt, _) = wav_chunk(bytes, *b"fmt ")?;
     let rate = u32_at(bytes, fmt + 4)?;
     let block = u64::from(u16_at(bytes, fmt + 12)?);
-    let (data, size) = wav_chunk(bytes, b"data")?;
+    let (data, size) = wav_chunk(bytes, *b"data")?;
     let held = u64::try_from(size.min(bytes.len().saturating_sub(data))).ok()?;
     samples_ms(held.checked_div(block)?, rate)
 }

@@ -205,12 +205,15 @@ const SFX_WAV: Option<ToSfxWav> = None;
 /// A renderer of a `.sfx.ron` file's bytes to a WAV.
 type ToSfxWav = fn(&[u8]) -> Result<Vec<u8>, String>;
 
+/// A reader of how long a `.sfx.ron` file's bytes play once rendered.
+type SfxLength = fn(&[u8]) -> Option<u32>;
+
 /// How long a `.sfx.ron` file's bytes play once rendered, `None` with the
 /// `sfx` feature off.
 #[cfg(feature = "sfx")]
-const SFX_LENGTH: Option<fn(&[u8]) -> Option<u32>> = Some(crate::sfx::length_ms_of);
+const SFX_LENGTH: Option<SfxLength> = Some(crate::sfx::length_ms_of);
 #[cfg(not(feature = "sfx"))]
-const SFX_LENGTH: Option<fn(&[u8]) -> Option<u32>> = None;
+const SFX_LENGTH: Option<SfxLength> = None;
 
 /// How long a `.sfx.ron` sound's `bytes`, its numbers, play once rendered,
 /// in milliseconds; `None` if they don't read or the `sfx` feature is off.
