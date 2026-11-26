@@ -316,6 +316,13 @@ Deviations:
   site was built first (the size test failed after the site gate ran).
   `build.rs` skips both, and the parity test leaves them out; the problem
   codes' pages are in the corpus from their table.
+- **A sixth shortcode, `shot`** (2813, merged while this PR was open),
+  is read as its picture's alt text and caption, as its twin shows it.
+- **ADR-0154**, not 0153: #605 took 0153 while this PR was open.
+- **`clean` asserts it reads on** (a `debug_assert!`): CI's mutation
+  shard 6 lost its runner twice, since a mutant that sent its loop back
+  made every test that reads the corpus loop for ever, filling memory
+  before cargo-mutants' 720-second timeout.
 - **A game's tools' output is left out** (`**/dist/**`). CI's `bench`
   job failed: its first run wrote `examples/hello-grid/dist/bench/run-1/bench-report.md`,
   the `examples` table embedded it, and the second run's rebuilt `shuyi`
@@ -356,7 +363,7 @@ keeps no list of operations (searched `Zafnok/visions-of-shuyi` for
 Game: nothing to adopt, the game gets `cargo shuyi docs` with its next
 pin move, and its code uses none of it.
 
-Size: 2,629 counted lines, the chunker, the index and the operation (about
+Size: 2,679 counted lines, the chunker, the index and the operation (about
 1,900 of them, with their tests) answer nothing apart: an index with no
 operation is dead code, and an operation with no corpus finds nothing.
 The rest, the "how do I" table and the twins' parity test, are this
