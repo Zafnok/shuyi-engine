@@ -28,12 +28,12 @@ cargo run -p hello-grid --bin hello-grid-preview -- files   # the writer's dialo
 | `src/screens.rs`, `src/screens/stage.rs` | The screens: title, scene, stage, end; the options' rows |
 | `src/skin.rs`, `src/map.rs` | The look: each screen's view painted with glyphs; the map's terrains, pieces and both skins |
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
-| `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
+| `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (`files/sfx/`, written as a few numbers) |
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
 | `src/preview.rs`, `src/bin/preview.rs` | The dialogue preview a writer is handed (`hello-grid-preview`): the scenes of a folder's `.dlg` files in the game's text box, read again when one is saved; the tools start it with `--preview` |
 | `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
-| `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset. A release export of the desktop or the web builds with `packed` and ships them baked into `hello-grid.pack` beside the program in place (`hello_grid::layer`) |
+| `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), sounds (`sfx/*.sfx.ron`), font atlas and tileset. A release export of the desktop or the web builds with `packed` and ships them baked into `hello-grid.pack` beside the program in place (`hello_grid::layer`) |
 | `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |
@@ -122,8 +122,9 @@ Terminus Font 4.49.1 (`files-src/ter-u16n.bdf`, unmodified, and the atlas
 made from it) is under the SIL Open Font License 1.1:
 `files/font/Terminus-LICENSE.txt`. Everything else here is the engine's
 own: the tileset is the font's glyphs on the palette's colors (and in
-black and white in `files@playdate/`), and the sounds are sine blips the
-game makes when it starts.
+black and white in `files@playdate/`), and the sounds are sound effects
+written as a few numbers (`files/sfx/*.sfx.ron`), which the game renders
+as it loads them.
 
 ## Files from the page
 

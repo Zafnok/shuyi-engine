@@ -6,7 +6,7 @@
 //! to fix before running it again (`SH1nnn`: no project, a project file
 //! that lacks what it needs, the toolchain).
 //!
-//! `new`, `doctor`, `explain`, `attach` and `schema` need no project. `lint`,
+//! `new`, `doctor`, `sfx`, `explain`, `attach` and `schema` need no project. `lint`,
 //! `modules` and `add` run on the project, not its game. The others run on
 //! the project's game, in its tool program; `import` without one reads
 //! only the engine's standard kinds.
@@ -19,7 +19,7 @@ use serde::Serialize;
 use super::codes::{self, Code};
 use super::{
     Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
-    modules, new, playtest, replay, run, schemas,
+    modules, new, playtest, replay, run, schemas, sfx,
 };
 use crate::game::GameTools;
 use crate::project::Project;
@@ -100,7 +100,7 @@ pub fn no_game(name: &str, args: &[String]) -> u8 {
 }
 
 /// Runs `name` with `args` if it is an op that needs no project (`new`,
-/// `doctor`, `explain`, `attach`, `schema`, and `mcp`, which finds a project per
+/// `doctor`, `sfx`, `explain`, `attach`, `schema`, and `mcp`, which finds a project per
 /// call), in the working folder `cwd`; `None` if it isn't.
 pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -> Option<u8> {
     if name == "mcp" {
@@ -143,6 +143,10 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
                 doctor::text,
             )
         }
+        "sfx" => match sfx::parse_args(&args) {
+            Ok(input) => print(json, &sfx::sfx(&input, cwd), sfx::text),
+            Err(e) => wrong(json, Op::Sfx, &e, &sfx::usage(command)),
+        },
         "explain" => match explain::parse_args(&args) {
             Ok(input) => print(json, &explain::explain(&input), explain::text),
             Err(e) => wrong(json, Op::Explain, &e, &explain::usage(command)),
@@ -493,7 +497,7 @@ mod tests {
         ] {
             assert!(runs_the_game(op), "{op}");
         }
-        for other in ["new", "doctor", "schema", "frame-png", "check-keys"] {
+        for other in ["new", "doctor", "sfx", "schema", "frame-png", "check-keys"] {
             assert!(!runs_the_game(other), "{other}");
         }
     }
@@ -680,7 +684,7 @@ mod tests {
     }
 
     #[test]
-    fn the_ops_without_a_project_are_new_doctor_explain_attach_and_schema() {
+    fn the_ops_without_a_project_are_new_doctor_sfx_explain_attach_and_schema() {
         let dir = std::env::temp_dir().join(format!("shuyi-cli-free-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
@@ -698,7 +702,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 50);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 52);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(
@@ -722,6 +726,20 @@ mod tests {
             without_project("doctor", &args(&["x"]), &dir, "shuyi"),
             Some(2)
         );
+        assert_eq!(
+            without_project("sfx", &args(&["coin", "--out", "c.sfx.ron"]), &dir, "shuyi"),
+            Some(0)
+        );
+        assert!(dir.join("c.sfx.ron").is_file());
+        assert_eq!(
+            without_project("sfx", &args(&["c.sfx.ron", "--json"]), &dir, "shuyi"),
+            Some(0)
+        );
+        assert_eq!(
+            without_project("sfx", &args(&["nope"]), &dir, "shuyi"),
+            Some(2)
+        );
+        assert_eq!(without_project("sfx", &[], &dir, "shuyi"), Some(2));
         assert_eq!(without_project("explain", &[], &dir, "shuyi"), Some(0));
         assert_eq!(without_project("attach", &[], &dir, "shuyi"), Some(2));
         assert_eq!(

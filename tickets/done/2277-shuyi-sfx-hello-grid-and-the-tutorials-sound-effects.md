@@ -1,17 +1,17 @@
 ---
 id: "2277"
-title: "shuyi sfx, Hello, Grid's sounds as .sfx.ron files, and the tutorial's push and win sounds"
+title: "shuyi sfx, and Hello, Grid's sounds as .sfx.ron files"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2225"]
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
-# 2277 — `shuyi sfx`, Hello, Grid's sounds as `.sfx.ron` files, and the tutorial's push and win sounds
+# 2277 — `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files
 
 ## Context
 
@@ -141,20 +141,20 @@ chapter into a new ticket blocked by this one.
 
 ## Acceptance criteria
 
-- [ ] Hello, Grid's `src/sound.rs` has no float and no `#[allow]`; its
+- [x] Hello, Grid's `src/sound.rs` has no float and no `#[allow]`; its
       tests, `check --baked` and its web build pass.
-- [ ] `shuyi sfx coin --out x.sfx.ron --wav x.wav --json` matches its
+- [x] `shuyi sfx coin --out x.sfx.ron --wav x.wav --json` matches its
       schema and writes both files; `x.sfx.ron` reads back to the same
       `SfxDef`; `shuyi sfx nope` answers an error that lists the
       presets; a broken file answers `ok: false` with its line.
-- [ ] `shuyi mcp` lists an `sfx` tool.
-- [ ] The tutorial's steps 08 to 10 play a sound on a push and on a win,
+- [x] `shuyi mcp` lists an `sfx` tool.
+- [x] ~~The tutorial's steps 08 to 10 play a sound on a push and on a win,
       and their menus' cues: each step's test checks the cues are in its
       manifest and `format_problem` accepts what `audio::playable` gives
-      for each file.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] `cargo xtask check-skills` passes with the skill's section.
-- [ ] All gates in the `run-gates` skill pass.
+      for each file.~~ (not done: split off to 2853 at the ticket's split point)
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] `cargo xtask check-skills` passes with the skill's section.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -166,4 +166,54 @@ chapter into a new ticket blocked by this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Hello, Grid** plays four `.sfx.ron` files
+  (`examples/hello-grid/files/sfx/`: sine blips at 660, 880, 440 and
+  990 hz, 50, 80, 80 and 30 ms long, as before). `src/sound.rs` keeps
+  `manifest()` (its cues name `sfx/*.sfx.ron`, listed in `SOUNDS`, which
+  replaces `BLIPS`) and `files()`, now the game's own files through
+  `audio::playable`, shown as `files/<name>`. The float `wav`, its four
+  `#[allow]`s and its test are gone; a test checks each file's pitch and
+  length. Its `Cargo.toml` names `shuyi-assets` with `sfx` (a
+  `cargo-machete` ignore: no code names the crate). The pack now holds 15
+  files (the four kept as their own bytes); its table's `fingerprint
+  files` row and the golden session's content stamp moved with the
+  example's own files, which `shuyi_assets::golden` says needs no line.
+  `check --baked` passes; the web build ran in `cargo xtask gates`.
+  Its `shuyi.ron`'s `disclosure` allows the four in the pack, and their
+  Playdate names (`audio/sfx/move.sfx.pda`: the baked name keeps the
+  file's stem, `without_extension`), found by CI's `export` jobs.
+- **`shuyi sfx`** (`crates/cli/src/contract/sfx.rs`): `SfxInput { source,
+  seed, out, wav }` and `SfxOutput { presets, text, length_ms, samples,
+  peak, problems, written }`. A source ending in `.ron` is a file, from
+  the working folder; anything else a preset. A preset's text starts
+  with a comment line naming it (and its seed), so the file a game keeps
+  says where it came from. `--out` and `--wav` make their folder. Choices
+  the ticket left open: `--seed` with a file is refused (`SH0001`: a
+  file's own `seed` field is its noise's); a file that can't be read or
+  written is `SH3004`; a file with problems answers `ok: false` with no
+  code, its own text, and writes nothing. Contract version 62 (60 and 61 went to 3423 and 3430). MCP's
+  `sfx` tool runs in the session's folder and takes no `project`.
+- **Docs**: `docs/contract.md`'s row, the crate's table, the CLI's usage,
+  the root README's `shuyi-cli` row, the template's `AGENTS.md` row,
+  `docs/formats.md`'s presets bullet, the `shuyi-new-game` skill's
+  *Sounds*, and the book: chapter 10's list of operations and chapter
+  3's passage on sound effects (how to start one with `sfx`).
+- **Split:** at 757 counted lines before the tutorial, whose three steps
+  and chapter part were estimated at about 450 more, past the ticket's
+  split point (1,000). The tutorial's push and win sounds and chapter
+  08's part are **2853** (blocked by this one), and 2850's clause now
+  names 2853.
+- **Deviations:** the ticket's `cargo xtask check-skills` is `cargo shuyi
+  check-skills skills` (and the `it` test `skills`); no xtask of that
+  name exists. 2850 is still open, so the *either order* clause about it
+  moved to 2853 with the tutorial.
+- No break. The game builds no contract type by literal and matches no
+  `Op` (`gh search code --repo Zafnok/visions-of-shuyi 'Op::'` and
+  `'shuyi_cli::contract'` at pin `b69585e`: imports of `autobalance`,
+  `playtest`, `replay`, `session` and `Answer` only); `Op` is
+  `#[non_exhaustive]`, so `Op::Sfx` is an addition: it is the enum's
+  last variant, so the others keep their discriminants (CI's `api` job
+  found the shift when it sat beside `Doctor`), and `Op::ALL` lists it
+  after `doctor`.
+
+Behaviour: shuyi-cli: `Op::ALL` has `sfx` between `doctor` and `explain`, `shuyi mcp` lists an `sfx` tool, and every answer says `"contract": 62`.

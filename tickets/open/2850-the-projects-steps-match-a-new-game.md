@@ -54,10 +54,10 @@ None.
   `files/audio.ron` and the four `files/sfx/*.sfx.ron` as the template
   writes them, the `sfx` feature in its game crate's `Cargo.toml`, and
   `created_with` in its `shuyi.ron`. The steps' `Cargo.lock` files
-  follow. **Either order with 2277:** if 2277 is done, steps 08–10
+  follow. **Either order with 2853:** if 2853 is done, steps 08–10
   already have the menu sounds (and the push and win sounds): bring
-  steps 01–07 up to them and leave 08–10's audio as 2277 left it; if
-  not, give all ten steps the menu sounds, and 2277 adds only its push
+  steps 01–07 up to them and leave 08–10's audio as 2853 left it; if
+  not, give all ten steps the menu sounds, and 2853 adds only its push
   and win sounds.
 - Step 1's page: its file table names `audio.ron` and `sfx/`, in one
   line each, linking chapter 3; its words on what `shuyi new` asks match
@@ -79,8 +79,8 @@ None.
 
 **Out (do not do):**
 
-- the push and win sounds, `shuyi sfx` and chapter 08's part on them
-  (2277);
+- the push and win sounds and chapter 08's part on them (2853); `shuyi
+  sfx` is 2277's (done);
 - the wizard's terminal prompts (3423), beyond the words on step 1's
   page;
 - checking steps 02–10 against the template file by file: each changes

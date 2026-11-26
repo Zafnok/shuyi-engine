@@ -2,7 +2,7 @@
 id: "3510"
 title: "The publish list comes from the workspace, every engine crate's name is held, internal pins are exact, and a half-finished publish has a runbook"
 type: infra
-milestone: After MVP
+milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: todo

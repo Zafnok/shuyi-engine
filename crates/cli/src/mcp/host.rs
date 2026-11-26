@@ -29,7 +29,7 @@ use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
     Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
-    modules, new, playtest, replay,
+    modules, new, playtest, replay, sfx,
 };
 use crate::frame_png::{Capture, Image, MAX_SCALE, Shot, every_frames, sheet};
 use crate::game::{GameArg, GameTools, check_start, code_of};
@@ -133,6 +133,7 @@ pub fn one_off(
     match op {
         Op::New => answered(op, input, |i| new::new(cwd, &i)),
         Op::Doctor => answered(op, input, |i| doctor::doctor(&doctor::ThisMachine, &i)),
+        Op::Sfx => answered(op, input, |i| sfx::sfx(&i, cwd)),
         Op::Explain => answered(op, input, |i| explain::explain(&i)),
         Op::Attach => answered(op, input, |i| attach::attach(&i, cwd)),
         Op::Check => {
