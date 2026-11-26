@@ -141,10 +141,10 @@ None.
 
 **Deviations.** None.
 
-**Follow-up tickets.** 3540: the local `site` gate lacks CI's copies of
-the examples' shots and previews, so `zola check` failed here until `bash
-site/copy-shots.sh` was run by hand. Found here; nothing of this ticket's
-work is left.
+**Follow-up tickets.** 3540, which 2243 (#611) filed first: the local
+`site` gate lacks CI's copies of the examples' shots and previews, so `zola
+check` failed here until `bash site/copy-shots.sh` was run by hand. None of
+this ticket's work is left.
 
 **For Nick.** The API check ran out of disk on D: (1.6 GB free); `cargo
 xtask trim-targets` (the default trim a passing gate run does) freed

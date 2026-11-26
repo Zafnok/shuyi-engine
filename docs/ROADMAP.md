@@ -284,7 +284,6 @@ tickets above and 2267 and 3220 under *Asset memory*:
 | ------ | ---- |
 | 3501 (done) | Local gates run the slow game-building gates only when the diff touches what they build, and a website-only change runs only the site's gates |
 | 3502 | The tutorial's web builds boot in parallel, built from one folder |
-| 3540 | The local site gate copies the examples' shots and previews, as CI's site job does (a bug) |
 | 3319 | The bench job compares each frame's instructions with `main`'s and fails a rise past a margin unless the PR says why |
 | 2266 (done) | A language's texts are parsed once, when they load, and a fill reuses what the load learned |
 | 2268 (done) | A message's walk borrows its values: a select and a fill copy no value into a String |
