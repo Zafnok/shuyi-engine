@@ -26,7 +26,7 @@ completed:
   a default crate and `shuyi-net` a module. So `shuyi-app` gets a
   WebSocket client with a byte-level API of its own, and the front door
   `shuyi` (which may depend on both) adapts it to `shuyi_net::Transport`
-  behind its `net` feature. ADR-0150 (2613) records this split.
+  behind its `net` feature. ADR-0152 (2613) records this split.
 - 1141 (parked) had planned a native `WsTransport` over tokio. This
   ticket takes the native client, without tokio in a game; 1141 is
   amended to use it. The browser half is 1142, unparked on 2026-11-25,
@@ -82,8 +82,13 @@ None.
   1142 replaces this stub with the browser's WebSocket behind the same
   API.
 - **The front door**, `crates/shuyi`:
-  - its `net` feature (2613: `["dep:shuyi-net"]`) also turns on
+  - its `net` feature (2613: `["std", "dep:shuyi-net"]`) also turns on
     `shuyi-app?/net`;
+  - **From 2613 (done):** `shuyi::net` is today `pub use shuyi_net as
+    net;` in `crates/shuyi/src/lib.rs`. To add `connect` beside it, make
+    `net` a module (`crates/shuyi/src/net.rs`) that re-exports
+    `shuyi_net::*` and adds `connect`, so `shuyi::net::MemoryNetwork`
+    and the rest keep their paths;
   - `shuyi::net::connect(url: &str) -> Result<Box<dyn
     shuyi_net::Transport>, ConnectError>` in `crates/shuyi/src/net.rs`:
     a small adapter, `WsTransport`, that implements `Transport` over

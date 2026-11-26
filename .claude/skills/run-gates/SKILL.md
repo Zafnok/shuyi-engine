@@ -386,7 +386,7 @@ repository root):
 
 ```bash
 export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
-cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -p shuyi-net -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 cargo test --target wasm32-wasip1 --locked --no-fail-fast -p snake --no-default-features --test golden -- --nocapture
 ```

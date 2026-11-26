@@ -54,7 +54,7 @@ None by default, or this.
 
 | Module | Serves | Status | Tickets |
 | ------ | ------ | ------ | ------- |
-| `shuyi-net` | lockstep, rollback and a referee server, for turn and tick games | parked | 1140–1150 |
+| `shuyi-net` | rooms on a server (planned); lockstep, rollback and a referee (parked) | planned | 2613–2617, 1140–1150 |
 
 ## Perspective and world drawing
 

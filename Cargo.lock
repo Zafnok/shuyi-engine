@@ -1871,6 +1871,7 @@ dependencies = [
  "shuyi-app",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-net",
  "shuyi-platform",
  "shuyi-script",
  "shuyi-ui",
@@ -1989,6 +1990,14 @@ name = "shuyi-embed-macros"
 version = "0.1.0"
 dependencies = [
  "shuyi-embed",
+]
+
+[[package]]
+name = "shuyi-net"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "shuyi-core",
 ]
 
 [[package]]

@@ -19,14 +19,14 @@ next example game, trails, is played online, on always-free hosting.
 ## Context
 
 - **2618** hosts the trails server on Oracle Cloud Infrastructure (OCI)
-  Always Free, and **ADR-0151** (written there) records why that host,
+  Always Free, and **its ADR** (written there) records why that host,
   the fallback and the paid exits. Its runbook,
   `deploy/trails/README.md`, is written for this repository's
   operators: Nick and the agents who deploy.
 - **2791** measures the server at ten full rooms: CPU, memory and bytes
   a player. Those are the numbers a game maker needs to pick a host.
 - **2619** watches the server from a scheduled GitHub Actions job.
-- **2854** writes the book's chapter on online play. It links ADR-0151
+- **2854** writes the book's chapter on online play. It links 2618's ADR
   where it says where a server runs, and leaves this page and the link
   to it to this ticket.
 - A game maker who uses the engine needs the same path, written for
@@ -80,7 +80,7 @@ behind 2618 (re-check each on the day this ticket is worked, step 2):
   (credits for 6 months), Azure (12 months), Render (spins down when
   idle), Railway ($1 a month). These were not re-checked on 2026-11-25.
 - **Bandwidth, estimated before any code**: about 88 to 112 B on the
-  wire per player per step (ADR-0150's frame, and the infra check's
+  wire per player per step (ADR-0152's frame, and the infra check's
   36 B payload with WebSocket, TLS and TCP headers), at 15 steps a
   second, so about 1.3 to 1.7 KB/s a player. 80 players around the
   clock is about 275 to 350 GB a month, against 10 TB. Sending the
@@ -108,7 +108,7 @@ Spending money stays the reader's call, as it is Nick's for trails.
      the date checked. It says plainly that free terms change without
      notice. Durable Objects, Google Cloud, AWS, Azure, Render and
      Railway are rows with why each doesn't fit. Fly.io and Hetzner are
-     the paid exits, as ADR-0151 orders them. Hetzner's price is
+     the paid exits, as 2618's ADR orders them. Hetzner's price is
      checked on the day before it is written, or left out.
   3. **The steps, for the reader's own server**, generalized from 2618:
      - the account steps (signup, card, MFA, a budget alert, creating
@@ -133,7 +133,7 @@ Spending money stays the reader's call, as it is Nick's for trails.
      addresses (as 2616 builds it). A game that adds names or chat
      takes on moderation, and that is the reader's decision.
 - **The link from *Playing online***: 2854's section on where a server
-  runs now links this page as well as ADR-0151.
+  runs now links this page as well as 2618's ADR.
 - **Glossary rows** for each word the page bolds (at least: TLS,
   certificate, egress, idle reclaim, reserved IP), so
   `cargo xtask check-book` passes.
@@ -158,7 +158,7 @@ Spending money stays the reader's call, as it is Nick's for trails.
 
 ## Implementation steps
 
-1. Draft the page from ADR-0151, `deploy/trails/README.md` (2618), the
+1. Draft the page from 2618's ADR, `deploy/trails/README.md` (2618), the
    monitor workflow (2619) and 2791's table.
 2. Re-check each host's free limits in the Context on the day, from the
    official pages linked there. Write the date checked on the page. A

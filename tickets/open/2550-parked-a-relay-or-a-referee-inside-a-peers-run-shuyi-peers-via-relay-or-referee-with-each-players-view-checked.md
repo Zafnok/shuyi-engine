@@ -124,11 +124,10 @@ None.
 - **`FakePeers`** (`crates/cli/src/contract/fake.rs`): a settable
   party, hub and expected hashes.
 - **`shuyi-net`** (`crates/net`):
-  - **Links to the hub only.** If 2613's `MemoryNetwork` links every
-    transport to every other, add a way to link chosen pairs (for
-    example `MemoryNetwork::star(hub)`), so a peer's one link is the
-    hub's. A peer that could reach another peer directly would pass
-    the relay test without the relay.
+  - **Links to the hub only.** 2613's `MemoryNetwork` links chosen
+    pairs (`connect(a, b)`), so each peer is linked to the hub alone. A
+    peer that could reach another peer directly would pass the relay
+    test without the relay.
   - **The relay's pieces run with no I/O.** The room table (rooms by
     code, the cap, forwarding with the sender's peer id, the rate and
     size limits) and the client's side of the relay's protocol must

@@ -321,7 +321,7 @@ fn the_github_questions_are_listed_after_the_wizards_with_the_agents_field() {
 
 /// The flags that answer the wizard's questions but the name's (which
 /// [`Scratch::run`] gives) and the examples'.
-const WIZARD: [&str; 10] = [
+const WIZARD: [&str; 12] = [
     "--id",
     "com.example.moon-garden",
     // The id: the same as none, but given, so not asked.
@@ -329,6 +329,8 @@ const WIZARD: [&str; 10] = [
     "com.example.moon-garden",
     "--perspective",
     "top-down-grid",
+    "--online",
+    "none",
     "--scripting",
     "none",
     "--targets",
@@ -403,7 +405,7 @@ fn github_changes(fake: &Fake) -> Vec<String> {
 fn every_default_taken_makes_the_game_and_both_repositories() {
     let scratch = Scratch::new("defaults");
     let mut fake = scratch.fake();
-    let (made, shown) = scratch.run(&[], Some(Scripted::enters(12)), &mut fake);
+    let (made, shown) = scratch.run(&[], Some(Scripted::enters(13)), &mut fake);
     assert!(made.answer.ok, "{:?}", made.answer);
     let report = made.repos.as_ref().unwrap();
     assert!(report.ok, "{report:?}");
@@ -416,6 +418,7 @@ fn every_default_taken_makes_the_game_and_both_repositories() {
         "A unique id for the game, like io.github.yourname.moon-garden:",
         "Which folder are the game's saves kept in",
         "Which perspectives?",
+        "How do players play online?",
         "How are the rules written?",
         "Include the engine skills' worked examples",
         "Which targets does it ship on?",

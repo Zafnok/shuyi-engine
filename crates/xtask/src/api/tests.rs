@@ -1848,7 +1848,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-cli", &["toy", "jis"]),
     (
         "shuyi",
-        &["std", "app", "schema", "script", "system-languages"],
+        &["std", "app", "schema", "script", "net", "system-languages"],
     ),
     ("shuyi-sound", &["std", "wav", "vorbis"]),
     ("shuyi-sound-out", &[]),
@@ -1857,6 +1857,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-embed", &[]),
     ("shuyi-embed-macros", &[]),
     ("shuyi-script", &[]),
+    ("shuyi-net", &[]),
 ];
 
 /// The features a crate's manifest has that its check leaves out, each for

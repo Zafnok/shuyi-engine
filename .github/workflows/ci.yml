@@ -1084,7 +1084,7 @@ jobs:
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
-        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -- --nocapture
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -p shuyi-script -p shuyi-net -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
       - name: Snake's golden table on wasm32

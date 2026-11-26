@@ -35,6 +35,10 @@ schema = ["shuyi-core/schema", "shuyi-ui/schema", "shuyi-platform/schema"]
 # `shuyi-script` (ADR-0093): rules from scripts, a library the rules call,
 # so no `Module`. It needs `std`.
 script = ["std", "dep:shuyi-script"]
+# `shuyi-net` (ADR-0152): the transport a game's online play talks
+# through, and an in-memory network for its tests; a library, so no
+# `Module`. It needs `std`.
+net = ["std", "dep:shuyi-net"]
 
 [dependencies]
 shuyi-core = { path = "../core", default-features = false }
@@ -42,6 +46,7 @@ shuyi-assets = { path = "../assets", default-features = false }
 shuyi-ui = { path = "../ui", default-features = false }
 shuyi-platform = { path = "../platform", default-features = false }
 shuyi-script = { path = "../script", optional = true }
+shuyi-net = { path = "../net", optional = true }
 
 # The macroquad backend, on every target with a window. WASI has none, and
 # macroquad's web callbacks there are imports nothing provides: a game's

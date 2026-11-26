@@ -26,7 +26,7 @@ each other: one creates a room and passes its code. Vendors have closed
 or shrunk in 2026, so we don't depend on one.
 
 Nick's decision of 2026-11-25 (`docs/decisions.md`) unparked an online
-example, trails, played in rooms of a server with quick play (ADR-0150).
+example, trails, played in rooms of a server with quick play (ADR-0152).
 That work builds what this ticket needed underneath it, so this ticket
 stays parked and builds on it:
 
@@ -37,7 +37,7 @@ stays parked and builds on it:
 - The native client (2617): `shuyi_app::net::WsClient`, adapted to
   `Transport` by the front door's `shuyi::net::connect`. The web client
   is 1142's, behind the same call.
-- Hosting: ADR-0151 (2618) runs a server on Oracle Cloud's Always Free
+- Hosting: 2618's ADR runs a server on Oracle Cloud's Always Free
   tier, with a reproducible setup, TLS on an IP certificate and a
   systemd unit; 2856 is the book's page on hosting. A relay runs the same
   way, at no cost.

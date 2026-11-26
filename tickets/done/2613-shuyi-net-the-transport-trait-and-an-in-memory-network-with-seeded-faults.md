@@ -1,17 +1,17 @@
 ---
 id: "2613"
-title: "shuyi-net: the Transport trait and an in-memory network with seeded faults, split out of 1140, and ADR-0150 for real-time rooms"
+title: "shuyi-net: the Transport trait and an in-memory network with seeded faults, split out of 1140, and ADR-0152 for real-time rooms"
 type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
-# 2613 — shuyi-net: Transport, an in-memory network, and ADR-0150
+# 2613 — shuyi-net: Transport, an in-memory network, and ADR-0152
 
 ## Context
 
@@ -23,7 +23,7 @@ completed:
   together with lockstep over `TurnRules`. Trails needs the first two and
   not lockstep. This ticket takes the transport half; 1140 is amended to
   keep only lockstep and commit-reveal, built on this crate.
-- It also writes ADR-0150, the architecture of the whole set
+- It also writes ADR-0152, the architecture of the whole set
   (2613–2619, 2788–2791, 2854–2856), and amends ADR-0006, whose §6 left
   real time in the browser to 1147's research.
 - What exists today, checked on 2026-11-25:
@@ -148,7 +148,7 @@ Nick's next batch of names.
   the line that tests `-p shuyi-core … -p shuyi-script`), so delivery
   order is checked on wasm32, where the browser client runs. (1140's
   "From 2116" line moves here.)
-- **ADR-0150**, written with the `write-adr` skill. Title in the style
+- **ADR-0152**, written with the `write-adr` skill. Title in the style
   of the others, for example "Real-time rooms: an authoritative server
   broadcasts each step's inputs, with bots in empty seats and quick play
   without accounts". It says:
@@ -194,9 +194,9 @@ Nick's next batch of names.
     1147's rollback and prediction, 1148's accounts.
   - It amends ADR-0006 §1 (the Transport row's order and a
     "server-authoritative input broadcast" sync model for ticks), §5
-    (systemd on a free host beside Docker images; ADR-0151, 2618) and
+    (systemd on a free host beside Docker images; 2618's ADR) and
     §6 (real time over WebSocket in the browser is built now, not left to
-    1147). Add an "Amended by ADR-0150" line under ADR-0006's status,
+    1147). Add an "Amended by ADR-0152" line under ADR-0006's status,
     and one under ADR-0008's for the server backend.
 - **Public types** follow ADR-0039: `NetEvent`, `DisconnectReason`,
   `SendError`, `Faults` and `NetStats` may grow, so they are
@@ -235,37 +235,37 @@ ADR 150).
 5. Write `MemoryNetwork`, `MemoryEndpoint` and `Faults`, then the tests
    below.
 6. Add `-p shuyi-net` to CI's wasm32 `determinism` step.
-7. Write ADR-0150 with the `write-adr` skill, and the back-links in
+7. Write ADR-0152 with the `write-adr` skill, and the back-links in
    ADR-0006 and ADR-0008.
 8. Check the crate names (Nick input), and write the `Book:`,
    `Skills:` and `Behaviour:` lines.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-layers` and `cargo xtask check-modules` pass
+- [x] `cargo xtask check-layers` and `cargo xtask check-modules` pass
       with the new crate, and `shuyi-net` is reached by no default crate.
-- [ ] The same `Faults` seed and the same sends give the same delivery
+- [x] The same `Faults` seed and the same sends give the same delivery
       order, event for event, in two runs and on wasm32.
-- [ ] Reliable messages are never lost, duplicated or reordered under
+- [x] Reliable messages are never lost, duplicated or reordered under
       any fault setting (a property test over at least 200 seeds with
       loss, duplicates and reordering each at 500 per-mille).
-- [ ] Over 10,000 Unreliable messages at 100 per-mille each, the
+- [x] Over 10,000 Unreliable messages at 100 per-mille each, the
       measured loss, duplicate and reorder rates are each within 70–130
       per-mille.
-- [ ] Every delivery lands between `delay_min` and `delay_max` steps
+- [x] Every delivery lands between `delay_min` and `delay_max` steps
       after its send (Reliable may wait longer only behind an earlier
       message).
-- [ ] A disconnect gives `Disconnected { reason: Closed }` on both ends,
+- [x] A disconnect gives `Disconnected { reason: Closed }` on both ends,
       after the Reliable messages sent before it; a send after it is
       `Err(Closed)`.
-- [ ] `send` to an unknown peer is `Err(UnknownPeer)`, and an oversized
+- [x] `send` to an unknown peer is `Err(UnknownPeer)`, and an oversized
       message is `Err(TooLarge)`; neither panics.
-- [ ] A game built without the front door's `net` feature has no
+- [x] A game built without the front door's `net` feature has no
       `shuyi-net` in `cargo tree`.
-- [ ] ADR-0150 is merged, and ADR-0006 and ADR-0008 name it.
-- [ ] The completion notes have a `Book:` line naming 2854 and a
+- [x] ADR-0152 is merged, and ADR-0006 and ADR-0008 name it.
+- [x] The completion notes have a `Book:` line naming 2854 and a
       `Skills:` line naming 2855.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -281,3 +281,106 @@ ADR 150).
   the others keep talking.
 
 ## Completion notes
+
+Done on 2026-11-26.
+
+- **The crate** `crates/net` (`shuyi-net`): `PeerId`, `Channel`,
+  `NetEvent`, `DisconnectReason`, `SendError`, `NetStats` and the
+  `Transport` trait (`src/transport.rs`), and `MemoryNetwork`,
+  `MemoryEndpoint` and `Faults` (`src/memory.rs`). Pure: no I/O, no
+  clock, no threads, floats denied; it depends on `shuyi-core` alone
+  (`default-features = false`), for `SimRng`.
+- **Faults:** each `Unreliable` send draws, in order, its loss, its
+  duplicate, its reordering, its delay and its copy's delay (five draws
+  whatever comes up); a `Reliable` send and a disconnect draw a delay.
+  A reordered message is held behind the other deliveries of its step
+  (its copy too). Deliveries are kept in a `BTreeMap` by step, held-back
+  last, then send order.
+- **Module duties:** the metadata (`online` = `server`, serving
+  `fixed-ticks`), the `server` answer in `docs/modules.ron` (planned,
+  2614–2616), the `shuyi-net` row in `docs/modules.md`, the README in
+  ADR-0009 §4's order with the size measured, `tools/layers.ron`'s entry
+  and the front door's edge, and the front door's `net` feature, off by
+  default.
+- **Tests:** 14 unit tests (`src/memory/tests.rs`); `tests/faults.rs`:
+  two property tests over 256 cases each (Reliable never lost,
+  duplicated or reordered at 500 per mille of each fault; delays within
+  bounds), the rates over 10,000 messages for three seeds (measured 98 to
+  109 per mille), two runs of one session equal, and that session's
+  events pinned by count and hash; `tests/links.rs`: a server linked to
+  three clients with one leaving, a disconnect after the Reliable
+  messages sent before it (50 seeds), and the closing end told at the
+  next step. All pass on wasm32-wasip1 under wasmtime (the two
+  `should_panic` tests are skipped there, as WASI can't unwind).
+- **CI:** `-p shuyi-net` joins the wasm32 `cargo test` step of the
+  `determinism` job, and the same line in the `run-gates` skill and in
+  `tools/sound-parity/footprint.ron` (which rewrites that line).
+- **ADR-0152** (real-time rooms), with "Amended by" lines in ADR-0006 and
+  ADR-0008 and both index rows.
+- **Size measured** on 2026-11-26: Hello, Grid's web release build with
+  a live use of `MemoryNetwork` is 29,161 bytes bigger (3,915,937 →
+  3,945,098); without the `net` feature, `cargo tree -p hello-grid` and
+  `cargo tree -p shuyi` have no `shuyi-net`.
+
+**Deviations:**
+
+- **The ADR's number is 0152, not 0150.** ADR-0150 (the contract's
+  version) and ADR-0151 (constructors) were taken after this ticket was
+  written. The net tickets' references to ADR-0150 now say ADR-0152
+  (1140, 1141, 1142, 1146, 1147, 2551, 2606, 2613–2618, 2789, 2790,
+  2854–2856). The hosting ADR they called ADR-0151 is now "2618's ADR",
+  numbered by `cargo xtask next-id adr` when 2618 writes it (2616, 2618,
+  2619, 1141, 1146, 2854–2856).
+- **`NetStats` gains `record_sent`, `record_received`, `record_dropped`
+  and `record_duplicated`.** A `#[non_exhaustive]` type with getters
+  alone can't be filled by a backend in another crate (2616, 2617).
+  `dropped` and `duplicated` count on the sending end.
+- **`MemoryNetwork` gains `faults()`, `set_max_message`, `max_message`
+  and `steps()`**, for tests to read the network.
+- **Delays count steps from a send to its delivery:** 1 is the next
+  step, the soonest there is; 0 counts as 1, and a `delay_max` below
+  `delay_min` as `delay_min`. `Faults::none()` delivers at the next step.
+- **`connect` takes two `PeerId`s** and panics on one not of the network
+  or on a self-link. A pair is linked once: a peer that comes back is a
+  new endpoint, as a new connection has a new id. A send works from
+  `connect` on, before `Connected` is polled.
+- **The front door's feature is `net = ["std", "dep:shuyi-net"]`**, as
+  `script`'s is: the crate needs `std`. 2617's line naming the feature
+  now says so.
+- **`cargo xtask api` checks the crate:** `shuyi-net` joins
+  `API_CRATES`, and `shuyi`'s checked features gain `net`
+  (`crates/xtask/src/api.rs` and its test's table), since `check_catalog`
+  fails an engine crate left out.
+- **The root `README.md`'s crate table** gains a `shuyi-net` row.
+- **2617** gains a "From 2613 (done)" note: `shuyi::net` is a re-export
+  of the crate today, so its `connect` needs `net` made a module that
+  re-exports `shuyi_net::*`. **2550**'s clause on linking chosen pairs
+  now says what holds: `connect(a, b)` links chosen pairs.
+- **Crate names:** CI's `layers` job doesn't run `cargo xtask
+  check-publish --index` yet, so nothing blocks the merge. For Nick's
+  next batch of names to hold on crates.io: `shuyi-net` and
+  `shuyi-server`.
+
+Behaviour: shuyi-cli: `shuyi new` asks "How do players play online?"
+(default `none`), since the `online` concern now has two answers ready
+or planned (`none`, and `server`, planned); `shuyi modules` lists
+`shuyi-net` (feature `net`) beside `shuyi-script`. A script or a test
+that answers `shuyi new`'s questions in order answers one more, or passes
+`--online none`.
+
+No break: every item is new. Searches of the game (`gh search code
+--repo Zafnok/visions-of-shuyi` for `shuyi_net`, `MemoryNetwork` and
+`"--online"`) found nothing: no game code calls `shuyi new`'s wizard or
+names the crate.
+
+Game: nothing to adopt, the crate is behind a feature that is off by
+default, and the game builds none of it.
+
+Book: none here; 2854 writes the online chapter, over this crate and
+ADR-0152.
+
+Skills: none here; 2855 rewrites `skills/shuyi-net`, whose `waits_for`
+keeps 1140.
+
+Nick input: none needed. Two crate names for his next batch:
+`shuyi-net` and `shuyi-server`.
