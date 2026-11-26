@@ -2307,3 +2307,56 @@ of the release?", Nick:
 - **3510 is an MVP ticket,** and 2005 waits for it.
 - **This answers 3528's question 6 for 3510 only.** 3511, 3512 and the
   question's other picks are still Nick's to make there.
+
+## 2026-11-25: the benchmark is a blind race against other engines
+
+Source: Nick, in a session of this repository:
+
+> "the ultimate benchmark for Shuyi Engine's success imo has to do w
+> beating
+>
+> 1. time from prompt to working game, in the intended design
+> 2. number of follow up prompts needed to refine the game
+> 3. LOC
+>
+> measured against Bevy and other competitors
+>
+> I should be able to one shot with a fully working Shuyi Engine a
+> simple game. Like "Make Doom from Shuyi Engine" should be one prompt
+> and work very well, as compared to saying "Make Doom" and the agent
+> deciding what engine / programming language to use, vs "Make Doom with
+> Bevy" or "Make Doom with Godot" or "Make Doom with Unreal"
+>
+> basically Shuyi Engine should shine as a very easy to understand
+> agentic first game engine. This is the ultimate goal, to be the one
+> agents lean on. Secondary is LOC since then humans would gravitate
+> towards it.
+>
+> We should have blind tests. Agents running in empty folders with no
+> personalization etc and just given prompt "Make X with Shuyi Engine -
+> link" vs "Make X with Bevy - link" and Shuyi Engine should have less
+> friction points and higher quality in less time
+>
+> Make a ticket for this"
+
+**Rules:**
+
+- **What the benchmark measures, in his order:** the time from the
+  prompt to a working game in the intended design; the follow-up prompts
+  needed to refine it; and lines. Friction points and quality are
+  reported with them. Being the engine agents lean on comes first; lines
+  come second.
+- **It is blind:** a fresh agent in an empty folder, with no
+  personalization, gets one line, "Make X with <engine> - <link>", and
+  nothing else. The same line with no engine named is an arm too, so the
+  agent picks.
+- **Against other engines:** Bevy first, and the others he named
+  (Godot, Unreal). Which arms run, and what a round may spend, are asked
+  in 3432.
+- **The tickets:** 3432 (the blind start, the arms, one shot) and 3433
+  (the follow-up prompts), after the A/B (2562). They don't replace
+  2562's warm-start A/B or the eval (2524, 2525).
+- **A brief names no existing game,** under the 2026-10-26 rule: "Make
+  Doom" becomes an original first-person shooter in corridors, and DOOM
+  itself stays the port in `Zafnok/shuyi-doom` (2026-11-03). Nick may
+  veto this, as he may the 2026-10-26 rule.

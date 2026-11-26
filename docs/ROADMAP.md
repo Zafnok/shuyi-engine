@@ -564,7 +564,11 @@ does. The order, after the game's own requests:
 4. 2776: the maze chase, on Pages;
 5. 2572, the maze chase's eval task, once the eval (2524, 3421) is done;
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
-   what it may spend.
+   what it may spend;
+7. 3432, the blind benchmark: fresh agents in empty folders get one line
+   and an engine's link, Shuyi against Bevy, Godot and no engine named
+   (2026-11-25, [`decisions.md`](decisions.md)), then 3433, the
+   follow-up prompts to the full design.
 
 On 2026-11-03 Nick added Bad Apple and DOOM after the maze chase, open
 ([`decisions.md`](decisions.md)): "anything that can display graphics
