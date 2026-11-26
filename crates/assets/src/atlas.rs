@@ -174,7 +174,8 @@ impl Page {
                 .map(|s| s.y)
                 .max()
                 .unwrap_or(start.y);
-            if y + h <= side && best.is_none_or(|(by, bx)| (y, x) < (by, bx)) {
+            // Left to right: a place as low as the best is further right.
+            if y + h <= side && best.is_none_or(|(by, _)| y < by) {
                 best = Some((y, x));
             }
         }
