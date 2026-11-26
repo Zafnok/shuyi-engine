@@ -1194,6 +1194,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1203,6 +1204,25 @@ jobs:
       # No two packages build a binary or an example of one name: on
       # Windows their links collide (ticket 2056).
       - run: cargo xtask check-targets
+      # The publish list, the exact pins and every name held on crates.io
+      # (ticket 3510, ADR-0152).
+      - run: cargo xtask check-publish
+      - run: cargo xtask check-publish --index
+      # The engine crates packaged together, each resolved against the
+      # others' packages: a dependency with no version, or on a member
+      # that isn't published, fails here. Cargo reads the others' packages
+      # only for crates it may publish, so the workspace's `publish` is
+      # turned on in this checkout alone (hence --allow-dirty). No lockfile:
+      # a package's resolve doesn't carry the root's [patch] of alsa-sys,
+      # so shuyi-app's two `links = "alsa"` can't resolve there (ADR-0152,
+      # 2005 settles it). --no-verify: the packages build only once 2005
+      # moves templates/, targets/ and skills/ into them.
+      - name: Package the engine crates together
+        run: |
+          sed -i 's/^publish = false$/publish = true/' Cargo.toml
+          mapfile -t crates < <(cargo xtask check-publish --order)
+          cargo package --no-verify --locked --allow-dirty --exclude-lockfile \
+            "${crates[@]/#/--package=}"
 
   # The modules (ticket 2003, ADR-0009 §2 and §6): each against the
   # catalog (docs/modules.md, docs/modules.ron), then the `shuyi` crate
