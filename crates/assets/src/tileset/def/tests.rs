@@ -116,7 +116,7 @@ fn a_corner_layers_size_offset_and_skip_go_onto_it() {
     let source = file(
         "(16, 16)",
         r#"Corners(of: ["water"], tiles: [(corners: ".##.", at: (0, 1))],
-                   size: (16, 32), offset: (1, -3), skip: ["soil", "tilled"]),
+                   size: (24, 32), offset: (1, -3), skip: ["soil", "tilled"]),
            Corners(of: ["water"], tiles: [(corners: ".##.", at: (1, 1))])"#,
         "",
     );
@@ -132,7 +132,7 @@ fn a_corner_layers_size_offset_and_skip_go_onto_it() {
             ImageRect {
                 x: 0,
                 y: 16,
-                w: 16,
+                w: 24,
                 h: 32,
             },
         )]),
