@@ -93,15 +93,15 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// change to any of them makes it the next number, and a pack of another
 /// version is refused, never migrated. Version 15 reads files' bytes in any
 /// order and with bytes between them (a recipient's layout, ADR-0118);
-/// version 16 holds a font atlas's ink (ticket 3215, ADR-0124), version
-/// 17 its bold face (ticket 3216), version 18 checks the header and the
+/// version 16 holds a font atlas's ink (ADR-0124), version
+/// 17 its bold face, version 18 checks the header and the
 /// index apart from each file, which has a checksum of its own (ticket
 /// 2263, ADR-0128 §2), version 19's index holds the span of each
-/// folder laid first (ticket 2265, ADR-0128 §3), version 20's music cue
-/// holds a loop region (ticket 2397), version 21's sound cue holds its
-/// rules (ticket 2345, ADR-0139), version 22's target profile its
-/// graphics tier (ticket 3347), and version 23's target profile its
-/// texture limit, beside the atlas kind (ticket 2222).
+/// folder laid first (ADR-0128 §3), version 20's music cue
+/// holds a loop region, version 21's sound cue holds its
+/// rules (ADR-0139), version 22's target profile its
+/// graphics tier, and version 23's target profile its texture limit,
+/// beside the atlas kind (ADR-0153).
 pub const VERSION: u32 = 23;
 
 /// The bytes a baked file in a pack starts with.

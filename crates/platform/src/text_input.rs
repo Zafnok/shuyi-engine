@@ -1,6 +1,6 @@
 //! [`TextInput`]: the system's own keyboard, for a device where the player
 //! doesn't type on keys (a console's software keyboard, Steam's on-screen
-//! one on the Steam Deck, which is the game's to fill: its ticket 0903).
+//! one on the Steam Deck, which is a game's to bring).
 //!
 //! A screen asks through its context
 //! ([`Ctx::system_keyboard`](shuyi_ui::Ctx::system_keyboard)); `App` opens

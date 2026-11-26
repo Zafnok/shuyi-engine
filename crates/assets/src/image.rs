@@ -18,7 +18,7 @@
 //! 2234).
 //!
 //! JPEG, WebP, QOI and JPEG XL are formats of both kinds too, each behind
-//! its own feature (`jpeg`, `webp`, `qoi`, `jpeg-xl`; ticket 2203):
+//! its own feature (`jpeg`, `webp`, `qoi`, `jpeg-xl`):
 //! `Jpeg` and `JpegInfo`, and so on. [`Formats::standard`] registers
 //! those whose feature is on, so the table sizes their files.
 use crate::prelude::*;

@@ -1,4 +1,4 @@
-//! What a game's input actions are to the input mechanism (ticket 1106):
+//! What a game's input actions are to the input mechanism:
 //! [`ActionSet`], implemented by the game's own action enum, and
 //! [`UiAction`], the few actions the generic widgets and screens react to.
 //! `UiAction` is an action set too, ready-made for a game that plays with
@@ -40,7 +40,7 @@ pub enum UiAction {
 /// actions.
 pub trait ActionSet: Copy + Ord + Eq + Hash + Debug + 'static {
     /// Which actions may share a key or button: a key is on at most one
-    /// action of each group (game ADR-0068). `()` for a game where no two
+    /// action of each group. `()` for a game where no two
     /// actions share one.
     type Group: Copy + Ord + Eq + Debug;
 

@@ -12,8 +12,8 @@
 //!   thread, and a play sent after its sound always finds it (`Inbox::apply_with`).
 //! - **Music and voices** stream. A [`Feeding`] on a worker decodes ahead into a ring
 //!   a track's length doesn't change. It loops by starting its decoder again, so a
-//!   loop's way back is in the ring before the mix gets there; round a loop region
-//!   (ticket 2397), the decoder of an Ogg file seeks to the region's exact frame. In the browser there
+//!   loop's way back is in the ring before the mix gets there; round a loop region,
+//!   the decoder of an Ogg file seeks to the region's exact frame. In the browser there
 //!   are no threads, and the feeding is done as the page asks for frames.
 //!
 //! **What the web hands the adapters.** A library's panic stops the program there, as
@@ -120,8 +120,8 @@ fn track_limits() -> Limits {
 }
 
 /// A source of a track's bytes, decoding as it is asked, going round `region` if it
-/// has one. An Ogg file's way round a region that starts far in is an exact seek
-/// (ticket 2397), so the intro isn't decoded again on the worker each time round:
+/// has one. An Ogg file's way round a region that starts far in is an exact seek,
+/// so the intro isn't decoded again on the worker each time round:
 /// decoding a long one would hold the ring up past what it holds.
 fn track_source(track: &Track, region: Option<Region>) -> Result<Box<dyn Source + Send>, String> {
     let limits = track_limits();
@@ -329,7 +329,7 @@ impl AudioSide {
     }
 }
 
-/// What a track's feeding went through (ticket 3320): its file's name, the frames a
+/// What a track's feeding went through: its file's name, the frames a
 /// mix waited on its ring, and the fewest frames the ring held when the worker came
 /// round, its margin, if it came round after the first fill.
 #[cfg_attr(
@@ -416,7 +416,7 @@ impl Feeding {
 struct Feedings {
     list: Arc<Mutex<Vec<Feeding>>>,
     problems: Arc<Mutex<Vec<String>>>,
-    /// Whether the worker's thread runs above the game's (ticket 3320): only the
+    /// Whether the worker's thread runs above the game's: only the
     /// probe asks.
     #[cfg_attr(
         not(all(feature = "sound-probe", not(target_arch = "wasm32"))),
@@ -667,7 +667,7 @@ fn level(volume: f32) -> u16 {
 pub struct InHouse {
     engine: Option<Engine>,
     /// Whether a frame of the player's is open: its commands are held back until
-    /// it closes, so that what it starts starts at one block (ticket 3089).
+    /// it closes, so that what it starts starts at one block.
     framing: bool,
     #[cfg(test)]
     said: Vec<String>,
@@ -794,7 +794,7 @@ impl InHouse {
     }
 
     /// How often the output's buffer ran dry, a gap heard, and whether its thread
-    /// runs above the game's (ticket 3089). For the probe's log.
+    /// runs above the game's. For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     pub fn output_dry(&self) -> (u32, bool) {
         self.engine
@@ -807,7 +807,7 @@ impl InHouse {
 
     /// Each track since the last ask, those done with included: its file's name, the
     /// frames a mix waited on its ring, and the fewest frames its ring held when the
-    /// worker came round, its margin (ticket 3320). For the probe's log.
+    /// worker came round, its margin. For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     pub fn stream_stats(&self) -> Vec<(String, u64, Option<usize>)> {
         self.engine
@@ -815,8 +815,8 @@ impl InHouse {
             .map_or_else(Vec::new, |engine| engine.feedings.stats())
     }
 
-    /// Whether the worker that feeds the tracks runs above the game's thread
-    /// (ticket 3320). For the probe's log.
+    /// Whether the worker that feeds the tracks runs above the game's thread.
+    /// For the probe's log.
     #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     pub fn feeder_raised(&self) -> bool {
         self.engine

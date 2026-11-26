@@ -24,7 +24,7 @@
 //! set), is [`Report`]'s. Each capture also logs its line, after
 //! [`PREFIX`].
 //!
-//! On the web (ticket 2019) a build with the feature always runs the plan
+//! On the web a build with the feature always runs the plan
 //! [`WEB_PLAN`], beside the page (fetched as macroquad loads a file). It
 //! writes no files: the console's lines are the report. The canvas is read
 //! as the window is, in WebGL. After the last capture, or the first that

@@ -1,4 +1,4 @@
-//! Files the player dropped on the window or the canvas (ticket 3092): the
+//! Files the player dropped on the window or the canvas: the
 //! system's [`SystemEvent::FilesDropped`], from what macroquad kept of
 //! miniquad's `files_dropped_event`.
 //!
@@ -8,7 +8,7 @@
 //! (`get_dropped_files`), so the backend reads them in every frame, a web
 //! frame that doesn't run the game too ([`Held`](crate::pacing::Held)), and
 //! `App` hands them to the game in the next that does. On Windows the
-//! backend reads a drop itself ([`windows`], ticket 3307, ADR-0104):
+//! backend reads a drop itself ([`windows`], ADR-0104):
 //! miniquad 0.4.11 panics on a dropped folder there and never tells
 //! macroquad of a drop. `App` refuses a drop over the limits
 //! ([`shuyi_platform::dropped::accept`]) and logs why.

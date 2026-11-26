@@ -29,13 +29,12 @@
 //! in the order given, after the narrow glyphs.
 //!
 //! `--bold <bold.bdf>` adds the font's bold face, its cells the same size
-//! (ticket 3216, [`add_bold`]): the atlas keeps the bold shape of each
+//! ([`add_bold`]): the atlas keeps the bold shape of each
 //! narrow glyph it has that the bold font has, after the wide sets, and
 //! its `atlas.ron` names them (`bold`); a key cap's name is drawn in it.
 //!
 //! Every atlas says where its glyphs put ink (`ink`, [`ink_of`], and
-//! `bold_ink` for the bold face's), which a key cap places its name by
-//! (ticket 3215).
+//! `bold_ink` for the bold face's), which a key cap places its name by.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -572,7 +571,7 @@ pub fn ink_of(font: &BitmapFont, glyphs: &BTreeMap<char, u32>) -> Option<FontInk
     Some(ink)
 }
 
-/// `atlas` with the bold face `bold` (ticket 3216): the bold shape of each
+/// `atlas` with the bold face `bold`: the bold shape of each
 /// narrow glyph it has that `bold` has, in codepoint order after all its
 /// other cells, and their ink. Fails if `bold`'s cells aren't the atlas's
 /// size.
@@ -805,7 +804,7 @@ pub struct RunOptions {
     pub out_dir: PathBuf,
     /// The characters the atlas keeps.
     pub chars: AtlasChars,
-    /// The font's bold face, if there is one ([`add_bold`], ticket 3216).
+    /// The font's bold face, if there is one ([`add_bold`]).
     pub bold: Option<PathBuf>,
 }
 

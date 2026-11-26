@@ -1,6 +1,6 @@
 //! What a file's comments say of how it loops: the `LOOPSTART` and `LOOPLENGTH`
 //! tags many music tools write in an Ogg Vorbis file, in samples of one channel
-//! (frames), from the start of the sound (ticket 2397).
+//! (frames), from the start of the sound.
 //!
 //! A region the tags name is checked whole, never clamped or rounded: both tags or
 //! neither, each a whole number, a length of at least one frame, a start and length

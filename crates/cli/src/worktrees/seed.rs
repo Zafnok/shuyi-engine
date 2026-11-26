@@ -1,4 +1,4 @@
-//! Starts a new worktree's `target/` from a warm worktree's (ticket 2078):
+//! Starts a new worktree's `target/` from a warm worktree's:
 //! the third-party crates' compiled output hard-linked, what cargo rewrites
 //! in place copied, and the path packages left out, so they build fresh with
 //! their own paths.

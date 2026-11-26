@@ -1,5 +1,5 @@
 //! A sample game's actions and keymap file, for the tests of the keymap
-//! format and of the input mechanism built on it (ticket 1107): a tactics
+//! format and of the input mechanism built on it: a tactics
 //! game with four cursor moves, Confirm and Cancel, a few map actions, a
 //! developer Debug key no player can rebind, two optional actions and a
 //! dialogue log in a [`KeyGroup`] of its own. Its keymap file

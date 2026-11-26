@@ -1,5 +1,4 @@
-//! The keymap file format, generic over a game's [`ActionSet`] (game ADR-0015,
-//! game ADR-0031, game ADR-0034, tickets 1106 and 1107): [`Key`]s and [`Chord`]s,
+//! The keymap file format, generic over a game's [`ActionSet`]: [`Key`]s and [`Chord`]s,
 //! controller [`Button`]s and [`ButtonChord`]s (two buttons together), the
 //! named [`Layout`]s a file lists, and
 //! [`KeymapDef`], a validated keymap file: each layout's default keys, the
@@ -166,7 +165,7 @@ impl Key {
 
 /// Key slots per action: a layout lists at most this many chords for an
 /// action, and the player can give each action up to this many keys
-/// (`docs/design/controls.md`, *Rebinding keys*).
+/// (the `shuyi-input` skill, *The player's keys*).
 pub const SLOTS: usize = 3;
 
 impl fmt::Display for Key {
@@ -199,8 +198,8 @@ impl Chord {
         Self { key, shift: true }
     }
 
-    /// Whether this chord is fixed by the game and can never be bound
-    /// (`docs/design/controls.md`, *Rebinding keys*): plain `Escape` always
+    /// Whether this chord is fixed and can never be bound (ADR-0036, and
+    /// rule 5 of the `shuyi-input` skill's *The rules*): plain `Escape` always
     /// cancels and plain `Delete` empties a key slot. `Shift+Escape` and
     /// `Shift+Delete` are ordinary chords.
     pub fn is_reserved(self) -> bool {
@@ -258,9 +257,9 @@ impl fmt::Display for Chord {
 macro_rules! buttons {
     ($($variant:ident => $doc:literal,)+) => {
         /// A controller button, named by its **position** on an Xbox-shaped
-        /// pad, whatever is printed on it (game ADR-0034). Each stick's four
+        /// pad, whatever is printed on it. Each stick's four
         /// directions count as buttons too, and so does a crank wound one
-        /// notch either way (the Playdate's, ticket 1035: pressed and let go
+        /// notch either way (the Playdate's: pressed and let go
         /// once per notch), and so does an item of the game's own in the
         /// system's menu (pressed and let go when the player picks it,
         /// ADR-0008 §3). `app` translates what the platform reports to
@@ -399,7 +398,7 @@ impl fmt::Display for Button {
 }
 
 /// What a controller binding is: one [`Button`], or two pressed together
-/// (a *button chord*, ticket 1034), written `"South+East"` in keymap files
+/// (a *button chord*), written `"South+East"` in keymap files
 /// and saved bindings. The two are kept in [`Button::ALL`] order, so
 /// `"East+South"` is the same chord as `"South+East"` (and is shown as the
 /// latter). How a chord fires is the input's business
@@ -751,7 +750,7 @@ pub struct KeymapDef<A: ActionSet> {
     /// layout picker. After [`from_source`](Self::from_source) every action
     /// is present.
     pub pad: PadKeys<A>,
-    /// The default buttons of a Playdate (game ADR-0070, ticket 1034), whose
+    /// The default buttons of a Playdate, whose
     /// only buttons are the D-pad, A and B: the file's `playdate` table, or
     /// a copy of [`pad`](Self::pad) for a file without one. A game running
     /// on a Playdate uses it in place of `pad`

@@ -1,4 +1,4 @@
-//! Native music loading off the main thread (game ADR-0028).
+//! Native music loading off the main thread.
 //!
 //! quad-snd decodes a whole OGG inside `Sound::load`, which took 80–580 ms
 //! per track on the main thread. Music therefore gets its own quad-snd
@@ -139,7 +139,7 @@ impl Music {
 /// What quad-snd decodes of the track file at `path`, whose bytes are
 /// `file`, and how long it plays: a FLAC or MP3 file as the WAV
 /// [`decode_to_wav`](shuyi_assets::audio::decode_to_wav) makes of it, any
-/// other as it is (ticket 2234). Its length is
+/// other as it is. Its length is
 /// [`track_length_ms`](shuyi_assets::audio::track_length_ms)'s.
 pub(crate) fn track_bytes<'a>(
     path: &str,
@@ -232,7 +232,7 @@ mod tests {
         assert!(pending.poll().is_none());
     }
 
-    /// The before/after timings in ticket 0215: how long the calling
+    /// Before and after moving loading off the game's thread: how long the calling
     /// thread is blocked starting each track in the folder named by
     /// `MUSIC_DIR`, synchronously (quad-snd's own `Sound::load`, as before)
     /// and through `Pending`. Opens the real sound device, so it only runs
@@ -309,7 +309,7 @@ mod tests {
         digits.parse().ok()
     }
 
-    /// The measurement in ticket 0238: the memory 20 loaded voice clips
+    /// The memory 20 loaded voice clips
     /// take. Loads the clip named by `VOICE_CLIP` 20 times, as the voice
     /// player would 20 different clips. Opens the real sound device and
     /// reads `tasklist`, so it only runs when asked, on Windows:

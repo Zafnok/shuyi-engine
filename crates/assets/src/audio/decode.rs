@@ -1,4 +1,4 @@
-//! Sounds decoded to a WAV in memory (ticket 2234): a FLAC or MP3 file as
+//! Sounds decoded to a WAV in memory: a FLAC or MP3 file as
 //! 16-bit PCM, which every backend plays, and how long a track plays
 //! whatever its format. The WAV is no asset: nothing hashes it, and no
 //! test pins its samples, so an MP3 decoder's floats are fine here.

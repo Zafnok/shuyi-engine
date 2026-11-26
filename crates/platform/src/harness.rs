@@ -1,4 +1,4 @@
-//! A headless test driver for any game on the engine (game ADR-0007 layer 4):
+//! A headless test driver for any game on the engine:
 //! scripted key and controller-button presses and waits in, in frames of
 //! 1/60 s or by a tick stage's fixed steps ([`Harness::steps`]), screen
 //! names, snapshots and the audio asked for out. No window,
@@ -518,7 +518,7 @@ impl<G: GameData> Harness<G> {
     /// Winds the crank `degrees` in one frame of [`FRAME_DT`] (forwards is
     /// positive, backwards negative), as the Playdate's front end reports
     /// it: a press and a release of a crank button for each whole notch,
-    /// the rest of a notch kept for the next call (ticket 1035).
+    /// the rest of a notch kept for the next call.
     pub fn crank(&mut self, degrees: f32) -> &mut Self {
         let events =
             RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind, SCRIPT_PAD);
