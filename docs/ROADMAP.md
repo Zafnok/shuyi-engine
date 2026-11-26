@@ -84,6 +84,11 @@ The two more:
   private files;
 - 2090 joined 2005's `blocked_by` as an MVP ticket.
 
+On 2026-11-25 Nick put 3510 in the phase (the publish list from the
+workspace, exact pins between the crates, and a runbook for a publish
+that stops part way), which the release's workflow runs on
+([`decisions.md`](decisions.md)).
+
 These tickets, in order:
 
 | Ticket | What |
@@ -198,6 +203,7 @@ These tickets, in order:
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
 | 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
 | 3407 (done) | Every template workflow job that checks out a game's private files caches no build and uploads none, checked over every workflow |
+| 3510 | The publish list comes from the workspace, internal pins are exact, and a half-finished publish has a runbook |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
