@@ -33,6 +33,7 @@ is another way to reach them.
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker and `objcopy` (for `export --release`) on the Windows GNU toolchain, on Linux the C linker, `pkg-config` and the system libraries the backend links and opens, and the web target, and says how to fix each; and, as optional checks (`optional`) that never fail it, `gh`, which only `shuyi repos` needs, `ssh-keygen`, which it and `export --recipient` need, and, in a git checkout, the disk its worktrees take: `git-hooks`, whether `core.hooksPath` names the checkout's `scripts/git-hooks` when it has one, and on Windows `target-compression`, whether its `target/` carries NTFS compression (it reads the attribute and compresses nothing; the help is the `compact` line the template's `post-checkout` hook runs) | nothing |
 | `sfx <preset \| file.sfx.ron> [--seed N] [--out <file.sfx.ron>] [--wav <file.wav>]` | A sound effect (`.sfx.ron`, [formats](formats.md#sound-effects-sfxron)) from one of the engine's presets, varied by `--seed`, or read from a file: its text (`text`, in the form the engine writes, a preset's with a line naming it), how long it plays (`length_ms`), its samples and its loudest one (`peak`), every preset's name, or a file's problems with their lines (`ok: false`, nothing written). `--out` writes its text, `--wav` its render, each making its folder, both named in `written`. An unknown name is an error (`SH0001`) listing the presets | nothing |
 | `explain [<code>]` | Every problem code, or one code's page: what it means and how to fix it ([below](#problem-codes)) | nothing |
+| `docs <words…> [--limit N] [--kind learn\|skill\|example\|code]` | Searches the engine's docs as this `shuyi` embeds them ([below](#searching-the-docs)): the best N hits (8; at least 1, at most 50), each with its `kind`, `title`, `path` in the engine's repository, `anchor`, the Learn page's twin `url`, an integer `score` and an `excerpt`, and the rows of the "how do I" table the query asks (`how`). An empty query, or one of common words alone, is `SH0001`; no hit passes, with a limit line | nothing |
 | `attach <host:port> --token <t> [steps] [--frames N] [--screenshot <file.png>] [--log-since N] [--perf-since N] [--perf-follow <file.jsonl> [--for S]] [--perf-snapshot]` | Reaches a debug build already running in its window ([below](#attaching-to-a-running-build)): plays the steps as a player's input, lets N frames pass, then answers with its frames, phase, screens, top screen, whether it is suspended, focused or quit, its frame as text, its [log](#the-log) lines numbered N or more, each with its `seq`, and `log_next`, the next `--log-since`; `--screenshot` writes the window's picture; `--perf-since` adds its frames' records numbered N or more, `perf`, with `perf_next` and `perf_summary`; `--perf-follow` writes each new frame's record to the file as the build runs, for S seconds (10), and answers their summary ([Perf traces](#perf-traces)) | a running build |
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
@@ -454,6 +455,42 @@ A code is never reused or renumbered: a retired one keeps its row and
 its page. **A new error gets a new code, its row and its page in the
 same PR**; a test fails on a page with no row, a code twice, or a row no
 source uses.
+
+## Searching the docs
+
+`shuyi docs <query>` ([ADR-0153](adr/0153-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md))
+searches the text this `shuyi` embeds, at the engine's revision it was
+built from, so a game's own `cargo shuyi docs` answers for the engine
+the game pins. Nothing goes over the network. The corpus is cut into
+chunks:
+
+- each Learn page (`site/content/learn/`), cut at its `##` and `###`
+  headings, read as its [Markdown twin](../site/content/learn/book/tools-for-agents.md)
+  is: a `snippet` is the code it shows, the bodies of `newcomer`,
+  `check` and `exercise` are kept, `try_it` is left out;
+- each skill's `SKILL.md`, cut the same way, its description at its
+  start, and each of its other Markdown files whole;
+- each example's `.rs` file, as its `//!` comment and the names after
+  `pub fn`, `pub struct`, `pub enum` and `impl`, and each `.md` file
+  whole;
+- each problem code's page (`crates/cli/errors/`).
+
+A query and a chunk are read as words: lowercased, split at anything but
+a letter, a digit or `_`, a `snake_case` or `CamelCase` word kept whole
+and split too (`add_sprite` is `add_sprite`, `add` and `sprite`), and
+`the`, `a`, `of`, `to`, `is`, `and`, `in` and `it` left out. A chunk is
+scored by BM25 (k1 = 1.2, b = 0.75), its title's words counted twice; a
+hit's `score` is that in thousandths, and ties go by path, then
+position, so the same query answers the same JSON on every machine. An
+`excerpt` is 400 bytes of the chunk, from the line where it first holds
+the query's rarest word when that is further in, with `…` where it was
+cut.
+
+`how` lists the rows of the "how do I" table,
+[`site/data/how-do-i.toml`](../site/data/how-do-i.toml), whose task the
+query asks: a row matches when the query holds every word of one of its
+phrases (`play a sound`). Its test fails a row whose place the corpus
+doesn't hold.
 
 ## Session records
 

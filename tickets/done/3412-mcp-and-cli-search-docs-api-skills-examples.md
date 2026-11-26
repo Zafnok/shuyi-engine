@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 3412 — The MCP server and the CLI search the docs, the API, the skills and the examples, and serve the skills and Learn pages as resources
@@ -225,31 +225,32 @@ new ticket, blocked by this one.
 
 ## Acceptance criteria
 
-- [ ] `shuyi docs play a sound --json` passes, and its first hit or a
+- [x] `shuyi docs play a sound --json` passes, and its first hit or a
       `how` row names the page or skill that says how to play a sound.
-- [ ] `shuyi docs add_sprite` has a hit whose excerpt contains
+- [x] `shuyi docs add_sprite` has a hit whose excerpt contains
       `add_sprite` (from a snippet or an example).
-- [ ] `shuyi docs SH2003` has the problem code's page as a hit.
-- [ ] `shuyi docs ""` fails with `SH0001` and exit code 2.
-- [ ] `shuyi docs zzzqqq` passes with no hits and a limit line.
-- [ ] `--limit 0` gives 1 hit and `--limit 500` at most 50 (the clamp's
+- [x] `shuyi docs SH2003` has the problem code's page as a hit.
+- [x] `shuyi docs ""` fails with `SH0001` and exit code 2.
+- [x] `shuyi docs zzzqqq` passes with no hits and a limit line.
+- [x] `--limit 0` gives 1 hit and `--limit 500` at most 50 (the clamp's
       two ends).
-- [ ] The same query gives byte-identical JSON on two runs and on Linux
+- [x] The same query gives byte-identical JSON on two runs and on Linux
       and Windows CI.
-- [ ] The MCP `tools/list` lists `docs`; `tools/call` of `docs` answers
+- [x] The MCP `tools/list` lists `docs`; `tools/call` of `docs` answers
       what the CLI answers.
-- [ ] `initialize` declares `resources`; `resources/list` lists all 18
+- [x] ~~`initialize` declares `resources`; `resources/list` lists all 18
       skills' `SKILL.md` and every Learn page; `resources/read` of
       `shuyi://skills/shuyi-input/SKILL.md` returns that file's text;
-      an unknown URI is `-32002`; `prompts/list` is still `-32601`.
-- [ ] Every row of `site/data/how-do-i.toml` resolves to a chunk in the
+      an unknown URI is `-32002`; `prompts/list` is still `-32601`.~~
+      (not done: split off to 3434 at the ticket's Split: point)
+- [x] Every row of `site/data/how-do-i.toml` resolves to a chunk in the
       corpus (test), and there are at least 30 rows.
-- [ ] The schemas have their fingerprint in `versions.json`, and the
+- [x] The schemas have their fingerprint in `versions.json`, and the
       contract's `VERSION` is the base's (`cargo xtask contract`
       passes).
-- [ ] The ADR is in `docs/adr/` and indexed in its README.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is in `docs/adr/` and indexed in its README.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -269,5 +270,93 @@ new ticket, blocked by this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi docs <words…> [--limit N] [--kind K]` and the MCP tool `docs`
+  (`Op::Docs`, `crates/cli/src/contract/docs.rs`), with no project: the
+  best hits (8; 1 to 50) of BM25 over the embedded corpus, each with its
+  kind, title, path, anchor, twin URL, score in thousandths and excerpt,
+  and the "how do I" rows the query asks. `DocsInput`, `DocsOutput`,
+  `Hit`, `HitKind` (`#[non_exhaustive]`: `learn`, `skill`, `example`,
+  `code`) and `HowRow`.
+- The corpus (`docs/corpus.rs`): `crates/cli/build.rs` embeds
+  `site/content/learn`, `site/snippets`, `site/tutorial` (the files a
+  snippet shows) and `examples` (its `.rs` and `.md` files), beside the
+  skill pack and the problem codes' pages already embedded. The index
+  (`docs/index.rs`) is built once per process.
+- `site/data/how-do-i.toml`, 50 rows, each target checked by a test and
+  by hand against the headings as they stand.
+- `INSTRUCTIONS` says to call `docs` before guessing a name; the
+  template's `AGENTS.md` has a `cargo shuyi docs <query>` row; the
+  `shuyi-new-game` skill's *When not to* says to search the docs for a
+  task no skill names; `docs/contract.md` has the operation's row and a
+  *Searching the docs* section; the book's *Tools for agents* has it in
+  *The tool contract* and *The MCP server*.
+- ADR-0153; the schemas `docs.input.json` and `docs.output.json`, with
+  their fingerprint under contract 62 (no break: a new operation).
+- The xtask parity test
+  (`the_docs_search_reads_each_learn_page_as_its_twin_does`): every Learn
+  page's headings are its twin's, in order, and every code block its twin
+  shows (over 200, `try_it`'s diffs left out) is in the search's text.
+
+Deviations:
+
+- **Split at the ticket's Split: point.** Steps 7–8, the MCP resources,
+  are ticket 3434 (blocked by this one), as the **Split:** line says past
+  900 lines. Its acceptance criteria are 3434's.
+- **A fourth table, `tutorial`.** 137 of the Learn pages' `snippet`
+  calls read `site/tutorial/<step>/<file>` (`step=`), which the ticket
+  didn't plan to embed. The table holds the tutorial's code, data, maps
+  and tests, without its builds, fonts, art or `Cargo.toml`s. The size
+  test holds the three planned tables (learn, snippets, examples: about
+  960 KB) under 1 MB and the tutorial's under 600 KB more.
+- **The generated Learn pages are left out.** The site's build writes
+  `site/content/learn/book/guides/` and `site/content/learn/errors/`
+  (ignored by git); embedding them made the corpus depend on whether the
+  site was built first (the size test failed after the site gate ran).
+  `build.rs` skips both, and the parity test leaves them out; the problem
+  codes' pages are in the corpus from their table.
+- **An excerpt starts where the match is.** The ticket's excerpt was
+  the chunk's first 400 bytes. A long section that holds `add_sprite`
+  in its third paragraph then shows no `add_sprite`, so the excerpt
+  starts at the line where the chunk first holds the query's rarest term
+  (by IDF) when that is past the first 400 bytes, with a `…` before it.
+  `add_sprite` is found in the `shuyi-screen` and `shuyi-animate`
+  skills: `examples/hello-grid/src/map.rs` calls it, and an example's
+  chunk holds only its `//!` lines and its public items' names, as the
+  ticket says.
+- `kinds` filters the `how` rows too, not only the hits.
+- Byte-identical JSON on Linux and Windows: a test pins the exact scores
+  of a fixed corpus and query (`the_scores_are_the_same_numbers_on_every_machine`),
+  so CI fails on either OS if a float rounds otherwise; the real
+  corpus's answer is checked byte for byte between two runs and against
+  a freshly built index, not snapshotted (a snapshot would change with
+  every edit of the book).
+- 3413 (API text) and 3414 (disk reading) aren't done, and 2786's
+  cookbook isn't: nothing of theirs here. Their clauses now say what
+  holds (**From 3412 (done):** in each).
+
+Follow-up tickets: 3434 (the MCP resources, split off). 3413 adds the
+API's listing as `HitKind::Api`,
+3414 reads the corpus from disk in a debug build, 2786 adds the
+cookbook's "how do I" rows, 2525 measures the search with a cold agent.
+
+Behaviour: shuyi-cli: the MCP server's `instructions` say to call
+`docs` before guessing a name, and its `tools/list` lists `docs`.
+
+No break: `Op::Docs` is a new variant of a `#[non_exhaustive]` enum and
+the other types are new; the contract's `VERSION` stays 62. The game
+keeps no list of operations (searched `Zafnok/visions-of-shuyi` for
+`Op::ALL` and `resources/list`: only `docs/engine/pins.md`'s notes).
+
+Game: nothing to adopt, the game gets `cargo shuyi docs` with its next
+pin move, and its code uses none of it.
+
+Size: 2,614 counted lines, the chunker, the index and the operation (about
+1,900 of them, with their tests) answer nothing apart: an index with no
+operation is dead code, and an operation with no corpus finds nothing.
+The rest, the "how do I" table and the twins' parity test, are this
+operation's acceptance; split off, this PR stays over 1,500. The MCP
+resources were split off (3434).
+
+Nick input: none.

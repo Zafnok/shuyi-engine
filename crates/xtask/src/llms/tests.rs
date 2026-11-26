@@ -1211,3 +1211,102 @@ fn a_mark_that_doesn_t_close_fails_the_twin() {
         outcome.errors
     );
 }
+
+// -- the docs search's chunker against the twins (ticket 3412) --
+
+/// The `##` and `###` headings of `text` outside fenced code, and its
+/// fenced blocks but `diff`'s (a try's edits, which the search leaves
+/// out), each with its language line; a blockquote's lines read without
+/// their `>`.
+fn headings_and_code(text: &str) -> (Vec<String>, Vec<String>) {
+    let (mut headings, mut blocks) = (Vec::new(), Vec::new());
+    let mut open: Option<(String, Vec<String>)> = None;
+    for line in text.lines() {
+        let line = line
+            .strip_prefix("> ")
+            .or_else(|| line.strip_prefix('>'))
+            .unwrap_or(line);
+        let fence = line.trim_start().starts_with("```");
+        match open.take() {
+            Some((language, lines)) if fence => {
+                if language != "diff" {
+                    blocks.push(lines.join("\n"));
+                }
+            }
+            Some((language, mut lines)) => {
+                lines.push(line.to_owned());
+                open = Some((language, lines));
+            }
+            None if fence => {
+                let language = line.trim_start().trim_start_matches('`').trim().to_owned();
+                open = Some((language, Vec::new()));
+            }
+            None => {
+                if let Some(heading) = line
+                    .strip_prefix("### ")
+                    .or_else(|| line.strip_prefix("## "))
+                {
+                    headings.push(heading.trim().to_owned());
+                }
+            }
+        }
+    }
+    (headings, blocks)
+}
+
+#[test]
+fn the_docs_search_reads_each_learn_page_as_its_twin_does() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let (pages, errors) = read_pages(&root);
+    assert!(errors.is_empty(), "{errors:?}");
+    // The pages the site's build generates, which the search leaves out
+    // (`crates/cli/build.rs`), are there only once the site was built.
+    let generated = ["learn/book/guides/", "learn/errors/"];
+    let pages: Vec<Page> = pages
+        .into_iter()
+        .filter(|page| !generated.iter().any(|g| page.source.starts_with(g)))
+        .collect();
+    let twins: BTreeMap<String, String> = pages
+        .iter()
+        .map(|page| (page.source.clone(), page.url.clone()))
+        .collect();
+    let site = Site {
+        base: "https://docs.invalid/",
+        twins: &twins,
+    };
+    let searched: BTreeMap<String, shuyi_cli::contract::docs::corpus::Page> =
+        shuyi_cli::contract::docs::corpus::learn_pages()
+            .into_iter()
+            .map(|page| (format!("{LEARN}{}", page.path), page))
+            .collect();
+    assert_eq!(
+        searched.keys().collect::<Vec<_>>(),
+        twins.keys().collect::<Vec<_>>(),
+        "the docs search embeds other Learn pages than the twins read"
+    );
+    let mut blocks = 0;
+    for page in &pages {
+        let (twin, _) = twin(page, &site, &root.join(SNIPPETS), &[]);
+        let (twin_headings, code) = headings_and_code(&twin);
+        let found = &searched[&page.source];
+        let headings: Vec<String> = shuyi_cli::contract::docs::corpus::headings(&found.text)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(
+            headings, twin_headings,
+            "{}: the docs search cuts it at other headings than its twin has",
+            page.source
+        );
+        for block in code {
+            blocks += 1;
+            assert!(
+                found.text.contains(&block),
+                "{}: the docs search's text lacks code its twin shows:\n{block}",
+                page.source
+            );
+        }
+    }
+    // The book shows its code in some 200 snippets.
+    assert!(blocks > 200, "{blocks} blocks");
+}

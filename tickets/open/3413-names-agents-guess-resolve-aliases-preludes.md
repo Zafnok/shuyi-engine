@@ -176,11 +176,15 @@ and aliases from it; if not, build that index here
 (`crates/xtask/src/rustdoc_index.rs`: rustdoc JSON on `api::NIGHTLY`,
 read with `serde_json`) and 2845 reuses it.
 
-**Either order with 3412:** if 3412 is done, feed the per-crate
-plain-text API listing into 3412's docs index as `HitKind::Api` hits
-(one chunk per item: path, signature, first doc sentence), and the alias
-table as extra terms on the items it names; if not, nothing to do (3412
-indexes them when it lands).
+**From 3412 (done):** feed the per-crate plain-text API listing into
+3412's docs index (`crates/cli/src/contract/docs/`) as `HitKind::Api`
+hits (one chunk per item: path, signature, first doc sentence), and the
+alias table as extra terms on the items it names. ADR-0153 §7 says how a
+source joins: a `shuyi_embed` table in `crates/cli/build.rs` (of a
+tracked copy of the `.txt` files, which `cargo xtask api-text --check`
+keeps current, since `site/public/` is ignored by git), an `Api`
+variant of `HitKind` (`#[non_exhaustive]`, so additive), and a function
+in `corpus.rs` that cuts it into chunks, added to `corpus::chunks`.
 
 **Either order with 2108:** if 2108 is done, move its entity words from
 the page's table into `engine-terms.toml`; if not, nothing to do (2108

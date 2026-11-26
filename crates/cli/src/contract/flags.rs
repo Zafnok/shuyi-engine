@@ -13,8 +13,8 @@
 //! each flag it names, to check that the parser takes it.
 
 use super::{
-    Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint, modules, new,
-    playtest, replay, run, sfx,
+    Op, add, attach, autobalance, bake, check, docs, doctor, explain, export, import, lint,
+    modules, new, playtest, replay, run, sfx,
 };
 
 /// Every op's flag that is the CLI's alone: the op (`None` for every op),
@@ -120,6 +120,7 @@ pub(crate) const RENAMED: &[(Op, &str, &str)] = &[
     (Op::Attach, "--act", "steps"),
     (Op::Attach, "--wait", "steps"),
     (Op::Attach, "--crank", "steps"),
+    (Op::Docs, "--kind", "kinds"),
 ];
 
 /// A flag the CLI reads before the op's parser, which never sees it.
@@ -164,6 +165,7 @@ pub(crate) fn usage(op: Op) -> String {
         Op::Doctor => doctor::usage(command),
         Op::Sfx => sfx::usage(command),
         Op::Explain => explain::usage(command),
+        Op::Docs => docs::usage(command),
         Op::Attach => attach::usage(command),
         Op::Start | Op::Step | Op::FramePng | Op::Events | Op::Perf | Op::Reset | Op::Stop => {
             String::new()

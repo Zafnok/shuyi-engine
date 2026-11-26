@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocsInput",
+  "description": "What `docs` searches for.",
+  "type": "object",
+  "properties": {
+    "kinds": {
+      "description": "Only hits of these kinds; every kind if none.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "default": null,
+      "items": {
+        "$ref": "#/$defs/HitKind"
+      }
+    },
+    "limit": {
+      "description": "The most hits to answer: 8 if none, at least 1 and at most 50.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "query": {
+      "description": "What to find, in words or names (`play a sound`, `add_sprite`,\n`SH2003`).",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "query"
+  ],
+  "$defs": {
+    "HitKind": {
+      "description": "What a hit is from.",
+      "oneOf": [
+        {
+          "description": "A Learn page's section (`site/content/learn`).",
+          "type": "string",
+          "const": "learn"
+        },
+        {
+          "description": "A skill's section or file (`skills/`).",
+          "type": "string",
+          "const": "skill"
+        },
+        {
+          "description": "An example's file (`examples/`).",
+          "type": "string",
+          "const": "example"
+        },
+        {
+          "description": "A problem code's page (`crates/cli/errors`).",
+          "type": "string",
+          "const": "code"
+        }
+      ]
+    }
+  }
+}

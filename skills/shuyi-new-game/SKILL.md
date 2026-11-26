@@ -24,6 +24,11 @@ game one part at a time.
 - Adding a screen: `shuyi-screen`. A turn-based grid stage: `shuyi-stage-grid`.
 - Keys and controls: `shuyi-input`. The checks before a commit:
   `shuyi-gates`. Tests: `shuyi-test`.
+- A task no skill names: search the engine's docs, as the engine the
+  game pins has them, before guessing a type's or a function's name.
+  `cargo shuyi docs play a sound` (or the MCP tool `docs`) answers the
+  book's sections, the skills, the examples and the problem codes that
+  hold the words, best first, each with its file and section.
 
 ## Steps
 

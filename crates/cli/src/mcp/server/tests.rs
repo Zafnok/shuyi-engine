@@ -121,6 +121,43 @@ fn it_speaks_json_rpc() {
 }
 
 #[test]
+fn docs_is_a_tool_that_answers_as_the_cli_does() {
+    let dir = scratch("docs", GAME);
+    let game = Fake::default();
+    let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
+    let init = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} }),
+    );
+    assert!(
+        init["result"]["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("call `docs`")
+    );
+    let tools = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }),
+    );
+    let docs = tools["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "docs")
+        .unwrap();
+    assert!(docs["inputSchema"]["properties"]["project"].is_null());
+    let result = called(&mut server, "docs", &json!({ "query": "play a sound" }));
+    assert_eq!(result["isError"], false);
+    let input = crate::contract::docs::DocsInput::new("play a sound");
+    let cli: Value = serde_json::from_str(&crate::contract::docs::docs(&input).to_json()).unwrap();
+    assert_eq!(result["structuredContent"], cli);
+    let empty = called(&mut server, "docs", &json!({ "query": "" }));
+    assert_eq!(empty["isError"], true);
+    assert_eq!(empty["structuredContent"]["code"], "SH0001");
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn a_session_runs_from_start_to_stop() {
     let dir = scratch("session", GAME);
     let game = Fake::default();
