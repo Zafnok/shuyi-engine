@@ -206,4 +206,6 @@ Skills: none, the skill pack's worked examples draw no atlas and name no pack ve
 
 Game: nothing to adopt, the game bakes no packs, builds no `Display` literal and keeps no golden row of a target profile (searched `gh search code --repo Zafnok/visions-of-shuyi` for `TargetProfile`, `pack::VERSION` and `max_texture_side`: `TargetProfile::from_source` of its Playdate profile reads the new field's default).
 
+Size: 1,553 counted lines, past 1,500 only by the skyline's direct tests that CI's mutation testing asked for; the frame half (`shuyi_ui::frame::atlas`, the render card) draws the assets half's `Atlas`, and the ticket's acceptance needs both, so they landed together.
+
 Nick input: none.
