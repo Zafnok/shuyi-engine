@@ -97,7 +97,7 @@ fn needs_feature(coded: Coded) -> String {
 }
 
 /// Whether `bytes` are a WAV file: `RIFF`, then `WAVE`.
-fn is_wav(bytes: &[u8]) -> bool {
+pub(super) fn is_wav(bytes: &[u8]) -> bool {
     bytes.get(..4) == Some(b"RIFF") && bytes.get(8..12) == Some(b"WAVE")
 }
 
@@ -204,6 +204,19 @@ const SFX_WAV: Option<ToSfxWav> = None;
 
 /// A renderer of a `.sfx.ron` file's bytes to a WAV.
 type ToSfxWav = fn(&[u8]) -> Result<Vec<u8>, String>;
+
+/// How long a `.sfx.ron` file's bytes play once rendered, `None` with the
+/// `sfx` feature off.
+#[cfg(feature = "sfx")]
+const SFX_LENGTH: Option<fn(&[u8]) -> Option<u32>> = Some(crate::sfx::length_ms_of);
+#[cfg(not(feature = "sfx"))]
+const SFX_LENGTH: Option<fn(&[u8]) -> Option<u32>> = None;
+
+/// How long a `.sfx.ron` sound's `bytes`, its numbers, play once rendered,
+/// in milliseconds; `None` if they don't read or the `sfx` feature is off.
+pub(super) fn sfx_length_ms(bytes: &[u8]) -> Option<u32> {
+    SFX_LENGTH.and_then(|length| length(bytes))
+}
 
 /// Why a `.sfx.ron` sound's `bytes` aren't something the game can play: as
 /// a WAV if they are one (a game's hook rendered them), else as `problem`

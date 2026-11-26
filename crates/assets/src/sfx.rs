@@ -528,6 +528,19 @@ pub(crate) fn wav_of(bytes: &[u8]) -> Result<Vec<u8>, String> {
     read(bytes).map(|def| to_wav(&render(&def)))
 }
 
+/// How long a `.sfx.ron` file's `bytes` play once rendered, in milliseconds
+/// (to the nearest): [`render`]'s samples over [`SAMPLE_RATE`]. `None` if
+/// its numbers don't read.
+pub(crate) fn length_ms_of(bytes: &[u8]) -> Option<u32> {
+    read(bytes).ok().and_then(|def| rendered_ms(&def))
+}
+
+/// How long `def` plays once rendered, in milliseconds (to the nearest).
+fn rendered_ms(def: &SfxDef) -> Option<u32> {
+    let samples = u64::try_from(samples_in(clamped(def).length_ms())).ok()?;
+    crate::audio::samples_ms(samples, SAMPLE_RATE)
+}
+
 /// A `.sfx.ron` file's first problem in one line, if it has one.
 pub(crate) fn problem_of(bytes: &[u8]) -> Option<String> {
     read(bytes).err()
@@ -609,7 +622,7 @@ impl Format for SfxRon {
         }
         SfxDefRon
             .decode(file, bytes, cx)
-            .map(|_| Sound::mono(SAMPLE_RATE))
+            .map(|def| Sound::mono(SAMPLE_RATE).with_length_ms(rendered_ms(&def)))
     }
 }
 

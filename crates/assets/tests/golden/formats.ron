@@ -1,5 +1,5 @@
 {
-    "audio manifest: audio-manifest": "9ce3f3f953ebf952",
+    "audio manifest: audio-manifest": "6a89170b58fc3b14",
     "cinematic: cinematic": "167ed17e95bbec57",
     "credits: credits": "42d3660ba2c63852",
     "dialogue: dlg": "29ff446f9cb0cc53",
@@ -29,11 +29,11 @@
     "palette: palette": "1e9355699e2de3a6",
     "pattern map: pattern-map": "b1b98e0629cc1b2d",
     "sound effect: sfx": "967ca3833929fbc5",
-    "sound: flac": "9c1c0f2d1a14e6a2",
-    "sound: mp3": "d0518e4ea4d3820d",
-    "sound: ogg-vorbis": "9c1c0f2d1a14e6a2",
-    "sound: sfx": "d0518e4ea4d3820d",
-    "sound: wav": "d0518e4ea4d3820d",
+    "sound: flac": "76d40a20c85e7ed3",
+    "sound: mp3": "b2eed02e41e98bf0",
+    "sound: ogg-vorbis": "587c93a3516f975d",
+    "sound: sfx": "299a456d276e923b",
+    "sound: wav": "cdc1d4a2131dae80",
     "table: ron": "98796f7f12ecbdba",
     "target profile: target-ron": "31afa9f9cdf0050a",
 }

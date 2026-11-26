@@ -525,13 +525,24 @@ fn a_manifest_names_its_sound_effects_and_checks_them() {
 fn the_two_formats_read_a_file_and_the_sound_one_only_a_sound_effects_name() {
     let coin = preset_source("coin").unwrap().as_bytes();
     let cx = DecodeCx::new();
+    // Its samples over the rate: 320 ms, its text's or its WAV's.
+    let sound = Sound::mono(SAMPLE_RATE).with_length_ms(Some(320));
+    let rendered = to_wav(&render(&preset("coin", 0).unwrap()));
+    assert_eq!(
+        crate::audio::sound_length_ms("sfx/a.sfx.ron", coin),
+        Some(320)
+    );
+    assert_eq!(
+        crate::audio::sound_length_ms("sfx/a.sfx.ron", &rendered),
+        Some(320)
+    );
     assert_eq!(
         SfxDefRon.decode(&AssetPath::new("a.sfx.ron"), coin, &cx),
         Ok(preset("coin", 0).unwrap())
     );
     assert_eq!(
         SfxRon.decode(&AssetPath::new("sfx/a.sfx.ron"), coin, &cx),
-        Ok(Sound::mono(SAMPLE_RATE))
+        Ok(sound)
     );
     let stray = SfxRon
         .decode(&AssetPath::new("sfx/palette.ron"), coin, &cx)
@@ -557,15 +568,9 @@ fn the_two_formats_read_a_file_and_the_sound_one_only_a_sound_effects_name() {
     let formats = crate::format::Formats::standard();
     assert_eq!(formats.extensions::<SfxDef>(), ["ron"]);
     let path = AssetPath::new("sfx/a.sfx.ron");
-    assert_eq!(
-        formats.decode::<Sound>(&path, coin, &cx),
-        Ok(Sound::mono(SAMPLE_RATE))
-    );
+    assert_eq!(formats.decode::<Sound>(&path, coin, &cx), Ok(sound));
     let wav = to_wav(&render(&preset("coin", 0).unwrap()));
-    assert_eq!(
-        formats.decode::<Sound>(&path, &wav, &cx),
-        Ok(Sound::mono(SAMPLE_RATE))
-    );
+    assert_eq!(formats.decode::<Sound>(&path, &wav, &cx), Ok(sound));
     assert!(is_sfx_name("a.sfx.ron") && !is_sfx_name(".sfx.ron") && !is_sfx_name("a.ron"));
 }
 
