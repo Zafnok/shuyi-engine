@@ -25,6 +25,7 @@ shuyi-assets = { path = "crates/assets", version = "=0.1.0", default-features = 
 shuyi-core = { path = "crates/core", version = "=0.1.0", default-features = false }
 shuyi-embed = { path = "crates/embed", version = "=0.1.0", default-features = false }
 shuyi-embed-macros = { path = "crates/embed-macros", version = "=0.1.0", default-features = false }
+shuyi-net = { path = "crates/net", version = "=0.1.0", default-features = false }
 shuyi-platform = { path = "crates/platform", version = "=0.1.0", default-features = false }
 shuyi-script = { path = "crates/script", version = "=0.1.0", default-features = false }
 shuyi-sound = { path = "crates/sound", version = "=0.1.0", default-features = false }

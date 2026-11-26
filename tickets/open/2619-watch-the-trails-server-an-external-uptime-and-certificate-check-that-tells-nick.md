@@ -16,7 +16,7 @@ completed:
 ## Context
 
 2618 puts the trails server on an Oracle Cloud Always Free VM
-(ADR-0151). Two things can take it down without anyone noticing:
+(2618's ADR). Two things can take it down without anyone noticing:
 - **Reclaim.** Oracle may reclaim an idle Always Free VM, and this
   workload meets every idle test (CPU, network and memory under 20% for
   7 days). 2618's caveat (b) covers this.

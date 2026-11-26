@@ -220,6 +220,7 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
         Step::Enter,
         Step::Enter,
         picked(&["none"]),
+        picked(&["none"]),
         picked(&["no"]),
         picked(&["desktop"]),
     ]);
@@ -236,6 +237,7 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
              one.",
             STORAGE_QUESTION,
             "Which perspectives?",
+            "How do players play online?",
             "How are the rules written?",
             "Include the engine skills' worked examples (bots.rs, playtest.ron…)?",
             "Which targets does it ship on?",
@@ -262,6 +264,7 @@ fn the_wizard_asks_the_name_the_id_the_perspectives_then_the_rest_in_order() {
         Answers(
             [
                 ("perspective", vec!["top-down-grid"]),
+                ("online", vec!["none"]),
                 ("scripting", vec!["none"]),
                 ("examples", vec!["no"]),
                 ("targets", vec!["desktop"]),
@@ -282,8 +285,15 @@ fn the_wizard_asks_again_for_the_perspectives_picked_and_not_what_is_given() {
     let mut input = NewInput::new("demo");
     input.id = Some("org.example.demo".to_owned());
     input.set = Answers::parse("set", r#"{ "scripting": ["none"], "examples": ["yes"] }"#).unwrap();
-    // No perspective: the questions are listed again for none.
-    let mut script = Scripted::new([typed("demo"), Step::Enter, picked(&[]), Step::Enter]);
+    // No perspective: the questions are listed again for none. Enter
+    // takes online play's default, then the targets'.
+    let mut script = Scripted::new([
+        typed("demo"),
+        Step::Enter,
+        picked(&[]),
+        Step::Enter,
+        Step::Enter,
+    ]);
     ask(&scratch.0, &mut input, &mut script).unwrap();
     assert_eq!(
         script.shown[..3],
