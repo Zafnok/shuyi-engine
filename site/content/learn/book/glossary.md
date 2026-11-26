@@ -71,6 +71,7 @@ as the notes in the pages say.
 | Text key | Shuyi | A name for a line of words in `en.ron` | [Step 1](@/learn/book/box-pusher/01-new.md#the-words-en-ron), [chapter 6](@/learn/book/games-and-screens.md#text-by-key) |
 | Palette | Shuyi | The game's colors, by name | [Step 1](@/learn/book/box-pusher/01-new.md#the-colors-palette-ron) |
 | Debug view, channel, gizmo, role | Shuyi | What your logic works with, drawn over the running game; one thing it can show; a shape it draws; what a gizmo shows, which picks its color | [Chapter 2](@/learn/book/frame-and-skins.md#seeing-what-the-game-sees) |
+| Readout | Shuyi | A few lines about the top screen's state, drawn in a corner by the debug view | [Chapter 2](@/learn/book/frame-and-skins.md#stopping-on-the-frame-that-goes-wrong) |
 | Widget | Shuyi | A piece of a screen the engine gives you, such as a menu | [Step 6](@/learn/book/box-pusher/06-levels.md#the-menu), [chapter 6](@/learn/book/games-and-screens.md#the-engine-s-own-screens-and-widgets) |
 | Action | Shuyi | Something a player can ask for, like Confirm | [Step 1](@/learn/book/box-pusher/01-new.md#the-keys-keymap-ron), [chapter 4](@/learn/book/actions.md#reacting-to-an-action) |
 | Keymap | Shuyi | The file saying which keys give which actions | [Step 1](@/learn/book/box-pusher/01-new.md#the-keys-keymap-ron), [chapter 4](@/learn/book/actions.md#the-keymap-file) |

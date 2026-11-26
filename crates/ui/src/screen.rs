@@ -66,6 +66,18 @@ pub trait Screen<G: GameData> {
         let _ = (ctx, out);
     }
 
+    /// A few lines of text about this screen's own state, for the debug
+    /// view's readout (the `readout` channel, ADR-0153): `turn 3, side 1,
+    /// cursor 4,7` for a grid game, `on ground, vx 1.5` for a platformer.
+    /// Asked of the top screen only, while that channel is on, from
+    /// `self` and `ctx` alone, so looking changes nothing; each line is
+    /// drawn as a label in the top-left corner, ASCII only (debug tools
+    /// are English only). None by default.
+    fn debug_readout(&self, ctx: &Ctx<G>) -> Vec<String> {
+        let _ = ctx;
+        Vec::new()
+    }
+
     /// Whether the screen below shows through (drawn first, then this one).
     fn is_overlay(&self) -> bool {
         false
@@ -447,6 +459,14 @@ impl<G: GameData> ScreenStack<G> {
         for screen in self.drawn() {
             screen.debug_draw(ctx, out);
         }
+    }
+
+    /// The top screen's readout ([`Screen::debug_readout`]); none on an
+    /// empty stack.
+    pub fn debug_readout(&self, ctx: &Ctx<G>) -> Vec<String> {
+        self.screens
+            .last()
+            .map_or_else(Vec::new, |top| top.debug_readout(ctx))
     }
 
     /// The screens drawn: the top-most opaque one and every overlay above

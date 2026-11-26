@@ -62,9 +62,9 @@ The retro also named `crates/platform/src/audio/player.rs:755` and
 today and fails them when a variant is added. That is the point.
 
 Tickets that add variants to these enums call it additive, which stays
-true for games: 2316 (`UiAction::DebugPause`, `DebugStep`) and 2357
-(`UiAction::DebugBack`) are open, and done 2405 added `RawInputEvent`'s
-pointer events.
+true for games: done 2316 added `UiAction::DebugPause` and `DebugStep`,
+2357 (`UiAction::DebugBack`) is open, and done 2405 added
+`RawInputEvent`'s pointer events.
 
 ## Nick input
 
@@ -99,9 +99,10 @@ None.
   variant, and its `_` arm is for later ones only. The `input-actions`
   skill's line on adding a `UiAction` says the check then names each
   match to change.
-- **Either order with 2316:** if 2316 is done, `DebugPause` and
-  `DebugStep` are named in each match on `UiAction` here; if not,
-  nothing to do (2316 names them in each match the check finds).
+- **From 2316 (done):** `UiAction::DebugPause` and `DebugStep` exist:
+  name them in each match on `UiAction` here, beside `Debug`, doing
+  what `Debug` does there (`Game::pace` and `Game::act` in
+  `crates/ui/src/game.rs` already name both).
 - **Either order with 2357:** if 2357 is done, `DebugBack` is named in
   each match on `UiAction` here; if not, nothing to do (2357 names it).
 - **From 2405 (done):** `RawInputEvent` has its pointer variants

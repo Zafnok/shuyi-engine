@@ -99,7 +99,7 @@ pub mod widgets;
 
 pub use basic::BasicData;
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
-pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
+pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, STEP_DT, ScreenHook};
 pub use hurry::HurryClock;
 pub use platform_facts::{
     FileDrops, FilePicker, GraphicsTier, PlatformFacts, ScreenColor, StoragePlace,

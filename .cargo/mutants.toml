@@ -100,6 +100,8 @@ exclude_re = [
     # So are the defaults `PreviewGame::problems` and `switches`.
     'replace PreviewGame::problems -> Vec<ContentError> with vec!\[\]',
     'replace PreviewGame::switches -> Vec<String> with vec!\[\]',
+    # So is the default `Screen::debug_readout` (ADR-0153).
+    'replace Screen::debug_readout -> Vec<String> with vec!\[\]',
     # The default `Session::log` is `Vec::new()`: its only viable mutant,
     # `vec![]`, is the same function.
     "replace Session::log -> Vec<LogEntry>",

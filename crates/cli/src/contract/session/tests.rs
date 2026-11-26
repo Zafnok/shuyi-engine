@@ -115,7 +115,12 @@ mod toy {
         let visitor = s.for_visitor().unwrap();
         assert!(!s.harness().ctx().debug_tools);
         assert!(pressable.contains(&"Debug".to_owned()), "{pressable:?}");
-        let expected: Vec<String> = pressable.into_iter().filter(|a| a != "Debug").collect();
+        // The developer's keys, which no player rebinds, are left out.
+        let debug = ["Debug", "DebugPause", "DebugStep"];
+        let expected: Vec<String> = pressable
+            .into_iter()
+            .filter(|a| !debug.contains(&a.as_str()))
+            .collect();
         assert_eq!(visitor, expected);
         assert!(visitor.contains(&"Confirm".to_owned()));
     }
