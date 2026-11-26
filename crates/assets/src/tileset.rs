@@ -22,8 +22,36 @@
 //! Over the layers, a look may also have pictures a map places by hand
 //! ([`Look::props`]): a lamp at a gate, where no terrain says one goes.
 //!
-//! These are the tiles as a skin paints them; how a game writes them in a
-//! file, and which terrains it has, are the game's.
+//! These are the tiles as a skin paints them. A file writes them as a
+//! [`TerrainTilesDef`], read by the format [`TerrainTilesRon`] and checked
+//! alone, then resolved against the image table and the game's terrains,
+//! by name ([`TerrainTilesDef::resolve`]). Every picture is a `(column,
+//! row)` cell of `tile_px` cells:
+//!
+//! ```ron
+//! (
+//!     image: "tiles/farm.png",
+//!     tile_px: (16, 16),
+//!     terrain: { "soil": (0, 0), "tilled": (1, 0), "water": (2, 0) },
+//!     layers: [
+//!         // The pond's shore: a picture by each point where four tiles
+//!         // meet, for which of the four (up-left, up-right, down-left,
+//!         // down-right) are water.
+//!         Corners(of: ["water"], tiles: [
+//!             (corners: "...#", at: (0, 1)),
+//!             (corners: "..##", at: (1, 1)),
+//!         ]),
+//!         // Optional: `size: (16, 24)` (left out, `tile_px`),
+//!         // `offset: (1, 3)` and `skip: ["soil"]` (none).
+//!         Tiles(of: ["tilled"], at: (3, 0)),
+//!     ],
+//!     // Other looks, by the name a map's look gives.
+//!     looks: { "winter": (terrain: { "soil": (0, 2), "tilled": (1, 2), "water": (2, 2) }) },
+//! )
+//! ```
+//!
+//! Which terrains there are, and which looks a map may name, are the
+//! game's: it gives them to the format ([`TileRules`]) and to `resolve`.
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -32,6 +60,9 @@ use shuyi_core::TerrainId;
 
 use crate::format::AssetKind;
 use crate::image::{ImageId, ImageRect};
+
+mod def;
+pub use def::{CornersAt, LayerDef, LookDef, SidesAt, TerrainTilesDef, TerrainTilesRon, TileRules};
 
 /// How many mixes four yes-or-no places have: a layer has a picture for
 /// each (or none).
@@ -74,8 +105,10 @@ pub fn mix_name(m: u8) -> String {
         .collect()
 }
 
-/// The tileset kind (ADR-0007), with no format of the engine's: how a
-/// game writes its tiles is its own, and its format reads them into this.
+/// The tileset kind (ADR-0007). The engine's file of it is
+/// [`TerrainTilesDef`] (the format [`TerrainTilesRon`]), which
+/// [`TerrainTilesDef::resolve`] makes into this; a game that writes its
+/// tiles otherwise reads them into this with a format of its own.
 impl AssetKind for TerrainTiles {
     const NAME: &'static str = "tileset";
 }

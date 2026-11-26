@@ -165,7 +165,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi",
-        features: Features::Only(&["std", "app", "schema", "script", "system-languages"]),
+        features: Features::Only(&["std", "app", "schema", "script", "net", "system-languages"]),
     },
     ApiCrate {
         name: "shuyi-sound",
@@ -197,6 +197,11 @@ pub const API_CRATES: &[ApiCrate] = &[
     // The script runtime (ADR-0093) has no feature.
     ApiCrate {
         name: "shuyi-script",
+        features: Features::Only(&[]),
+    },
+    // The transport and the in-memory network (ADR-0155) have no feature.
+    ApiCrate {
+        name: "shuyi-net",
         features: Features::Only(&[]),
     },
 ];

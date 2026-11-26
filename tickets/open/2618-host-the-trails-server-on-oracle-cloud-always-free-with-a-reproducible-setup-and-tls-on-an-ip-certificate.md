@@ -20,13 +20,13 @@ the next example, trails (2788), goes online. It runs on hosting that is
 always free and holds about 10 rooms at once. 2616 builds the headless
 server library `shuyi-server`, and 2789 builds the `trails-server`
 binary on it. CI builds that binary for Linux x86_64 and aarch64 as the
-artifacts `trails-server-<arch>`. ADR-0150 (2613) gives the sync model:
+artifacts `trails-server-<arch>`. ADR-0155 (2613) gives the sync model:
 the server sends only inputs, and a full catch-up only on join or
 resync. This ticket puts that binary on a free VM that Nick owns,
 behind TLS, so the GitHub Pages web build (2790) can reach it over
 `wss://`.
 
-**Research of 2026-11-25** (recorded here and in ADR-0151). Only Oracle
+**Research of 2026-11-25** (recorded here and in the hosting ADR). Only Oracle
 Cloud Infrastructure (OCI) Always Free has both a VM that is always on
 and enough egress.
 
@@ -54,7 +54,7 @@ From Oracle's *Always Free Resources* page, fetched 2026-11-25
   free. The smallest machine is $2.19 a month and egress is $0.02/GB.
   That is about $2.90 at real load, but about $9.30 in the worst case.
 
-**Bandwidth** (ADR-0150's wire sizes):
+**Bandwidth** (ADR-0155's wire sizes):
 - About 112 B on the wire per step per human, which is 1,680 B/s at
   15 Hz.
 - 80 humans around the clock is about 1.08 Mbps, or about 355 GB a
@@ -243,12 +243,12 @@ worked.
   - It runs `setup.sh --check` in an `ubuntu:24.04` container, pinned by
     digest (zizmor's `unpinned-images`).
   - Add it to `ci-result`'s needs.
-- **ADR-0151** (the `write-adr` skill; the next free number if 0151 is
-  taken, with this ticket's references changed to match). It records the
-  host choice, the rejected hosts with their numbers, the fallback, the
-  paid exits and the caveats.
+- **The hosting ADR** (the `write-adr` skill; its number from `cargo
+  xtask next-id adr`, written into the tickets that name "2618's ADR").
+  It records the host choice, the rejected hosts with their numbers, the
+  fallback, the paid exits and the caveats.
 
-**Caveats the runbook and ADR-0151 state:**
+**Caveats the runbook and the hosting ADR state:**
 - (a) **Free terms change without notice.** Oracle halved the A1
   allowance in 2026.
   - The date is disputed: InfoQ says 2026-06-15, Linuxiac's article is
@@ -271,7 +271,7 @@ worked.
   game offline within a week. 2619 alerts under 3 days left.
 - (f) **Reserved IP limits are not officially documented.**
 - (g) **One region**, so far-away players get high latency.
-- (h) **The protocol sends inputs only** (ADR-0150), with a full
+- (h) **The protocol sends inputs only** (ADR-0155), with a full
   catch-up only on join and resync. Sending the whole grid every step
   would be about 6.6 TB a month.
 - (i) **The raw IP is exposed.** The server's own limits (2616) on
@@ -314,7 +314,7 @@ the CI job 40, ADR 100, runbook 100).
    from `cloud-init.yaml` on it, then delete that VM. If not, write the
    steps and say it was not timed.
 8. Write `site/static/trails/server.ron`, the runbook, the docs-map row
-   and ADR-0151.
+   and the hosting ADR.
 
 ## Acceptance criteria
 
@@ -335,7 +335,7 @@ the CI job 40, ADR 100, runbook 100).
       or less, or E2.1.Micro. The console text goes in the completion
       notes, with no secrets.
 - [ ] `site/static/trails/server.ron` holds the live address.
-- [ ] ADR-0151 is written and indexed, and the runbook has its
+- [ ] The hosting ADR is written and indexed, and the runbook has its
       docs-map row.
 - [ ] The completion notes have a `Book:` line: the hosting page is
       2856's.

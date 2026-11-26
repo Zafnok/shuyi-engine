@@ -26,7 +26,7 @@ simulation code in a headless binary, because `shuyi-core` has no I/O.
 The same code runs inside a player's game as a listen server.
 
 Nick's decision of 2026-11-25 (`docs/decisions.md`) unparked an online
-real-time example, trails, under ADR-0150. Its work creates the crate
+real-time example, trails, under ADR-0155. Its work creates the crate
 this ticket had planned: 2616's `shuyi-server` is a headless library
 (tokio, never macroquad) that runs a director's tick rooms over
 WebSocket, with optional TLS (rustls on ring), limits on connections,
@@ -34,7 +34,7 @@ addresses and messages, `/healthz`, `/stats`, a cost guard and a
 graceful shutdown. A game owns its binary and calls
 `shuyi_server::run`. This ticket stays parked, and adds the referee as
 a second room kind of that crate instead of creating a binary.
-Hosting is ADR-0151's (2618), and the book's hosting page is 2856's.
+Hosting is 2618's ADR's, and the book's hosting page is 2856's.
 
 ## Nick input
 
@@ -71,7 +71,7 @@ None.
 
 **Out (do not do):**
 - accounts and ratings (1148);
-- real-time server authority: tick rooms are 2614–2616 (ADR-0150), and
+- real-time server authority: tick rooms are 2614–2616 (ADR-0155), and
   rollback and prediction stay 1147's;
 - our game's fog (0053 decides if there is any).
 

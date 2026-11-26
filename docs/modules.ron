@@ -77,6 +77,7 @@
             question: "How do players play online?",
             answers: [
                 (id: "none", name: "none", by: "default", status: ready, tickets: []),
+                (id: "server", name: "a game server: rooms, bots in empty seats, quick play", by: "shuyi-net", status: planned, tickets: ["2614", "2615", "2616"]),
                 (id: "lockstep", name: "lockstep", by: "shuyi-net", status: parked, tickets: ["1140", "1141"]),
                 (id: "rollback", name: "rollback", by: "shuyi-net", status: parked, tickets: ["1140"]),
                 (id: "referee", name: "a referee server", by: "shuyi-net", status: parked, tickets: ["1140"]),

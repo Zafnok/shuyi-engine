@@ -126,6 +126,14 @@ turn, painted by the glyph skin and by the sprite skin, which its options switch
 
 </div>
 
+The sprite skin paints the ground from a tileset's terrain tiles: a picture for each
+terrain, and layers over them (a shore round a pond, a bridge that turns to cross the
+water) whose pictures it picks from the tiles around, so a map only ever names terrain.
+A game writes them in a `terrain-tiles` file, reads it with `TerrainTilesRon`, and makes
+the skin's tiles with `TerrainTilesDef::resolve` once its pictures and terrains are
+known. The formats page lists [what the file is checked
+for](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-built-in-formats).
+
 The sprite skin draws the ground from the terrain alone: which picture a tile gets
 follows from what it and its neighbours are. A few things no terrain says, a lamp at a
 gate or a signpost at a crossing, a map places by hand in its file's `look`:

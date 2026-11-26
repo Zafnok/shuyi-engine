@@ -23,7 +23,7 @@ in and out, matched by a black-box director, hosted for free.
   sans-IO `Room` (2614), the quick-play `Director` (2615), and
   `shuyi-server` (2616), a headless **library** that serves a director's
   rooms over WebSocket (`/play`, `/healthz`, `/stats`) through
-  `shuyi_server::run(config, game)`. ADR-0150 (2613) gives the sync
+  `shuyi_server::run(config, game)`. ADR-0155 (2613) gives the sync
   model: the server steps the real `TickSim` and sends each step's
   inputs.
 - **Each game owns its server binary.** So trails gives one:

@@ -7,7 +7,7 @@ model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
 blocked_by: ["2615"]
-nick_input: none
+nick_input: setup
 completed:
 ---
 
@@ -17,7 +17,7 @@ completed:
 
 - Nick's decision of 2026-11-25 (`docs/decisions.md`): trails is played
   online, in up to 10 rooms on an always-free host.
-- ADR-0150 (2613) makes the server a **headless platform backend**
+- ADR-0155 (2613) makes the server a **headless platform backend**
   (ADR-0008 §2): tokio, sockets and the clock, never macroquad, never
   the rules. The rooms (2614) and the director (2615) are sans-IO in
   `shuyi-net`; this ticket is the I/O around them.
@@ -25,7 +25,7 @@ completed:
   This ticket creates the crate for tick rooms instead, as a library;
   1146 is amended to add a referee room kind to it later. 1141 (parked)
   is amended to run its relay on this crate's listener.
-- **The host** (ADR-0151, 2618): Oracle Cloud Always Free, on an
+- **The host** (2618's ADR): Oracle Cloud Always Free, on an
   A1.Flex if capacity allows, otherwise an E2.1.Micro (x86_64, 1 GB of
   RAM, 1/8 OCPU burstable, 50 Mbps). So the server is built to fit the
   Micro: **under 256 MB** of memory (2618's systemd unit sets
@@ -53,7 +53,13 @@ completed:
 
 ## Nick input
 
-None. Running a public instance is 2618's, with Nick's account steps.
+**Setup:** hold the name `shuyi-server` on crates.io as an empty 0.0.0
+placeholder before this PR merges: CI's `layers` job runs `cargo xtask
+check-publish --index`, which fails an engine crate whose name isn't
+held. Nick decided on 2026-11-26 (`docs/decisions.md`) to hold it when
+this ticket makes the crate real; ask him with the `ask-nick` skill when
+the PR opens. Running a public instance is 2618's, with Nick's account
+steps.
 
 ## Scope
 
@@ -132,7 +138,7 @@ binary (2789's `trails-server`); the library parses no command line.
     or written.
 - **The cost guard:**
   - an egress counter of every byte the server writes, plus a fixed 74 B
-    a message for the TLS record and TCP/IP headers (ADR-0150's
+    a message for the TLS record and TCP/IP headers (ADR-0155's
     numbers), so it tracks what the host bills;
   - saved to a state file (`state_dir` in the config; 2618's
     `StateDirectory=trails-server`) every minute and at shutdown, and
