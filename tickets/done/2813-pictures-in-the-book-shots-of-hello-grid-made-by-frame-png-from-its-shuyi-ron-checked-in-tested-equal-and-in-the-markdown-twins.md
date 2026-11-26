@@ -286,7 +286,7 @@ None.
 - `cargo xtask llms` checks a shot's file in `site/static/shots/`, which
   Zola copies into the build, as it checks a try's picture: the same file,
   and `--full-only` checks it too.
-- Size: 1,042 counted lines; it would have split cleanly between the
+- Size: 1,080 counted lines; it would have split cleanly between the
   tool (the part, `kept`, the flags, Hello, Grid's shots) and the site
   (the shortcode, the chapters, the twins).
 
