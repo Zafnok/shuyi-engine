@@ -351,3 +351,62 @@ proptest! {
         );
     }
 }
+
+/// A page of `side` whose skyline is `runs`, each `(x, y, w)`.
+fn page_of(side: u32, runs: &[(u32, u32, u32)]) -> Page {
+    let mut page = Page::new("p#0", side, 0);
+    page.skyline = runs.iter().map(|&(x, y, w)| Segment { x, y, w }).collect();
+    page
+}
+
+/// `page`'s skyline as `(x, y, w)`.
+fn runs(page: &Page) -> Vec<(u32, u32, u32)> {
+    page.skyline.iter().map(|s| (s.x, s.y, s.w)).collect()
+}
+
+#[test]
+fn a_box_goes_lowest_then_leftmost_up_to_the_pages_edge() {
+    // Reaching the right edge exactly fits.
+    let edge = page_of(16, &[(0, 8, 8), (8, 0, 8)]);
+    assert_eq!(edge.fit((8, 8), 16), Some((8, 0)));
+    // A run that starts where the box ends doesn't hold it up.
+    let step = page_of(16, &[(0, 4, 8), (8, 8, 4), (12, 0, 4)]);
+    assert_eq!(step.fit((8, 1), 16), Some((0, 4)));
+    // Two places as low: the leftmost.
+    let tie = page_of(16, &[(0, 4, 4), (4, 8, 4), (8, 4, 8)]);
+    assert_eq!(tie.fit((4, 4), 16), Some((0, 4)));
+    // Reaching the bottom edge exactly fits; past it, nowhere.
+    assert_eq!(page_of(16, &[(0, 8, 16)]).fit((4, 8), 16), Some((0, 8)));
+    assert_eq!(page_of(16, &[(0, 8, 16)]).fit((4, 9), 16), None);
+}
+
+#[test]
+fn raising_the_skyline_keeps_what_is_left_and_right_and_merges_equal_runs() {
+    let mut page = page_of(16, &[(2, 0, 14)]);
+    page.raise(6, 4, 5);
+    assert_eq!(runs(&page), [(2, 0, 4), (6, 5, 4), (10, 0, 6)]);
+    let mut flush = page_of(16, &[(0, 0, 8), (8, 3, 8)]);
+    flush.raise(4, 4, 5);
+    assert_eq!(runs(&flush), [(0, 0, 4), (4, 5, 4), (8, 3, 8)]);
+    let mut level = page_of(16, &[(0, 5, 4), (4, 0, 12)]);
+    level.raise(4, 4, 5);
+    assert_eq!(runs(&level), [(0, 5, 8), (8, 0, 8)]);
+}
+
+#[test]
+fn a_picture_with_no_pixels_is_refused() {
+    let mut atlas = packed(&[(4, 4)], 16, 1);
+    assert_eq!((atlas.id(), atlas.padding()), ("test", 1));
+    let empty = |width, height, bytes| Image {
+        width,
+        height,
+        rgba: vec![0; bytes],
+    };
+    for (name, image) in [
+        ("no width", empty(0, 2, 0)),
+        ("no height", empty(2, 0, 0)),
+        ("short", empty(2, 2, 8)),
+    ] {
+        assert_eq!(atlas.insert(name, &image), Err(AtlasError::Empty { name }));
+    }
+}
