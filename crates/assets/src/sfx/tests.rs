@@ -222,6 +222,17 @@ fn the_text_reads_back_to_the_same_definition_leaving_defaults_out() {
 }
 
 #[test]
+fn the_text_of_each_preset_ends_its_lines_in_lf_alone_on_every_platform() {
+    for name in PRESETS {
+        let def = preset(name, 0).unwrap();
+        let text = to_text(&def);
+        assert!(!text.contains('\r'), "{name}: {text:?}");
+        assert!(text.lines().count() > 1, "{name}: {text:?}");
+        assert_eq!(from_source("a.sfx.ron", &text), Ok(def), "{name}");
+    }
+}
+
+#[test]
 fn a_render_has_its_lengths_samples_and_the_wav_its_header() {
     let def = SfxDef::new(Wave::Sine, 441, 7, 3, 100);
     let samples = render(&def);
