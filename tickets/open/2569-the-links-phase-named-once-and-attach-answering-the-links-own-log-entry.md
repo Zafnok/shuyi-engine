@@ -77,11 +77,10 @@ None.
   existing `From<&LogLine>`, and `From<shuyi_platform::link::LogEntry>`,
   which replaces `attached.rs`'s private `log_entry`.
 - **The schema:** `attach.output.json`'s `$defs` entry is now
-  `LogEntry`. Regenerate `crates/cli/schemas/`, raise
-  `contract::VERSION` by one and add its line to
+  `LogEntry`. Regenerate `crates/cli/schemas/` and add their line to
   `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
   schemas*). The JSON `attach` answers doesn't change, and nor does the
-  link's: `link::VERSION` stays.
+  link's: `contract::VERSION` and `link::VERSION` stay (ADR-0150).
 - **From 2566 (done):** `shuyi-platform` has the `schema` feature
   (`["dep:schemars"]`, turned on by `shuyi-cli`), and `schemars` is in
   its `outside` list in `tools/layers.ron`: derive `JsonSchema` on
@@ -120,8 +119,8 @@ None.
 4. Move `attached.rs`'s `log_entry` into `session.rs` as
    `impl From<shuyi_platform::link::LogEntry> for LogEntry`, and call
    `LogEntry::from` (or `.map(Into::into)`) in `attached.rs`.
-5. `cargo shuyi schema --out crates/cli/schemas`, raise
-   `contract::VERSION`, add the `versions.json` line.
+5. `cargo shuyi schema --out crates/cli/schemas`, add the
+   `versions.json` line.
 6. Run the gates.
 
 ## Acceptance criteria

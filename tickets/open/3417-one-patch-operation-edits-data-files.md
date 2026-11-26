@@ -167,8 +167,9 @@ None.
     `with_game` runs it, as `import`. Without a game tool program it
     uses `Importers::standard()` with `import`'s limit line.
   - The MCP tool `patch` takes the same input; `ops` is a JSON list.
-  - The contract's `VERSION` goes up by one, with `patch.input.json`,
-    `patch.output.json` and the fingerprint in `schemas/versions.json`.
+  - `patch.input.json`, `patch.output.json` and the fingerprint in
+    `schemas/versions.json`. A new operation breaks no client, so the
+    contract's `VERSION` stays (ADR-0150).
 - **`.map` and `.dlg` files.** Their text isn't one RON value, so a
   patch to one edits the value its format reads, not the text. The ops'
   pointers address that value's serde tree (ADR-0084 §5): a `GridMap`

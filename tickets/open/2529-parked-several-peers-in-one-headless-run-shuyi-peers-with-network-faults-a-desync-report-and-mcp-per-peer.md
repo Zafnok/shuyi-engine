@@ -212,9 +212,9 @@ None.
 - **`FakePeers`** in `crates/cli/src/contract/fake.rs`: N
   `FakeSession`s, a count of network steps, and hashes the test sets.
 - **The schemas:** `peers.input.json` and `peers.output.json`
-  generated, `contract::VERSION` raised by one, and its line added to
+  generated, and their line added to
   `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
-  schemas*).
+  schemas*). A new operation keeps `contract::VERSION` (ADR-0150).
 - **`shuyi-net`'s `tools` feature** (`crates/net/Cargo.toml`: optional
   `shuyi-cli`, `shuyi-ui` and `shuyi-platform` with `harness`; a
   dev-dependency on `shuyi-ui` with `toy` for the integration test),
@@ -339,8 +339,7 @@ None.
    `FakePeers`.
 4. Add `GameTools::peers`, `Op::Peers`, the CLI wiring and the usage
    lines.
-5. Regenerate the schemas, raise `contract::VERSION`, add its line to
-   `versions.json`.
+5. Regenerate the schemas and add their line to `versions.json`.
 6. Add `shuyi-net`'s `tools` feature, `MemoryPeers` and its line in
    `tools/layers.ron`, with the integration test below.
 7. Do `hello-grid`'s part if 1145 is done, and the `shuyi-net` skill's
@@ -375,7 +374,8 @@ None.
       don't offer peers (GameTools::peers)" with code `SH3001`; one peer
       or an unknown `--net` field answers `SH0001`.
 - [ ] `peers.input.json` and `peers.output.json` are checked in,
-      `contract::VERSION` is raised, and `versions.json` has its line.
+      `versions.json` has their line, and `cargo xtask contract`
+      passes.
 - [ ] `peers` is one of `shuyi mcp`'s tools, with its schemas.
 - [ ] Either the MCP scripted client starts two peers, steps peer 1,
       reads peer 1's scene, sets `loss` with the `net` tool, and reads

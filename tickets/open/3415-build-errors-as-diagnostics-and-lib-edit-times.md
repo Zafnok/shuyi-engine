@@ -92,8 +92,10 @@ None.
   `BuildOutput` may grow, so each is `#[non_exhaustive]` with a
   constructor or `Default`. `Answer` gains a field: `Answer` is not
   `#[non_exhaustive]` and has `deny_unknown_fields`, so this breaks the
-  API and the answer's shape. Raise the contract's `VERSION` (54 today)
-  and write a `Breaking:` line and a `migration` block. A search of the
+  Rust API: write a `Breaking:` line and a `migration` block. In the
+  JSON it is a field added to every answer, which breaks no client, so
+  the contract's `VERSION` stays and the schemas add their line to
+  `versions.json` (ADR-0150). A search of the
   game (`gh search code --repo Zafnok/visions-of-shuyi 'Answer::failed'`,
   at its pin 50472bbc) found no code that builds an `Answer`; its copies of
   the skill pack name `SH3005` and are refreshed at its next pin bump.
@@ -147,8 +149,8 @@ new edits and budgets) into a new ticket.
    names it.
 3. `crates/cli/src/contract.rs`: `Answer` gets `pub diagnostics:
    Vec<Diagnostic>`, `#[serde(default, skip_serializing_if =
-   "Vec::is_empty")]`, and `Answer::with_diagnostics`. Raise `VERSION`,
-   regenerate the schemas and add the fingerprint to
+   "Vec::is_empty")]`, and `Answer::with_diagnostics`. Regenerate the
+   schemas and add the fingerprint to
    `crates/cli/schemas/versions.json`. When more errors were found than
    kept, add a line to `limits` with the count; add one with the count of
    warnings left out.
@@ -257,7 +259,7 @@ new edits and budgets) into a new ticket.
       measure with no budget for the OS.
 - [ ] `tools/compile-budget.ron` names the two calibration runs, and every
       run of the second passed.
-- [ ] The contract's `VERSION` is raised, the schemas test passes, and the
+- [ ] `cargo xtask contract` and the schemas test pass, and the
       completion notes have a `Breaking:` line with a `migration` block
       and a `Behaviour:` line.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.

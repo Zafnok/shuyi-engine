@@ -115,7 +115,8 @@ this starts. The scaffold's license (`MIT-0 OR MIT OR Apache-2.0`,
     placeholder, `{{template.license}}`, fills the README section, and
     `NewOutput` gains `template_license: String` (additive:
     `NewOutput` is in the contract's answer, so regenerate its schema
-    and raise `contract::VERSION`).
+    and add its line to `versions.json`; `contract::VERSION` stays,
+    ADR-0150).
 - **From 3423 (done)** (the wizard's prompts): `shuyi new` asks its
   questions through a `Prompter` (`crates/cli/src/contract/new/prompts.rs`:
   `text`, `one`, `many`, `say`; `prompts::pick` asks a `wizard::Question`
@@ -178,7 +179,7 @@ this starts. The scaffold's license (`MIT-0 OR MIT OR Apache-2.0`,
    after the GitHub questions (as the 3423 note above says), its parse,
    and the warning for a public repository with no license.
 5. `NewOutput::template_license`; regenerate the contract's schema;
-   raise `contract::VERSION`.
+   add its line to `versions.json`.
 6. Update `template/plans.golden` and the `new` snapshots; the
    `shuyi-new-game` skill's text names `--license`.
 

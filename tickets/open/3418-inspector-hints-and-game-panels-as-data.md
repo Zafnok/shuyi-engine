@@ -139,8 +139,9 @@ None.
   `SH0001` with the ids it has.
   - Its input and output schemas go in `crates/cli/schemas/`
     (`panels.input.json`, `panels.output.json`).
-  - It raises `contract::VERSION` (54 today), with its line in
-    `schemas/versions.json`.
+  - Its schemas get their line in `schemas/versions.json`. A new
+    operation breaks no client, so `contract::VERSION` stays
+    (ADR-0150).
   - It is an MCP tool: its arms go in `mcp::host::one_off` and
     `mcp::description`.
   - Applying a panel's action is 3417's patch operation, called with
@@ -223,8 +224,8 @@ ticket, and keep the hints, the `check` part and the ADR here.
       `tuning`.
 - [ ] The MCP server lists a `panels` tool, and calling it answers as
       the CLI does.
-- [ ] `contract::VERSION` is raised, and `versions.json` and the
-      checked-in schemas match (the contract's schema test passes).
+- [ ] `versions.json` and the checked-in schemas match (the contract's
+      schema test passes), and `cargo xtask contract` passes.
 - [ ] A game that adds no panel builds and answers `panels` with an
       empty list.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.

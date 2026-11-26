@@ -118,8 +118,9 @@ None.
   default for that party is `SH3001`; any other error of the game's is
   `SH3002`, as in 2529.
 - **The schemas:** `peers.input.json` and `peers.output.json`
-  regenerated, `contract::VERSION` raised by one, and its line added
-  to `crates/cli/schemas/versions.json`.
+  regenerated, and their line added to
+  `crates/cli/schemas/versions.json`. An optional input field breaks
+  no client, so `contract::VERSION` stays (ADR-0150).
 - **`FakePeers`** (`crates/cli/src/contract/fake.rs`): a settable
   party, hub and expected hashes.
 - **`shuyi-net`** (`crates/net`):
@@ -269,8 +270,7 @@ None.
    `MemoryPeers::under_referee`, the test-only referee game and their
    tests. Otherwise write the referee's follow-up ticket and name it
    in the completion notes.
-8. Regenerate the schemas, raise `contract::VERSION`, and add its line
-   to `versions.json`.
+8. Regenerate the schemas and add their line to `versions.json`.
 9. Write the docs, and the `shuyi-net` skill's part.
 10. Run the gates.
 
@@ -298,7 +298,8 @@ None.
 - [ ] `hello-grid`'s CI test of `cargo shuyi peers 2 --via relay --net
       seed=1,loss=10,delay=2` answers `ok`.
 - [ ] `peers.input.json` and `peers.output.json` are checked in,
-      `contract::VERSION` is raised, and `versions.json` has its line.
+      `versions.json` has their line, and `cargo xtask contract`
+      passes.
 - [ ] Either the referee is here, or step 7 moved it out and the
       follow-up ticket is in `tickets/open/`, parked, and named in the
       completion notes. If it is here:

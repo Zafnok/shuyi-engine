@@ -316,9 +316,10 @@ if he wants rumble in the game.
     `Headless` (`crates/cli/src/contract/session.rs`) reads it from the
     Harness's `rumble_log`, and `FakeSession` (`fake.rs`) gives one. The
     text answer gets a `rumble:` line like `sounds:`;
-  - raise `contract::VERSION`, regenerate `crates/cli/schemas/` and add
-    the version's line to `versions.json` (ADR-0022 §5); mention rumble
-    in `docs/contract.md`'s `run` row.
+  - regenerate `crates/cli/schemas/` and add their line to
+    `versions.json`; a field added to an answer keeps
+    `contract::VERSION` (ADR-0150). Mention rumble in
+    `docs/contract.md`'s `run` row.
 - **A short ADR** (the `write-adr` skill), extending ADR-0024 §2 and
   ADR-0007: rumble is output data like audio; the cue file is a standard
   kind; `Platform::motors` is a provided method; the rules live in
@@ -384,7 +385,8 @@ if he wants rumble in the game.
 5. Write `shuyi_platform::rumble` (`MotorLevel`, `Motors`,
    `RumblePlayer`), `Platform::motors`, `App`'s part and the stops; then
    the headless motors and the Harness logs.
-6. Add the contract's `rumble` entries and the schema version.
+6. Add the contract's `rumble` entries and the schemas' line in
+   `versions.json`.
 7. Write the ADR, and update `docs/platform-backends.md` and
    `docs/contract.md`.
 8. Measure the diff. If it is past about 600 changed lines (not

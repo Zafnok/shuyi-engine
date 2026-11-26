@@ -287,8 +287,10 @@ crate" paragraph to the README's *The name* section.
   - its answer gains `source`, `license`, `license_warning`, `skill`
     and `changed`;
   - `modules`' answer gains `origin`;
-  - raise `contract::VERSION`, regenerate `crates/cli/schemas/`, and add
-    the line to `versions.json` (`docs/contract.md`, *The schemas*);
+  - regenerate `crates/cli/schemas/` and add the line to
+    `versions.json` (`docs/contract.md`, *The schemas*). Optional input
+    fields and added answer fields break no client, so
+    `contract::VERSION` stays (ADR-0150);
   - the doc comments of `yes` and `with_skill` say to ask the user
     first. They become the schema's descriptions, which the MCP server's
     `add` tool (1133) shows.
@@ -365,9 +367,9 @@ crate" paragraph to the README's *The name* section.
 5. Write or reuse the question (either order with 2505), then the
    `cargo add` call and the skill copy.
 6. Mark outside modules in `shuyi modules`.
-7. Regenerate the schemas and raise the contract version. Then write
-   `docs/writing-a-module.md`, the contract row, the README paragraph
-   and the skill's lines.
+7. Regenerate the schemas and add their line to `versions.json`. Then
+   write `docs/writing-a-module.md`, the contract row, the README
+   paragraph and the skill's lines.
 8. Run the gates. If the diff passes about 600 lines, move the
    `shuyi modules` marking (step 6) to a follow-up ticket written with
    the `write-ticket` skill, and say so in the PR.
@@ -402,8 +404,9 @@ crate" paragraph to the README's *The name* section.
       `shuyi-assets` still builds without `std` (the `no-std` CI job).
 - [ ] `shuyi modules --json` lists the added module with
       `origin: outside`.
-- [ ] The schemas and `versions.json` match `contract::VERSION` (1129's
-      schema test).
+- [ ] The schemas have their line in `versions.json` (1129's schema
+      test), and `contract::VERSION` rose only for a break
+      (`cargo xtask contract` passes).
 - [ ] The ADR is in `docs/adr/` with its row in `docs/adr/README.md`,
       and its header says it extends ADR-0009 §4, §6 and §7.
 - [ ] Nick's naming answer is in `docs/decisions.md` and the README.

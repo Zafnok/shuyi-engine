@@ -223,10 +223,11 @@ None.
   - the text answer has a line per change, such as
     ``files/swatch.ron:3:5: renamed `color` to `colour` (since 0.2.0)``,
     with `by hand:` before a manual one;
-  - `contract::VERSION` goes up by one, the schemas are written again
+  - the schemas are written again
     (`crates/cli/schemas/upgrade.input.json`, `upgrade.output.json` and
     `check.output.json`), and `crates/cli/schemas/versions.json` gets the
-    new fingerprint (ADR-0022 §5).
+    new fingerprint. A new operation and an added field break no
+    client, so `contract::VERSION` stays (ADR-0150).
 - **Warnings in `shuyi check`:**
   - `check` walks the project the same way, with the same kind rule and
     `find` only;
@@ -311,8 +312,8 @@ None.
     for a ticket that changes a format.
 - **Either order with 2516:** 2516 adds `CheckOutput::files`, and this
   ticket adds `CheckOutput::warnings`. Whichever lands second keeps the
-  other's field, prints its own after it in `check::text`, and raises
-  `contract::VERSION` again.
+  other's field, prints its own after it in `check::text`, and adds
+  its own line to `versions.json`.
 - **Problem codes (2509):** the warning and the manual change get new
   rows in 2509's table (content codes `SH2nnn`, named `old-name` and
   `upgrade-by-hand`), each with its page and a help naming `shuyi
@@ -413,7 +414,9 @@ None.
       engine format lists a change yet).
 - [ ] In a new game from each template, `cargo shuyi import
       crates/game/files/keymap.ron` reads a keymap (said in the PR).
-- [ ] The schemas and `versions.json` match the new `contract::VERSION`.
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
+      passes).
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.
 

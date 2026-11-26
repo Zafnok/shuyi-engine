@@ -224,7 +224,9 @@ into a new ticket.
    included, so the disclosure check's canaries may find a private
    crate's name there. A closed build may want it off.
 8. `crates/cli/src/contract/export.rs`: `ExportOutput.sbom`, documented;
-   bump `contract::VERSION`; regenerate `crates/cli/schemas/`. Add
+   regenerate `crates/cli/schemas/` and add their line to
+   `versions.json` (an added answer field keeps `contract::VERSION`,
+   ADR-0150). Add
    `export.auditable` to `SH1003.md`'s list of an export's tools.
 9. The template: `templates/shuyi-default/base/.github/workflows/export.yml`
    uploads `*.cdx.json`; `release.yml` moves `*.cdx.json` into

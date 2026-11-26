@@ -185,10 +185,11 @@ in a store, are the game's.
   side by side on one device, and each keeps its saves in its own data
   folder. A unit test reads the `pdxinfo` of a `--lang ja` export, and
   `docs/targets/playdate.md` says how to make one build per language.
-- **The schemas.** `bake`'s and `export`'s input and answer change in
-  one contract version: `cargo shuyi schema --out crates/cli/schemas`,
-  `contract::VERSION` up by one, and its line in `versions.json`
-  (`docs/contract.md`, *The schemas*).
+- **The schemas.** `bake`'s and `export`'s input and answer change
+  together: `cargo shuyi schema --out crates/cli/schemas`, and their
+  line in `versions.json` (`docs/contract.md`, *The schemas*).
+  `contract::VERSION` rises only if `cargo xtask contract` finds a
+  break (ADR-0150).
 - **Docs.**
   - `docs/formats.md`, *The pack*: the language in the info, the new
     `pack::VERSION`, and a one-language pack: what it keeps, its
@@ -251,7 +252,7 @@ in a store, are the game's.
    `pt` and `pt-BR`, a `files/` copy in `ja`, and a `lang()` that loads
    them.
 6. Add `--lang` to `export` as above.
-7. Regenerate the schemas and raise `contract::VERSION`.
+7. Regenerate the schemas and add their line to `versions.json`.
 8. Write the docs. Run the gates.
 
 ## Acceptance criteria
@@ -290,8 +291,9 @@ in a store, are the game's.
       pack in it, and writes `lang` in `export-report.json`. Through
       one that ships loose files it refuses with the `language` code
       (unit tests).
-- [ ] The schemas are regenerated and `contract::VERSION` is one
-      higher (the schema test passes).
+- [ ] The schemas have their line in `versions.json`, and
+      `contract::VERSION` rose only for a break (`cargo xtask contract`
+      passes).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

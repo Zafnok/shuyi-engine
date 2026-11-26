@@ -73,8 +73,9 @@ None.
   the field, and one path serves both. The MCP tool's answer for it is
   the `new.questions.json` shape. Read how the contract versions an
   input that answers in another shape (`docs/contract.md`, *The schemas*)
-  and do what it says: the input schema is regenerated, and
-  `contract::VERSION` and `versions.json` move if the rule asks.
+  and do what it says: the input schema is regenerated, `versions.json`
+  gets its line, and `contract::VERSION` rises only if `cargo xtask
+  contract` finds a break (ADR-0150).
 - `answers` is made absolute from the session's folder, as `dir` is, in
   `Server::absolute`.
 - **From 3429 (done):** take `--questions` off `CLI_ONLY` in

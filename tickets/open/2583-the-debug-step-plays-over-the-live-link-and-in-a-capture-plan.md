@@ -34,8 +34,9 @@ None.
 - The live link plays a `debug` step: the running game opens the debug
   view with the step's channels, as `Harness::show_debug` does.
 - A capture plan accepts the step in the same way.
-- The contract's version rises, and the schemas and `docs/contract.md`
-  say so.
+- The schemas and `docs/contract.md` say so, with the schemas' line in
+  `versions.json`. `contract::VERSION` rises only if `cargo xtask
+  contract` finds a break (ADR-0150).
 
 **Out (do not do):**
 - New debug channels.
@@ -48,8 +49,8 @@ None.
 2. Route the step to the running game through the live link's message
    set, and handle it in `shuyi-app`'s link handler by calling what
    `Harness::show_debug` calls.
-3. Update the contract docs and schemas, and raise
-   `contract::VERSION`.
+3. Update the contract docs and schemas, and add their line to
+   `versions.json`; raise `contract::VERSION` only for a break.
 
 ## Acceptance criteria
 

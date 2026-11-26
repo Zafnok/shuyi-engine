@@ -114,7 +114,8 @@ Every operation answers with the same shape, `Answer<T>`:
 }
 ```
 
-- `contract` is the contract's version.
+- `contract` is the contract's version: it rises only on a break
+  ([What the version promises](#what-the-version-promises)).
 - `ok` is the verdict: nothing found by `check`, two runs that agree, a
   game made, a toolchain complete, a scene found. `run` passes when it
   ran.
@@ -486,18 +487,60 @@ other operation's schema. Two answers have a schema of their own beside
 them: `export.exposure.json`, the exposure report `export` writes, and
 `new.questions.json`, `new --questions`' answer.
 
-They change only with the contract's version. A test fails when the
-checked-in schemas are not what the types generate, and when their
-fingerprint is not the one
-[`versions.json`](../crates/cli/schemas/versions.json) lists for
-`contract::VERSION`. To change an input or an answer:
+Each set of them has its line in
+[`versions.json`](../crates/cli/schemas/versions.json): its fingerprint
+and the contract's version. A test fails when the checked-in schemas are
+not what the types generate, and when their fingerprint is not the last
+line's.
+
+### What the version promises
+
+`contract` rises by one only when a change breaks a client
+([ADR-0150](adr/0150-the-contracts-version-rises-only-on-a-break.md)).
+Between two engine versions whose answers carry the same `contract`:
+
+- an answer only gains: its fields stay, with their types, and a field
+  that was always there stays always there; it may gain fields, values
+  of a list (an event's `kind`, a verdict), tagged variants and
+  operations, and never renames a value;
+- an input only gains optional fields, values and variants: what a
+  client sent is still taken, and means what it meant;
+- a client ignores a field it doesn't know, and treats a value or a
+  variant it doesn't know as unknown, never as an error. The schemas say
+  `additionalProperties: false`: they describe one set exactly, so a
+  client meant to span engine versions validates only the fields it
+  reads.
+
+A changed default, an error's text or a new problem code is not shape:
+it is a `Behaviour:` line, not a raise. Nothing is promised across
+versions before 61.
+
+A break of the contract is a breaking release of `shuyi-cli`: its ticket
+has a `Breaking: shuyi-cli: contract: <operation>: <what a client
+changes>` line and its `migration` block (ADR-0038). Make a change
+additive when it can be: a field beside the old one, which stays until a
+break gathers several.
+
+### Changing an input or an answer
 
 1. change the type;
 2. `cargo shuyi schema --out crates/cli/schemas` from the repository's
    root;
-3. raise `contract::VERSION` by one over `main`'s, after merging `main`
-   last (CI's `api` job fails a PR that raises it by more, ticket 2052);
-4. add the line the test asks for to `versions.json`.
+3. `cargo xtask contract` lists what in the new schemas breaks a client
+   against `origin/main`'s: a field, value, variant or schema file gone;
+   in an answer, a field that may now be absent or a type it can now have
+   (`null` among them); in an input, a new required field or a type it no
+   longer takes;
+4. nothing breaks: keep `contract::VERSION`, and add the line the
+   schemas' test asks for to `versions.json`, with the same version;
+5. something breaks: raise `contract::VERSION` by one over `main`'s,
+   after merging `main` last, add the line with the new version, and
+   write the `Breaking:` line.
+
+CI's `api` job runs the same comparison against its base: it fails a
+break that keeps the version, a raise with no break and a raise of more
+than one (ticket 2052), and asks for the `Breaking:` line naming
+`shuyi-cli`.
 
 ## The MCP server
 

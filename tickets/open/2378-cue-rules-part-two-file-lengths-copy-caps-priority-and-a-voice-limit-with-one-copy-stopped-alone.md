@@ -184,9 +184,9 @@ None.
   reasons `copies`, `voices` and `cut`, and `run`'s `dropped` gives them
   as `why` with no change of shape. `Dropped::why`'s doc comment lists
   the words (`gap` today): add the new ones there and in
-  `docs/contract.md`'s `run` row, raise `contract::VERSION`
-  (`crates/cli/src/contract.rs`), regenerate the schemas and add the
-  line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
+  `docs/contract.md`'s `run` row, regenerate the schemas and add the
+  line to `crates/cli/schemas/versions.json`. New values break no
+  client, so `contract::VERSION` stays (ADR-0150).
 - **`shuyi-app` stops one copy alone** (`crates/app/src/audio.rs`,
   `crates/app/src/backend.rs`):
   - **From 2344 (done):** `Backend::play` returns `Self::Playing`, one
@@ -342,7 +342,8 @@ ticket's `blocked_by`.
       copy of the same file, and a copy whose length has passed gives
       back its handle.
 - [ ] `pack::VERSION` is one higher, with the pack snapshot updated;
-      the contract's version and schemas are updated if they changed.
+      the schemas and their line in `versions.json` are updated if they
+      changed, and `cargo xtask contract` passes.
 - [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.
 

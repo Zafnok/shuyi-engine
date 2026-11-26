@@ -208,10 +208,10 @@ None.
     error of `bake` does in `check --baked`.
   - `check --baked` does all of this for its `check` half. `check
     --target` doesn't.
-  - The answer changes shape: `contract::VERSION` raised by one from
-    whatever it is when this lands, the schemas regenerated and the line
+  - The answer changes shape: the schemas regenerated and their line
     added to `crates/cli/schemas/versions.json` (`docs/contract.md`,
-    *The schemas*).
+    *The schemas*). Fields added to an answer break no client, so
+    `contract::VERSION` stays (ADR-0150).
 - **From 2220 (done):** `bundle::recording` is in `bundle.rs` as described
   above, its log per thread: reuse it. `Hot<T>` reads the same log
   (`reads_of`), and also keeps the paths asked for and not found.
@@ -335,7 +335,8 @@ writing `assets`. Say so in the PR.
       files report, and the limit that says so.
 - [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf` without
       default features.
-- [ ] The contract's schema test passes with `VERSION` raised.
+- [ ] The contract's schema test passes with the schemas' line in
+      `versions.json`, and `cargo xtask contract` passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

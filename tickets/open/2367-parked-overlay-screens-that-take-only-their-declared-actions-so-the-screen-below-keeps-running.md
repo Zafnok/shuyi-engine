@@ -188,9 +188,9 @@ None.
     The `Session` trait (`crates/cli/src/contract/session.rs`) gains
     `fn running(&self) -> Vec<String>`, defaulted to the last of
     `screens()` alone; `Headless` answers it from
-    `Harness::running_screens()`. Raise `contract::VERSION`
-    (`crates/cli/src/contract.rs`) by one, regenerate the schemas and add
-    the line to `crates/cli/schemas/versions.json` (ADR-0022 §5). The
+    `Harness::running_screens()`. Regenerate the schemas and add the
+    line to `crates/cli/schemas/versions.json`; a field added to an
+    answer keeps `contract::VERSION` (ADR-0150). The
     `run` row of `docs/contract.md` names the field.
 - **Controls that fit** (`crates/ui/src/input/fit.rs`):
   - `ScreenActions` gains `passes: Passes`, which `ScreenActions::of`

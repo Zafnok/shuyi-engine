@@ -73,7 +73,9 @@ open ticket that day added a fourth group:
   - 2087 takes outside crates' types out of a game's way in;
   - 2089 checks, on each PR, that the public API names no outside crate
     ADR-0119 doesn't list;
-  - 2088 decides what the contract's version promises;
+  - 2088 (done) decided what the contract's version promises: it rises
+    only on a break, which is a breaking release of `shuyi-cli`
+    (ADR-0150);
   - 2262 (done) handed out the bundle's reads as `Cow` bytes, not
     `&'static` (ADR-0128 §1, decided by 2919 from what 2906 measured),
     before the bundle's API is published. The other builds of ADR-0128 only add,

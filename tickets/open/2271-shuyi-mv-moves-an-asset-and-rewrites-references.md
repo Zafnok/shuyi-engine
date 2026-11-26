@@ -153,10 +153,11 @@ None.
   get rows in `crates/cli/src/contract/codes.rs`'s `TABLE` (content
   codes `SH2nnn`, the next free; names `move-refused` and
   `move-by-hand`), with their pages in `crates/cli/errors/`.
-- **The contract:** `contract::VERSION` up by one, the schemas
-  `mv.input.json` and `mv.output.json` written, and the line in
-  `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
-  schemas*). The MCP arms in `one_off` and `description`.
+- **The contract:** the schemas `mv.input.json` and `mv.output.json`
+  written, and their line in `crates/cli/schemas/versions.json`
+  (`docs/contract.md`, *The schemas*). A new operation and an added
+  field break no client, so `contract::VERSION` stays (ADR-0150).
+  The MCP arms in `one_off` and `description`.
 - **Public types (ADR-0039):** `MvInput` (an input) and the new output
   types are `#[non_exhaustive]` with constructors. The new `span`
   field of 2516's `Reference` is additive if `Reference` is
@@ -249,7 +250,8 @@ rewrites the collected references.
 - [ ] Moving a file under a different `_folder.meta` warns.
 - [ ] `palettes/day.ron.old` and `palettes/day.rons` are not rewritten
       when `palettes/day.ron` moves.
-- [ ] The contract's schema test passes with `VERSION` raised.
+- [ ] The contract's schema test passes with the schemas' line in
+      `versions.json`, and `cargo xtask contract` passes.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 
