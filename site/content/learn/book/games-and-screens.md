@@ -101,6 +101,12 @@ the one below first, then it. That's one word in the code, and you can see it:
 
 {{ try_it(name="book-overlay") }}
 
+Hello, Grid's intro is a screen of the same kind: when you press Play, the title pushes the
+stage, and the stage pushes the text box of `files/intro.dlg` over itself. Three screens are
+on the stack, and you see two of them:
+
+{{ shot(example="hello-grid", name="dialogue", alt="Hello, Grid's stage with a text box over its bottom: the box says it is a small grid, twelve tiles by ten, with walls and a goal in the top right, and names the key that goes on. The stage shows above it") }}
+
 ## Asking the screen below
 
 Often a screen wants to ask something and act on the answer: "Leave the garden?". You
@@ -109,6 +115,11 @@ question grows a mode. Instead, a question is a screen of its own. The garden pu
 "Leave the garden?" over itself when the player presses Cancel:
 
 {{ snippet(file="src/screens.rs", anchor="leave") }}
+
+Hello, Grid asks the same of its stage. The question is a bar at the bottom, and the stage
+is still drawn below it, as you left it:
+
+{{ shot(example="hello-grid", name="leave", alt="Hello, Grid's stage on turn 2, with the bottom line asking Leave the stage? and naming the key for yes and the key for no") }}
 
 {% newcomer(to="rust", topic="`for` and `match`") %}
 `for &action in &input.actions` runs once for each action this frame. A

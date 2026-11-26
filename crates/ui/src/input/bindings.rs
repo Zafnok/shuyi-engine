@@ -1,18 +1,15 @@
-//! The player's key and button bindings (tickets 0217 and 0816, game ADR-0031,
-//! game ADR-0053): every rebindable action has [`SLOTS`] key slots and [`SLOTS`]
+//! The player's key and button bindings: every rebindable action has [`SLOTS`] key slots and [`SLOTS`]
 //! controller-button slots. Each layout keeps its own keys
 //! ([`LayoutBindings`]); the buttons are one setup shared by both layouts
-//! ([`PadBindings`]); the lot is saved as [`PlayerKeys`]. Rules from
-//! `docs/design/controls.md`, *Rebinding keys* and *Rebinding buttons*.
-//! Pure: the game reads and writes the saved text. Generic over the game's
-//! [`ActionSet`] (ticket 1106).
+//! ([`PadBindings`]); the lot is saved as [`PlayerKeys`] (the `shuyi-input`
+//! skill, *The player's keys*). Pure: the game reads and writes the saved
+//! text. Generic over the game's [`ActionSet`].
 //!
 //! Invariants: a chord is in at most one slot of a [`LayoutBindings`]'s
 //! actions of each [group](ActionSet::Group), and no
 //! [reserved](LayoutBindings::is_reserved) chord is in any; a button is in
 //! at most one slot of a [`PadBindings`]'s actions of each group. Actions
-//! of different groups may share one (`docs/design/controls.md`, *Dialogue
-//! log*).
+//! of different groups may share one ([`ActionSet::Group`]).
 
 use crate::prelude::*;
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -234,7 +231,7 @@ impl<A: ActionSet> LayoutBindings<A> {
     /// Puts `chord` in `action`'s slot `i`, replacing what was there. If
     /// `chord` was in another slot (of any action of `action`'s
     /// group, including `action`), that slot is emptied and
-    /// returned: the key *moves* (`docs/design/controls.md`), which may
+    /// returned: the key *moves*, which may
     /// leave that action with no key. An action of another group keeps it.
     pub fn bind(
         &mut self,
@@ -286,10 +283,9 @@ impl<A: ActionSet> LayoutBindings<A> {
 }
 
 /// The player-edited controller buttons: every rebindable action's button
-/// slots, each holding a button or a [button chord](ButtonChord) (ticket
-/// 1034; a chord and its buttons on their own are different bindings).
-/// One setup for both keyboard layouts (`docs/design/controls.md`,
-/// *Rebinding buttons*); no button is reserved, and both sticks' directions
+/// slots, each holding a button or a [button chord](ButtonChord) (a chord
+/// and its buttons on their own are different bindings). One setup for
+/// both keyboard layouts; no button is reserved, and both sticks' directions
 /// count as buttons.
 ///
 /// The pure editing API for the Key bindings screen (0816), the same shape

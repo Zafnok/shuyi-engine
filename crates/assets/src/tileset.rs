@@ -1,4 +1,4 @@
-//! A tileset's terrain tiles (game ADR-0052): the pictures a grid map's
+//! A tileset's terrain tiles: the pictures a grid map's
 //! sprite skin paints its ground with. For each look a map may ask for
 //! (outdoors, indoors), a tile for every terrain and the layers painted
 //! over those tiles. A layer's picture is chosen from the tiles around it,

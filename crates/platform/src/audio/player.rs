@@ -1,11 +1,11 @@
 //! [`Player`]: the rules of playing a frame's audio, shared by every backend
-//! (game ADR-0026, ADR-0063), behind the small [`Backend`] trait a backend
+//! (ADR-0063), behind the small [`Backend`] trait a backend
 //! writes: the sound and voice requests and the music commands
 //! [`App`](crate::App) hands the sound device ([`AudioFrame`]).
 //!
 //! The player keeps the cues' volumes, picks a variant, plays at most two
 //! tracks in a crossfade, their gains moving opposite ways (ADR-0054), and
-//! plays the voice clips (game ADR-0046). [`PlayerDevice`] is the whole of a
+//! plays the voice clips. [`PlayerDevice`] is the whole of a
 //! backend's [`Audio`] over it.
 //!
 //! Every sound, track and voice clip plays at its own volume times its
@@ -24,8 +24,8 @@
 //! runs on silently, so a track's clock runs too, and comes back at the
 //! volume it would have had. A paused track's clock holds.
 //!
-//! It also knows when each track really started ([`Player::music_playing`],
-//! game ADR-0037): a track asked for only sounds once its file has loaded, and
+//! It also knows when each track really started ([`Player::music_playing`]):
+//! a track asked for only sounds once its file has loaded, and
 //! screens that keep time with the music need the real moment.
 
 pub(crate) mod voice;
@@ -61,7 +61,7 @@ impl fmt::Display for Unsupported {
 impl core::error::Error for Unsupported {}
 
 /// Where a looped track goes round, as its backend will play it: what
-/// [`Backend::set_loop_region`] says (ticket 2397). More may come
+/// [`Backend::set_loop_region`] says. More may come
 /// (ADR-0039): a match on it has a `_` arm.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -162,7 +162,7 @@ pub trait Backend {
     }
 
     /// Readies the music track `sound`'s looped plays, from its next
-    /// [`play`](Self::play), to go round a region (ticket 2397): `region`,
+    /// [`play`](Self::play), to go round a region: `region`,
     /// the cue's, or where that is `None` the region the file itself names
     /// (an Ogg file's `LOOPSTART` and `LOOPLENGTH`), and says which it will
     /// play. The way round is the backend's to make exact, never a seek of
@@ -343,7 +343,7 @@ pub struct Player<B: Backend> {
     abandoned: Vec<B::Loading>,
     /// Where music files are, e.g. `music` or `C:/Games/some-game/music`.
     music_dir: String,
-    /// The voice clips (game ADR-0046).
+    /// The voice clips.
     voices: Voices<B>,
     /// Problems to log (missing files, decode errors).
     warnings: Vec<String>,
@@ -626,7 +626,7 @@ impl<B: Backend> Player<B> {
     /// Plays one frame's sound and voice `requests`, applies the `music`
     /// commands and checks on tracks and clips still loading. `now` is the
     /// time in seconds on a clock that keeps running while the game isn't
-    /// drawn (game ADR-0037): a track that starts in this call started at `now`.
+    /// drawn: a track that starts in this call started at `now`.
     pub fn play(
         &mut self,
         backend: &mut B,
@@ -669,7 +669,7 @@ impl<B: Backend> Player<B> {
     /// (not every device says when it does; `ui` knows its length). A paused
     /// track's seconds hold; a muted one's run on. A track that goes round a
     /// region is where it really is: past the region's end, back by its
-    /// length as often as it has gone round (ticket 2397), and a track the
+    /// length as often as it has gone round, and a track the
     /// backend loops whole counts on whatever its cue says.
     pub fn music_playing(&self, now: f64) -> Option<(&str, f64)> {
         self.tracks
@@ -1610,7 +1610,7 @@ mod tests {
     }
 
     /// What one frame starts, the backend hears between a frame's opening and its
-    /// closing, so that it can start it all at once (ticket 3089).
+    /// closing, so that it can start it all at once.
     #[test]
     fn a_frames_plays_come_between_its_opening_and_its_closing() {
         let mut fake = Fake {

@@ -159,7 +159,7 @@ pub(crate) mod web {
     }
 }
 
-/// The audio thread above the rest (ticket 3089). A stream's buffer holds about 20
+/// The audio thread above the rest. A stream's buffer holds about 20
 /// ms, and a thread of normal priority can wait longer than that for a core on a
 /// busy machine: the device then plays nothing until it runs again, and the player
 /// hears a gap. Windows' multimedia scheduler is what the system documents for an
@@ -219,8 +219,8 @@ pub(crate) mod raised {
         }
     }
 
-    /// Raises the calling thread, a worker that keeps a stream ahead of the mix
-    /// (ticket 3320), to the highest priority of its class: above the game's
+    /// Raises the calling thread, a worker that keeps a stream ahead of the mix,
+    /// to the highest priority of its class: above the game's
     /// thread, which runs at normal, and below the output's, at the time-critical
     /// priority or in the multimedia scheduler's realtime range, so that its
     /// decoding never keeps the mix waiting. It lasts as long as the thread, and
@@ -269,7 +269,7 @@ pub(crate) mod raised {
         }
 
         /// A worker goes above normal, the game's, and stays below the output's
-        /// thread whichever way that one was raised (ticket 3320).
+        /// thread whichever way that one was raised.
         #[test]
         fn a_worker_is_raised_above_normal_and_below_the_output() {
             use windows::Win32::System::Threading::THREAD_PRIORITY_NORMAL;

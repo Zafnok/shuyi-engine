@@ -96,7 +96,8 @@ usage:
       Warns, without failing, on a clause in an open ticket that waits on a
       done one (\"if NNNN is done\"): settle it (the work-ticket skill, §5).
   cargo xtask check-links
-      Check that every relative link in the Markdown files resolves.
+      Check that every relative link in the Markdown files resolves, and
+      every docs/ path a Rust comment under crates/ or examples/ names.
   cargo xtask check-docs
       Check that the docs map (docs/README.md) links every Markdown file, and
       that no two ADRs, or two rows of docs/adr/README.md, share a number.

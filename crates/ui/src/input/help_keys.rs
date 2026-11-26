@@ -1,11 +1,11 @@
 //! Help text that names keys and controller buttons. Names always come
 //! from the active [`Keymap`], never string literals, because each layout
-//! binds actions to different keys (game ADR-0015) and the player can rebind
-//! them (game ADR-0031); and they follow the [`Device`] the player pressed last
-//! (`docs/design/controls.md`, *Controller*): keys on the keyboard, the
-//! pad's own button names on a controller.
+//! binds actions to different keys and the player can rebind them (the
+//! `shuyi-input` skill, *The player's keys*); and they follow the
+//! [`Device`] the player pressed last: keys on the keyboard, the pad's own
+//! button names on a controller.
 //!
-//! Generic over the game's [`ActionSet`] (ticket 1106).
+//! Generic over the game's [`ActionSet`].
 
 use crate::prelude::*;
 use core::ops::Deref;
@@ -88,7 +88,7 @@ impl<'a, A: ActionSet> HelpKeys<'a, A> {
     }
 
     /// What is shown for an action with no key, or no button on a
-    /// controller (`docs/design/controls.md`, *Rebinding keys*).
+    /// controller (rule 3 of the `shuyi-input` skill's *The rules*).
     pub fn not_mapped(self) -> &'a str {
         self.not_mapped
     }

@@ -7,7 +7,8 @@
 #                                       (errors.sh), copies the playground's
 #                                       files (copy-playground.sh) and the
 #                                       examples' previews
-#                                       (copy-previews.sh), builds
+#                                       (copy-previews.sh) and shots
+#                                       (copy-shots.sh), builds
 #                                       the site twice, with two base URLs,
 #                                       and checks both outputs
 #   site/check-build.sh hosts DIR BASE  checks a built site in DIR, served
@@ -97,6 +98,7 @@ done
 bash "$site_dir/errors.sh"
 bash "$site_dir/copy-playground.sh"
 bash "$site_dir/copy-previews.sh"
+bash "$site_dir/copy-shots.sh"
 
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
@@ -267,6 +269,28 @@ for preview in "$site_dir"/../examples/*/preview.png; do
   grep -qF "src=\"${one}previews/$name.png\"" "$out/one/examples/index.html" ||
     fail "the Examples page doesn't show previews/$name.png in $name's card"
 done
+
+# The book's shots (ticket 2813): the build holds each as its example has
+# it, and each page of the book that shows one has its picture, with the
+# text that says what is on screen.
+for shot in "$site_dir"/../examples/*/shots/*.png; do
+  [ -f "$shot" ] || continue
+  example="$(basename "$(dirname "$(dirname "$shot")")")"
+  file="$(basename "$shot")"
+  cmp -s "$shot" "$out/one/shots/$example/$file" ||
+    fail "the build's shots/$example/$file isn't examples/$example/shots/$file"
+done
+while IFS= read -r source; do
+  page="${source#"$book"/}"
+  page="$out/one/learn/book/${page%.md}/index.html"
+  while IFS= read -r found; do
+    example="$(sed -nE 's/.*example="([^"]*)".*/\1/p' <<<"$found")"
+    name="$(sed -nE 's/.*name="([^"]*)".*/\1/p' <<<"$found")"
+    grep -qE "<img src=\"${one}shots/$example/$name\.png\"[^>]* alt=\"[^\"]+\"" "$page" 2>/dev/null ||
+      fail "${source#"$site_dir"/} shows the shot $example/$name, and its page has no picture of it with alt text"
+  done < <(grep -oE 'shot\(example="[^"]*", name="[^"]*"' "$source")
+done < <(grep -rlE 'shot\(example=' "$book" --include=*.md)
+grep -rqF "${one}shots/hello-grid/" "$out/one/learn/book" || fail "no chapter of the book shows a shot of Hello, Grid"
 
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"

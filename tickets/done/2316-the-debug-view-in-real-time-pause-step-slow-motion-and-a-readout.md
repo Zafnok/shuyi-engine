@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2315"]
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2316 — The debug view in real time: pause, step, slow motion, readout
@@ -185,25 +185,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Harness: the toy's grid game, paused and stepped through a script
+- [x] Harness: the toy's grid game, paused and stepped through a script
       of N frames, ends with the same state hash as the script played
       straight.
-- [ ] Harness: while paused, a Confirm press changes nothing, and
+- [x] Harness: while paused, a Confirm press changes nothing, and
       nothing happens on the frame after resuming.
-- [ ] Harness: while paused, the Debug action opens the toy's debug
+- [x] Harness: while paused, the Debug action opens the toy's debug
       screen (its gallery) and Cancel closes it, and the paused game's
       state hash is unchanged.
-- [ ] Harness: with `slow` = 4, 40 frames run 10 updates.
-- [ ] Harness: with `slow` = 4, a Confirm tapped on a frame that runs no
+- [x] Harness: with `slow` = 4, 40 frames run 10 updates.
+- [x] Harness: with `slow` = 4, a Confirm tapped on a frame that runs no
       update reaches the next update, once.
-- [ ] Harness: while paused, a module's
+- [x] Harness: while paused, a module's
       `before_update` doesn't run, and a step runs it once.
-- [ ] The readout's lines are in the snapshot, after `paused`, when the
+- [x] The readout's lines are in the snapshot, after `paused`, when the
       `readout` channel is on.
-- [ ] With debug tools off, DebugPause and DebugStep do nothing.
-- [ ] `check-keys` passes; help text names the new actions through the
+- [x] With debug tools off, DebugPause and DebugStep do nothing.
+- [x] `check-keys` passes; help text names the new actions through the
       keymap.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -218,4 +218,98 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, with ADR-0153 (extends ADR-0085; its status line and
+the index name it).
+
+- **Actions:** `UiAction::DebugPause` and `DebugStep`, with
+  `UiAction::is_debug` for the three debug actions; neither required
+  nor rebindable, out of `ALL`. The sample `Action` (and so the toy,
+  which plays the sample's actions) gains `DebugPause` (`F3`) and
+  `DebugStep` (`F4`), appended, keyboard only, not rebindable.
+- **`DebugView`** gains `paused`, a pending step (`step`, `take_step`,
+  `steps`), `slow` (`set_slow`, 1 to `SLOWEST` = 8, and
+  `slow_frame_runs`) and `pause_line`; none of it is saved.
+- **`Game`** paces each frame (`Pace`: run, held, step, skip). The two
+  keys act when pressed, read from the frame's key presses through the
+  keymap, before the input state counts the frame's time: that is what
+  keeps a stepped run's hash equal to the straight run's (ADR-0153
+  *Alternatives*). The actions never reach a screen. A debug tools'
+  screen on top runs as usual on a paused game, while the clock and the
+  modules stand. `Game::act` takes the two actions too. `STEP_DT` is
+  public. The pause holds handled sounds under `OUTSIDE_THE_STACK`
+  (re-exported crate-wide from `audio`), and their fades take only the
+  time the game played.
+- **The readout:** `Screen::debug_readout`, `ScreenStack::debug_readout`
+  and the `readout` channel (`debug::gizmo::READOUT`), which the game
+  offers itself every debug frame, drawn by `Game::readout`. The toy's
+  `Field` and `DotStage` write one.
+- **"Debug view" screen:** a slow-motion row after the channels
+  (`ViewRow`), a status line under the title with the bound pause and
+  step keys (the help text naming them through the keymap), and the
+  empty-channels line under the menu.
+- **Tests:** unit tests of the counter, the step taken once and the
+  speeds; `tests/it/debug_pause.rs` (every Harness criterion, a
+  proptest of scripts paused and stepped through, the tick stage, the
+  sounds, `act`, and a snapshot of the paused field with the readout);
+  the live-link test in `crates/platform/src/link/tests.rs`; the debug
+  view's snapshots, updated.
+- **Either-order parts:** 2097, 2104, 2123, 2361, 2367 and 2375 aren't
+  done, so this PR did none of them. Their clauses now read as what
+  holds after 2316, naming the code they use (2097, 2104, 2123, 2356,
+  2361, 2367, 2375).
+
+Deviations:
+
+- The toy's grid field has no turn or side, so its readout is
+  `cursor 2,3`, `piece 2,3` (with ` picked up` or ` walking`) and
+  `clock N ms`.
+- The pause keys pressed in slow motion's skipped frames act at once,
+  not at its next update, and a pause drops what slow motion kept.
+- A frame slow motion skips drops its fixed steps (otherwise a tick
+  game would not slow down); 2123's clause keeps them once game speed
+  lands.
+- The sample keymap's golden value (`crates/assets/tests/golden/formats.ron`,
+  `keymap: keymap`) and its pack snapshot moved, because the fixture
+  gained two actions; no format and no encoding changed, so the pack's
+  `VERSION` stays.
+- Not mapped in `examples/hello-grid` or the template: the ticket names
+  the sample and the toy only. No ticket: a game maps them when it
+  wants a debug pause, as the book's new section says.
+
+Size: 1,432 counted lines, under the cap. It would have split cleanly
+between the pause (actions, `Game`, the screen's row) and the readout
+(`Screen::debug_readout`, the channel, the toy's readouts).
+
+Breaking: shuyi-ui: `DebugViewScreen::menu`: returns `&Menu<ViewRow>` (a channel's row is `ViewRow::Channel(id)`) instead of `&Menu<&'static str>`.
+
+```yaml
+crate: shuyi-ui
+item: DebugViewScreen::menu
+before: "screen.menu().items()[i].value  // &'static str, a channel id"
+after: "screen.menu().items()[i].value  // ViewRow::Channel(id) or ViewRow::SlowMotion"
+why: The screen's menu gained a slow-motion row.
+```
+
+Breaking: shuyi-assets: `keymap::sample::Action` (feature `sample-actions`, tests only): gains `DebugPause` and `DebugStep`, `ALL` has 21; the sample keymap's golden value moved with them.
+
+```yaml
+crate: shuyi-assets
+item: keymap::sample::Action
+before: "match action { …, Action::DialogueLog => … }"
+after: "match action { …, Action::DialogueLog => …, Action::DebugPause | Action::DebugStep => … }"
+why: The sample keymap maps the debug pause and step.
+```
+
+Behaviour: shuyi-ui: with debug tools on, the game offers the `readout` channel every frame, after the screens' channels: `DebugView::offered` and the "Debug view" screen list it.
+Behaviour: shuyi-ui: the "Debug view" screen shows a status line under its title, a "Slow motion" row after the channels, the no-channel line under the menu, and its help says `change` where it said `on/off`.
+Behaviour: shuyi-cli, shuyi-platform: `frame-png --debug all` and a script's `debug("all")` draw the readout too: the top screen's lines in the top-left corner, over the frame.
+Behaviour: shuyi-ui: an action a game maps to `UiAction::DebugPause` or `DebugStep` never reaches a screen, with debug tools on or off.
+
+Book: site/content/learn/book/frame-and-skins.md gains *Stopping on the frame that goes wrong*.
+
+Nothing in the game must change: `gh search code --repo
+Zafnok/visions-of-shuyi` for `DebugViewScreen`, `debug_readout`,
+`OUTSIDE_THE_STACK` and `keymap::sample` finds no code, and for
+`UiAction::Debug` only `crates/content/src/keymap.rs`, which maps its
+actions onto `UiAction` and matches on none. A game without the two
+actions gets no pause.

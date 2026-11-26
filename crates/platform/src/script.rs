@@ -3,7 +3,7 @@
 //! debug view's channels turned on, and a file dropped on the window) and the one plan that turns them into frames of raw input events
 //! ([`frames`]). The Harness plays a [`Script`] (`Script::play`, the
 //! `harness` feature), the live link's server plays a `Play` request's
-//! steps, and a capture plan's input steps are these (ticket 2566): a key
+//! steps, and a capture plan's input steps are these: a key
 //! press is written once.
 //!
 //! A step's form is the same in JSON and in RON: `{"keys": "Enter Up"}`,

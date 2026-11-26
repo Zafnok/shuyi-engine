@@ -930,7 +930,7 @@ going public, with the one book (2823–2828).
 
 | Ticket | What |
 | ------ | ---- |
-| 2813 | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
+| 2813 (done) | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 | 2829 | What changed since your version: a reader who knew an earlier Shuyi sees each page's changes since then (after 2826 and 2005) |
 | 2830 | The book's follow-up project: a second, bigger game after the whole book, its plan, and room for a second project (after 2824 and 2825) |

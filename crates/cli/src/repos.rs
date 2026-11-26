@@ -7,7 +7,7 @@
 //! ADR-0130); puts a ruleset on the private repository's default branch;
 //! and pushes the game, last, so its first CI run has the key. A game
 //! with `scripts/git-hooks` (the template's) gets git's hooks set to it,
-//! its hooks committed executable (ticket 3402).
+//! its hooks committed executable.
 //!
 //! Each step is skipped when what it makes is there, so a second run makes
 //! nothing and a run after a failure finishes the rest. It acts on the

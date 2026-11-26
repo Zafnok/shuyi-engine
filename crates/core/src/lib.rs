@@ -35,8 +35,7 @@
 //!   at the root.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
-//! crate sits on it and keeps its own rules, turn loop and data (game ADR-0063
-//! §2, §6).
+//! crate sits on it and keeps its own rules, turn loop and data.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 // No floats in a simulation (ADR-0002 §2, ADR-0032); tests may use them.

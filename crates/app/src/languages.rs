@@ -1,4 +1,4 @@
-//! The system's preferred languages (ticket 2349): what a game picks its
+//! The system's preferred languages: what a game picks its
 //! first language from ([`PlatformFacts::languages`]). On native,
 //! `sys-locale` reads them (the `system-languages` feature; without it
 //! there are none); on the web, the browser's `navigator.languages`,

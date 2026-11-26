@@ -92,7 +92,7 @@ pub const CONTENT: &str = "SHUYI_CONTENT";
 /// of a desktop or web target turns it on, and bakes the pack.
 pub const PACKED: &str = "packed";
 
-/// What CI does with an exporter (`export --plan`, ticket 3050).
+/// What CI does with an exporter (`export --plan`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InCi {
     /// CI builds its package.

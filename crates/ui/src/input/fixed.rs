@@ -1,11 +1,11 @@
-//! The keys no player can rebind (`docs/design/controls.md`, *Rebinding
-//! keys*; game ADR-0031): plain `Escape` backs out of the Key bindings screen's
+//! The keys no player can rebind (ADR-0036, and rule 5 of the
+//! `shuyi-input` skill's *The rules*): plain `Escape` backs out of the Key bindings screen's
 //! "Press a key…" and plain `Delete` empties a slot there, so neither can
 //! be bound ([`Chord::is_reserved`]); and a text box's own `Enter`,
 //! `Backspace` and `Escape`. Which action a fixed key also triggers in
 //! play is the game's data ([`ActionSet::fixed_keys`]).
 //!
-//! Generic over the game (ticket 1106).
+//! Generic over the game's actions.
 //!
 //! [`ActionSet::fixed_keys`]: shuyi_assets::keymap::ActionSet::fixed_keys
 
@@ -20,7 +20,7 @@ const CAPTURE_ABORT: Chord = Chord::plain(Key::Escape);
 const CLEAR_SLOT: Chord = Chord::plain(Key::Delete);
 
 /// Whether `chord` backs out of the Key bindings screen's "Press a key…"
-/// (`docs/design/controls.md`, *Rebinding keys*). The screen asks this
+/// without changing anything. The screen asks this
 /// rather than naming the key (the `keyboard-input` skill).
 pub fn is_capture_abort(chord: Chord) -> bool {
     chord == CAPTURE_ABORT

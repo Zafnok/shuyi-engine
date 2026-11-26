@@ -204,6 +204,16 @@ fn a_screen_is_opaque_by_default() {
     assert_eq!(draws(&stack, &log), ["draw o"]);
 }
 
+#[test]
+fn a_screen_has_no_readout_by_default_and_the_stack_asks_only_the_top() {
+    let c = ctx();
+    assert_eq!(Home::default().debug_readout(&c), Vec::<String>::new());
+    let mut stack = ScreenStack::new(Box::new(crate::toy::tick::DotStage::new()));
+    assert_eq!(stack.debug_readout(&c), ["step 0", "dot 0,0"]);
+    stack.push(Box::new(Home::default()));
+    assert_eq!(stack.debug_readout(&c), Vec::<String>::new());
+}
+
 /// A click outside an overlay never reaches the screen under it: only the
 /// top screen's hits are kept.
 #[test]

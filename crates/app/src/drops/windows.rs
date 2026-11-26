@@ -1,4 +1,4 @@
-//! Drops on Windows, read by the backend itself (ticket 3307, ADR-0104).
+//! Drops on Windows, read by the backend itself (ADR-0104).
 //!
 //! miniquad 0.4.11 reads a `WM_DROPFILES` with `std::fs::read(..).unwrap()`,
 //! so a dropped folder panics inside its window procedure, and it never
@@ -92,9 +92,8 @@ fn install() {
 /// miniquad's main window, null until [`miniquad_window`] first finds it.
 ///
 /// miniquad makes one window, on the game's thread, before the first
-/// frame, and it lives for the whole run (game ADR-0034's backend
-/// `unsafe`), so once found it is kept rather than looked for again every
-/// frame (ticket 3222). A miss is not kept: before miniquad has made its
+/// frame, and it lives for the whole run, so once found it is kept rather than looked for again every
+/// frame. A miss is not kept: before miniquad has made its
 /// window, the next call looks again.
 static WINDOW: AtomicPtr<HWND__> = AtomicPtr::new(std::ptr::null_mut());
 

@@ -21,7 +21,7 @@
 //! nothing is built or run.
 //!
 //! `export --plan [--tag <tag>]` builds nothing: it answers the game's
-//! [`ExportPlan`], which a release workflow reads (ticket 3050). For each
+//! [`ExportPlan`], which a release workflow reads. For each
 //! target of `shuyi.ron`'s `targets` (sorted by id), each exporter that
 //! checks it (in the order they are registered): the runner it builds on in
 //! CI, the image it builds in, and whether CI builds it or only checks it.

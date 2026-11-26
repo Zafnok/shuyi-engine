@@ -20,11 +20,12 @@ use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
 use crate::audio::{
     AudioConfig, AudioRequest, DuckState, Gain, Gains, GroupGains, MusicClock, MusicCommand,
-    MusicState, SoundGroups,
+    MusicState, OUTSIDE_THE_STACK, SoundGroups,
 };
 use crate::cinematic::millis;
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::debug;
+use crate::debug::gizmo::{Gizmo, GizmoRole, Gizmos, READOUT};
 use crate::frame::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 use crate::frame::key_cap::KeyCaps;
@@ -286,6 +287,30 @@ pub struct Game<G: GameData> {
     /// The installed modules, and what each declared, in install order.
     modules: Vec<Box<dyn Module<G>>>,
     installed: Vec<InstalledModule>,
+    /// The input events of the frames slow motion skipped since its last
+    /// update, in order: the next update applies them (ADR-0153).
+    slow_events: Vec<RawInputEvent>,
+    /// Whether the debug pause holds the sounds started with a handle.
+    sounds_held: bool,
+}
+
+/// The frame time of a step of the paused game (ADR-0153): a frame at 60
+/// frames a second, whatever the platform's.
+pub const STEP_DT: f32 = 1.0 / 60.0;
+
+/// What the debug pause and slow motion make of a frame (ADR-0153).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Pace {
+    /// An ordinary update: the frame's time and steps.
+    Run,
+    /// The game is paused: no screen of the game updates, and the input
+    /// is dropped, but the debug actions'.
+    Held,
+    /// One update of the paused game, of [`STEP_DT`] and one fixed step.
+    Step,
+    /// Slow motion runs no update in this frame: its input waits for the
+    /// next one.
+    Skip,
 }
 
 impl<G: GameData> Game<G> {
@@ -324,6 +349,8 @@ impl<G: GameData> Game<G> {
             resumed: false,
             modules: Vec::new(),
             installed: Vec::new(),
+            slow_events: Vec::new(),
+            sounds_held: false,
         };
         game.stack.own_top(&mut game.ctx);
         game.redraw();
@@ -495,6 +522,20 @@ impl<G: GameData> Game<G> {
     /// the update and the drawing, and with memory scopes
     /// ([`Ctx::set_memory_scopes`]) it tags what each allocates `update`
     /// and `draw` ([`crate::perf`]).
+    ///
+    /// With debug tools on, the debug view's pause and slow motion
+    /// (ADR-0153, [`DebugView`](crate::debug::DebugView)) decide what the
+    /// frame updates. The game's `DebugPause` action pauses it or lets it
+    /// run again: while paused, the stack is drawn but no screen of the
+    /// game updates, no module's `before_update` runs, no time passes for
+    /// them, and the frame's input but the debug actions' is dropped. The
+    /// debug tools' own screens ([`GameHooks::debug_screens`]) still update
+    /// on top, and the Debug action still opens the debug menu. `DebugStep`,
+    /// while paused, runs one update with this frame's input, of
+    /// [`STEP_DT`] and one fixed step. In slow motion
+    /// ([`DebugView::slow`](crate::debug::DebugView::slow) above 1), one
+    /// frame in `slow` updates, with its own time and steps, and applies
+    /// the input of the frames between first, in order.
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> FrameOutput<'_, G::Voice> {
         self.audio_out.clear();
         self.music_out.clear();
@@ -509,7 +550,7 @@ impl<G: GameData> Game<G> {
             // (crate::perf).
             let tagged = self.ctx.enter_tag(TagClass::Phase, "update");
             let start = self.ctx.perf_now_in_frame();
-            self.step(events, dt, (ticks, resumed));
+            let played = self.step(events, dt, (ticks, resumed));
             let drawing = self.ctx.perf_now_in_frame();
             perf::leave_tag(tagged);
             let tagged = self.ctx.enter_tag(TagClass::Phase, "draw");
@@ -517,7 +558,7 @@ impl<G: GameData> Game<G> {
             let drawn = self.ctx.perf_now_in_frame();
             perf::leave_tag(tagged);
             self.ctx.set_perf_frame_times(start, drawing, drawn);
-            self.collect_audio(dt);
+            self.collect_audio(dt, played);
         }
         self.update_gains();
         FrameOutput {
@@ -547,9 +588,11 @@ impl<G: GameData> Game<G> {
     /// could stop (a release build plays it once). The engine's widgets
     /// play the game's [`AudioConfig`](crate::audio::AudioConfig) cues
     /// whatever sounds it has, so one the manifest lacks is silence: a game
-    /// with no sounds has quiet menus.
-    fn collect_audio(&mut self, dt: f32) {
-        self.ctx.audio.advance(dt);
+    /// with no sounds has quiet menus. The sounds' fades take `played`, the
+    /// time the game's screens played: none while the debug pause holds
+    /// them (ADR-0153). The music and the ducking take the frame's `dt`.
+    fn collect_audio(&mut self, dt: f32, played: f32) {
+        self.ctx.audio.advance(played);
         self.audio_out = self.ctx.audio.take();
         for problem in self.ctx.audio.take_problems() {
             self.ctx.log(LogLevel::Warn, LogCategory::Audio, problem);
@@ -588,10 +631,21 @@ impl<G: GameData> Game<G> {
     }
 
     /// One frame's update: `events` in order, `dt` seconds, and the fixed
-    /// steps due with whether the game just resumed.
-    fn step(&mut self, events: &[RawInputEvent], dt: f32, (ticks, resumed): (u32, bool)) {
+    /// steps due with whether the game just resumed, as the debug pause
+    /// and slow motion let it ([`Pace`]). Returns the time the game's
+    /// screens played: none while they are held.
+    fn step(&mut self, events: &[RawInputEvent], dt: f32, (ticks, resumed): (u32, bool)) -> f32 {
         // Bindings changed between frames (a test rebinding keys).
         self.sync_keymap();
+        let pace = self.pace(events);
+        let Some((kept, dt, ticks)) = self.paced(pace, events, (dt, ticks), resumed) else {
+            return 0.0;
+        };
+        let events = kept.as_slice();
+        // A paused game's debug screens (on top) play, but its time stands
+        // and its modules wait.
+        let game_runs = pace == Pace::Step || !self.is_paused();
+        let played = if game_runs { dt } else { 0.0 };
         // A key let go while the game was suspended never came up: let go
         // of everything held before, ahead of this frame's presses.
         if resumed {
@@ -608,7 +662,8 @@ impl<G: GameData> Game<G> {
         // game's first-key screen over whatever is showing and does nothing
         // else; that screen then takes the keys. Without a keyboard, never.
         let first_key = self.hooks.first_key.filter(|hook| {
-            self.ctx.platform.keyboard == Keyboard::Present
+            pace != Pace::Held
+                && self.ctx.platform.keyboard == Keyboard::Present
                 && self.ctx.layout().is_none()
                 && !self.stack.names().contains(&hook.name)
                 && events.iter().any(|e| matches!(e, RawInputEvent::Down(_)))
@@ -662,37 +717,34 @@ impl<G: GameData> Game<G> {
         // click lands on what the player saw.
         let buffer = &self.buffer;
         let pointer = self.pointer.frame(events, |x, y| buffer.hit_at(x, y));
-        self.ctx.clock_s += f64::from(dt);
+        self.ctx.clock_s += f64::from(played);
         // The pointer never changes the device the help text names.
         self.ctx.device = self.input.device();
-        let actions = self.input.update(dt);
+        // The debug pause's own actions are the game's, never a screen's.
+        let mut actions = self.input.update(dt);
+        actions.retain(|&a| !is_pace_action(a));
         let held = self.held();
-        for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
-            if installed.hooks.contains(&Hook::BeforeUpdate) {
-                module.before_update(&mut self.ctx, dt);
-            }
+        if game_runs {
+            self.modules_before_update(dt);
         }
         let debug = self.hooks.debug.filter(|_| {
             self.ctx.debug_tools
                 && actions.iter().any(|a| a.ui() == Some(UiAction::Debug))
-                && !self
-                    .stack
-                    .top_name()
-                    .is_some_and(|n| self.hooks.debug_screens.contains(&n))
+                && !self.debug_on_top()
         });
         if let Some(hook) = first_key {
             self.open(hook);
         }
         if let Some(hook) = debug {
             self.open(hook);
-        } else {
+        } else if pace != Pace::Held {
             // A chord button gives its own action when let go or after the
             // chord window: that is pad input too.
             let from_pad = !buttons_down.is_empty()
                 || (!actions.is_empty() && matches!(self.ctx.device, Device::Pad(_)));
             // The actions that went down and came up, for the fixed steps.
-            let downs = self.input.presses().to_vec();
-            let ups = self.input.released().to_vec();
+            let downs = without_pace(self.input.presses());
+            let ups = without_pace(self.input.released());
             let input = FrameInput::new(actions, dt, held)
                 .with_presses(downs, ups)
                 .with_typing(pressed, text)
@@ -704,6 +756,119 @@ impl<G: GameData> Game<G> {
             self.quit = self.stack.update(&mut self.ctx, &input);
             self.sync_keymap();
         }
+        played
+    }
+
+    /// What a frame of `pace` updates with: the input events, slow
+    /// motion's skipped frames' first, in order, the frame time and the
+    /// fixed steps. `None` for a frame slow motion skips, which keeps its
+    /// `events` for the next update, or its resume, which lets go of what
+    /// was held before and drops what was kept.
+    fn paced(
+        &mut self,
+        pace: Pace,
+        events: &[RawInputEvent],
+        (dt, ticks): (f32, u32),
+        resumed: bool,
+    ) -> Option<(Vec<RawInputEvent>, f32, u32)> {
+        let (dt, ticks) = match pace {
+            Pace::Run => (dt, ticks),
+            Pace::Held => (0.0, 0),
+            Pace::Step => (STEP_DT, 1),
+            Pace::Skip => {
+                if resumed {
+                    self.slow_events.clear();
+                    self.resumed = true;
+                } else {
+                    self.slow_events.extend_from_slice(events);
+                }
+                return None;
+            }
+        };
+        let mut kept = core::mem::take(&mut self.slow_events);
+        kept.extend_from_slice(events);
+        Some((kept, dt, ticks))
+    }
+
+    /// Runs the `before_update` of the modules that declared it, in
+    /// install order, with `dt` seconds.
+    fn modules_before_update(&mut self, dt: f32) {
+        for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
+            if installed.hooks.contains(&Hook::BeforeUpdate) {
+                module.before_update(&mut self.ctx, dt);
+            }
+        }
+    }
+
+    /// Whether the game is paused, which only debug tools allow.
+    fn is_paused(&self) -> bool {
+        self.ctx.debug_tools && self.ctx.debug_view.paused()
+    }
+
+    /// What this frame updates (ADR-0153). With debug tools on, the
+    /// `DebugPause` and `DebugStep` keys pressed in `events` act first, in
+    /// order, the moment they are pressed (in slow motion's skipped frames
+    /// too): they are keyboard only, so the keymap's chords name them.
+    /// Then a debug tools' screen on top runs, a paused game holds or
+    /// steps, and slow motion runs or skips. The pause holds the sounds
+    /// with a handle, and drops the input slow motion kept.
+    fn pace(&mut self, events: &[RawInputEvent]) -> Pace {
+        if !self.ctx.debug_tools {
+            self.hold_sounds();
+            return Pace::Run;
+        }
+        for event in events {
+            let RawInputEvent::Down(chord) = *event else {
+                continue;
+            };
+            for &action in self.input.keymap().actions(chord) {
+                match action.ui() {
+                    Some(UiAction::DebugPause) => {
+                        let paused = self.ctx.debug_view.paused();
+                        self.ctx.debug_view.set_paused(!paused);
+                    }
+                    Some(UiAction::DebugStep) => self.ctx.debug_view.step(),
+                    _ => {}
+                }
+            }
+        }
+        self.hold_sounds();
+        let paused = self.ctx.debug_view.paused();
+        if paused {
+            self.slow_events.clear();
+        }
+        if self.debug_on_top() {
+            Pace::Run
+        } else if paused {
+            if self.ctx.debug_view.take_step() {
+                Pace::Step
+            } else {
+                Pace::Held
+            }
+        } else if self.ctx.debug_view.slow_frame_runs() {
+            Pace::Run
+        } else {
+            Pace::Skip
+        }
+    }
+
+    /// Holds the sounds started with a handle while the game is paused,
+    /// and lets them go on once it runs again, under the owner of code
+    /// outside the stack, which no pop releases (2394): a step lets none
+    /// go on.
+    fn hold_sounds(&mut self) {
+        let hold = self.is_paused();
+        if hold == self.sounds_held {
+            return;
+        }
+        self.sounds_held = hold;
+        self.ctx.audio.set_owner(OUTSIDE_THE_STACK);
+        if hold {
+            self.ctx.audio.pause_sounds();
+        } else {
+            self.ctx.audio.resume_sounds();
+        }
+        self.stack.own_top(&mut self.ctx);
     }
 
     /// Hands the top screen `action` alone, in an update of its own with no
@@ -714,8 +879,32 @@ impl<G: GameData> Game<G> {
     /// sounds come out with the next frame. No step is due in it: a tick
     /// stage keeps it as a tap (pressed, and let go unless a key holds it)
     /// for its next step. After a quit, nothing.
+    ///
+    /// With debug tools on, the `DebugPause` action pauses the game or lets
+    /// it run again and `DebugStep` asks the next frame for a step
+    /// (ADR-0153); while the game is paused, any other action is dropped
+    /// unless a debug tools' screen is on top. The two never reach a
+    /// screen.
     pub fn act(&mut self, action: G::Action) {
         if self.quit {
+            return;
+        }
+        if self.ctx.debug_tools {
+            match action.ui() {
+                Some(UiAction::DebugPause) => {
+                    let paused = self.ctx.debug_view.paused();
+                    self.ctx.debug_view.set_paused(!paused);
+                    self.hold_sounds();
+                    self.redraw();
+                }
+                Some(UiAction::DebugStep) => self.ctx.debug_view.step(),
+                _ => {}
+            }
+            if self.is_paused() && !self.debug_on_top() {
+                return;
+            }
+        }
+        if is_pace_action(action) {
             return;
         }
         let held = self.held();
@@ -732,13 +921,21 @@ impl<G: GameData> Game<G> {
         self.stack.apply_in(&mut self.ctx, Transition::Push(screen));
     }
 
-    /// The actions whose keys or buttons are held.
+    /// The actions whose keys or buttons are held, but the debug pause's.
     fn held(&self) -> Vec<G::Action> {
         G::Action::ALL
             .iter()
             .copied()
-            .filter(|&a| self.input.is_held(a))
+            .filter(|&a| self.input.is_held(a) && !is_pace_action(a))
             .collect()
+    }
+
+    /// Whether a debug tools' screen is on top
+    /// ([`GameHooks::debug_screens`]).
+    fn debug_on_top(&self) -> bool {
+        self.stack
+            .top_name()
+            .is_some_and(|n| self.hooks.debug_screens.contains(&n))
     }
 
     /// Hands `ctx`'s keymap to the input if it changed (a layout was
@@ -811,9 +1008,33 @@ impl<G: GameData> Game<G> {
             .gizmos()
             .within(self.buffer.pixel_bounds());
         self.stack.debug_draw(&self.ctx, &mut gizmos);
+        self.readout(&mut gizmos);
         self.ctx.debug_view.offer(gizmos.offered());
         if !gizmos.is_empty() {
             debug::glyph::paint_gizmos(&self.ctx.palette, &gizmos, &mut self.buffer);
+        }
+    }
+
+    /// The `readout` channel (ADR-0153), which it offers: while it is on,
+    /// `paused` (or `paused, step N`) while the game is paused, then the
+    /// top screen's lines ([`Screen::debug_readout`]), each a `Note` label
+    /// on a row of its own from the frame's top-left cell.
+    fn readout(&self, gizmos: &mut Gizmos) {
+        if !gizmos.channel_on(READOUT) {
+            return;
+        }
+        let pause = self.ctx.debug_view.pause_line();
+        let lines = pause.into_iter().chain(self.stack.debug_readout(&self.ctx));
+        let frame = gizmos.frame();
+        let (_, cell_h) = self.ctx.console.cell_px();
+        let mut y = frame.y;
+        for text in lines {
+            let gizmo = Gizmo::Label {
+                at: (frame.x, y),
+                text,
+            };
+            gizmos.push(READOUT, GizmoRole::Note, gizmo);
+            y = y.saturating_add(cell_h);
         }
     }
 
@@ -922,7 +1143,24 @@ pub const CRANK_HINT: &str = "crank.unfold";
 // check-text: the engine's fallback, for a game that says nothing else
 const CRANK_HINT_ENGLISH: &str = "Unfold the crank to go on";
 
-/// Whether `request` names a cue of the right kind in `manifest`.
+/// Whether `action` is the debug pause's (`DebugPause` or `DebugStep`), which
+/// the game takes and no screen gets.
+fn is_pace_action<A: ActionSet>(action: A) -> bool {
+    matches!(
+        action.ui(),
+        Some(UiAction::DebugPause | UiAction::DebugStep)
+    )
+}
+
+/// `actions` without the debug pause's.
+fn without_pace<A: ActionSet>(actions: &[A]) -> Vec<A> {
+    actions
+        .iter()
+        .copied()
+        .filter(|&a| !is_pace_action(a))
+        .collect()
+}
+
 /// Whether `request` plays a cue the engine's widgets play: `config`'s.
 fn is_widget_cue<V>(config: &AudioConfig, request: &AudioRequest<V>) -> bool {
     let AudioRequest::PlaySound { cue, .. } = request else {

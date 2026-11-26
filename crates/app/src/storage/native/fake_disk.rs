@@ -1,5 +1,5 @@
 //! A fake [`Disk`] that can lose the power, and [`FileStorage`] run
-//! through `power_cut_suite` over it (ticket 3045).
+//! through `power_cut_suite` over it.
 //!
 //! The folder maps names to inodes. A file's bytes are durable as they are
 //! written, as `sync_all` makes them; the folder's names are durable only
