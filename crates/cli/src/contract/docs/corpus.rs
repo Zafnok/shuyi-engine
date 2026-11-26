@@ -172,11 +172,19 @@ pub fn clean(
     let mut out = String::with_capacity(body.len());
     let mut unknown = Vec::new();
     let mut at = 0;
+    let mut last_open = None;
     while let Some(found) = body.as_bytes()[at..]
         .windows(2)
         .position(|pair| pair[0] == b'{' && matches!(pair[1], b'{' | b'%'))
     {
+        // Each turn reads on past the last opener: a turn that went back
+        // would loop for ever, `out` growing until memory ran out.
+        debug_assert!(
+            last_open.is_none_or(|last| at > last),
+            "clean went back to byte {at}"
+        );
         let open = at + found;
+        last_open = Some(open);
         let opener = &body[open..open + 2];
         let closer = if opener == "{{" { "}}" } else { "%}" };
         out.push_str(&body[at..open]);
