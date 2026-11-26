@@ -33,8 +33,8 @@ seats are ridden by bots, and players drop in and out of them (2614).
   `Room` with seats that are `Human(peer)` or `Bot`, `RoomClient`, the
   `room::wire` codec and its `PROTOCOL`, and the test game
   `room::testing::Dots`.
-- **2613** builds `Transport`, `PeerId`, `NetEvent` and `MemoryNetwork`
-  with seeded faults.
+- **2613** builds `Transport`, `PeerId`, `NetEvent` and `MemoryNetwork`,
+  and **2620** its seeded faults.
 - **2616** (blocked by this ticket) puts a director behind WebSocket,
   TLS, `/healthz` and `/stats`. Everything here stays sans-IO: no
   socket, no clock, no thread.

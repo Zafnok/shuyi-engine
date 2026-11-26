@@ -37,9 +37,8 @@ pub enum Channel {
     /// Ordered and lossless, as a WebSocket over TCP: each message arrives
     /// once, after every one sent before it to the same peer.
     Reliable,
-    /// May be lost, duplicated or reordered. Over a WebSocket a backend
-    /// sends these reliably too; the in-memory network's faults hit only
-    /// these.
+    /// May be lost, duplicated or reordered, where the backend's network
+    /// does that. Over a WebSocket a backend sends these reliably too.
     Unreliable,
 }
 
@@ -212,12 +211,12 @@ impl NetStats {
         self.messages_in
     }
 
-    /// How many messages sent were lost by a fault.
+    /// How many messages sent the network lost.
     pub const fn dropped(&self) -> u64 {
         self.dropped
     }
 
-    /// How many messages sent were delivered twice by a fault.
+    /// How many messages sent the network delivered twice.
     pub const fn duplicated(&self) -> u64 {
         self.duplicated
     }
@@ -274,7 +273,7 @@ fn widen(len: usize) -> u64 {
 ///     }
 /// }
 ///
-/// let mut net = shuyi_net::MemoryNetwork::new(shuyi_net::Faults::none());
+/// let mut net = shuyi_net::MemoryNetwork::new();
 /// let mut server = net.endpoint();
 /// let mut client = net.endpoint();
 /// net.connect(server.id(), client.id());

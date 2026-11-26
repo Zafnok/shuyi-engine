@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
-blocked_by: ["2612", "2613"]
+blocked_by: ["2612", "2613", "2620"]
 nick_input: none
 completed:
 ---
@@ -30,8 +30,8 @@ completed:
   - 2612 (done): `MAX_SEATS` is 8, and `SeatInput` and `TickInput` have a
     fixed little-endian byte form (`encode`, `decode`, in
     `crates/core/src/tick/bytes.rs`);
-  - 2613: `PeerId`, `NetEvent`, `Transport` and `MemoryNetwork` with
-    seeded faults;
+  - 2613: `PeerId`, `NetEvent`, `Transport` and `MemoryNetwork`, and
+    2620: its seeded faults;
   - `shuyi_core::SimRng` and `shuyi_core::Made`.
 - `grep -rnw` over `tickets/open` for `RoomGame`, `RoomClient`, `Room`
   and `Outbox`: only the new tickets of this set (2615 writes into this
@@ -166,7 +166,7 @@ and the room's tests, and 2790's `blocked_by` gains the new ticket.
 4. `RoomClient`: frames, the jitter buffer, `advance`, hash checks and
    `Resync`.
 5. `room::testing::Dots`, and the integration tests over 2613's
-   `MemoryNetwork` with faults on.
+   `MemoryNetwork` with 2620's faults on.
 6. Write the `Book:` (2854) and `Skills:` (2855) lines in the completion
    notes.
 

@@ -89,8 +89,8 @@ traffic: the server and every client step them from the same inputs.
 
 - **`shuyi-net`**, pure: no I/O, no clock, no threads, no floats; it
   depends on `shuyi-core` only. It holds the `Transport` trait, the
-  in-memory network with seeded faults (2613), the rooms (2614) and the
-  director (2615). A module (ADR-0009 §4), behind the front door's `net`
+  in-memory network (2613) with its seeded faults (2620), the rooms
+  (2614) and the director (2615). A module (ADR-0009 §4), behind the front door's `net`
   feature, off by default.
 - **`shuyi-server`**, a tokio library (2616): it runs a director's rooms
   over WebSocket with TLS, limits and a health check.

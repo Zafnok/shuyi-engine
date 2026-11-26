@@ -162,8 +162,8 @@
         "shuyi-net": (
             // The transport trait and the in-memory network (ADR-0152), a
             // module: pure, with no I/O, no clock and no threads; the
-            // sockets are the backends'. Its faults draw from `SimRng`.
-            engine: ["shuyi-core"],
+            // sockets are the backends'.
+            engine: [],
             outside: Only([]),
             devices: false,
             floats: false,

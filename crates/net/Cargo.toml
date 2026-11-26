@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-net"
-description = "Shuyi Engine's networking, pure: the Transport trait a game's online play talks through, and an in-memory network with seeded faults for tests"
+description = "Shuyi Engine's networking, pure: the Transport trait a game's online play talks through, and an in-memory network for tests"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,11 +16,3 @@ workspace = true
 [package.metadata.shuyi]
 answers = [{ concern = "online", answer = "server" }]
 serves = ["fixed-ticks"]
-
-[dependencies]
-# The seeded faults draw from the core's `SimRng`. No outside crate: the
-# crate is pure (ADR-0152).
-shuyi-core = { path = "../core", default-features = false }
-
-[dev-dependencies]
-proptest.workspace = true

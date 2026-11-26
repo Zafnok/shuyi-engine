@@ -18,7 +18,7 @@ completed:
 ## Context
 
 2529 adds `shuyi peers`: several copies of a turn game in one headless
-process, joined by 2613's `MemoryNetwork` with seeded faults, with
+process, joined by 2613's `MemoryNetwork` with 2620's seeded faults, with
 each peer's `NetStats` and a desync report, as an operation of the
 tool contract and through MCP. Its peers talk straight to each other,
 as lockstep between friends does (ADR-0006 §4). Its **Out** leaves "a

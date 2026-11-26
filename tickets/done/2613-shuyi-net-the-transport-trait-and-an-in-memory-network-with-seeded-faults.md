@@ -1,6 +1,6 @@
 ---
 id: "2613"
-title: "shuyi-net: the Transport trait and an in-memory network with seeded faults, split out of 1140, and ADR-0152 for real-time rooms"
+title: "shuyi-net: the Transport trait and an in-memory network, split out of 1140, and ADR-0152 for real-time rooms"
 type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,6 +12,14 @@ completed: 2026-11-26
 ---
 
 # 2613 — shuyi-net: Transport, an in-memory network, and ADR-0152
+
+**Split on 2026-11-26:** at 1,936 counted lines this ticket's PR was
+split. The seeded faults (`Faults`, their draws, and the tests and
+acceptance cases of loss, duplicates, reordering and delay) are 2620's;
+this ticket keeps the crate, `Transport` and its types, a
+`MemoryNetwork` that delivers at the next step in send order, the
+module duties, the CI line and ADR-0152. The scope below is as
+written; the Out list and the struck criteria say what moved.
 
 ## Context
 
@@ -207,6 +215,9 @@ Nick's next batch of names.
   `cargo xtask docs-rules`.
 
 **Out (do not do):**
+- The seeded faults: `Faults`, `set_faults`, the draws from `SimRng`,
+  delays, and their tests (2620, split out of this PR). Until then the
+  crate depends on no engine crate (2620 adds `shuyi-core`).
 - Lockstep, its handshake, commit-reveal, the messages' fuzz target and
   the `net` debug channel: 1140, built on this crate.
 - Rooms, bots, frames and the wire codec: 2614.
@@ -244,17 +255,17 @@ ADR 150).
 
 - [x] `cargo xtask check-layers` and `cargo xtask check-modules` pass
       with the new crate, and `shuyi-net` is reached by no default crate.
-- [x] The same `Faults` seed and the same sends give the same delivery
-      order, event for event, in two runs and on wasm32.
-- [x] Reliable messages are never lost, duplicated or reordered under
+- [x] ~~The same `Faults` seed and the same sends give the same delivery
+      order, event for event, in two runs and on wasm32.~~ (not done: moved to 2620, split out of this PR)
+- [x] ~~Reliable messages are never lost, duplicated or reordered under
       any fault setting (a property test over at least 200 seeds with
-      loss, duplicates and reordering each at 500 per-mille).
-- [x] Over 10,000 Unreliable messages at 100 per-mille each, the
+      loss, duplicates and reordering each at 500 per-mille).~~ (not done: moved to 2620, split out of this PR)
+- [x] ~~Over 10,000 Unreliable messages at 100 per-mille each, the
       measured loss, duplicate and reorder rates are each within 70–130
-      per-mille.
-- [x] Every delivery lands between `delay_min` and `delay_max` steps
+      per-mille.~~ (not done: moved to 2620, split out of this PR)
+- [x] ~~Every delivery lands between `delay_min` and `delay_max` steps
       after its send (Reliable may wait longer only behind an earlier
-      message).
+      message).~~ (not done: moved to 2620, split out of this PR)
 - [x] A disconnect gives `Disconnected { reason: Closed }` on both ends,
       after the Reliable messages sent before it; a send after it is
       `Err(Closed)`.
@@ -286,44 +297,48 @@ Done on 2026-11-26.
 
 - **The crate** `crates/net` (`shuyi-net`): `PeerId`, `Channel`,
   `NetEvent`, `DisconnectReason`, `SendError`, `NetStats` and the
-  `Transport` trait (`src/transport.rs`), and `MemoryNetwork`,
-  `MemoryEndpoint` and `Faults` (`src/memory.rs`). Pure: no I/O, no
-  clock, no threads, floats denied; it depends on `shuyi-core` alone
-  (`default-features = false`), for `SimRng`.
-- **Faults:** each `Unreliable` send draws, in order, its loss, its
-  duplicate, its reordering, its delay and its copy's delay (five draws
-  whatever comes up); a `Reliable` send and a disconnect draw a delay.
-  A reordered message is held behind the other deliveries of its step
-  (its copy too). Deliveries are kept in a `BTreeMap` by step, held-back
-  last, then send order.
+  `Transport` trait (`src/transport.rs`), and `MemoryNetwork` and
+  `MemoryEndpoint` (`src/memory.rs`). Pure: no I/O, no clock, no
+  threads, floats denied, and no dependency at all yet. `MemoryNetwork`
+  delivers what was sent at the next `step`, in send order, on both
+  channels; a disconnect tells both ends at the next step, each after
+  the messages sent to it before the close; a send after it is
+  `Err(Closed)`; `max_message` (64 KiB) gives `TooLarge`.
 - **Module duties:** the metadata (`online` = `server`, serving
   `fixed-ticks`), the `server` answer in `docs/modules.ron` (planned,
   2614–2616), the `shuyi-net` row in `docs/modules.md`, the README in
   ADR-0009 §4's order with the size measured, `tools/layers.ron`'s entry
   and the front door's edge, and the front door's `net` feature, off by
   default.
-- **Tests:** 14 unit tests (`src/memory/tests.rs`); `tests/faults.rs`:
-  two property tests over 256 cases each (Reliable never lost,
-  duplicated or reordered at 500 per mille of each fault; delays within
-  bounds), the rates over 10,000 messages for three seeds (measured 98 to
-  109 per mille), two runs of one session equal, and that session's
-  events pinned by count and hash; `tests/links.rs`: a server linked to
-  three clients with one leaving, a disconnect after the Reliable
-  messages sent before it (50 seeds), and the closing end told at the
-  next step. All pass on wasm32-wasip1 under wasmtime (the two
-  `should_panic` tests are skipped there, as WASI can't unwind).
+- **Tests:** 13 unit tests (`src/memory/tests.rs`: each `SendError` path,
+  `Connected` on `connect` and before a message sent at once, stats both
+  ways, send order on both channels, nothing between steps, a clone
+  sharing its inbox, the panics of `connect`), and `tests/links.rs`: a
+  server linked to three clients with one leaving while the two others
+  keep talking both ways, and a disconnect after the messages sent before
+  it, on both ends. They pass on wasm32-wasip1 under wasmtime too (the
+  two `should_panic` tests are skipped there, as WASI can't unwind).
 - **CI:** `-p shuyi-net` joins the wasm32 `cargo test` step of the
   `determinism` job, and the same line in the `run-gates` skill and in
   `tools/sound-parity/footprint.ron` (which rewrites that line).
 - **ADR-0152** (real-time rooms), with "Amended by" lines in ADR-0006 and
   ADR-0008 and both index rows.
 - **Size measured** on 2026-11-26: Hello, Grid's web release build with
-  a live use of `MemoryNetwork` is 29,161 bytes bigger (3,915,937 →
-  3,945,098); without the `net` feature, `cargo tree -p hello-grid` and
+  a live use of `MemoryNetwork` is 21,159 bytes bigger (3,915,937 →
+  3,937,096). Without the `net` feature, `cargo tree -p hello-grid` and
   `cargo tree -p shuyi` have no `shuyi-net`.
 
 **Deviations:**
 
+- **Split: the seeded faults are 2620's.** With them the PR counted
+  1,936 lines (code 950, tests 701). The faults stand apart (a
+  fault-free `MemoryNetwork` already serves a test of online code), so
+  they went to 2620, with their four acceptance cases (struck above).
+  Their draft code and tests are on this session's local branch
+  `t2620-memory-network-faults`. 1140, 2529, 2550, 2614, 2615, 2720 and
+  2854 now name 2620 for the faults; 1140 and 2614 have it in
+  `blocked_by` (2615 waits through 2614, 2529 through 1140).
+  `shuyi-core` and the layers' `engine: ["shuyi-core"]` come with 2620.
 - **The ADR's number is 0152, not 0150.** ADR-0150 (the contract's
   version) and ADR-0151 (constructors) were taken after this ticket was
   written. The net tickets' references to ADR-0150 now say ADR-0152
@@ -334,19 +349,14 @@ Done on 2026-11-26.
 - **`NetStats` gains `record_sent`, `record_received`, `record_dropped`
   and `record_duplicated`.** A `#[non_exhaustive]` type with getters
   alone can't be filled by a backend in another crate (2616, 2617).
-  `dropped` and `duplicated` count on the sending end.
-- **`MemoryNetwork` gains `faults()`, `set_max_message`, `max_message`
-  and `steps()`**, for tests to read the network.
-- **Delays count steps from a send to its delivery:** 1 is the next
-  step, the soonest there is; 0 counts as 1, and a `delay_max` below
-  `delay_min` as `delay_min`. `Faults::none()` delivers at the next step.
+- **`MemoryNetwork::new()` takes nothing** (2620 adds `with_faults`), and
+  it gains `set_max_message`, `max_message` and `steps()`, and `Default`.
 - **`connect` takes two `PeerId`s** and panics on one not of the network
   or on a self-link. A pair is linked once: a peer that comes back is a
   new endpoint, as a new connection has a new id. A send works from
   `connect` on, before `Connected` is polled.
 - **The front door's feature is `net = ["std", "dep:shuyi-net"]`**, as
-  `script`'s is: the crate needs `std`. 2617's line naming the feature
-  now says so.
+  `script`'s is. 2617's line naming the feature now says so.
 - **`cargo xtask api` checks the crate:** `shuyi-net` joins
   `API_CRATES`, and `shuyi`'s checked features gain `net`
   (`crates/xtask/src/api.rs` and its test's table), since `check_catalog`

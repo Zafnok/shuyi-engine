@@ -5,9 +5,9 @@ code talks through the `Transport` trait: it sends bytes to a peer on a
 reliable channel (ordered and lossless, as a WebSocket is) or an
 unreliable one, and polls for peers connected, messages and disconnects.
 `MemoryNetwork` is a whole network in memory, for tests: endpoints in one
-process, moved on one step at a time, with seeded loss, duplicates,
-reordering and delay, so the same seed and the same sends give the same
-deliveries on every target, wasm32 included. It is the base of the rooms
+process, moved on one step at a time, so a test of online code needs no
+socket and runs the same on every target, wasm32 included (seeded loss,
+duplicates, reordering and delay are 2620's). It is the base of the rooms
 of a game server, where the server broadcasts each step's inputs and
 every client steps the same rules
 ([ADR-0152](../../docs/adr/0152-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)).
@@ -30,10 +30,10 @@ referee are parked (1140–1150).
 
 - **Size**, measured on 2026-11-26 with Hello, Grid making a
   `MemoryNetwork`, sending on both channels and disconnecting, release
-  builds: **+29,161 bytes** of `.wasm` (3,915,937 → 3,945,098). A game
+  builds: **+21,159 bytes** of `.wasm` (3,915,937 → 3,937,096). A game
   that doesn't turn the front door's `net` feature on builds none of it:
   no default feature reaches the crate.
-- **Dependencies:** `shuyi-core` only, for `SimRng`. No outside crate.
+- **Dependencies:** none, of the engine or outside it.
 
 ## How to start
 
@@ -42,32 +42,31 @@ Turn it on with the `shuyi` crate's `net` feature, or depend on
 network:
 
 ```rust
-use shuyi::net::{Channel, Faults, MemoryNetwork, NetEvent, Transport};
+use shuyi::net::{Channel, MemoryNetwork, NetEvent, Transport};
 
-// Unreliable messages lost one time in ten, every delivery 1 to 3 steps
-// late, drawn from seed 7.
-let faults = Faults::none().with_seed(7).with_loss(100).with_delay_max(3);
-let mut net = MemoryNetwork::new(faults);
+let mut net = MemoryNetwork::new();
 let mut server = net.endpoint();
 let mut client = net.endpoint();
 net.connect(server.id(), client.id());
 net.step();
 assert_eq!(client.poll(), [NetEvent::Connected(server.id())]);
 
-// Reliable messages are never lost, duplicated or reordered.
 server
     .send(client.id(), Channel::Reliable, b"step 1")
     .expect("the client is linked");
-for _ in 0..3 {
-    net.step();
-}
-assert_eq!(client.poll().len(), 1);
+net.step();
+assert_eq!(
+    client.poll(),
+    [NetEvent::Message {
+        peer: server.id(),
+        channel: Channel::Reliable,
+        bytes: b"step 1".to_vec(),
+    }]
+);
 ```
 
 Code written against `impl Transport` runs unchanged over a real
-backend. `Faults` can change between steps (`set_faults`), and
-`stats()` counts each end's bytes and messages, and what the faults lost
-and duplicated.
+backend. `stats()` counts each end's bytes and messages both ways.
 
 ## Beside its alternatives
 

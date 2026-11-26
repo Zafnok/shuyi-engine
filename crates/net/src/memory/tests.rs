@@ -1,8 +1,8 @@
 use super::*;
 
-/// A network with no faults, and two endpoints linked and told so.
+/// A network with two endpoints linked and told so.
 fn linked() -> (MemoryNetwork, MemoryEndpoint, MemoryEndpoint) {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let mut a = net.endpoint();
     let mut b = net.endpoint();
     net.connect(a.id(), b.id());
@@ -14,14 +14,14 @@ fn linked() -> (MemoryNetwork, MemoryEndpoint, MemoryEndpoint) {
 
 #[test]
 fn endpoints_are_numbered_from_zero() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let ids: Vec<PeerId> = (0..3).map(|_| net.endpoint().id()).collect();
     assert_eq!(ids, [PeerId(0), PeerId(1), PeerId(2)]);
 }
 
 #[test]
 fn connect_gives_each_end_connected_at_the_next_step() {
-    let mut net = MemoryNetwork::new(Faults::none().with_delay_min(5));
+    let mut net = MemoryNetwork::new();
     let mut a = net.endpoint();
     let mut b = net.endpoint();
     net.connect(a.id(), b.id());
@@ -37,7 +37,7 @@ fn connect_gives_each_end_connected_at_the_next_step() {
 
 #[test]
 fn connected_comes_before_a_message_sent_at_once() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let a = net.endpoint();
     let mut b = net.endpoint();
     net.connect(a.id(), b.id());
@@ -60,7 +60,7 @@ fn connected_comes_before_a_message_sent_at_once() {
 #[test]
 #[should_panic(expected = "not an endpoint of this network")]
 fn connect_to_an_unknown_endpoint_panics() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let a = net.endpoint();
     net.connect(a.id(), PeerId(7));
 }
@@ -68,14 +68,14 @@ fn connect_to_an_unknown_endpoint_panics() {
 #[test]
 #[should_panic(expected = "not linked to itself")]
 fn connect_to_itself_panics() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let a = net.endpoint();
     net.connect(a.id(), a.id());
 }
 
 #[test]
 fn a_send_to_an_unknown_peer_is_unknown_peer() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     let mut a = net.endpoint();
     let b = net.endpoint();
     // `b` exists but isn't linked; `PeerId(9)` doesn't exist.
@@ -160,69 +160,50 @@ fn stats_count_bytes_and_messages_both_ways() {
 }
 
 #[test]
-fn stats_count_what_the_faults_did() {
-    let mut net = MemoryNetwork::new(Faults::none());
-    let mut a = net.endpoint();
-    let mut b = net.endpoint();
-    net.connect(a.id(), b.id());
-    net.set_faults(Faults::none().with_loss(1_000));
-    a.send(b.id(), Channel::Unreliable, b"lost").unwrap();
-    net.set_faults(Faults::none().with_duplicate(1_000));
-    a.send(b.id(), Channel::Unreliable, b"twice").unwrap();
-    net.step();
-    assert_eq!(b.poll().len(), 3, "connected and two copies");
-    let stats = a.stats();
-    assert_eq!(
-        (stats.messages_out(), stats.dropped(), stats.duplicated()),
-        (2, 1, 1)
-    );
-    assert_eq!(b.stats().messages_in(), 2);
-}
-
-#[test]
-fn chances_over_a_thousand_count_as_a_thousand() {
-    let faults = Faults::none()
-        .with_loss(5_000)
-        .with_duplicate(1_001)
-        .with_reorder(999);
-    assert_eq!(
-        (faults.loss(), faults.duplicate(), faults.reorder()),
-        (1_000, 1_000, 999)
-    );
-    assert_eq!(Faults::default(), Faults::none());
-}
-
-#[test]
-fn a_delay_of_zero_counts_as_one_and_a_max_below_the_min_as_the_min() {
-    assert_eq!(Faults::none().with_delay_min(0).delays(), (1, 1));
-    assert_eq!(
-        Faults::none().with_delay_min(4).with_delay_max(2).delays(),
-        (4, 4)
-    );
+fn nothing_happens_between_steps() {
     let (mut net, mut a, mut b) = linked();
-    net.set_faults(Faults::none().with_delay_min(0).with_delay_max(0));
     a.send(b.id(), Channel::Reliable, b"x").unwrap();
-    assert_eq!(b.poll(), [], "nothing happens between steps");
+    assert_eq!(b.poll(), []);
     net.step();
     assert_eq!(b.poll().len(), 1);
+    // A step with nothing sent delivers nothing.
+    net.step();
+    assert_eq!(b.poll(), []);
 }
 
 #[test]
-fn set_faults_with_the_same_seed_keeps_drawing_and_a_new_seed_starts_afresh() {
-    let faults = Faults::none().with_seed(3).with_delay_max(9);
-    let mut net = MemoryNetwork::new(faults);
-    net.shared.borrow_mut().rng.next_u32();
-    let drawn = net.shared.borrow().rng.clone();
-    net.set_faults(faults.with_loss(10));
-    assert_eq!(net.shared.borrow().rng, drawn);
-    assert_eq!(net.faults().loss(), 10);
-    net.set_faults(faults.with_seed(4));
-    assert_eq!(net.shared.borrow().rng, SimRng::new(4));
+fn messages_arrive_in_the_order_sent_on_both_channels() {
+    let (mut net, mut a, mut b) = linked();
+    let channels = [Channel::Unreliable, Channel::Reliable, Channel::Unreliable];
+    for (n, channel) in (0u8..).zip(channels) {
+        a.send(b.id(), channel, &[n]).unwrap();
+    }
+    net.step();
+    let got: Vec<NetEvent> = (0u8..)
+        .zip(channels)
+        .map(|(n, channel)| NetEvent::Message {
+            peer: a.id(),
+            channel,
+            bytes: vec![n],
+        })
+        .collect();
+    assert_eq!(b.poll(), got);
+}
+
+#[test]
+fn a_clone_of_an_endpoint_shares_its_inbox() {
+    let (mut net, mut a, b) = linked();
+    let mut twin = b.clone();
+    a.send(b.id(), Channel::Reliable, b"x").unwrap();
+    net.step();
+    assert_eq!(twin.poll().len(), 1);
+    assert_eq!(twin.stats(), b.stats());
+    assert_eq!(MemoryNetwork::default().steps(), 0);
 }
 
 #[test]
 fn steps_count_the_steps_run() {
-    let mut net = MemoryNetwork::new(Faults::none());
+    let mut net = MemoryNetwork::new();
     assert_eq!(net.steps(), 0);
     net.step();
     net.step();

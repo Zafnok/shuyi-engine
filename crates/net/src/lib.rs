@@ -1,6 +1,6 @@
 //! Shuyi Engine's networking, pure: the [`Transport`] trait a game's online
-//! play talks through, and [`MemoryNetwork`], an in-memory network with
-//! seeded faults for tests.
+//! play talks through, and [`MemoryNetwork`], an in-memory network for
+//! tests.
 //!
 //! A transport links this end to peers, each a [`PeerId`]. It sends bytes
 //! to one on a [`Channel`] (`Reliable`, ordered and lossless as a WebSocket
@@ -8,13 +8,12 @@
 //! since: [`NetEvent`]s of peers connected, messages and disconnects. The
 //! sockets live in the backends (ADR-0152): a server's in `shuyi-server`,
 //! a native client's and a web client's in `shuyi-app`. This crate has no
-//! I/O, no clock, no threads and no floats, so the same sends give the
-//! same deliveries on every target.
+//! I/O, no clock, no threads and no floats.
 //!
 //! ```
-//! use shuyi_net::{Channel, Faults, MemoryNetwork, NetEvent, Transport};
+//! use shuyi_net::{Channel, MemoryNetwork, NetEvent, Transport};
 //!
-//! let mut net = MemoryNetwork::new(Faults::none());
+//! let mut net = MemoryNetwork::new();
 //! let mut server = net.endpoint();
 //! let mut client = net.endpoint();
 //! net.connect(server.id(), client.id());
@@ -35,11 +34,11 @@
 //! # Ok::<(), shuyi_net::SendError>(())
 //! ```
 #![forbid(unsafe_code)]
-// No floats anywhere: delivery is whole steps and per-mille draws.
+// No floats anywhere: delivery is in whole steps.
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 mod memory;
 mod transport;
 
-pub use memory::{Faults, MemoryEndpoint, MemoryNetwork};
+pub use memory::{MemoryEndpoint, MemoryNetwork};
 pub use transport::{Channel, DisconnectReason, NetEvent, NetStats, PeerId, SendError, Transport};

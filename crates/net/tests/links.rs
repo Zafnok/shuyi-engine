@@ -2,7 +2,7 @@
 //! disconnects.
 
 use shuyi_net::{
-    Channel, DisconnectReason, Faults, MemoryEndpoint, MemoryNetwork, NetEvent, PeerId, SendError,
+    Channel, DisconnectReason, MemoryEndpoint, MemoryNetwork, NetEvent, PeerId, SendError,
     Transport,
 };
 
@@ -35,7 +35,7 @@ fn after(net: &mut MemoryNetwork, steps: u32, end: &mut MemoryEndpoint) -> Vec<N
 
 #[test]
 fn a_server_linked_to_three_keeps_talking_to_two_when_one_leaves() {
-    let mut net = MemoryNetwork::new(Faults::none().with_seed(9).with_delay_max(3));
+    let mut net = MemoryNetwork::new();
     let mut server = net.endpoint();
     let mut clients: Vec<MemoryEndpoint> = (0..3).map(|_| net.endpoint()).collect();
     for client in &clients {
@@ -94,64 +94,45 @@ fn a_server_linked_to_three_keeps_talking_to_two_when_one_leaves() {
 }
 
 #[test]
-fn a_disconnect_follows_the_reliable_messages_sent_before_it() {
-    for seed in 0..50 {
-        let faults = Faults::none()
-            .with_seed(seed)
-            .with_loss(500)
-            .with_delay_min(1)
-            .with_delay_max(6);
-        let mut net = MemoryNetwork::new(faults);
-        let mut a = net.endpoint();
-        let mut b = net.endpoint();
-        net.connect(a.id(), b.id());
-        net.step();
-        a.poll();
-        b.poll();
-        for n in 0..5u8 {
-            a.send(b.id(), Channel::Reliable, &[n]).unwrap();
-        }
-        // `b`'s message on its way to `a` when `a` closes.
-        b.send(a.id(), Channel::Reliable, b"late").unwrap();
-        a.disconnect(b.id());
-        assert_eq!(
-            a.send(b.id(), Channel::Reliable, b"x"),
-            Err(SendError::Closed(b.id()))
-        );
-
-        let at_b = after(&mut net, 20, &mut b);
-        let mut want: Vec<NetEvent> = (0..5u8)
-            .map(|n| message(a.id(), Channel::Reliable, &[n]))
-            .collect();
-        want.push(closed(a.id()));
-        assert_eq!(at_b, want, "seed {seed}");
-
-        // The end that closed is told, and gets nothing after: `late`
-        // arrives only if it was due before the close was.
-        let at_a = a.poll();
-        assert_eq!(at_a.last(), Some(&closed(b.id())), "seed {seed}");
-        assert!(
-            at_a.len() == 1 || at_a[0] == message(b.id(), Channel::Reliable, b"late"),
-            "seed {seed}: {at_a:?}"
-        );
-        assert_eq!(
-            b.send(a.id(), Channel::Unreliable, b"x"),
-            Err(SendError::Closed(a.id()))
-        );
-    }
-}
-
-#[test]
-fn the_end_that_closes_is_told_at_the_next_step() {
-    let mut net = MemoryNetwork::new(Faults::none().with_delay_min(5));
+fn a_disconnect_follows_the_messages_sent_before_it_on_both_ends() {
+    let mut net = MemoryNetwork::new();
     let mut a = net.endpoint();
-    let b = net.endpoint();
+    let mut b = net.endpoint();
     net.connect(a.id(), b.id());
-    for _ in 0..5 {
-        net.step();
-    }
-    a.poll();
-    a.disconnect(b.id());
     net.step();
-    assert_eq!(a.poll(), [closed(b.id())]);
+    a.poll();
+    b.poll();
+    for n in 0..5u8 {
+        a.send(b.id(), Channel::Reliable, &[n]).unwrap();
+    }
+    // `b`'s message, on its way to `a` when `a` closes.
+    b.send(a.id(), Channel::Unreliable, b"late").unwrap();
+    a.disconnect(b.id());
+    assert_eq!(
+        a.send(b.id(), Channel::Reliable, b"x"),
+        Err(SendError::Closed(b.id()))
+    );
+    assert_eq!(
+        b.send(a.id(), Channel::Unreliable, b"x"),
+        Err(SendError::Closed(a.id()))
+    );
+    assert_eq!(a.poll(), [], "told at the next step");
+    net.step();
+    let mut want: Vec<NetEvent> = (0..5u8)
+        .map(|n| message(a.id(), Channel::Reliable, &[n]))
+        .collect();
+    want.push(closed(a.id()));
+    assert_eq!(b.poll(), want);
+    assert_eq!(
+        a.poll(),
+        [
+            message(b.id(), Channel::Unreliable, b"late"),
+            closed(b.id())
+        ]
+    );
+    // Closed once: nothing more, however long.
+    a.disconnect(b.id());
+    b.disconnect(a.id());
+    assert_eq!(after(&mut net, 5, &mut b), []);
+    assert_eq!(a.poll(), []);
 }

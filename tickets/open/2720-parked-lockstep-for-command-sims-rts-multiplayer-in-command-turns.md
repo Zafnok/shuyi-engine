@@ -79,7 +79,7 @@ None.
   that a peer at `GameSpeed::DOUBLE` ends with the same hash list as one
   at `NORMAL`, at the slower peer's pace; if not, nothing to do here
   (2123 adds the test).
-- **Tests over `MemoryNetwork`** (2613), with seeded loss, delay,
+- **Tests over `MemoryNetwork`** (2613, faults 2620), with seeded loss, delay,
   reordering and duplicates on the unreliable channel, and delay on the
   reliable one:
   - two and four peers running 2706's `Beacons` with random commands end

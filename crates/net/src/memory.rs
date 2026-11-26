@@ -1,11 +1,9 @@
 //! The in-memory network, for tests: endpoints in one process, moved on
-//! one step at a time, with seeded faults.
+//! one step at a time.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-
-use shuyi_core::SimRng;
 
 use crate::transport::{
     Channel, DisconnectReason, NetEvent, NetStats, PeerId, SendError, Transport,
@@ -14,174 +12,15 @@ use crate::transport::{
 /// The default [`MemoryNetwork::max_message`]: 64 KiB.
 const DEFAULT_MAX_MESSAGE: usize = 64 * 1024;
 
-/// A per-mille chance's whole range.
-const PER_MILLE: u16 = 1_000;
-
-/// What the in-memory network does to messages: loss, duplicates and
-/// reordering of `Unreliable` messages, and a delay of every delivery,
-/// drawn from one `SimRng` seeded with [`Faults::seed`].
-///
-/// Chances are per mille (0 to 1,000; more counts as 1,000), and delays
-/// count steps from a send to its delivery: 1 is the next
-/// [`MemoryNetwork::step`], the soonest there is (0 counts as 1, and a
-/// `delay_max` below `delay_min` as `delay_min`).
-///
-/// ```
-/// use shuyi_net::Faults;
-///
-/// let faults = Faults::none()
-///     .with_seed(7)
-///     .with_loss(50)
-///     .with_delay_min(2)
-///     .with_delay_max(4);
-/// assert_eq!((faults.loss(), faults.duplicate()), (50, 0));
-/// assert_eq!((faults.delay_min(), faults.delay_max()), (2, 4));
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub struct Faults {
-    seed: u64,
-    loss: u16,
-    duplicate: u16,
-    reorder: u16,
-    delay_min: u32,
-    delay_max: u32,
-}
-
-impl Faults {
-    /// No faults: nothing lost, duplicated or reordered, and every
-    /// message delivered at the next step. The seed is 0.
-    #[must_use]
-    pub const fn none() -> Self {
-        Self {
-            seed: 0,
-            loss: 0,
-            duplicate: 0,
-            reorder: 0,
-            delay_min: 1,
-            delay_max: 1,
-        }
-    }
-
-    /// The seed of the draws.
-    #[must_use]
-    pub const fn with_seed(mut self, seed: u64) -> Self {
-        self.seed = seed;
-        self
-    }
-
-    /// The chance, per mille, that an `Unreliable` message is lost.
-    #[must_use]
-    pub const fn with_loss(mut self, per_mille: u16) -> Self {
-        self.loss = clamp_per_mille(per_mille);
-        self
-    }
-
-    /// The chance, per mille, that an `Unreliable` message that isn't
-    /// lost arrives twice, the copy with a delay of its own.
-    #[must_use]
-    pub const fn with_duplicate(mut self, per_mille: u16) -> Self {
-        self.duplicate = clamp_per_mille(per_mille);
-        self
-    }
-
-    /// The chance, per mille, that an `Unreliable` message that isn't lost
-    /// is held back behind the other deliveries of its step (its copy too,
-    /// if it has one), so the messages sent after it that arrive at that
-    /// step come first.
-    #[must_use]
-    pub const fn with_reorder(mut self, per_mille: u16) -> Self {
-        self.reorder = clamp_per_mille(per_mille);
-        self
-    }
-
-    /// The fewest steps from a send to its delivery.
-    #[must_use]
-    pub const fn with_delay_min(mut self, steps: u32) -> Self {
-        self.delay_min = steps;
-        self
-    }
-
-    /// The most steps from a send to its delivery (a `Reliable` message
-    /// waits longer only behind an earlier one).
-    #[must_use]
-    pub const fn with_delay_max(mut self, steps: u32) -> Self {
-        self.delay_max = steps;
-        self
-    }
-
-    /// The seed of the draws.
-    pub const fn seed(&self) -> u64 {
-        self.seed
-    }
-
-    /// The chance of a loss, per mille.
-    pub const fn loss(&self) -> u16 {
-        self.loss
-    }
-
-    /// The chance of a duplicate, per mille.
-    pub const fn duplicate(&self) -> u16 {
-        self.duplicate
-    }
-
-    /// The chance of a reordering, per mille.
-    pub const fn reorder(&self) -> u16 {
-        self.reorder
-    }
-
-    /// The fewest steps from a send to its delivery, as set.
-    pub const fn delay_min(&self) -> u32 {
-        self.delay_min
-    }
-
-    /// The most steps from a send to its delivery, as set.
-    pub const fn delay_max(&self) -> u32 {
-        self.delay_max
-    }
-
-    /// The delays as used: at least 1, and the most at least the fewest.
-    fn delays(&self) -> (u64, u64) {
-        let min = self.delay_min.max(1);
-        (u64::from(min), u64::from(self.delay_max.max(min)))
-    }
-}
-
-impl Default for Faults {
-    fn default() -> Self {
-        Self::none()
-    }
-}
-
-/// `per_mille`, at most 1,000.
-const fn clamp_per_mille(per_mille: u16) -> u16 {
-    if per_mille > PER_MILLE {
-        PER_MILLE
-    } else {
-        per_mille
-    }
-}
-
 /// An in-memory network of endpoints, for tests. It moves on only by
-/// [`step`](Self::step): one step delivers what is due, and nothing
-/// happens between steps.
-///
-/// The draws of its [`Faults`] come from one `SimRng`, at each send in a
-/// fixed order (an `Unreliable` message draws its loss, its duplicate, its
-/// reordering, its delay and its copy's delay; a `Reliable` message and a
-/// disconnect draw a delay), so the same seed and the same sends give the
-/// same deliveries on every target.
-///
-/// `Reliable` messages stay ordered and lossless, as a WebSocket over TCP:
-/// each is delayed, but no earlier than the one before it on the same
-/// link, and never lost, duplicated or reordered. Faults hit `Unreliable`
-/// messages only. A delay that varies reorders `Unreliable` messages on
-/// its own, as a real network does.
+/// [`step`](Self::step): one step delivers what was sent since the last,
+/// in the order it was sent, and nothing happens between steps. Both
+/// channels arrive whole, once and in order.
 ///
 /// ```
-/// use shuyi_net::{Channel, Faults, MemoryNetwork, NetEvent, Transport};
+/// use shuyi_net::{Channel, MemoryNetwork, NetEvent, Transport};
 ///
-/// let mut net = MemoryNetwork::new(Faults::none().with_seed(1).with_delay_max(3));
+/// let mut net = MemoryNetwork::new();
 /// let mut server = net.endpoint();
 /// let mut clients: Vec<_> = (0..3).map(|_| net.endpoint()).collect();
 /// for client in &clients {
@@ -192,16 +31,19 @@ const fn clamp_per_mille(per_mille: u16) -> u16 {
 /// for client in &clients {
 ///     server.send(client.id(), Channel::Reliable, b"round 1")?;
 /// }
-/// // Within the most delay, every client has it.
-/// for _ in 0..3 {
-///     net.step();
-/// }
+/// net.step();
 /// for client in &mut clients {
-///     assert!(client.poll().contains(&NetEvent::Message {
-///         peer: server.id(),
-///         channel: Channel::Reliable,
-///         bytes: b"round 1".to_vec(),
-///     }));
+///     assert_eq!(
+///         client.poll(),
+///         [
+///             NetEvent::Connected(server.id()),
+///             NetEvent::Message {
+///                 peer: server.id(),
+///                 channel: Channel::Reliable,
+///                 bytes: b"round 1".to_vec(),
+///             },
+///         ]
+///     );
 /// }
 /// # Ok::<(), shuyi_net::SendError>(())
 /// ```
@@ -221,8 +63,6 @@ pub struct MemoryEndpoint {
 /// What the network and its endpoints share.
 #[derive(Debug)]
 struct Shared {
-    faults: Faults,
-    rng: SimRng,
     /// How many steps have run.
     now: u64,
     max_message: usize,
@@ -230,11 +70,10 @@ struct Shared {
     ends: Vec<End>,
     /// Each linked pair, the lower id first: whether it is closed.
     links: BTreeMap<(PeerId, PeerId), bool>,
-    /// Each direction of a link, sender first.
-    ways: BTreeMap<(PeerId, PeerId), Way>,
-    /// What is on its way, in delivery order.
-    flight: BTreeMap<Slot, Item>,
-    /// The next item's number: the order of sends within a step.
+    /// What is on its way, by the step it is due, then the order it was
+    /// sent.
+    flight: BTreeMap<(u64, u64), Item>,
+    /// The next item's number: the order of sends.
     next_seq: u64,
 }
 
@@ -243,26 +82,6 @@ struct Shared {
 struct End {
     inbox: Vec<NetEvent>,
     stats: NetStats,
-}
-
-/// One direction of a link.
-#[derive(Debug, Default)]
-struct Way {
-    /// The step the last `Reliable` item on it is due, which the next is
-    /// no earlier than.
-    reliable_due: u64,
-    /// The receiver has been told the sender is gone: what else arrives is
-    /// thrown away.
-    gone: bool,
-}
-
-/// When an item is delivered: by its step, then the held-back last, then
-/// in the order it was sent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Slot {
-    due: u64,
-    held: bool,
-    seq: u64,
 }
 
 /// An item on its way to `to`, from `from`.
@@ -281,18 +100,21 @@ enum What {
     Closed,
 }
 
+impl Default for MemoryNetwork {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemoryNetwork {
-    /// An empty network with `faults`.
-    pub fn new(faults: Faults) -> Self {
+    /// An empty network.
+    pub fn new() -> Self {
         Self {
             shared: Rc::new(RefCell::new(Shared {
-                faults,
-                rng: SimRng::new(faults.seed),
                 now: 0,
                 max_message: DEFAULT_MAX_MESSAGE,
                 ends: Vec::new(),
                 links: BTreeMap::new(),
-                ways: BTreeMap::new(),
                 flight: BTreeMap::new(),
                 next_seq: 0,
             })),
@@ -334,48 +156,23 @@ impl MemoryNetwork {
             return;
         }
         shared.links.insert(pair, false);
-        let due = shared.now + 1;
-        for (from, to) in [(b, a), (a, b)] {
-            shared.ways.insert(
-                (from, to),
-                Way {
-                    reliable_due: due,
-                    gone: false,
-                },
-            );
-            shared.push(due, false, from, to, What::Connected);
-        }
+        shared.push(b, a, What::Connected);
+        shared.push(a, b, What::Connected);
     }
 
-    /// Delivers what is due at the next step into the endpoints' inboxes,
-    /// in the order of [`Faults`]' delays and the sends.
+    /// Delivers what was sent since the last step into the endpoints'
+    /// inboxes, in the order it was sent.
     pub fn step(&mut self) {
         let mut shared = self.shared.borrow_mut();
         shared.now += 1;
         let now = shared.now;
         while let Some(entry) = shared.flight.first_entry() {
-            if entry.key().due > now {
+            if entry.key().0 > now {
                 break;
             }
             let item = entry.remove();
             shared.deliver(item);
         }
-    }
-
-    /// Replaces the faults, for the sends from now on; what is on its way
-    /// keeps its delays. A new seed starts its draws afresh; the same seed
-    /// keeps drawing where it was.
-    pub fn set_faults(&mut self, faults: Faults) {
-        let mut shared = self.shared.borrow_mut();
-        if faults.seed != shared.faults.seed {
-            shared.rng = SimRng::new(faults.seed);
-        }
-        shared.faults = faults;
-    }
-
-    /// The faults in use.
-    pub fn faults(&self) -> Faults {
-        self.shared.borrow().faults
     }
 
     /// Sets the longest message a send takes, in bytes: a longer one is
@@ -397,34 +194,18 @@ impl MemoryNetwork {
 }
 
 impl Shared {
-    /// Puts an item on its way, due at step `due`.
-    fn push(&mut self, due: u64, held: bool, from: PeerId, to: PeerId, what: What) {
+    /// Puts an item on its way, due at the next step.
+    fn push(&mut self, from: PeerId, to: PeerId, what: What) {
         let seq = self.next_seq;
         self.next_seq += 1;
         self.flight
-            .insert(Slot { due, held, seq }, Item { from, to, what });
+            .insert((self.now + 1, seq), Item { from, to, what });
     }
 
-    /// The step a send made now is delivered at.
-    fn draw_due(&mut self) -> u64 {
-        let (min, max) = self.faults.delays();
-        let spread = u32::try_from(max - min + 1).unwrap_or(u32::MAX);
-        self.now + min + u64::from(self.rng.roll_below(spread))
-    }
-
-    /// Whether a chance of `per_mille` comes up.
-    fn chance(&mut self, per_mille: u16) -> bool {
-        self.rng.roll_below(u32::from(PER_MILLE)) < u32::from(per_mille)
-    }
-
-    /// Hands `item` to its endpoint, unless the endpoint was told its
-    /// sender is gone.
+    /// Hands `item` to its endpoint. Nothing is sent after a close, so
+    /// nothing arrives after one.
     fn deliver(&mut self, item: Item) {
         let Item { from, to, what } = item;
-        let way = self.ways.entry((from, to)).or_default();
-        if way.gone {
-            return;
-        }
         let event = match what {
             What::Connected => NetEvent::Connected(from),
             What::Message(channel, bytes) => {
@@ -435,13 +216,10 @@ impl Shared {
                     bytes,
                 }
             }
-            What::Closed => {
-                way.gone = true;
-                NetEvent::Disconnected {
-                    peer: from,
-                    reason: DisconnectReason::Closed,
-                }
-            }
+            What::Closed => NetEvent::Disconnected {
+                peer: from,
+                reason: DisconnectReason::Closed,
+            },
         };
         self.ends[index(to)].inbox.push(event);
     }
@@ -466,62 +244,20 @@ impl Shared {
             });
         }
         self.ends[index(from)].stats.record_sent(bytes.len());
-        match channel {
-            Channel::Reliable => {
-                let drawn = self.draw_due();
-                let way = self.ways.entry((from, to)).or_default();
-                let due = drawn.max(way.reliable_due);
-                way.reliable_due = due;
-                self.push(due, false, from, to, What::Message(channel, bytes.to_vec()));
-            }
-            Channel::Unreliable => {
-                // Always the same five draws, whatever comes up.
-                let faults = self.faults;
-                let lost = self.chance(faults.loss);
-                let twice = self.chance(faults.duplicate);
-                let held = self.chance(faults.reorder);
-                let due = self.draw_due();
-                let copy_due = self.draw_due();
-                let stats = &mut self.ends[index(from)].stats;
-                if lost {
-                    stats.record_dropped();
-                    return Ok(());
-                }
-                if twice {
-                    stats.record_duplicated();
-                }
-                self.push(due, held, from, to, What::Message(channel, bytes.to_vec()));
-                if twice {
-                    self.push(
-                        copy_due,
-                        held,
-                        from,
-                        to,
-                        What::Message(channel, bytes.to_vec()),
-                    );
-                }
-            }
-        }
+        self.push(from, to, What::Message(channel, bytes.to_vec()));
         Ok(())
     }
 
-    /// Closes the link of `from` to `to`, if it is open.
+    /// Closes the link of `from` to `to`, if it is open. Both ends are
+    /// told at the next step, each after the messages sent to it before
+    /// the close, as a TCP close follows its data.
     fn disconnect(&mut self, from: PeerId, to: PeerId) {
         match self.links.get_mut(&(from.min(to), from.max(to))) {
             Some(closed @ false) => *closed = true,
             _ => return,
         }
-        // The end that closed knows at the next step; the other end after
-        // the `Reliable` messages sent before the close, as a TCP close
-        // follows its data.
-        let drawn = self.draw_due();
-        let after = self
-            .ways
-            .get(&(from, to))
-            .map_or(drawn, |way| drawn.max(way.reliable_due));
-        let now = self.now;
-        self.push(now + 1, false, to, from, What::Closed);
-        self.push(after, false, from, to, What::Closed);
+        self.push(to, from, What::Closed);
+        self.push(from, to, What::Closed);
     }
 }
 

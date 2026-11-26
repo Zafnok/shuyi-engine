@@ -102,7 +102,7 @@ None.
      (2790), and where the address comes from (`?server=`, then
      `server.ron`, then the dev default).
   8. **Testing it all with no network.** Rooms, clients and the director
-     over `MemoryNetwork` with seeded faults (2613), and the hash check
+     over `MemoryNetwork` with seeded faults (2613, 2620), and the hash check
      every 15 steps that finds a desync.
   9. **The whole game: trails.** A walk through `examples/trails`, its
      rules, bot, `impl RoomGame`, `trails-server` and online screen,
