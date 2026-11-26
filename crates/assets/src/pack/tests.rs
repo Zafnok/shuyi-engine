@@ -73,7 +73,7 @@ pub(super) fn sources() -> &'static Bundle {
             ("data/table.ron", TABLE.into()),
             ("targets/playdate.ron", PLAYDATE.into()),
             ("readme.txt", b"kept as it is".to_vec()),
-            // An atlas, packed from its folder (ticket 2222).
+            // An atlas, packed from its folder.
             ("sprites/atlas.ron", sprite_file("sprites/atlas.ron")),
             ("sprites/coin.png", sprite_file("sprites/coin.png")),
             ("sprites/heart.png", sprite_file("sprites/heart.png")),

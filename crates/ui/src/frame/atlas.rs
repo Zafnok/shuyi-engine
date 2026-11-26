@@ -1,4 +1,4 @@
-//! A sprite atlas in the frame (ticket 2222): its pages are pictures of
+//! A sprite atlas in the frame (ADR-0153): its pages are pictures of
 //! the frame's [`PaintedTable`] (ADR-0078), each named by its page's
 //! [`name`](Page::name), and a sprite of it is a [`PaintedSprite`] of its
 //! page and rectangle. So `shuyi-app` uploads a page the first frame a
