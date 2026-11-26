@@ -1,4 +1,4 @@
-//! The frames of a crash report's stack (ticket 2598): each return address
+//! The frames of a crash report's stack: each return address
 //! of the panicking thread as an offset into the executable, which a debug
 //! file of the same build names with `addr2line`.
 //!

@@ -1,5 +1,5 @@
 //! `--stale-hashes`: the older hashes of a crate in a profile folder's
-//! `deps/` that no build read in days (ticket 2092, ADR-0121).
+//! `deps/` that no build read in days (ADR-0121).
 //!
 //! cargo names each unit's output `<crate>-<16 hex digits><kind>`, and one
 //! crate can sit there under several hashes: most live (features, triples,

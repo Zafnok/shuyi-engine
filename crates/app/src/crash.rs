@@ -38,8 +38,8 @@
 //! its warnings and errors.
 //!
 //! A report's [`frames`](CrashReport::frames) are the stack as offsets into
-//! the executable, which a release's debug file names (`crash/frames.rs`,
-//! ticket 2598): on Windows and Linux.
+//! the executable, which a release's debug file names (`crash/frames.rs`):
+//! on Windows and Linux.
 
 mod frames;
 

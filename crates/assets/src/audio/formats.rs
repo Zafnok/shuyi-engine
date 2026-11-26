@@ -1,8 +1,7 @@
 //! The audio kinds and formats (ADR-0007): a sound file's header, a music
 //! track's, and the manifest. Only headers are read here. The platform
 //! decodes a WAV's and an OGG's samples when it plays them; a FLAC's and
-//! an MP3's are decoded to a WAV for it first ([`decode_to_wav`](super::decode_to_wav),
-//! ticket 2234).
+//! an MP3's are decoded to a WAV for it first ([`decode_to_wav`](super::decode_to_wav)).
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 

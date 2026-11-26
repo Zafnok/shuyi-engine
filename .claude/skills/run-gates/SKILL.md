@@ -214,6 +214,18 @@ on Windows the MSVC linker fails when both link at once.
 cargo xtask check-targets
 ```
 
+The publish list (CI's `layers` job, ADR-0152): every engine crate is
+published at the workspace's version, every other member says
+`publish = false`, and an engine crate's dependencies on the others come
+from `[workspace.dependencies]`, pinned with `=` (dev-dependencies stay
+path-only). CI also checks each name is held on crates.io (`--index`,
+which needs the network) and packages the fourteen together
+(`cargo package --no-verify --exclude-lockfile`; see ADR-0152 §3).
+
+```bash
+cargo xtask check-publish
+```
+
 The modules (CI's `modules` job, ADR-0009): no default crate depends on
 one; each has a README, its `[package.metadata.shuyi]` and a row in
 `docs/modules.md`; its answers are in `docs/modules.ron`; alternatives
@@ -500,7 +512,7 @@ They run on every PR, docs-only ones too:
 ```bash
 cargo xtask ticket-lint --pr-branch "$(git branch --show-current)" --pr-title "[NNNN] <title>"   # the title the PR will have, as CI does; without them on main
 cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses (ticket 2804)
-cargo xtask check-links   # relative links in every *.md resolve (no network)
+cargo xtask check-links   # relative links in every *.md, and the docs/ paths Rust comments name under crates/ and examples/, resolve (no network)
 cargo xtask template-lines --check   # a new `blank` game's code within tools/line-budget.ron's cap, and less than 10 under it (ticket 2512); prints each template's and example's code, tests, data and setup
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)

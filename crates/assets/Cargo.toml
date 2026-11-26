@@ -49,11 +49,11 @@ sfx = []
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
 # `{token}` splitter, for dialogue and languages.
-shuyi-core = { path = "../core", default-features = false }
+shuyi-core = { workspace = true }
 serde.workspace = true
 ron.workspace = true
 # `files!`: a folder's table, written at compile time (ADR-0138).
-shuyi-embed-macros = { path = "../embed-macros" }
+shuyi-embed-macros = { workspace = true }
 thiserror.workspace = true
 # The process-wide bundle, set once, without `std`.
 once_cell.workspace = true

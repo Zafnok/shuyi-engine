@@ -114,7 +114,7 @@ impl<B: AsRef<[u8]>> VorbisSource<B> {
     /// A source of `bytes` whose next read gives `frame` exactly: an exact seek
     /// ([`seek_exact`](Self::seek_exact)), or where that can't land, a second
     /// source of the same bytes that [`skip`](Self::skip)s there. A loop's way
-    /// round a region far into a file (ticket 2397).
+    /// round a region far into a file.
     pub fn new_at(bytes: B, limits: &Limits, frame: u64) -> Result<Self, Error>
     where
         B: Clone,

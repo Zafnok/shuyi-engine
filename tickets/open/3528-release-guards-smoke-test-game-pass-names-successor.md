@@ -193,14 +193,10 @@ time, in these words. Before asking, re-check each number in
   report, linked both ways, the engine one in 2005's `blocked_by`;
   with Nick's own check, a line in 2005's *Nick input* sign-off list.
 - **Question 3:** a yes is 3510's setup.
-  - **Either order with 3510:** if 3510 is done, its session may have
-    asked Nick already: skip question 3 if his answer is in
-    `docs/decisions.md`; otherwise a yes is Nick's setup clicks for the
-    five names (`shuyi-embed`, `shuyi-embed-macros`, `shuyi-script`,
-    `shuyi-sound`, `shuyi-sound-out`) that 3510 has not already held,
-    and `cargo xtask check-publish --index` then joins CI's `layers`
-    job; if not, 3510 takes the answer: a yes is its Nick setup, a no
-    leaves the names to 2005's sign-off.
+  - Answered: Nick held the five names on 2026-11-24
+    (`docs/decisions.md`, *the last five engine crate names are held*),
+    and `cargo xtask check-publish --index` runs in CI's `layers` job
+    since 3510. Skip question 3.
 - **Question 4:** with a PR, a narrow exception line under `AGENTS.md`
   rule 12 (our own crates' advisories on `rustsec/advisory-db` only),
   citing the decision; with email or no, rule 12 is unchanged.

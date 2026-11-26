@@ -4,7 +4,7 @@ description = "Shuyi Engine's first example: a small grid game made from engine 
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = false
 license.workspace = true
 repository.workspace = true
 
@@ -35,7 +35,7 @@ required-features = ["tools"]
 
 [[example]]
 # What stays in memory when the game holds its pack, in each way a game can
-# hold one (ticket 2906, `docs/research/asset-memory.md`): `cargo run -p
+# hold one (ticket 2906, `docs/research/2906-asset-memory.md`): `cargo run -p
 # hello-grid --example asset_memory --release`. Its tests run in `cargo test`.
 name = "asset_memory"
 test = true

@@ -38,7 +38,7 @@ pub use compose::{
 pub const MANIFEST: &str = "template.ron";
 
 /// The name of a manifest in a template's folder, which the game gets as
-/// `Cargo.toml` (ticket 2067). Cargo reads every `Cargo.toml` of a
+/// `Cargo.toml`. Cargo reads every `Cargo.toml` of a
 /// repository a game depends on by git, and a template's, with its
 /// `{{crate_name}}`, would print errors in each game's build.
 pub(crate) const CARGO_TEMPLATE: &str = "Cargo.toml.tmpl";
@@ -631,8 +631,8 @@ fn check_concern(concern: &Concern, picked: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// "ticket 2701 builds", or "tickets 2701 and 2702 build"; "no ticket
-/// builds" for none.
+/// "ticket NNNN builds" for one id, "tickets NNNN and MMMM build" for
+/// two or more; "no ticket builds" for none.
 pub fn tickets_build(tickets: &[String]) -> String {
     match tickets {
         [] => "no ticket builds".to_owned(),

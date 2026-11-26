@@ -7,8 +7,7 @@
 //! ([`Importers::standard`]) and those the game adds with its own formats
 //! ([`GameTools::importers`](crate::GameTools::importers)). The importers
 //! of other tools' files (Tiled, `LDtk`, Aseprite) are formats of the
-//! registry too, when tickets 1123 and 1124 add them; `import` needs no
-//! change for them.
+//! registry too, once they exist; `import` needs no change for them.
 
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Write as _};

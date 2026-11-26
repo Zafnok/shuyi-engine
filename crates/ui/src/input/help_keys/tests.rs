@@ -59,8 +59,8 @@ fn help_keys_are_the_keymap_and_a_device() {
     );
 }
 
-/// `docs/design/controls.md`, *Button names on screen*: the example
-/// battle help bar on each kind of pad, and the keys again.
+/// Help text names the buttons of the pad in use: an example help bar on
+/// each kind of pad, and the keys again.
 #[test]
 fn key_names_follow_the_device() {
     let km = defaults();

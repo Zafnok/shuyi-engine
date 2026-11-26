@@ -34,9 +34,8 @@ use super::pad::{ButtonSet, PadKind};
 /// lag spike can't teleport the cursor across the map.
 pub const MAX_REPEATS_PER_UPDATE: u64 = 5;
 
-/// What the player is playing with: whatever they pressed last
-/// (`docs/design/controls.md`, *Switching between keyboard and
-/// controller*). Help text names keys or this pad's buttons to match.
+/// What the player is playing with: whatever they pressed last, a key or
+/// a pad's button. Help text names keys or this pad's buttons to match.
 ///
 /// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(
