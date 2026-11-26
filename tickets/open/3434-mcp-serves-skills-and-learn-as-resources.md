@@ -17,7 +17,7 @@ completed:
 
 Split from 3412 (its steps 7–8), which ran past its **Split:** point.
 3412 gave the contract a `docs` operation: lexical BM25 over a corpus
-`shuyi` embeds at the engine's revision (ADR-0153), with the Learn pages
+`shuyi` embeds at the engine's revision (ADR-0154), with the Learn pages
 read as their twins read them (`crates/cli/src/contract/docs/corpus.rs`,
 `learn_page` and `learn_pages`) and the skill pack embedded
 (`crates/cli/src/skills.rs`, `Pack::embedded`).
@@ -30,7 +30,7 @@ and `crates/cli/src/mcp/server/tests.rs` (in `it_speaks_json_rpc`)
 checks that `resources/list` is refused with `-32601`
 (`METHOD_NOT_FOUND`).
 
-ADR-0153 §6 records the decision this ticket builds: resources with no
+ADR-0154 §6 records the decision this ticket builds: resources with no
 subscriptions and no `listChanged`, since the text changes only with the
 engine.
 

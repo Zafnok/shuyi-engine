@@ -458,7 +458,7 @@ source uses.
 
 ## Searching the docs
 
-`shuyi docs <query>` ([ADR-0153](adr/0153-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md))
+`shuyi docs <query>` ([ADR-0154](adr/0154-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md))
 searches the text this `shuyi` embeds, at the engine's revision it was
 built from, so a game's own `cargo shuyi docs` answers for the engine
 the game pins. Nothing goes over the network. The corpus is cut into

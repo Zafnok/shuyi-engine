@@ -1,4 +1,4 @@
-//! `docs <query>`: the engine's docs searched (ADR-0153): the Learn pages,
+//! `docs <query>`: the engine's docs searched (ADR-0154): the Learn pages,
 //! the book's snippets, the skill pack, the problem codes' pages and the
 //! examples, as this `shuyi` embeds them, at the engine's revision it was
 //! built from. It needs no project, like `explain` and `doctor`, and is

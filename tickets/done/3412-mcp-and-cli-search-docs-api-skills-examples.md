@@ -292,7 +292,7 @@ What was done:
   task no skill names; `docs/contract.md` has the operation's row and a
   *Searching the docs* section; the book's *Tools for agents* has it in
   *The tool contract* and *The MCP server*.
-- ADR-0153; the schemas `docs.input.json` and `docs.output.json`, with
+- ADR-0154; the schemas `docs.input.json` and `docs.output.json`, with
   their fingerprint under contract 62 (no break: a new operation).
 - The xtask parity test
   (`the_docs_search_reads_each_learn_page_as_its_twin_does`): every Learn

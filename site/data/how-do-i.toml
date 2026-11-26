@@ -1,5 +1,5 @@
 # The "how do I" table `shuyi docs` answers beside its hits (ticket 3412,
-# ADR-0153): a row's `ask` lists task phrases, and `go` the one place that
+# ADR-0154): a row's `ask` lists task phrases, and `go` the one place that
 # answers them. A query matches a row when it holds every word of one of
 # its phrases (the common words, "a", "the", "to"…, left out).
 #

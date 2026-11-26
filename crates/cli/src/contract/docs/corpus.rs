@@ -1,4 +1,4 @@
-//! The corpus `docs` searches (ADR-0153), cut into chunks: the Learn
+//! The corpus `docs` searches (ADR-0154), cut into chunks: the Learn
 //! pages and the skills at their `##` and `###` headings, each example's
 //! `.rs` or `.md` file whole, and each problem code's page. Every chunk is
 //! text this `shuyi` embeds (`build.rs`), at the engine's revision it was

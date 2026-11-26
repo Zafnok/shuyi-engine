@@ -34,7 +34,7 @@
 //! answers with the scene of a one-off run.
 //!
 //! `docs` searches the engine's docs as the server embeds them, at the
-//! engine's revision it was built from (ADR-0153).
+//! engine's revision it was built from (ADR-0154).
 //!
 //! The server runs no game itself. A tool that runs the game runs it in
 //! the game's tool program (`shuyi.ron`'s `game`), started with `cargo

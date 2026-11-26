@@ -4,7 +4,7 @@
 //! `shuyi-embed` writes their tables, and watches them, so a change there
 //! rebuilds `shuyi`.
 //!
-//! So are the corpus `docs` searches (ADR-0153): the Learn pages, the
+//! So are the corpus `docs` searches (ADR-0154): the Learn pages, the
 //! book's snippets, the tutorial's files the snippets show, and the
 //! examples' `.rs` and `.md` files.
 

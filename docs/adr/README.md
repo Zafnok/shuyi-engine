@@ -165,6 +165,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0151](0151-constructors-take-no-two-neighbouring-numbers.md) | Constructors take no two neighbouring numbers, checked by `cargo xtask api` | Accepted; amends ADR-0039 kinds 2 to 5 |
 | [0152](0152-publishing-the-engine-crates-the-workspaces-list-exact-pins.md) | Publishing the engine crates: the workspace is the list, the pins are exact, and the version moves only at release time | Accepted |
 | [0153](0153-the-debug-pause-a-step-slow-motion-and-the-top-screens-readout.md) | The debug pause: a step, slow motion, and the top screen's readout | Accepted; extends ADR-0085 |
-| [0153](0153-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md) | The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision | Accepted |
+| [0154](0154-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md) | The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

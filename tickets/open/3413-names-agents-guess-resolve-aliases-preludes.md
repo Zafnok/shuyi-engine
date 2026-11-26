@@ -179,7 +179,7 @@ read with `serde_json`) and 2845 reuses it.
 **From 3412 (done):** feed the per-crate plain-text API listing into
 3412's docs index (`crates/cli/src/contract/docs/`) as `HitKind::Api`
 hits (one chunk per item: path, signature, first doc sentence), and the
-alias table as extra terms on the items it names. ADR-0153 §7 says how a
+alias table as extra terms on the items it names. ADR-0154 §7 says how a
 source joins: a `shuyi_embed` table in `crates/cli/build.rs` (of a
 tracked copy of the `.txt` files, which `cargo xtask api-text --check`
 keeps current, since `site/public/` is ignored by git), an `Api`

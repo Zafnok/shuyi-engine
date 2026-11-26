@@ -1,4 +1,4 @@
-# ADR-0153: The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision
+# ADR-0154: The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision
 
 - **Status:** Accepted
 - **Date:** 2026-11-26

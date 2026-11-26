@@ -1,4 +1,4 @@
-//! The index `docs` searches (ADR-0153): BM25 over the corpus's chunks,
+//! The index `docs` searches (ADR-0154): BM25 over the corpus's chunks,
 //! built once per process. A chunk's title terms count twice. Scores are
 //! floats, as a tool's may be (no simulation reads them), and are
 //! answered as integers, thousandths rounded, with ties broken by path,
