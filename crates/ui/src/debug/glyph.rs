@@ -37,29 +37,25 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &DebugMenuView, buf: &mut GlyphBuf
 }
 
 /// Paints the "Debug view" screen's `view` over the whole of `buf`, as
-/// the debug menu is painted: the title, the channels centred under it (or
-/// the line saying there are none) and the help line at the bottom.
+/// the debug menu is painted: the title, whether the game is paused under
+/// it, the menu centred under that, the line saying no channel is offered
+/// (if none is) under the menu, and the help line at the bottom.
 pub fn paint_view<G: GameData>(ctx: &Ctx<G>, view: &DebugViewView, buf: &mut GlyphBuffer) {
     let c = |e| ctx.palette.engine(e);
     let black = c(EngineColor::Background);
+    let dim = c(EngineColor::TextDim);
     buf.fill_rect(buf.bounds(), Cell::new(' ', c(EngineColor::Text), black));
     let hi = c(EngineColor::Highlight);
     print_centred(buf, MENU_TITLE_ROW, &view.title, hi, black);
+    print_centred(buf, MENU_TITLE_ROW + 1, &view.status, dim, black);
+    let (w, h) = menu::glyph::size(ctx, &view.menu);
+    let x = centre_x(buf, usize::try_from(w).unwrap_or(0));
+    menu::glyph::paint(ctx, &view.menu, buf, x, MENU_TITLE_ROW + 2);
     if let Some(empty) = &view.empty {
-        print_centred(
-            buf,
-            MENU_TITLE_ROW + 2,
-            empty,
-            c(EngineColor::TextDim),
-            black,
-        );
-    } else {
-        let (w, _) = menu::glyph::size(ctx, &view.menu);
-        let x = centre_x(buf, usize::try_from(w).unwrap_or(0));
-        menu::glyph::paint(ctx, &view.menu, buf, x, MENU_TITLE_ROW + 2);
+        print_centred(buf, MENU_TITLE_ROW + 3 + h, empty, dim, black);
     }
     let bottom = i32::from(buf.height()) - 1;
-    print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
+    print_centred(buf, bottom, &view.help, dim, black);
 }
 
 /// Adds the debug view's `gizmos` to `buf` (ADR-0085), in the order

@@ -704,6 +704,26 @@ impl Screen<Toy> for Field {
         layout_gizmos(&scene, &grid, out);
     }
 
+    /// The cursor's tile, then your piece's, picked up or walking, and the
+    /// clock: `cursor 4,7`, `piece 2,3 picked up`, `clock 250 ms`.
+    fn debug_readout(&self, _: &ToyCtx) -> Vec<String> {
+        let at = |p: Pos| format!("{},{}", p.x, p.y);
+        let mut lines = vec![format!("cursor {}", at(self.cursor.pos))];
+        if let Some(piece) = self.pieces.first() {
+            // check-text: not player text (debug tools are English only)
+            let doing = if self.walking.is_some() {
+                " walking"
+            } else if self.selected.is_some() {
+                " picked up"
+            } else {
+                ""
+            };
+            lines.push(format!("piece {}{doing}", at(piece.pos)));
+        }
+        lines.push(format!("clock {} ms", self.clock_ms));
+        lines
+    }
+
     /// The pieces, the cursor, the camera, the path picked and the walk
     /// under way, and the clock.
     fn state_hash(&self) -> Option<StateHash> {

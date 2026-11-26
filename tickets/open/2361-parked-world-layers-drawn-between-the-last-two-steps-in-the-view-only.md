@@ -349,7 +349,7 @@ None. The sentence this supersedes is the agent's own technical choice
       naming the range.
 - [ ] With a screen pushed over the smoothed stage, 30 frames of 1/144 s
       with `BetweenSteps::Clock` give the same snapshot each time (and
-      during 2316's pause, if 2316 is done).
+      during 2316's pause).
 - [ ] `Smoothing`'s doc says that 120 and 240 Hz are already even, that
       60 with VRR needs nothing, and that a smoothed layer is drawn up to
       one step behind.

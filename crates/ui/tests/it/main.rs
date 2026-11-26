@@ -5,6 +5,7 @@
 mod audio;
 mod cinematic;
 mod controller;
+mod debug_pause;
 mod debug_view;
 mod grid;
 mod growing_types;

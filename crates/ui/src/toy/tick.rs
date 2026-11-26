@@ -116,6 +116,15 @@ impl Screen<Toy> for DotStage {
         Some(StateHash(self.dot.hash()))
     }
 
+    /// The fixed steps run ([`TickDriver::steps`]) and where the dot is:
+    /// `step 12`, `dot 3,-1`.
+    fn debug_readout(&self, _: &ToyCtx) -> Vec<String> {
+        vec![
+            format!("step {}", self.driver.steps()),
+            format!("dot {},{}", self.dot.x, self.dot.y),
+        ]
+    }
+
     fn as_any(&self) -> Option<&dyn Any> {
         Some(self)
     }

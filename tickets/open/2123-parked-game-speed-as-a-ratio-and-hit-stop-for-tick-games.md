@@ -66,7 +66,7 @@ What is planned:
   (its Scope, *Input reaches the steps*): a frame that runs no step
   keeps its presses for the next step, whatever the reason, a slowed or
   stopped game speed included. It ships in the same PR as `TickDriver`.
-- 2316 (After MVP): debug pause, step and slow motion in
+- 2316 (done, ADR-0153): debug pause, step and slow motion in
   `Ctx::debug_view` (2315). Its slow motion updates one frame in *n*,
   so it works for turn games too. Its mechanism stays; this ticket makes
   the two compose for tick stages.
@@ -264,11 +264,13 @@ None.
   to `shuyi-action`. Each `Hit` carries it, and a sim that keeps a
   `Freeze` holds it for that many steps (a hold during a hold keeps the
   longer one), with a test. If not, nothing to do (2756 adds it).
-- **Debug pause and slow motion. Either order with 2316.** 2316's slow
-  motion updates the stack on one frame in `slow`, and each update
-  takes only its own frame's ticks. Under a game speed that alone
+- **Debug pause and slow motion. From 2316 (done, ADR-0153):** its slow
+  motion updates the stack on one frame in `slow`
+  (`DebugView::slow_frame_runs`, in `Game::pace`), and each update
+  takes only its own frame's ticks: a skipped frame drops its own
+  (`Pace::Skip` in `Game::step`). Under a game speed that alone
   doesn't multiply: at `HALF` the steps fall on every other frame, and
-  slow motion could skip all of them. So if 2316 is done:
+  slow motion could skip all of them. So:
   1. `Game::clock_speed` returns `STOPPED` while `Ctx::debug_view` is
      paused, and otherwise the game speed divided by its `slow`
      (`GameSpeed::slowed(self, n: u8) -> GameSpeed`, rounded down to
@@ -280,12 +282,7 @@ None.
      its update gets one tick, whatever is kept;
   4. the readout gains a line naming the game speed when it isn't
      `NORMAL` (`speed 0.50x`, from `Display`), after 2316's `paused`
-     line.
-
-  If 2316 isn't done, make its *Either order with 2123* clause (at the
-  end of its **A tick game** bullet; add one there if it has none) hold
-  all four points in this PR, as what 2316 does when it lands after
-  this ticket.
+     line (`DebugView::pause_line`, drawn by `Game::readout`).
 - **Drawing between steps. Either order with 2361.** 2361's
   `TickClock::overstep` reads `owed`, whose unit this ticket changes.
   If 2361 is done:
@@ -391,13 +388,12 @@ None.
       (Harness).
 - [ ] `GameSpeed` round-trips through RON as a plain number, and `2000`
       reads as `MAX`.
-- [ ] If 2316 is done: with `slow` = 4 at `HALF`, 800 frames of 1/60 s
+- [ ] With `slow` = 4 at `HALF`, 800 frames of 1/60 s
       run 100 steps, give or take one (the part step, and the ticks a
       skipped frame holds for the next update), and every tick `App`
       handed out runs by the next update; while paused at `DOUBLE`,
       frames run no step and one DebugStep runs exactly one; the readout
-      shows `speed 2.00x` after `paused`. If 2316 isn't done: its
-      *Either order with 2123* clause holds all four points.
+      shows `speed 2.00x` after `paused`.
 - [ ] If 2361 is done: from an empty clock at `QUARTER`, frames of
       1/60 s give an overstep of 250, 500, 750 and 0 (with a step) in
       turn; at `STOPPED`, 30 frames of 1/144 s with
@@ -412,13 +408,13 @@ None.
   at each constant and at 1.5x; `TickClock` at each speed, a speed
   change keeping the part step, and `reset`; `Freeze::hold` keeping the
   longer hold, `step` counting down and counting `world_step`;
-  `GameSpeed::slowed` if 2316 is done.
+  `GameSpeed::slowed`.
 - Property: `NORMAL` equals the old `TickClock`; live hashes equal
   `replay` under any speed history; no press is lost or doubled at any
   speed.
 - Snapshot / integration: the Harness tests above with 1119's example
   sim; a snapshot of the example's text dump across a hit-stop; the
-  2316 and 2361 tests above when those tickets are done.
+  2316 tests above, and the 2361 tests when that ticket is done.
 
 ## Completion notes
 

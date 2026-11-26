@@ -30,8 +30,8 @@ What exists today:
   (2026-10-19).
 - **Most of the editor's groundwork is done.** 2506 is blocked by
   1129, 2316, 2521 and 2907. 1129 (the tool contract), 2521 (the live
-  link) and 2907 (one description of a game's types) are done. Only
-  2316 (the debug view in real time, `todo`) is left.
+  link), 2907 (one description of a game's types) and 2316 (the debug
+  view in real time) are done.
 - **What the editor is built with is still open, while the in-game
   layout is designed now.** 2329 (layout) and 2330 (`.ui.ron`) are
   `todo`. If the editor were built on the engine's own UI, both would
@@ -103,8 +103,8 @@ time, in the words below. None is technical.
    downloads. It uses the usual desktop shortcuts (Ctrl+Z, Ctrl+C),
    not the game's rebindable controls, and is offered as a ready-made
    download.
-   - **Yes, the whole research (2506).** It starts when the real-time
-     debug view (2316) lands. This unparks 2506 only; 2507 and 2508 stay
+   - **Yes, the whole research (2506).** It can start now: the real-time
+     debug view (2316) has landed. This unparks 2506 only; 2507 and 2508 stay
      parked.
    - **Yes, only "where it runs and what it is built with", now.** That
      part becomes a ticket of its own that needs nothing first. The rest

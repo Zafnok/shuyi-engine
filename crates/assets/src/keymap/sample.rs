@@ -1,7 +1,7 @@
 //! A sample game's actions and keymap file, for the tests of the keymap
 //! format and of the input mechanism built on it (ticket 1107): a tactics
 //! game with four cursor moves, Confirm and Cancel, a few map actions, a
-//! developer Debug key no player can rebind, two optional actions and a
+//! developer's Debug, DebugPause and DebugStep keys no player can rebind, two optional actions and a
 //! dialogue log in a [`KeyGroup`] of its own. Its keymap file
 //! ([`keymap`]) has two layouts, [`RIGHT_HANDED`] and [`LEFT_HANDED`].
 //!
@@ -81,6 +81,10 @@ pub enum Action {
     /// Open the dialogue log while a scene plays. Optional, and in a
     /// [`KeyGroup`] of its own.
     DialogueLog,
+    /// Pause the game, or let it run again (developer).
+    DebugPause,
+    /// Run one update of the paused game (developer).
+    DebugStep,
 }
 
 /// Which actions may share a key or button: only actions of the same group clash, since actions of
@@ -101,7 +105,7 @@ impl KeyGroup {
 
 impl Action {
     /// Every action, in declaration order.
-    pub const ALL: [Action; 19] = [
+    pub const ALL: [Action; 21] = [
         Self::CursorLeft,
         Self::CursorDown,
         Self::CursorUp,
@@ -121,11 +125,13 @@ impl Action {
         Self::ConfirmEndTurn,
         Self::ZoomMap,
         Self::DialogueLog,
+        Self::DebugPause,
+        Self::DebugStep,
     ];
 
     /// The name used in keymap files (the variant name).
     pub fn name(self) -> &'static str {
-        const NAMES: [&str; 19] = [
+        const NAMES: [&str; 21] = [
             "CursorLeft",
             "CursorDown",
             "CursorUp",
@@ -145,6 +151,8 @@ impl Action {
             "ConfirmEndTurn",
             "ZoomMap",
             "DialogueLog",
+            "DebugPause",
+            "DebugStep",
         ];
         NAMES[self as usize]
     }
@@ -187,10 +195,10 @@ impl Action {
         }
     }
 
-    /// Whether the player can rebind this action. Only the developer Debug
-    /// key can't.
+    /// Whether the player can rebind this action. Only the developer's
+    /// keys can't: Debug, DebugPause and DebugStep.
     pub fn is_rebindable(self) -> bool {
-        self != Self::Debug
+        !matches!(self, Self::Debug | Self::DebugPause | Self::DebugStep)
     }
 }
 
@@ -234,6 +242,8 @@ impl ActionSet for Action {
             Self::Confirm => Some(UiAction::Confirm),
             Self::Cancel => Some(UiAction::Cancel),
             Self::Debug => Some(UiAction::Debug),
+            Self::DebugPause => Some(UiAction::DebugPause),
+            Self::DebugStep => Some(UiAction::DebugStep),
             Self::Info
             | Self::DangerZone
             | Self::NextUnit

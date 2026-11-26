@@ -261,6 +261,23 @@ reads a view, never their pixels:
 To see the same as a picture, `cargo shuyi frame-png out.png --debug plots` turns the
 channels on from the first frame (`--debug all` turns on every one).
 
+### Stopping on the frame that goes wrong
+
+A debug build can also pause the game, step it one update at a time and slow it down.
+Give two of your actions the engine's `UiAction::DebugPause` and `UiAction::DebugStep`
+in your action set's `ui`, like your Debug action, and give them keys in `keymap.ron`
+(they are keyboard only, and no player can rebind them). The pause key stops every screen
+of the game: nothing updates, and the keys pressed are dropped, but the debug menu still
+opens and works. Each press of the step key runs one update with the keys pressed with
+it, as one frame at 60 a second, so a game stepped through ends where it would have
+played straight. The debug menu's **Debug view** sets slow motion: one update in 2, 4 or
+8 frames, every key pressed in between kept for the next.
+
+The **readout** channel prints a few lines about the top screen in the top-left corner,
+`paused` first while the game is paused. A screen writes them in `debug_readout`, another
+method of `Screen` that gives none unless you write it: `turn 3, cursor 4,7` for a grid
+game, `on ground, vx 1.5` for a platformer. Like `debug_draw`, it only reads the screen.
+
 ## When it goes wrong
 
 **A glyph the font doesn't have.** The font is a picture of the characters it knows, in
