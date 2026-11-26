@@ -7,7 +7,7 @@ model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
 blocked_by: ["2615"]
-nick_input: none
+nick_input: setup
 completed:
 ---
 
@@ -53,7 +53,13 @@ completed:
 
 ## Nick input
 
-None. Running a public instance is 2618's, with Nick's account steps.
+**Setup:** hold the name `shuyi-server` on crates.io as an empty 0.0.0
+placeholder before this PR merges: CI's `layers` job runs `cargo xtask
+check-publish --index`, which fails an engine crate whose name isn't
+held. Nick decided on 2026-11-26 (`docs/decisions.md`) to hold it when
+this ticket makes the crate real; ask him with the `ask-nick` skill when
+the PR opens. Running a public instance is 2618's, with Nick's account
+steps.
 
 ## Scope
 

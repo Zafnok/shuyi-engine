@@ -373,8 +373,9 @@ Done on 2026-11-26.
   now says what holds: `connect(a, b)` links chosen pairs.
 - **Crate names:** since 3510, CI's `layers` job runs `cargo xtask
   check-publish --index`, which fails until `shuyi-net` is held on
-  crates.io. Nick was asked (the `ask-nick` skill) to hold `shuyi-net`
-  and `shuyi-server` as 0.0.0 placeholders before this PR merges.
+  crates.io. Asked with the `ask-nick` skill, Nick chose on 2026-11-26
+  to hold `shuyi-net` now, as a 0.0.0 placeholder before this PR merges,
+  and `shuyi-server` when 2616 makes it (2616's **Nick input** says so).
 - **`[workspace.dependencies]`** gains `shuyi-net` at its exact pin, and
   the front door takes it from there, as `cargo xtask check-publish`
   holds since 3510 (ADR-0152).
@@ -400,5 +401,5 @@ ADR-0153.
 Skills: none here; 2855 rewrites `skills/shuyi-net`, whose `waits_for`
 keeps 1140.
 
-Nick input: hold `shuyi-net` and `shuyi-server` on crates.io as 0.0.0
-placeholders before this PR merges (asked with the `ask-nick` skill).
+Nick input: hold `shuyi-net` on crates.io as a 0.0.0 placeholder before
+this PR merges (his decision of 2026-11-26; `shuyi-server` waits for 2616).
