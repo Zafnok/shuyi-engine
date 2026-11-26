@@ -32,22 +32,22 @@ jis = ["dep:encoding_rs"]
 
 [dependencies]
 # The state hash `replay` compares, and the turn rules it re-runs.
-shuyi-core = { path = "../core", features = ["schema"] }
+shuyi-core = { workspace = true, features = ["default", "schema"] }
 # Fonts, images, palettes, languages and credits; with `png`, the
 # pictures a one-bit bake dithers, and the sources its contact sheet draws;
 # with `sfx`, sound effects, so a game's tools read and bake them whether
 # or not the game turns it on (ticket 2225).
-shuyi-assets = { path = "../assets", features = ["png", "sfx"] }
+shuyi-assets = { workspace = true, features = ["default", "png", "sfx"] }
 # The frame `frame-png` paints (with the raster that paints it), and the
 # perf records `run --perf` reads (with their schemas).
-shuyi-ui = { path = "../ui", features = ["schema", "raster"] }
+shuyi-ui = { workspace = true, features = ["default", "schema", "raster"] }
 # The Harness that plays a game's script, and the live link `attach` speaks;
 # `heap` for the sessions' heap snapshots (`heap::snapshot`).
-shuyi-platform = { path = "../platform", features = ["harness", "link", "heap", "schema"] }
+shuyi-platform = { workspace = true, features = ["default", "harness", "link", "heap", "schema"] }
 # The heap counter of the tool program's debug build (ADR-0046 §9), which
 # `run --perf` and MCP's sessions read: its `global` feature is the one
 # `#[global_allocator]`, shared with `shuyi-app`'s.
-shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
+shuyi-alloc-count = { workspace = true, features = ["default", "global"] }
 serde = { workspace = true, features = ["std"] }
 # The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
 ron = { workspace = true, features = ["std"] }
@@ -62,7 +62,7 @@ schemars = { version = "1", default-features = false, features = ["derive", "std
 # the skill pack it copies into a game (`skills/`) and the engine's target
 # profiles (`targets/`), embedded: `build.rs` writes their tables, and
 # `shuyi_embed::files!` includes them.
-shuyi-embed = { path = "../embed" }
+shuyi-embed = { workspace = true }
 # `add`: a game's `Cargo.toml` edited keeping its layout, and the
 # modules' metadata (`[package.metadata.shuyi]`) read from theirs.
 toml_edit = { version = "0.25", default-features = false, features = ["parse", "display", "serde"] }
@@ -91,7 +91,7 @@ dialoguer = { version = "0.12", default-features = false }
 encoding_rs = { version = "0.8.35", default-features = false, features = ["alloc"], optional = true }
 
 [build-dependencies]
-shuyi-embed = { path = "../embed" }
+shuyi-embed = { workspace = true }
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.

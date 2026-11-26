@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 3510 — The publish list comes from the workspace, every name is held, internal pins are exact, and a half-finished publish has a runbook
@@ -224,22 +224,24 @@ manifests 300).
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-publish` passes, and `--order` prints all
+- [x] `cargo xtask check-publish` passes, and `--order` prints all
       fourteen engine crates, `shuyi-embed` before
       `shuyi-embed-macros` before `shuyi-assets`, and `shuyi-sound`
       before `shuyi-sound-out` before `shuyi-app`.
-- [ ] `cargo package --no-verify --locked` of the fourteen together
-      passes on the pinned Rust.
-- [ ] `cargo tree -e features --workspace` is unchanged by the move to
-      `[workspace.dependencies]`.
-- [ ] Every member that isn't an engine crate has its own
+- [x] `cargo package --no-verify --locked` of the fourteen together
+      passes on the pinned Rust (with `--exclude-lockfile` and the
+      workspace's `publish` on in CI's checkout: see *Deviations*).
+- [x] `cargo tree -e features --workspace` is unchanged by the move to
+      `[workspace.dependencies]` (every package's enabled features; see
+      *Checked*).
+- [x] Every member that isn't an engine crate has its own
       `publish = false`.
-- [ ] `cargo xtask check-publish --index` passes in CI.
-- [ ] The ADR and the runbook exist, and the docs map names the runbook.
-- [ ] The `work-ticket` skill no longer asks a PR for a version bump or
+- [x] `cargo xtask check-publish --index` passes in CI (and locally).
+- [x] The ADR and the runbook exist, and the docs map names the runbook.
+- [x] The `work-ticket` skill no longer asks a PR for a version bump or
       a `CHANGELOG.md` line.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -260,5 +262,123 @@ manifests 300).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+
+- `xtask`, the two examples and `crates/embed/fixture` say `publish =
+  false` themselves; `site/snippets` already did.
+- The root `[workspace.dependencies]` pins the engine crates others
+  depend on to `=0.1.0` with `default-features = false`. Every normal and
+  build dependency of an engine crate on another is `workspace = true`,
+  with `"default"` added where it took the defaults. Dev-dependencies
+  stay path-only.
+- `cargo xtask check-publish` (`crates/xtask/src/publish.rs`), with
+  `--order` and `--index`, runs in the gates' `layers` gate. CI's
+  `layers` job runs it, `--index`, and one `cargo package` of the
+  fourteen, under a 20-minute timeout.
+- ADR-0152 and the runbook `docs/releasing.md`, with its row in the docs
+  map.
+- The `work-ticket` skill's §3 *Public API* bullet: a PR never raises
+  the version or edits `CHANGELOG.md`. `run-gates` lists
+  `check-publish`.
+- `tools/sound-parity/footprint.ron` follows: giving up the sound
+  replacement also removes the two crates' workspace entries and the
+  publish test's two lines on them.
+
+**Checked on the pinned Rust (1.100), 2026-11-25:**
+
+- `cargo tree` gives every package the same enabled features before and
+  after the move. I compared `{p} [{f}]` per package over the workspace,
+  with `--all-features`, and for `shuyi`, `shuyi-app`,
+  `shuyi-platform`, `shuyi-playdate`, `shuyi-cli`, `shuyi-assets` and
+  `shuyi-ui` alone without dev edges, all `--target all`. The plain
+  `cargo tree -e features` text differs only where cargo prints a
+  `feature "default"` node for a crate that has no `default` feature.
+  The feature sets are the same.
+- `cargo xtask check-publish --order` prints the fourteen:
+  `shuyi-alloc-count`, `shuyi-core`, `shuyi-embed`,
+  `shuyi-embed-macros`, `shuyi-assets`, `shuyi-script`, `shuyi-sound`,
+  `shuyi-sound-out`, `shuyi-ui`, `shuyi-platform`, `shuyi-app`,
+  `shuyi`, `shuyi-cli`, `shuyi-playdate`.
+- `--index` passes: all fourteen names answer 200, and a name never
+  held answers 404.
+- `cargo publish --workspace` doesn't skip a version already on
+  crates.io. It refuses the run before uploading anything. A dry run
+  at 0.0.0 says "crate shuyi-core@0.0.0 already exists on crates.io
+  index", as a warning only because it is a dry run. So the runbook
+  resumes with `--exclude`.
+
+**Deviations.**
+
+- **No entry for `shuyi`, `shuyi-cli` or `shuyi-playdate`** in
+  `[workspace.dependencies]`. The ticket planned fourteen entries. No
+  engine crate depends on these three, and cargo warns on every command
+  about an entry no member uses. `check-publish` asks for an entry when
+  an engine crate first depends on one of them.
+- **The rule on dependencies covers engine crates only.** `xtask`, the
+  examples and the snippets keep path-only dependencies on the engine.
+  They aren't packaged, so no pin reaches a game through them.
+- **The check also fails an engine crate with its own `publish`.** This
+  is one more rule than the ticket listed, so `publish = false` can't
+  take a crate off the list without notice.
+- **CI's `cargo package` has `--exclude-lockfile`, `--allow-dirty` and
+  a `sed`.** On the pin, `cargo package --no-verify --locked` of the
+  fourteen fails twice:
+  - Cargo checks a package against the others of the same run only when
+    they may be published. Under the workspace's `publish = false` it
+    looked for `shuyi-embed` 0.1.0 on crates.io and found the 0.0.0
+    placeholder. The step turns the workspace's `publish` on in its own
+    checkout (`sed`, so `--allow-dirty`). The workspace stays `publish =
+    false` in the repository until 2005, so a stray `cargo publish`
+    with Nick's credentials goes nowhere.
+  - `shuyi-app`'s package can't make a lockfile: quad-snd and CPAL both
+    link `alsa`, and the root's `[patch]` doesn't reach a package
+    (ADR-0075). With `--exclude-lockfile` all fourteen package, and a
+    path-only dependency still fails the step, as I checked by hand.
+    2005 must settle this for the real publish. It is written there as
+    *From 3510 (done)*.
+
+  So the acceptance criterion on `cargo package --no-verify --locked` is
+  met with these two flags, not without them.
+- **The eval reference's rules crate loses an unused `schemars`.**
+  cargo-machete resolves `evals/references/tic-tac-toe` (an overlay
+  with no root of its own) against the repository's root. Before this
+  change it failed to load the reference, because the root had no
+  `shuyi-core` entry, and skipped it with no error. Now it loads the
+  reference and finds `schemars`, which the reference's rewritten
+  `rules/src/lib.rs` no longer uses. Its `schema` feature keeps
+  `shuyi-core/schema`.
+- **The give-up stays version-free.** The root's two sound entries are
+  removed by a `Cut` between names, not a `Replace` of their text,
+  because that text holds `=0.1.0`, which changes at each release.
+
+**Settled and handed over.**
+
+- 2005 has a *From 3510 (done)* bullet: the `alsa` lockfile, the
+  `publish` flip that lets the CI step drop its `sed`, and the
+  `--exclude` resume. It names ADR-0152 and `docs/releasing.md`.
+- 2613 (`shuyi-net`) and 3517 (`shuyi-contract`) say a new engine crate
+  is published, needs its pins and an `API_CRATES` entry, and fails CI
+  until Nick holds its name. 3517's *Out* line had "3510 claims every
+  crate name", which is Nick's to do, not the check's.
+- 3528's question 3 says it was answered on 2026-11-24. 3512 links the
+  runbook by path.
+
+**Split point.** The manifests, the ADR and the runbook could land
+before the check (`publish.rs` and its tests, 892 lines), but the CI
+step then has no `--order` to read. Kept together.
+
+No break: no public item, format or golden value changed, and each
+engine crate is built with the same features. The game depends on the
+engine by a git revision, and cargo reads `[workspace.dependencies]`
+from that checkout. I searched the game for anything that reads the
+engine's manifests (`gh search code --repo Zafnok/visions-of-shuyi
+'crates/core'`, and `'publish'` in Rust files) and found nothing.
+
+Book: none, nothing a game names changed. Publishing is the engine's
+own process, and the book gets its install line from crates.io in 2005.
+
+Playdate: none, `crates/playdate/Cargo.toml` changes only how its
+engine dependencies are written (`workspace = true`, the same features),
+and the Playdate build and backend are unchanged.
+
+Nick: nothing to do. All fourteen names were held on 2026-11-24.

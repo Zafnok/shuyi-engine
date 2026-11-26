@@ -11,6 +11,7 @@
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
 //! - `cargo xtask check-targets`
+//! - `cargo xtask check-publish [--order | --index]`
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
@@ -67,6 +68,7 @@ mod no_std;
 mod paths;
 mod pins;
 mod pr_size;
+mod publish;
 mod script;
 mod site_data;
 mod skills;
@@ -132,6 +134,17 @@ usage:
   cargo xtask check-targets
       Check that no two workspace packages build a binary, or an example, of
       the same name: their outputs are one file (ticket 2056).
+  cargo xtask check-publish [--order | --index]
+      Check that the engine crates are the publish list (ticket 3510,
+      ADR-0152): each takes the workspace's version and `publish`, every
+      other member says `publish = false` itself, an engine crate's normal
+      and build dependencies on engine crates come from
+      [workspace.dependencies] pinned to `=` the workspace's version, its
+      dev-dependencies on them are path-only, none depends on an unpublished
+      member, and they make no cycle. --order prints the engine crates in
+      the order they publish, one per line. --index also asks crates.io's
+      sparse index for each name (needs the network and `curl`), and fails
+      a name that isn't held.
   cargo xtask check-modules
       Check the modules against docs/modules.md and docs/modules.ron (ADR-0009):
       no default crate depends on one, each has a README, its metadata and a
@@ -361,6 +374,7 @@ fn main() -> ExitCode {
         Some("check-targets") if args.len() == 1 => {
             report("check-targets", &targets::run(&root), &[])
         }
+        Some("check-publish") => check_publish(&root, &args[1..]),
         Some("check-modules") if args.len() == 1 => {
             // The modules, then the guides against the same concerns
             // (ticket 2004).
@@ -413,6 +427,44 @@ fn main() -> ExitCode {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
         }
+    }
+}
+
+/// `check-publish [--order | --index]` (ticket 3510).
+fn check_publish(root: &Path, args: &[String]) -> ExitCode {
+    let flag = match args {
+        [] => None,
+        [flag] if flag == "--order" || flag == "--index" => Some(flag.as_str()),
+        _ => {
+            return report(
+                "check-publish",
+                &["usage: cargo xtask check-publish [--order | --index]".to_owned()],
+                &[],
+            );
+        }
+    };
+    let workspace = match publish::read(root) {
+        Ok(workspace) => workspace,
+        Err(error) => return report("check-publish", &[error], &[]),
+    };
+    let mut errors = publish::check(&workspace);
+    if !errors.is_empty() {
+        return report("check-publish", &errors, &[]);
+    }
+    let order = publish::order(&workspace).unwrap_or_default();
+    match flag {
+        Some("--order") => {
+            let mut stdout = std::io::stdout().lock();
+            for name in &order {
+                let _ = writeln!(stdout, "{name}");
+            }
+            ExitCode::SUCCESS
+        }
+        Some(_) => {
+            errors.extend(publish::missing_from_index(&order, publish::on_index));
+            report("check-publish", &errors, &[])
+        }
+        None => report("check-publish", &errors, &[]),
     }
 }
 

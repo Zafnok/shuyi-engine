@@ -41,9 +41,9 @@ schema = ["dep:schemars"]
 
 [dependencies]
 # The tactics kit's grid: positions, directions, terrain ids and paths.
-shuyi-core = { path = "../core", default-features = false }
+shuyi-core = { workspace = true }
 # The keymap file format and `ActionSet`.
-shuyi-assets = { path = "../assets", default-features = false }
+shuyi-assets = { workspace = true }
 thiserror.workspace = true
 # The player's saved key bindings (game ADR-0031) and profiles.
 serde.workspace = true
