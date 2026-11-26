@@ -6,13 +6,18 @@
 //! are not.
 //!
 //! A tile off the map gets no picture, and no part of one: a picture
-//! between tiles is drawn only inside the tiles of the map it covers.
+//! between tiles is drawn only inside the tiles of the map it covers,
+//! and not inside those of a terrain its layer skips. It is drawn at its
+//! own size (times the zoom), placed by its point and its layer's offset,
+//! so it may cover more than the four tiles round its point.
 
 use crate::prelude::*;
+use alloc::collections::BTreeSet;
 use shuyi_assets::image::{ImageId, ImageRect, Picture};
 use shuyi_assets::tileset::{CornerLayer, Layer, Look, TerrainTiles, TileLayer};
+use shuyi_core::TerrainId;
 
-use super::tile_sprite;
+use super::{side, tile_sprite};
 use crate::frame::color::{EngineColor, Rgb, to_channel};
 use crate::frame::glyph_buffer::{
     GlyphBuffer, Layer as Depth, Overlay, Paint, PxRect, Rect, Sprite,
@@ -125,26 +130,31 @@ impl<U> Ground<'_, U> {
         }
     }
 
-    /// The pictures of `layer`: one centred on each point where four
-    /// tiles meet, for the mix of those four being in the layer, drawn
-    /// inside the ones that are drawn and on the map.
+    /// The pictures of `layer`: one by each point where four tiles meet,
+    /// for the mix of those four being in the layer, at its own size,
+    /// its top-left half a tile up and left of the point and moved by the
+    /// layer's offset; drawn inside the tiles it covers that are drawn,
+    /// on the map and not skipped.
     fn paint_corners(&self, layer: &CornerLayer, buf: &mut GlyphBuffer) {
         let (w, h) = self.grid.tile;
         let (left, top) = self.grid.corner;
         let (across, down) = self.grid.tiles;
+        let zoom = self.grid.zoom();
+        let (ox, oy) = layer.offset;
         for (i, j) in (0..=down).flat_map(|j| (0..=across).map(move |i| (i, j))) {
             let mix = mix_of(self.shown.corners(i, j), &layer.of);
             let Some(rect) = layer.tiles.get(usize::from(mix)).copied().flatten() else {
                 continue;
             };
-            let dest = Rect::new(left + i * w - w / 2, top + j * h - h / 2, w, h);
+            let dest = Rect::new(
+                (left + i * w - w / 2).saturating_add(ox.saturating_mul(zoom)),
+                (top + j * h - h / 2).saturating_add(oy.saturating_mul(zoom)),
+                side(rect.w).saturating_mul(zoom),
+                side(rect.h).saturating_mul(zoom),
+            );
             let sprite = self.sprite(self.picture(rect), dest);
-            let round = [(i - 1, j - 1), (i, j - 1), (i - 1, j), (i, j)];
-            let parts: Vec<PxRect> = round
-                .iter()
-                .filter_map(|&(dx, dy)| self.tile(dx, dy)?.intersect(&dest))
-                .collect();
-            if parts.len() == round.len() {
+            let (parts, whole) = self.parts(dest, &layer.skip);
+            if whole {
                 buf.add_sprite(sprite);
             } else {
                 for clip in parts {
@@ -152,6 +162,42 @@ impl<U> Ground<'_, U> {
                 }
             }
         }
+    }
+
+    /// The pixels of `dest` inside each tile it covers that is drawn, on
+    /// the map and not of a terrain in `skip`, a row of tiles at a time
+    /// from the top-left; and whether those are all the tiles it covers
+    /// (so it can be drawn whole).
+    fn parts(&self, dest: PxRect, skip: &BTreeSet<TerrainId>) -> (Vec<PxRect>, bool) {
+        if dest.w <= 0 || dest.h <= 0 {
+            return (Vec::new(), false);
+        }
+        // Never 0: the skin fits its view by dividing by it.
+        let (w, h) = self.grid.tile;
+        let (left, top) = self.grid.corner;
+        let (across, down) = self.grid.tiles;
+        // The tiles the first and last pixels of `from..from + len` are
+        // on, of tiles `side` long from `start`, kept to the `n` drawn.
+        let span = |from: i32, len: i32, start: i32, side: i32, n: i32| {
+            let last = from.saturating_add(len - 1);
+            let first = from.saturating_sub(start).div_euclid(side);
+            let last = last.saturating_sub(start).div_euclid(side);
+            let kept = (first.max(0), last.min(n - 1));
+            (kept, kept == (first, last))
+        };
+        let ((dx0, dx1), all_across) = span(dest.x, dest.w, left, w, across);
+        let ((dy0, dy1), all_down) = span(dest.y, dest.h, top, h, down);
+        let mut whole = all_across && all_down;
+        let mut parts = Vec::new();
+        for (dx, dy) in (dy0..=dy1).flat_map(|dy| (dx0..=dx1).map(move |dx| (dx, dy))) {
+            let skipped = self.shown.at(dx, dy).is_some_and(|id| skip.contains(&id));
+            let part = self.tile(dx, dy).filter(|_| !skipped);
+            match part.and_then(|tile| tile.intersect(&dest)) {
+                Some(part) => parts.push(part),
+                None => whole = false,
+            }
+        }
+        (parts, whole)
     }
 
     /// The picture of `layer` on each of its tiles: the one for the mix
@@ -286,6 +332,7 @@ mod tests {
     use crate::toy::grid::{
         BRIDGE, Cards, GRASS, Kit, Piece, WATER, layered, mix_rect, sprite, tiles, with_indoor,
     };
+    use shuyi_assets::tileset::MIXES;
 
     /// 9 × 5 cells: 72 × 80 px, so 3 × 3 tiles of 24 px with 4 px to
     /// spare above and below. The first tile's corner is (0, 4).
@@ -443,6 +490,14 @@ mod tests {
         let kit = Kit::new();
         let mut terrain = layered(kit.tiles_image());
         terrain.tile_px = (9, 13);
+        // Pictures a tile big, as a tileset of such tiles has them.
+        for layer in &mut terrain.look.layers {
+            if let Layer::Corners(corners) = layer {
+                for rect in corners.tiles.iter_mut().flatten() {
+                    (rect.w, rect.h) = (9, 13);
+                }
+            }
+        }
         let s = sprite(Some(terrain));
         let mut scene = MapScene::<Piece>::new(p(0, 0), (2, 2));
         scene.set_terrain(|pos| Some(if pos.x <= 0 { WATER } else { GRASS }));
@@ -473,6 +528,141 @@ mod tests {
             ]
         );
         assert_eq!(buf.sprites()[9].dest, r(8, 10, 9, 13));
+    }
+
+    /// The toy's tiles with the one layer `layer` over them.
+    fn with_corners(kit: &Kit, layer: CornerLayer) -> SpriteSkin {
+        let mut terrain = tiles(kit.tiles_image());
+        terrain.look.layers = vec![Layer::Corners(layer)];
+        sprite(Some(terrain))
+    }
+
+    /// The clips of the sprites of `buf` from the `from`th on.
+    fn clips(buf: &GlyphBuffer, from: usize) -> Vec<PxRect> {
+        drawn(buf, from).into_iter().map(|(_, clip)| clip).collect()
+    }
+
+    #[test]
+    fn a_picture_between_tiles_may_be_taller_than_a_tile_and_sit_off_its_point() {
+        let kit = Kit::new();
+        // A face 24 × 36 px under the water's lower edge, moved 12 px down
+        // so its top is on its point: it hangs over the tile below the
+        // point and half of the one below that.
+        let face = ImageRect {
+            x: 0,
+            y: 96,
+            w: 24,
+            h: 36,
+        };
+        let mut pictures = [None; MIXES];
+        pictures[0b1100] = Some(face);
+        let mut layer = CornerLayer::new(BTreeSet::from([WATER]), pictures);
+        layer.offset = (0, 12);
+        let s = with_corners(&kit, layer.clone());
+        let src = src_rect(face);
+        let r = Rect::new;
+        let buf = painted(&kit, &s, &view(["~~~", "...", "..."]));
+        assert_eq!(
+            drawn(&buf, 9),
+            [
+                // At the view's edges, the halves inside it, on two rows.
+                (src, r(0, 28, 12, 24)),
+                (src, r(0, 52, 12, 12)),
+                // Inside it, whole: one sprite each.
+                (src, r(12, 28, 24, 36)),
+                (src, r(36, 28, 24, 36)),
+                (src, r(60, 28, 12, 24)),
+                (src, r(60, 52, 12, 12)),
+            ]
+        );
+        for sprite in &buf.sprites()[11..13] {
+            assert_eq!(sprite.dest, sprite.clip);
+        }
+        // A part keeps its picture's place.
+        assert_eq!(buf.sprites()[9].dest, r(-12, 28, 24, 36));
+        // Where the map ends under the tile below the point, so does the
+        // face.
+        let buf = painted(&kit, &s, &view(["~~~", "...", "   "]));
+        assert_eq!(
+            clips(&buf, 6),
+            [
+                r(0, 28, 12, 24),
+                r(12, 28, 12, 24),
+                r(24, 28, 12, 24),
+                r(36, 28, 12, 24),
+                r(48, 28, 12, 24),
+                r(60, 28, 12, 24),
+            ]
+        );
+        // At twice the zoom, a picture and offset of half the pixels land
+        // on the same ones.
+        let mut half = layer;
+        half.tiles[0b1100] = Some(ImageRect {
+            w: 12,
+            h: 18,
+            ..face
+        });
+        half.offset = (0, 6);
+        let mut terrain = tiles(kit.tiles_image());
+        terrain.tile_px = (12, 12);
+        terrain.look.layers = vec![Layer::Corners(half)];
+        let zoomed = sprite(Some(terrain)).zoomed(2);
+        let lake = view(["~~~", "...", "..."]);
+        assert_eq!(
+            clips(&painted(&kit, &zoomed, &lake), 9),
+            clips(&painted(&kit, &s, &lake), 9)
+        );
+        // A picture of no pixels is drawn nowhere.
+        for empty in [ImageRect { w: 0, ..face }, ImageRect { h: 0, ..face }] {
+            let mut none = CornerLayer::new(BTreeSet::from([WATER]), [None; MIXES]);
+            none.tiles[0b1100] = Some(empty);
+            let buf = painted(&kit, &with_corners(&kit, none), &lake);
+            assert_eq!(buf.sprites().len(), 9, "{empty:?}");
+        }
+    }
+
+    #[test]
+    fn a_tile_of_a_skipped_terrain_gets_no_part_of_a_picture_between_tiles() {
+        let kit = Kit::new();
+        let mut pictures = [None; MIXES];
+        for m in 1..16u8 {
+            pictures[usize::from(m)] = Some(mix_rect(m));
+        }
+        let mut layer = CornerLayer::new(BTreeSet::from([WATER]), pictures);
+        layer.skip = BTreeSet::from([BRIDGE]);
+        let s = with_corners(&kit, layer);
+        let m = |mix| src_rect(mix_rect(mix));
+        let r = Rect::new;
+        // A pond with a bridge to its right: the pictures round the pond
+        // stop at the bridge, and its other neighbours get theirs.
+        let pond = view(["...", ".~=", "..."]);
+        let buf = painted(&kit, &s, &pond);
+        assert_eq!(
+            drawn(&buf, 9),
+            [
+                (m(0b0001), r(12, 16, 24, 24)),
+                (m(0b0010), r(36, 16, 12, 12)),
+                (m(0b0010), r(48, 16, 12, 12)),
+                (m(0b0010), r(36, 28, 12, 12)),
+                (m(0b0100), r(12, 40, 24, 24)),
+                (m(0b1000), r(36, 40, 12, 12)),
+                (m(0b1000), r(36, 52, 12, 12)),
+                (m(0b1000), r(48, 52, 12, 12)),
+            ]
+        );
+        let bridge = r(48, 28, 24, 24);
+        for clip in clips(&buf, 9) {
+            assert_eq!(clip.intersect(&bridge), None, "{clip:?}");
+        }
+        // The terrain a tile is shown as is the one skipped: grass that
+        // would become a bridge is painted as the bridge.
+        let mut scene = view(["...", ".~.", "..."]);
+        scene.tiles[5].becomes = Some(BRIDGE);
+        assert_eq!(painted(&kit, &s, &scene), buf);
+        // Skipping nothing, the same layer covers the bridge too.
+        let all = CornerLayer::new(BTreeSet::from([WATER]), pictures);
+        let buf = painted(&kit, &with_corners(&kit, all), &pond);
+        assert_eq!(clips(&buf, 9).len(), 4);
     }
 
     #[test]
@@ -786,6 +976,13 @@ mod tests {
             let kit = Kit::new();
             let mut terrain = with_indoor(layered(kit.tiles_image()));
             terrain.tile_px = tile;
+            // And a face taller than the toy's tiles, off its points,
+            // that leaves the bridges bare.
+            let face = ImageRect { x: 0, y: 96, w: 24, h: 37 };
+            let mut face_layer = CornerLayer::new(BTreeSet::from([WATER]), [Some(face); MIXES]);
+            face_layer.skip = BTreeSet::from([BRIDGE]);
+            face_layer.offset = (5, -7);
+            terrain.look.layers.push(Layer::Corners(face_layer));
             let s = sprite(Some(terrain));
             // The ground alone: nothing on it, nothing tinting it.
             let mut scene = scene;
@@ -826,6 +1023,15 @@ mod tests {
                 let parts = on_map.iter().filter_map(|(_, _, tile)| tile.intersect(&sprite.clip));
                 let covered: i64 = parts.map(area_of).sum();
                 prop_assert_eq!(covered, area_of(sprite.clip), "{:?}", sprite);
+            }
+            // No part of the face is on a bridge.
+            let faces = sprites.iter().filter(|s| (s.src.w, s.src.h) == (24, 37));
+            for sprite in faces {
+                for &(dx, dy, rect) in &on_map {
+                    if shown.at(dx, dy) == Some(BRIDGE) {
+                        prop_assert_eq!(rect.intersect(&sprite.clip), None, "{:?}", sprite);
+                    }
+                }
             }
         }
     }

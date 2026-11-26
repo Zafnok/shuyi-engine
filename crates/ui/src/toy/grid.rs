@@ -188,10 +188,7 @@ pub fn layered(image: ImageId) -> TerrainTiles {
     for m in 1..16u8 {
         shore[usize::from(m)] = Some(mix_rect(m));
     }
-    let shore = CornerLayer {
-        of: BTreeSet::from([WATER, BRIDGE]),
-        tiles: shore,
-    };
+    let shore = CornerLayer::new(BTreeSet::from([WATER, BRIDGE]), shore);
     let mut sides = [None; MIXES];
     sides[0b0101] = Some(mix_rect(0));
     let bridge = TileLayer {
