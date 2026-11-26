@@ -6,9 +6,9 @@
 //!
 //! A Learn page is read as its twin is (`cargo xtask llms`, ticket 2808):
 //! its front matter dropped, a `snippet` shortcode replaced by the code it
-//! shows, the bodies of `newcomer`, `check` and `exercise` kept without
-//! their markers, and `try_it` dropped. [`learn_page`] is that text, which
-//! the MCP server also serves as a resource.
+//! shows, a `shot` by its picture's alt text and caption, the bodies of
+//! `newcomer`, `check` and `exercise` kept without their markers, and
+//! `try_it` dropped. [`learn_page`] is that text.
 
 use std::collections::BTreeMap;
 
@@ -217,6 +217,10 @@ pub fn clean(
                 Ok(code) => out.push_str(&code),
                 Err(e) => unknown.push(e),
             },
+            ("{{", "shot") => match shot(args) {
+                Ok(picture) => out.push_str(&picture),
+                Err(e) => unknown.push(e),
+            },
             ("{{", "try_it") => {}
             ("{%", block) if BLOCKS.contains(&block) => {}
             _ => unknown.push(format!(
@@ -308,6 +312,30 @@ fn snippet(
         None => source.split('\n').filter(|line| !is_mark(line)).collect(),
     };
     Ok(format!("```{language}\n{}\n```", lines.join("\n")))
+}
+
+/// The `shot` shortcode with `args`: a picture of an example, as the
+/// twin's image, its `alt` text and its `caption` in italics under it, if
+/// it has one. The picture's file isn't read: the site's build checks it.
+fn shot(args: &str) -> Result<String, String> {
+    let read = arguments(args).ok_or_else(|| format!("shot: can't read `{args}`"))?;
+    let (mut example, mut name, mut alt, mut caption) = (None, None, None, None);
+    for (key, value) in read {
+        match key {
+            "example" => example = Some(value),
+            "name" => name = Some(value),
+            "alt" => alt = Some(value),
+            "caption" => caption = Some(value),
+            _ => return Err(format!("shot: no argument `{key}`")),
+        }
+    }
+    let (Some(example), Some(name), Some(alt)) = (example, name, alt) else {
+        return Err("shot: it takes `example`, `name` and `alt`".to_owned());
+    };
+    let caption = caption
+        .filter(|caption| !caption.is_empty())
+        .map_or_else(String::new, |caption| format!("\n\n*{caption}*"));
+    Ok(format!("![{alt}](/shots/{example}/{name}.png){caption}"))
 }
 
 /// Whether `line` is an anchor's mark.

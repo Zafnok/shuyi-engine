@@ -14,7 +14,7 @@ fn files(step: Option<&str>, file: &str) -> Option<String> {
 }
 
 #[test]
-fn each_of_the_five_shortcodes_is_read_as_the_twin_reads_it() {
+fn each_of_the_six_shortcodes_is_read_as_the_twin_reads_it() {
     let body = "\
 Intro.
 
@@ -38,6 +38,10 @@ Add a key.
 
 {{ try_it(name=\"title-blue\") }}
 
+{{ shot(example=\"hello-grid\", name=\"stage\", alt=\"The stage in glyphs\", caption=\"The glyph skin\") }}
+
+{{ shot(example=\"hello-grid\", name=\"tiles\", alt=\"The stage in tiles\") }}
+
 Write `{{/* snippet(file=\"x\") */}}` to show a file.
 ";
     let (text, unknown) = clean(body, &files);
@@ -50,6 +54,14 @@ Write `{{/* snippet(file=\"x\") */}}` to show a file.
     assert!(text.contains("A trait is a promise."), "{text}");
     assert!(text.contains("- [x] A promise. — Right."), "{text}");
     assert!(text.contains("Add a key."), "{text}");
+    assert!(
+        text.contains("![The stage in glyphs](/shots/hello-grid/stage.png)\n\n*The glyph skin*"),
+        "{text}"
+    );
+    assert!(
+        text.contains("![The stage in tiles](/shots/hello-grid/tiles.png)\n"),
+        "{text}"
+    );
     assert!(
         text.contains("Write `{{ snippet(file=\"x\") }}` to show"),
         "{text}"

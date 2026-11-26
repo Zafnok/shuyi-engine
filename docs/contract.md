@@ -467,7 +467,8 @@ chunks:
 - each Learn page (`site/content/learn/`), cut at its `##` and `###`
   headings, read as its [Markdown twin](../site/content/learn/book/tools-for-agents.md)
   is: a `snippet` is the code it shows, the bodies of `newcomer`,
-  `check` and `exercise` are kept, `try_it` is left out;
+  `check` and `exercise` are kept, a `shot` is its picture's alt text
+  and caption, `try_it` is left out;
 - each skill's `SKILL.md`, cut the same way, its description at its
   start, and each of its other Markdown files whole;
 - each example's `.rs` file, as its `//!` comment and the names after

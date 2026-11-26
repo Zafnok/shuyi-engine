@@ -47,7 +47,8 @@ no network: a game's tools run offline and in CI.
    `SKILL.md` cut at its `##` and `###` headings outside fenced code, the
    anchor Zola's slug of the heading; a Learn page read as its twin reads
    it (`snippet` is its code, the bodies of `newcomer`, `check` and
-   `exercise` kept, `try_it` dropped); an example's Rust file as its `//!`
+   `exercise` kept, a `shot` as its picture's alt text and caption,
+   `try_it` dropped); an example's Rust file as its `//!`
    comment and its public items' names; a problem code's page whole. An
    xtask test holds each Learn page's headings and snippet code equal to
    its twin's, so a new shortcode fails the twins and the search alike.
