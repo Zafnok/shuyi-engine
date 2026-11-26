@@ -103,7 +103,7 @@ None.
 - [x] `pack::VERSION` is 23, with the pack snapshot updated.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
