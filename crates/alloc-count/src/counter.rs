@@ -95,11 +95,9 @@ impl<A, T> CountingAlloc<A, T> {
     /// ([`take_allocs`](Self::take_allocs)).
     pub fn counts(&self) -> Counts {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
-        Counts::new(
-            wide(self.live_bytes()),
-            wide(self.peak_bytes()),
-            self.take_allocs(),
-        )
+        Counts::new(wide(self.live_bytes()))
+            .with_peak_bytes(wide(self.peak_bytes()))
+            .with_allocs(self.take_allocs())
     }
 
     /// Counts a call that asked for `size` bytes and got `ptr`.

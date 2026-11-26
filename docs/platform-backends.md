@@ -528,9 +528,9 @@ only shows the card longer (a PC, the web).
 ### `memory(&mut self) -> Option<MemoryReading>` (has a default)
 
 The device's memory now, in debug builds (ADR-0046):
-`MemoryReading::new(HeapCounts::new(live_bytes, peak_bytes, allocs))`,
-the heap's live bytes, their peak, and the allocations and reallocations
-since the last call, in bytes asked for (never the allocator's own
+`MemoryReading::new(HeapCounts::new(live_bytes).with_peak_bytes(peak_bytes)
+.with_allocs(allocs))`, the heap's live bytes, their peak, and the
+allocations and reallocations since the last call, in bytes asked for (never the allocator's own
 overhead). `App` asks once a frame, at the end of a frame it keeps a
 record of (so only with a clock, and only while `debug_tools` is on),
 and puts the heap's counts in the record's `heap`. Count with

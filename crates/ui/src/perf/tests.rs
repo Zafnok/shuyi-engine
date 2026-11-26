@@ -70,7 +70,9 @@ fn since_gives_the_records_after_a_seq_once_the_ring_has_wrapped() {
 fn a_record_reads_back_from_its_text() {
     let mut record = FrameRecord::new(3);
     record.times.frame_us = 16_000;
-    record.spans.push(SpanEvent::new("ai", 10, 20, 1));
+    record
+        .spans
+        .push(SpanEvent::new("ai", 20).with_start_us(10).with_depth(1));
     record.spans_dropped = 2;
     let text = ron::to_string(&record).expect("a record writes");
     let back: FrameRecord = ron::from_str(&text).expect("and reads back");
@@ -114,8 +116,10 @@ fn nested_spans_have_depths_and_end_inner_first() {
     assert_eq!(
         record.spans,
         [
-            SpanEvent::new("inner", 500, 400, 1),
-            SpanEvent::new("outer", 200, 1200, 0),
+            SpanEvent::new("inner", 400)
+                .with_start_us(500)
+                .with_depth(1),
+            SpanEvent::new("outer", 1200).with_start_us(200),
         ]
     );
     assert_eq!(record.spans_dropped, 0);
@@ -275,7 +279,7 @@ fn bytes_read_in_the_largest_unit_with_a_tenth_rounded_down() {
 #[test]
 fn a_new_record_has_no_heap_counts_and_a_reading_holds_its_own() {
     assert_eq!(FrameRecord::new(3).heap, None);
-    let heap = HeapCounts::new(1, 2, 3);
+    let heap = HeapCounts::new(1).with_peak_bytes(2).with_allocs(3);
     assert_eq!((heap.live_bytes, heap.peak_bytes, heap.allocs), (1, 2, 3));
     assert_eq!(MemoryReading::new(heap).heap, heap);
 }
@@ -307,7 +311,7 @@ fn a_tag_class_writes_as_a_word() {
 /// A snapshot of `frame` with `rows`, its live bytes their sum.
 fn snapshot(frame: u32, rows: Vec<TagRow>) -> HeapSnapshot {
     let live = rows.iter().map(|r| r.live_bytes).sum();
-    let mut snapshot = HeapSnapshot::new(live, live, rows);
+    let mut snapshot = HeapSnapshot::new(live, rows);
     snapshot.frame = frame;
     snapshot
 }
@@ -322,12 +326,12 @@ fn a_snapshots_rows_go_by_live_bytes_then_class_then_name() {
     let snapshot = snapshot(
         1,
         vec![
-            TagRow::new(TagClass::Other, "other", 100, 1),
-            TagRow::new(TagClass::Span, "draw", 300, 2),
-            TagRow::new(TagClass::Phase, "update", 300, 1),
-            TagRow::new(TagClass::Phase, "draw", 300, 1),
-            TagRow::new(TagClass::Asset, "image", 500, 3),
-            TagRow::new(TagClass::Phase, "load", 0, 0),
+            TagRow::new(TagClass::Other, "other", 100).with_live_blocks(1),
+            TagRow::new(TagClass::Span, "draw", 300).with_live_blocks(2),
+            TagRow::new(TagClass::Phase, "update", 300).with_live_blocks(1),
+            TagRow::new(TagClass::Phase, "draw", 300).with_live_blocks(1),
+            TagRow::new(TagClass::Asset, "image", 500).with_live_blocks(3),
+            TagRow::new(TagClass::Phase, "load", 0),
         ],
     );
     assert_eq!(
@@ -346,18 +350,18 @@ fn a_diff_counts_a_tag_missing_from_one_snapshot_as_nothing_there() {
     let earlier = snapshot(
         1,
         vec![
-            TagRow::new(TagClass::Phase, "load", 4096, 4),
-            TagRow::new(TagClass::Phase, "update", 1024, 1),
-            TagRow::new(TagClass::Other, "other", 512, 2),
+            TagRow::new(TagClass::Phase, "load", 4096).with_live_blocks(4),
+            TagRow::new(TagClass::Phase, "update", 1024).with_live_blocks(1),
+            TagRow::new(TagClass::Other, "other", 512).with_live_blocks(2),
         ],
     );
     let later = snapshot(
         600,
         vec![
-            TagRow::new(TagClass::Phase, "load", 4096, 4),
-            TagRow::new(TagClass::Phase, "update", 99_328, 7),
-            TagRow::new(TagClass::Span, "ai", 4096, 1),
-            TagRow::new(TagClass::Asset, "image", 24_576, 3),
+            TagRow::new(TagClass::Phase, "load", 4096).with_live_blocks(4),
+            TagRow::new(TagClass::Phase, "update", 99_328).with_live_blocks(7),
+            TagRow::new(TagClass::Span, "ai", 4096).with_live_blocks(1),
+            TagRow::new(TagClass::Asset, "image", 24_576).with_live_blocks(3),
         ],
     );
     let diff = earlier.diff(&later);
@@ -367,12 +371,12 @@ fn a_diff_counts_a_tag_missing_from_one_snapshot_as_nothing_there() {
         diff.tags,
         [
             // Only in both, grown.
-            TagDelta::new(TagClass::Phase, "update", 98_304, 6),
+            TagDelta::new(TagClass::Phase, "update", 98_304).with_live_blocks(6),
             // Only in the later one.
-            TagDelta::new(TagClass::Asset, "image", 24_576, 3),
-            TagDelta::new(TagClass::Span, "ai", 4096, 1),
+            TagDelta::new(TagClass::Asset, "image", 24_576).with_live_blocks(3),
+            TagDelta::new(TagClass::Span, "ai", 4096).with_live_blocks(1),
             // Only in the earlier one. `load` is unchanged: left out.
-            TagDelta::new(TagClass::Other, "other", -512, -2),
+            TagDelta::new(TagClass::Other, "other", -512).with_live_blocks(-2),
         ]
     );
     let back = later.diff(&earlier);
@@ -382,7 +386,7 @@ fn a_diff_counts_a_tag_missing_from_one_snapshot_as_nothing_there() {
     );
     assert_eq!(
         back.tags[0],
-        TagDelta::new(TagClass::Phase, "update", -98_304, -6)
+        TagDelta::new(TagClass::Phase, "update", -98_304).with_live_blocks(-6)
     );
 }
 
@@ -391,17 +395,17 @@ fn a_diff_goes_by_the_size_of_the_change_then_class_then_name() {
     let earlier = snapshot(
         0,
         vec![
-            TagRow::new(TagClass::Phase, "update", 10_000, 10),
-            TagRow::new(TagClass::Span, "b", 100, 1),
+            TagRow::new(TagClass::Phase, "update", 10_000).with_live_blocks(10),
+            TagRow::new(TagClass::Span, "b", 100).with_live_blocks(1),
         ],
     );
     let later = snapshot(
         30,
         vec![
-            TagRow::new(TagClass::Phase, "update", 0, 0),
-            TagRow::new(TagClass::Span, "b", 100, 2),
-            TagRow::new(TagClass::Span, "a", 10_000, 1),
-            TagRow::new(TagClass::Asset, "image", 20_000, 1),
+            TagRow::new(TagClass::Phase, "update", 0),
+            TagRow::new(TagClass::Span, "b", 100).with_live_blocks(2),
+            TagRow::new(TagClass::Span, "a", 10_000).with_live_blocks(1),
+            TagRow::new(TagClass::Asset, "image", 20_000).with_live_blocks(1),
         ],
     );
     let diff = earlier.diff(&later);
@@ -418,14 +422,14 @@ fn a_diff_goes_by_the_size_of_the_change_then_class_then_name() {
         ]
     );
     assert_eq!(diff.tags[3].live_blocks, 1);
-    assert_eq!(earlier.diff(&earlier), HeapDiff::new(0, 0));
+    assert_eq!(earlier.diff(&earlier), HeapDiff::until(0));
 }
 
 #[test]
 fn a_change_past_i64_is_at_its_end() {
     let (small, huge) = (
         snapshot(0, Vec::new()),
-        HeapSnapshot::new(u64::MAX, 0, Vec::new()),
+        HeapSnapshot::new(u64::MAX, Vec::new()).with_peak_bytes(0),
     );
     assert_eq!(small.diff(&huge).live_bytes, i64::MAX);
     assert_eq!(huge.diff(&small).live_bytes, i64::MIN);
@@ -433,8 +437,14 @@ fn a_change_past_i64_is_at_its_end() {
 
 #[test]
 fn snapshot_and_diff_lines_read_back_from_their_text() {
-    let earlier = snapshot(1, vec![TagRow::new(TagClass::Asset, "image", 10, 1)]);
-    let mut later = snapshot(2, vec![TagRow::new(TagClass::Span, "ai", 30, 2)]);
+    let earlier = snapshot(
+        1,
+        vec![TagRow::new(TagClass::Asset, "image", 10).with_live_blocks(1)],
+    );
+    let mut later = snapshot(
+        2,
+        vec![TagRow::new(TagClass::Span, "ai", 30).with_live_blocks(2)],
+    );
     later.overflowed = 3;
     let lines = [
         PerfLine::Snapshot(later.clone()),
@@ -445,4 +455,94 @@ fn snapshot_and_diff_lines_read_back_from_their_text() {
         let back: PerfLine = ron::from_str(&text).expect("and reads back");
         assert_eq!(back, line);
     }
+}
+
+#[test]
+fn the_heaps_counts_build_what_a_literal_built() {
+    let literal = HeapCounts {
+        live_bytes: 1,
+        peak_bytes: 2,
+        allocs: 3,
+    };
+    assert_eq!(
+        HeapCounts::new(1).with_peak_bytes(2).with_allocs(3),
+        literal
+    );
+    assert_eq!(
+        HeapCounts::new(5),
+        HeapCounts {
+            live_bytes: 5,
+            peak_bytes: 5,
+            allocs: 0,
+        }
+    );
+}
+
+#[test]
+fn a_span_builds_what_a_literal_built() {
+    let literal = SpanEvent {
+        name: "ai".into(),
+        start_us: 10,
+        us: 20,
+        depth: 1,
+    };
+    assert_eq!(
+        SpanEvent::new("ai", 20).with_start_us(10).with_depth(1),
+        literal
+    );
+    let first = SpanEvent::new("ai", 20);
+    assert_eq!((first.start_us, first.depth), (0, 0));
+}
+
+#[test]
+fn a_tags_row_and_change_build_what_a_literal_built() {
+    let row = TagRow {
+        class: TagClass::Phase,
+        name: "update".into(),
+        live_bytes: 300,
+        live_blocks: 2,
+        allocated_bytes: 300,
+        peak_bytes: 300,
+    };
+    assert_eq!(
+        TagRow::new(TagClass::Phase, "update", 300).with_live_blocks(2),
+        row
+    );
+    assert_eq!(TagRow::new(TagClass::Phase, "update", 300).live_blocks, 0);
+    let delta = TagDelta {
+        class: TagClass::Span,
+        name: "ai".into(),
+        live_bytes: -512,
+        live_blocks: -2,
+    };
+    assert_eq!(
+        TagDelta::new(TagClass::Span, "ai", -512).with_live_blocks(-2),
+        delta
+    );
+    assert_eq!(TagDelta::new(TagClass::Span, "ai", -512).live_blocks, 0);
+}
+
+#[test]
+fn a_snapshot_and_a_diff_build_what_a_literal_built() {
+    let row = TagRow::new(TagClass::Phase, "load", 10);
+    let snapshot = HeapSnapshot {
+        frame: 0,
+        live_bytes: 10,
+        peak_bytes: 20,
+        tags: vec![row.clone()],
+        overflowed: 0,
+    };
+    assert_eq!(
+        HeapSnapshot::new(10, vec![row.clone()]).with_peak_bytes(20),
+        snapshot
+    );
+    assert_eq!(HeapSnapshot::new(10, vec![row]).peak_bytes, 10);
+    let diff = HeapDiff {
+        from: 1,
+        to: 600,
+        live_bytes: 0,
+        tags: Vec::new(),
+    };
+    assert_eq!(HeapDiff::until(600).with_from(1), diff);
+    assert_eq!(HeapDiff::until(600).from, 0);
 }
