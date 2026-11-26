@@ -54,9 +54,47 @@ fn a_seat_says_what_it_pressed_held_and_released() {
 }
 
 #[test]
-fn an_input_holds_at_most_four_seats() {
+fn an_input_holds_at_most_eight_seats() {
+    assert_eq!(MAX_SEATS, 8);
     let seats = vec![SeatInput::default(); MAX_SEATS + 2];
     assert_eq!(TickInput::new(seats).seats.len(), MAX_SEATS);
+}
+
+#[test]
+fn a_record_of_a_step_of_nine_seats_is_refused_naming_the_limit() {
+    let seats = |n: usize| alloc::format!("[{}]", vec!["()"; n].join(","));
+    let record = |n: usize| {
+        alloc::format!(
+            "(made:(engine:\"0.1.0\",game:\"dot\",content:\"0000000000000000\"),seed:1,\
+             runs:[(steps:1,input:(seats:{}))])",
+            seats(n)
+        )
+    };
+    let eight: TickRecord = ron::from_str(&record(8)).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(eight.runs()[0].input.seats.len(), 8);
+    let refused = ron::from_str::<TickRecord>(&record(9)).unwrap_err();
+    let text = alloc::format!("{refused}");
+    assert!(text.contains("a step holds 9 seats; at most 8"), "{text}");
+}
+
+#[test]
+fn a_record_of_eight_seats_replays_to_the_same_hashes() {
+    let mut record = TickRecord::new(made(), 1);
+    for step in 0..40_u16 {
+        let seats = (0..8_u16)
+            .map(|seat| {
+                let way = ActionId((step / 5 + seat) % 4);
+                SeatInput::new(vec![way], vec![way], vec![])
+            })
+            .collect();
+        record.push(TickInput::new(seats));
+    }
+    let text = ron::to_string(&record).unwrap_or_else(|e| panic!("{e}"));
+    let back: TickRecord = ron::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+    let first = replay(&mut Dot::default(), &record, &made());
+    let again = replay(&mut Dot::default(), &back, &made());
+    assert_eq!(first.as_ref().map(Vec::len), Ok(40));
+    assert_eq!(first, again);
 }
 
 #[test]
