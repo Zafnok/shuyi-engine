@@ -2360,3 +2360,24 @@ Source: Nick, in a session of this repository:
   Doom" becomes an original first-person shooter in corridors, and DOOM
   itself stays the port in `Zafnok/shuyi-doom` (2026-11-03). Nick may
   veto this, as he may the 2026-10-26 rule.
+
+## 2026-11-26: shuyi-net's name is held now, shuyi-server's with its crate
+
+Ticket 2613 adds the crate `shuyi-net`, and since 3510 CI's `layers` job
+fails an engine crate whose name isn't on crates.io. Claude checked
+crates.io's index on 2026-11-26: `shuyi-net` and `shuyi-server` (2616's
+crate, not yet written) were both free. Asked which to hold, with
+`shuyi-net` alone recommended, Nick chose:
+
+> "shuyi-net now (Recommended)"
+
+**Rules:**
+
+- **`shuyi-net` is held** as an empty 0.0.0 placeholder like the
+  fourteen (a library with no code, both license files, a README that
+  points here), owned by `Zafnok`, published by Nick with a short-lived
+  `publish-new` token for `shuyi-*`, as on 2026-11-24. 2613's PR merges
+  after it.
+- **`shuyi-server` waits for its crate.** It is held when 2616 makes it
+  real, under the 2026-10-21 rule (a name is held when its crate is
+  real); 2616's **Nick input** asks for it then.

@@ -47,8 +47,8 @@ What is planned:
 
 - 2613 (unparked by Nick's decision of 2026-11-25, for the online
   example trails): `shuyi-net`, `Transport::stats()`, and
-  `MemoryNetwork` with seeded loss, delay, reordering and duplicates
-  (`Faults`, in per-mille, replaceable between steps). 1140 (parked):
+  `MemoryNetwork`; 2620 gives it seeded loss, delay, reordering and
+  duplicates (`Faults`, in per-mille, replaceable between steps). 1140 (parked):
   `LockstepSession` with desync detection, on 2613's crate. Only Rust
   tests reach them.
 - 2614 and 2615 (unparked with 2613): a server-authoritative tick
@@ -134,7 +134,7 @@ None.
     duplicate: u8 }`: `loss`, `reorder` and `duplicate` in whole
     percent (0 to 100), `delay` in frames (one network step a frame, at
     most 600). The default is a perfect network with seed 0. No floats.
-    2613's `Faults` are in per-mille, so the contract's percent is
+    2620's `Faults` are in per-mille, so the contract's percent is
     multiplied by 10 when the network is built.
   - `NetStats`: what 2613's `Transport::stats()` gives, copied field by
     field into a contract type with `JsonSchema`. Whole numbers only.
@@ -225,7 +225,7 @@ None.
     who hosts), and `hashes: impl Fn(&Harness<G>) -> Vec<StateHash>`
     reads the game's `LockstepSession` hashes (for example through
     `Harness::screen`);
-  - it builds one `MemoryNetwork` from `NetConditions` (2613's fault
+  - it builds one `MemoryNetwork` from `NetConditions` (2620's fault
     settings) and implements `Peers` over it. Nothing in `tools` uses
     floats;
   - `tools/layers.ron` (2015's `check-layers`): `shuyi-net`'s `engine`

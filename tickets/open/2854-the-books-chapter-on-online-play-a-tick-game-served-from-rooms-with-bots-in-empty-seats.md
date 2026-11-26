@@ -27,14 +27,14 @@ does.
 
 What it builds on:
 
-- **ADR-0150** (written by 2613): the sync model. The server runs the
+- **ADR-0155** (written by 2613): the sync model. The server runs the
   real `TickSim` headless and decides everything: seats, which input
   counts at which step, the bots, and when a round starts and with
   which seed. Each step it broadcasts the step's resolved `TickInput`.
   Clients step their own copy of the same deterministic rules with
   exactly those inputs. Determinism (ADR-0006 §2) is the network
   contract.
-- **ADR-0151** (written by 2618): where trails' server runs. This
+- **2618's ADR**: where trails' server runs. This
   chapter only links it; hosting is 2856's page.
 - **The book today** (`site/content/learn/book/`) has 10 chapters on
   Moon Garden, the book's small game, in `site/snippets/` (the crate
@@ -81,7 +81,7 @@ None.
      works only because the rules are deterministic (chapter 5's hash).
      It also says why not rollback: it needs no server, but a game with
      bots and drop-in needs one anyway, and the browser has only
-     WebSocket. Link ADR-0150.
+     WebSocket. Link ADR-0155.
   2. **A room.** `RoomGame` and its consts (`SEATS` and the others 2614
      defines), on Moon Garden's bees.
   3. **Bots in empty seats.** The game's own bot hook,
@@ -102,7 +102,7 @@ None.
      (2790), and where the address comes from (`?server=`, then
      `server.ron`, then the dev default).
   8. **Testing it all with no network.** Rooms, clients and the director
-     over `MemoryNetwork` with seeded faults (2613), and the hash check
+     over `MemoryNetwork` with seeded faults (2613, 2620), and the hash check
      every 15 steps that finds a desync.
   9. **The whole game: trails.** A walk through `examples/trails`, its
      rules, bot, `impl RoomGame`, `trails-server` and online screen,
@@ -110,7 +110,7 @@ None.
   10. **What isn't here yet.** Prediction of your own rider and rollback
       (1147, 2604), lobbies (1145), accounts and ratings (1148), turn
       games online (1140, 1146). All are parked.
-  11. **Where a server runs.** Two sentences and a link to ADR-0151.
+  11. **Where a server runs.** Two sentences and a link to 2618's ADR.
       2856 (blocked by this ticket) writes the page *Hosting your
       server* and changes this link to point at it.
 - **The code**, `site/snippets/src/online.rs`, with `// ANCHOR:` marks
@@ -152,7 +152,7 @@ tests 300, glossary and links 50).
 
 ## Implementation steps
 
-1. Read ADR-0150, 2614's and 2615's completion notes, and
+1. Read ADR-0155, 2614's and 2615's completion notes, and
    `examples/trails` (its README, `src/`, `trails-server`). Write the
    chapter's outline against the names that actually landed. A name in
    this ticket that changed is used as it landed.
@@ -184,7 +184,7 @@ tests 300, glossary and links 50).
       leaves, with the room still stepping.
 - [ ] `cargo xtask check-book` passes, with a glossary row for each
       bold term the chapter uses.
-- [ ] The link checks pass, and the chapter links ADR-0150, ADR-0151
+- [ ] The link checks pass, and the chapter links ADR-0155, 2618's ADR
       and trails' files.
 - [ ] The chapter never calls the genre or the example by an existing
       game's name.

@@ -26,15 +26,15 @@ seats are ridden by bots, and players drop in and out of them (2614).
 - **ADR-0006** (networking in layers) puts "who is in a match" in its
   Session layer and matchmaking in its Services layer. Quick play sits
   between them: it is a session the server picks, with no lobby.
-- **ADR-0150** (written by 2613) is the sync model this rests on: an
+- **ADR-0155** (written by 2613) is the sync model this rests on: an
   authoritative server runs each room's `TickSim` headless and
   broadcasts the resolved inputs.
 - **2614** builds the room this ticket directs: `RoomGame`, the sans-IO
   `Room` with seats that are `Human(peer)` or `Bot`, `RoomClient`, the
   `room::wire` codec and its `PROTOCOL`, and the test game
   `room::testing::Dots`.
-- **2613** builds `Transport`, `PeerId`, `NetEvent` and `MemoryNetwork`
-  with seeded faults.
+- **2613** builds `Transport`, `PeerId`, `NetEvent` and `MemoryNetwork`,
+  and **2620** its seeded faults.
 - **2616** (blocked by this ticket) puts a director behind WebSocket,
   TLS, `/healthz` and `/stats`. Everything here stays sans-IO: no
   socket, no clock, no thread.
@@ -82,7 +82,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
     ones, closes after this long;
   - `msgs_per_second: u16`, default 30: a peer's message budget. Past it
     the peer is disconnected. A client sends `Input` on change and
-    `Alive` once a second (ADR-0150), so 30 is far above honest play at
+    `Alive` once a second (ADR-0155), so 30 is far above honest play at
     15 steps a second;
   - `hello_timeout_s: u16`, default 5: a peer that sends no `Hello` in
     this long is dropped;

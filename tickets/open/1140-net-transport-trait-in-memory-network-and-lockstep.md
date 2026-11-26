@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["2613"]
+blocked_by: ["2613", "2620"]
 nick_input: none
 completed:
 ---
@@ -26,11 +26,11 @@ It needs `TurnRules` (the game's ticket 1114), which is in this
 repository (`crates/core/src/turn.rs`).
 
 Nick's decision of 2026-11-25 (`docs/decisions.md`) unparked an online
-example, trails, on real-time rooms (ADR-0150). That work needs the
+example, trails, on real-time rooms (ADR-0155). That work needs the
 transport half of this ticket and not lockstep, so the transport moved
 to 2613: the crate `shuyi-net`, `Transport`, `PeerId`, `Channel`,
-`NetEvent`, `NetStats` and `MemoryNetwork` with seeded faults are built
-there. This ticket stays parked and keeps lockstep, its handshake,
+`NetEvent`, `NetStats` and `MemoryNetwork` are built there, and the
+network's seeded faults in 2620. This ticket stays parked and keeps lockstep, its handshake,
 commit-reveal, the messages' fuzz target and the debug channel, built
 on 2613's crate.
 
@@ -46,10 +46,11 @@ None (technical). Scheduling: see above.
   `outside` list in `tools/layers.ron` (2613 wrote it as `Only([])`);
   the fuzz driver and the debug channel sit behind features of their
   own (below). No sockets in this ticket.
-- **The transport is 2613's** (done before this ticket): `Transport`,
-  `PeerId`, `Channel`, `NetEvent`, `NetStats`, and `MemoryNetwork` with
-  `Faults` (whole numbers, loss, duplicates and reordering in per-mille,
-  delay in steps, replaceable between steps by `set_faults`). The
+- **The transport is 2613's and 2620's** (both done before this
+  ticket): `Transport`, `PeerId`, `Channel`, `NetEvent`, `NetStats`, and
+  `MemoryNetwork` (2613) with `Faults` (2620: whole numbers, loss,
+  duplicates and reordering in per-mille, delay in steps, replaceable
+  between steps by `set_faults`). The
   lockstep session runs over any `Transport`; its tests use
   `MemoryNetwork`.
 - **Lockstep:** `LockstepSession<R: TurnRules + Serialize>` has:
@@ -144,7 +145,7 @@ None (technical). Scheduling: see above.
 
 ## Implementation steps
 
-1. Read 2613's `crates/net` and ADR-0150; add `serde` to the crate and
+1. Read 2613's `crates/net` and ADR-0155; add `serde` to the crate and
    its `layers.ron` entry.
 2. Write the lockstep session and its tests, with the soak if 2527 is
    done.
@@ -172,7 +173,7 @@ None (technical). Scheduling: see above.
 
 ## Tests required
 
-- Property: lockstep under 2613's seeded faults (commands applied once
+- Property: lockstep under 2620's seeded faults (commands applied once
   and in order).
 - Integration: toy and `hello-grid` lockstep, desync, reconnect.
 - Fuzz: the kept inputs of the messages' driver, replayed on stable
