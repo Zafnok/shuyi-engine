@@ -81,8 +81,8 @@ None.
     `crates/cli/src/contract/cli.rs` runs it as it runs `doctor`, and
     its tests name it among the ops without a project;
     `sfx.input.json` and `sfx.output.json` under `crates/cli/schemas/`,
-    and their line in `versions.json` (`docs/contract.md`, *The
-    schemas*); a new operation keeps `contract::VERSION` (ADR-0150);
+    `contract::VERSION` raised by one and its line in `versions.json`
+    (`docs/contract.md`, *The schemas*);
   - MCP: `shuyi mcp` (1133) makes its tools from `Op::ALL`: its arm in
     `mcp::host::one_off` and in `mcp::description` (the compiler asks
     for both); it runs no game, so it is not in
@@ -130,9 +130,8 @@ chapter into a new ticket blocked by this one.
    project) and `docs/contract.md`, *The schemas*.
 2. Move Hello, Grid onto `.sfx.ron` files: its files, `src/sound.rs`,
    its `Cargo.toml`, its tests. Run its web build and `check --baked`.
-3. Write `shuyi sfx`: the op, its arguments, its schemas, their line
-   in `versions.json`, the MCP arms, the `AGENTS.md` row, and its
-   contract test.
+3. Write `shuyi sfx`: the op, its arguments, its schemas, the version,
+   the MCP arms, the `AGENTS.md` row, and its contract test.
 4. Give the tutorial's three steps their sounds, and write the chapter's
    part. Run each step's tests (`cargo xtask tutorial` or the step's own
    `cargo test`, as `site/tutorial`'s README says).

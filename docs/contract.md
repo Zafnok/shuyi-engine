@@ -514,7 +514,7 @@ Between two engine versions whose answers carry the same `contract`:
 
 A changed default, an error's text or a new problem code is not shape:
 it is a `Behaviour:` line, not a raise. Nothing is promised across
-versions before 61.
+versions before 62.
 
 A break of the contract is a breaking release of `shuyi-cli`: its ticket
 has a `Breaking: shuyi-cli: contract: <operation>: <what a client

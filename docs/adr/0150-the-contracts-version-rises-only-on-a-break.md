@@ -10,7 +10,7 @@
 ## Context
 
 Every answer of the tool contract carries `contract`, the number
-`contract::VERSION` (`crates/cli/src/contract.rs`, 61 on 2026-11-25).
+`contract::VERSION` (`crates/cli/src/contract.rs`, 62 on 2026-11-25).
 ADR-0022 §5 raises it by one for any change to an input's or an answer's
 schema, additive ones included, and `crates/cli/schemas/versions.json`
 keeps one fingerprint per version. Ticket 2052 made CI refuse a raise of
@@ -83,8 +83,8 @@ The schemas' test (`crates/cli/tests/it/schemas.rs`) checks that the last
 line is the current schemas' fingerprint and names `VERSION`, and that
 each line keeps the version of the one before or raises it by one.
 
-The number goes on from 61: it is not reset, so no client sees it go
-down. 61 is the first version under this promise; nothing is promised
+The number goes on from 62: it is not reset, so no client sees it go
+down. 62 is the first version under this promise; nothing is promised
 across the versions before it.
 
 ### 3. A contract break is a breaking release of `shuyi-cli`

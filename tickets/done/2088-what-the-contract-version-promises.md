@@ -103,9 +103,9 @@ What was done:
   - **The version's shape:** one number that rises only on a break. Every
     other schema change keeps it and adds a line with the same version
     and its new fingerprint to `versions.json`, so the fingerprints are
-    the revisions. `contract` keeps its type and goes on from 61, so a
+    the revisions. `contract` keeps its type and goes on from 62, so a
     client of 52 still reads every answer. Nothing is promised across the
-    versions before 61.
+    versions before 62.
   - **The crates' semver:** a contract break is a breaking release of
     `shuyi-cli`, with a `Breaking: shuyi-cli: contract: …` line and its
     `migration` block (ADR-0038).
@@ -129,7 +129,8 @@ What was done:
   values and tagged variants, refs and recursion, a file gone). There are
   also `contract`'s tests against fake bases, and an `api` test that a
   contract break needs a line naming `shuyi-cli`.
-- Both cases tried with `cargo xtask contract --base origin/main`,
+- Both cases tried, before the merge of `main` took `VERSION` to 62 (2277's
+  `sfx`), with `cargo xtask contract --base origin/main`,
   schemas edited by hand in the working tree and then restored:
   - `scene.output.json` gained a field, `VERSION` still 61: "no break of
     a client", `contract: ok`;
@@ -156,7 +157,7 @@ Deviations:
   `contract::VERSION`" step was updated, not only those 15. The others
   would have contradicted the ADR.
 - No `versions.json` change: this PR changes no schema, so `VERSION`
-  stays 61 and needs no new line.
+  stays at `main`'s 62 and needs no new line.
 
 Size: about 1,410 counted lines, past 1,000. The clean split would put
 the check (`crates/xtask`) in one PR and the ADR, the docs and the

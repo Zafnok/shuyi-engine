@@ -86,7 +86,7 @@ re-check when unparked):
   tests fake. Its input, `DoctorInput`, is empty, and it passes only
   when every check does. It knows no signing tool.
 - The contract's version is `VERSION` in `crates/cli/src/contract.rs`
-  (61 today). A change of shape regenerates `crates/cli/schemas/` with
+  (62 today). A change of shape regenerates `crates/cli/schemas/` with
   `cargo shuyi schema --out crates/cli/schemas` and adds a line to
   `crates/cli/schemas/versions.json` (`crates/cli/tests/it/schemas.rs`
   checks them). `VERSION` rises only for a break, which
