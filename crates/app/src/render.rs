@@ -15,7 +15,7 @@
 //! (`PaintedTextures`, in `painted.rs`), drawn with nearest-pixel sampling.
 //! An image's texture is made the first frame a sprite draws it
 //! (`ImageTextures`, in `image_textures.rs`; ADR-0128 §5). A sprite
-//! atlas's page is a painted picture (`shuyi_ui::frame::atlas`, ADR-0155):
+//! atlas's page is a painted picture (`shuyi_ui::frame::atlas`, ADR-0156):
 //! uploaded the first frame a sprite draws it, and again in a frame
 //! whose page changed.
 //!
@@ -508,7 +508,7 @@ impl Renderer {
         if width == 0 || height == 0 {
             return;
         }
-        // A sprite atlas's page is one of these pictures (ADR-0155):
+        // A sprite atlas's page is one of these pictures (ADR-0156):
         // made the first frame a sprite draws it, again when it changed.
         let make = |rgba: &[u8]| upload_rgba(width, height, rgba);
         let update = |texture: &Texture2D, rgba: &[u8]| {

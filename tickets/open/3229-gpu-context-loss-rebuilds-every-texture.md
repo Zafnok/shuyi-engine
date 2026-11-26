@@ -73,7 +73,7 @@ runs `tools/web-check/check.py capture` on it. Chromium's
 makes a real loss and restore on demand, under SwiftShader as on a GPU.
 
 **From 2222 (done):** an atlas's pages are painted pictures of the
-frame (ADR-0155, `shuyi_ui::frame::atlas`), uploaded with the other
+frame (ADR-0156, `shuyi_ui::frame::atlas`), uploaded with the other
 painted pictures (`PaintedTextures`, `crates/app/src/painted.rs`): the
 forget path drops them with those, and they are uploaded again from the
 frame's pixels on the next frame. Nothing to pack again.

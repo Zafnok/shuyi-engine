@@ -167,6 +167,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0153](0153-the-debug-pause-a-step-slow-motion-and-the-top-screens-readout.md) | The debug pause: a step, slow motion, and the top screen's readout | Accepted; extends ADR-0085 |
 | [0154](0154-the-docs-search-bm25-over-an-embedded-corpus-at-the-pinned-revision.md) | The docs search is BM25 over a corpus `shuyi` embeds, at the pinned revision | Accepted |
 | [0155](0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md) | Real-time rooms: an authoritative server broadcasts each step's inputs, with bots in empty seats and quick play without accounts | Accepted; amends ADR-0006 §1, §5 and §6, and ADR-0008 §2 |
-| [0155](0155-sprite-atlas-pages-as-painted-pictures-a-skyline-packer.md) | Sprite atlases: a skyline packer in `shuyi-assets`, its pages shown as the frame's painted pictures | Accepted |
+| [0156](0156-sprite-atlas-pages-as-painted-pictures-a-skyline-packer.md) | Sprite atlases: a skyline packer in `shuyi-assets`, its pages shown as the frame's painted pictures | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).
