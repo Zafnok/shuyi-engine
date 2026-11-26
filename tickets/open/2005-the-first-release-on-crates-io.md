@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044", "2262", "2090", "2095", "2096", "3503", "3537", "2098", "3406", "3407", "3504"]
+blocked_by: ["2002", "2919", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812", "2041", "3085", "2577", "2250", "2251", "2823", "2824", "2825", "2826", "2827", "3069", "2814", "2820", "2828", "2817", "2822", "2777", "2576", "2544", "2391", "2388", "2389", "2082", "2083", "2084", "2085", "2086", "2087", "2088", "2089", "2412", "2906", "2347", "2348", "3218", "2405", "2409", "2133", "2136", "2239", "3041", "3044", "2262", "2090", "2095", "2096", "3503", "3537", "2098", "3406", "3407", "3504", "3510"]
 nick_input: sign-off
 completed:
 ---
@@ -105,6 +105,11 @@ The retro of 2026-11-17 (the last 100 PRs) found what the list missed:
   only what Nick decided, and never a debug file), 3407 (a job that
   checks out private files caches no build and uploads none) and 3504
   (a game with private files exports for Linux).
+
+Nick, 2026-11-25 (`docs/decisions.md`, *the publish list (3510) joins
+the MVP*): 3510 joined this list. Its publish list, exact pins and
+runbook are what this ticket's release workflow runs on, and without
+them `cargo package` refuses every crate that depends on another.
 
 The release ships with quad-snd as the default sound backend. While
 quad-snd is in the graph, the in-house backend needs the root
