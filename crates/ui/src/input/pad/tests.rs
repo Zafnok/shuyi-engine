@@ -12,7 +12,7 @@ use Button::{
 };
 
 fn stick() -> StickDef {
-    StickDef::new(50, 35)
+    StickDef::DEFAULT
 }
 
 /// A pad holding `buttons`, sticks centred.
@@ -498,7 +498,11 @@ fn a_held_stick_direction_lasts_until_below_the_release_threshold() {
 
 #[test]
 fn the_thresholds_come_from_the_keymap() {
-    let mut p = Pads::new(StickDef::new(80, 10));
+    let mut p = Pads::new(
+        StickDef::DEFAULT
+            .with_press_percent(80)
+            .with_release_percent(10),
+    );
     assert_eq!(changes(&mut p, &[xbox(left_at(0.79, 0.0))]), []);
     assert_eq!(
         changes(&mut p, &[xbox(left_at(0.8, 0.0))]),
@@ -903,9 +907,11 @@ fn pad_states_constructor_builds_what_a_literal_built() {
         left_stick: (0.25, -1.0),
         right_stick: (-0.5, 0.75),
     };
-    assert_eq!(PadState::new(buttons, (0.25, -1.0), (-0.5, 0.75)), literal);
     assert_eq!(
-        PadState::new(ButtonSet::EMPTY, (0.0, 0.0), (0.0, 0.0)),
-        PadState::default()
+        PadState::new(buttons)
+            .with_left_stick((0.25, -1.0))
+            .with_right_stick((-0.5, 0.75)),
+        literal
     );
+    assert_eq!(PadState::new(ButtonSet::EMPTY), PadState::default());
 }

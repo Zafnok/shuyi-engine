@@ -502,13 +502,20 @@ fn one_pixel_past_the_channel_tolerance_is_over() {
     assert_eq!(found.diff.pixel(2, 1), Some([r, g, b, 255]));
     assert_eq!(found.diff.pixel(1, 1), Some([50, 75, 100, 255]));
     assert!(!found.passes());
-    assert!(compare(&window, &reference, Tolerance::new(tolerance.channel, 1)).passes());
+    assert!(
+        compare(
+            &window,
+            &reference,
+            Tolerance::new(tolerance.channel).with_pixels(1)
+        )
+        .passes()
+    );
 }
 
 #[test]
 fn exactly_the_channel_tolerance_and_alpha_alone_are_not_over() {
     let reference = picture();
-    let tolerance = Tolerance::new(4, 0);
+    let tolerance = Tolerance::new(4);
     let window = nudged(&reference, (0, 0), 2, 4);
     let found = compare(&window, &reference, tolerance);
     assert_eq!((found.over, found.worst), (0, 4));
@@ -524,7 +531,11 @@ fn exactly_the_channel_tolerance_and_alpha_alone_are_not_over() {
 fn pictures_of_different_sizes_never_pass() {
     let reference = picture();
     let wider = Image::filled(4, 2, Rgb::new(100, 150, 200));
-    let found = compare(&wider, &reference, Tolerance::new(255, u32::MAX));
+    let found = compare(
+        &wider,
+        &reference,
+        Tolerance::new(255).with_pixels(u32::MAX),
+    );
     assert!(!found.same_size);
     assert!(!found.passes());
     // The shared area is compared: only pixel (1, 0) differs.
@@ -545,11 +556,11 @@ fn pictures_of_different_sizes_never_pass() {
 
 #[test]
 fn a_tolerance_defaults_and_reads_from_ron() {
-    assert_eq!(Tolerance::default(), Tolerance::new(2, 0));
+    assert_eq!(Tolerance::default(), Tolerance::new(2));
     let read: Tolerance = ron::from_str("(channel: 4)").unwrap();
-    assert_eq!(read, Tolerance::new(4, 0));
+    assert_eq!(read, Tolerance::new(4));
     let read: Tolerance = ron::from_str("(pixels: 3)").unwrap();
-    assert_eq!(read, Tolerance::new(2, 3));
+    assert_eq!(read, Tolerance::new(2).with_pixels(3));
     assert!(ron::from_str::<Tolerance>("(channel: 4, colour: 1)").is_err());
 }
 
@@ -575,7 +586,7 @@ proptest! {
         (a, b) in two_pictures(),
         channel in any::<u8>(),
     ) {
-        let tolerance = Tolerance::new(channel, 0);
+        let tolerance = Tolerance::new(channel);
         let (there, back) = (compare(&a, &b, tolerance), compare(&b, &a, tolerance));
         prop_assert_eq!(
             (there.over, there.worst, there.first),

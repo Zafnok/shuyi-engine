@@ -7,10 +7,14 @@
 //!
 //! Two kinds of layer:
 //!
-//! - **Corners**: pictures drawn *between* tiles, each centred on the
+//! - **Corners**: pictures drawn *between* tiles, each placed by the
 //!   point where four tiles meet, one for each mix of those four being in
 //!   the layer or not. A shore, a road's edge and a forest's outline are
-//!   these: they end where their tiles end.
+//!   these: they end where their tiles end. A picture is a tile big and
+//!   centred on its point unless the layer says otherwise: it may be
+//!   another size and sit off its point (raised ground's face hanging on
+//!   the tile below it, a drop shadow shifted a few pixels), and the
+//!   tiles of some terrains may get none of it (a wall left bare).
 //! - **Tiles**: one picture on each tile of the layer (a tower, a bridge),
 //!   which may depend on which of its four neighbours are certain terrains
 //!   (a bridge turns to cross the water).
@@ -129,15 +133,43 @@ pub enum Layer {
     Tiles(TileLayer),
 }
 
-/// Pictures drawn between tiles: each is one tile big and centred on a
-/// point where four tiles meet.
+/// Pictures drawn between tiles, one by each point where four tiles
+/// meet. Build it with [`CornerLayer::new`] (ADR-0039).
+///
+/// A picture is drawn at its own size, its top-left half a tile (rounded
+/// down) up and left of its point, moved by [`offset`](Self::offset): a
+/// tile-sized picture with no offset is centred on its point. It is
+/// drawn only inside the tiles it covers that are drawn, on the map and
+/// not of a terrain in [`skip`](Self::skip).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CornerLayer {
     /// The terrains that are in the layer.
     pub of: BTreeSet<TerrainId>,
     /// The picture for each [`mix`] of the four tiles round a point being
     /// in the layer. A mix with none draws nothing; mix 0 never has one.
     pub tiles: [Option<ImageRect>; MIXES],
+    /// The terrains whose tiles get no part of the layer's pictures (a
+    /// wall a cliff's face doesn't hang on). Empty in
+    /// [`new`](Self::new).
+    pub skip: BTreeSet<TerrainId>,
+    /// Pixels across and down, at the art's size, added to where each
+    /// picture's top-left goes. `(0, 0)` in [`new`](Self::new).
+    pub offset: (i32, i32),
+}
+
+impl CornerLayer {
+    /// The pictures `tiles` between the tiles of the terrains `of`, each
+    /// where its own size puts it, no tile skipped and no offset.
+    #[must_use]
+    pub const fn new(of: BTreeSet<TerrainId>, tiles: [Option<ImageRect>; MIXES]) -> Self {
+        Self {
+            of,
+            tiles,
+            skip: BTreeSet::new(),
+            offset: (0, 0),
+        }
+    }
 }
 
 /// A picture on each tile of some terrains.
@@ -219,6 +251,22 @@ mod tests {
         // No such mix: the plain picture.
         assert_eq!(layer.picture(16), rect(16));
         assert_eq!(layer.picture(u8::MAX), rect(16));
+    }
+
+    #[test]
+    fn a_new_corner_layer_skips_nothing_and_sits_on_its_points() {
+        let mut tiles = [None; MIXES];
+        tiles[15] = Some(rect(16));
+        let of = BTreeSet::from([TerrainId(1)]);
+        assert_eq!(
+            CornerLayer::new(of.clone(), tiles),
+            CornerLayer {
+                of,
+                tiles,
+                skip: BTreeSet::new(),
+                offset: (0, 0),
+            }
+        );
     }
 
     #[test]

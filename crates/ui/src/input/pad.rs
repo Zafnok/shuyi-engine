@@ -260,8 +260,9 @@ const STANDARD_BUTTONS: u32 = 16;
 /// One pad's raw state in one frame, as the platform reports it.
 ///
 /// A view a backend fills in (ADR-0039, kind 3): built with
-/// [`new`](Self::new) (or [`Default`], nothing held), and its fields read
-/// and assigned.
+/// [`new`](Self::new) (or [`Default`], nothing held) and the `with_`
+/// methods, and its fields read and assigned. No constructor takes both
+/// sticks, which a call could swap (ADR-0151).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[non_exhaustive]
 pub struct PadState {
@@ -276,14 +277,30 @@ pub struct PadState {
 }
 
 impl PadState {
-    /// A pad holding `buttons`, with its sticks at `left_stick` and
-    /// `right_stick` (each `(x, y)` from -1 to 1, `+y` down).
-    pub const fn new(buttons: ButtonSet, left_stick: (f32, f32), right_stick: (f32, f32)) -> Self {
+    /// A pad holding `buttons`, with both sticks at rest (`(0.0, 0.0)`).
+    #[must_use]
+    pub const fn new(buttons: ButtonSet) -> Self {
         Self {
             buttons,
-            left_stick,
-            right_stick,
+            left_stick: (0.0, 0.0),
+            right_stick: (0.0, 0.0),
         }
+    }
+
+    /// The same pad, with its left stick at `left_stick` (`(x, y)`, each
+    /// from -1 to 1, `+y` down).
+    #[must_use]
+    pub const fn with_left_stick(mut self, left_stick: (f32, f32)) -> Self {
+        self.left_stick = left_stick;
+        self
+    }
+
+    /// The same pad, with its right stick at `right_stick`, like
+    /// [`with_left_stick`](Self::with_left_stick).
+    #[must_use]
+    pub const fn with_right_stick(mut self, right_stick: (f32, f32)) -> Self {
+        self.right_stick = right_stick;
+        self
     }
 
     /// A pad the browser reports in the Gamepad API's "standard" mapping:
@@ -292,11 +309,11 @@ impl PadState {
     /// x, y, right stick x, y; down is positive).
     pub fn from_standard(buttons: u32, axes: [f32; 4]) -> Self {
         let [left_x, left_y, right_x, right_y] = axes;
-        Self::new(
-            ButtonSet(u64::from(buttons) & ((1 << STANDARD_BUTTONS) - 1)),
-            (left_x, left_y),
-            (right_x, right_y),
-        )
+        Self::new(ButtonSet(
+            u64::from(buttons) & ((1 << STANDARD_BUTTONS) - 1),
+        ))
+        .with_left_stick((left_x, left_y))
+        .with_right_stick((right_x, right_y))
     }
 }
 

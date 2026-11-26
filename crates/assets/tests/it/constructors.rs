@@ -57,7 +57,9 @@ fn a_sound_is_built_mono_or_stereo() {
 
 #[test]
 fn a_target_profile_is_built_and_its_optional_fields_assigned() {
-    let mut display = Display::new(Color::Rgba8, 8, 12);
+    let mut display = Display::new(Color::Rgba8)
+        .with_min_text_px(8)
+        .with_good_text_px(12);
     display.windowed = true;
     let mut input = Input::default();
     input.keyboard = true;
@@ -103,7 +105,9 @@ fn a_target_profile_built_in_code_is_the_one_its_file_reads() {
     let built = TargetProfile::new(
         "desk",
         Status::Planned,
-        Display::new(Color::Rgba8, 8, 12),
+        Display::new(Color::Rgba8)
+            .with_min_text_px(8)
+            .with_good_text_px(12),
         frame_rate,
         Input::default(),
         "shuyi-app",

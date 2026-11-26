@@ -174,7 +174,10 @@ built already.
   `CHANGELOG.md`, before or after a release: the version is raised at
   release time from the `Breaking:` lines since the last tag (2028), and
   `cargo xtask changelog` writes `CHANGELOG.md` (2804, ADR-0152 §5).
-  The game's pin update is a game PR. A public type you add, or add to, follows ADR-0039 (2013).
+  The game's pin update is a game PR. A public type you add, or add to,
+  follows ADR-0039 (2013), and its constructors take no two neighbouring
+  numbers (ADR-0151): `cargo xtask api` fails one that
+  `tools/constructors.ron` doesn't list.
 
 ## 4. Verify
 
@@ -336,7 +339,7 @@ the PR.
   body and the completion notes for every ADR number, ticket id and
   contract version (`contract::VERSION`) they name. A parallel PR may
   have taken one first: renumber with `cargo xtask next-id` (and the
-  contract's, when this PR breaks it, to `main`'s plus one: ADR-0150),
+  contract's, when this PR breaks it, to `main`'s plus one: ADR-0151),
   fix the links to it, and edit the PR body to match. The squash message is the PR body (ticket 2052).
 - **Before the last push, re-read the PR body against the final diff:**
   - the gates it says ran are the gates that ran, named one by one,

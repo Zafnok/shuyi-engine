@@ -12,12 +12,15 @@
 //! public API that changes no file of the book needs a `Book:` line in the
 //! PR's ticket (ticket 2815). A change to the contract's schemas that
 //! breaks a client raises its `VERSION` by exactly one over the base's,
-//! and any other leaves it ([`contract`], ticket 2052, ADR-0150); each such
+//! and any other leaves it ([`contract`], ticket 2052, ADR-0151); each such
 //! break is a finding of `shuyi-cli`, and needs its `Breaking:` line.
 //! A head's listing line that names an outside crate [`OUTSIDE_CRATES`]
 //! doesn't allow in its crate fails the run (ADR-0119, ticket 2089): any
 //! crate its normal dependencies reach, not through an engine crate
-//! ([`reached_outside`], ticket 2090).
+//! ([`reached_outside`], ticket 2090). A constructor of a head's
+//! `#[non_exhaustive]` type that takes two neighbouring numbers, and that
+//! [`constructors::FILE`] doesn't list, fails it too ([`constructors`],
+//! ticket 3503, ADR-0151).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -404,6 +407,8 @@ pub struct CrateApi {
     pub outside: Vec<(String, String)>,
     /// Why no semver check ran on it, for a crate of [`UNCHECKED`].
     pub unchecked: Option<&'static str>,
+    /// The head's constructors of its `#[non_exhaustive]` types (ticket 3503).
+    pub constructors: Vec<constructors::Constructor>,
 }
 
 impl CrateApi {
@@ -434,6 +439,7 @@ impl CrateApi {
             findings,
             outside: Vec::new(),
             unchecked: None,
+            constructors: constructors::constructors(head),
         }
     }
 
@@ -490,7 +496,7 @@ pub fn verdict(crates: &[CrateApi]) -> Label {
 }
 
 /// The crate whose release a break of the contract's schemas is
-/// (ADR-0150 §3).
+/// (ADR-0151 §3).
 const CONTRACT_CRATE: &str = "shuyi-cli";
 
 /// What `cargo xtask api` found: the summary (empty when it couldn't
@@ -555,8 +561,13 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
         .collect();
     errors.extend(contract.error);
     errors.extend(crates.iter().filter_map(outside_error));
+    let allowed = fs::read_to_string(root.join(constructors::FILE)).ok();
+    let problems = constructors::check(allowed.as_deref(), &crates);
+    errors.extend(constructors::error(&problems));
+    let mut summary = summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref());
+    summary.push_str(&constructors::section(&problems));
     Outcome {
-        summary: summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref()),
+        summary,
         label: Some(self::verdict(&crates)),
         errors,
         warnings,
@@ -1420,6 +1431,8 @@ fn done_ticket(root: &Path, id: &str) -> Option<String> {
         })
         .and_then(|entry| fs::read_to_string(entry.path()).ok())
 }
+
+pub mod constructors;
 
 #[cfg(test)]
 mod tests;

@@ -409,7 +409,7 @@ mod tests {
         m.sounds.insert("ui_move".into(), sound(SFX));
         m.sounds.insert("lost".into(), sound("orphan"));
         let track = |group: Option<&str>| {
-            let cue = MusicCue::new("a.ogg".into(), 100, 1000, CreditRef::Own);
+            let cue = MusicCue::new("a.ogg".into(), 1000, CreditRef::Own);
             match group {
                 Some(group) => cue.with_group(group),
                 None => cue,

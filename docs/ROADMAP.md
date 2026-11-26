@@ -76,7 +76,8 @@ work, which the audit missed. It also added two more tickets. The
 rest of that decision's work:
 - the types that grow but were missed (2095);
 - a check that classifies every new public type (2096);
-- constructors that can't take their arguments swapped (3503);
+- constructors that can't take their arguments swapped (3503, and 3537
+  for the ones it left);
 - public API with no second user, hidden before it freezes (2098).
 
 The two more:
@@ -198,7 +199,8 @@ These tickets, in order:
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
-| 3503 | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
+| 3503 (done) | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
+| 3537 | The bots' settings, the perf rows and five other constructors take no two neighbouring numbers |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
 | 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |
@@ -562,7 +564,11 @@ does. The order, after the game's own requests:
 4. 2776: the maze chase, on Pages;
 5. 2572, the maze chase's eval task, once the eval (2524, 3421) is done;
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
-   what it may spend.
+   what it may spend;
+7. 3432, the blind benchmark: fresh agents in empty folders get one line
+   and an engine's link, Shuyi against Bevy, Godot and no engine named
+   (2026-11-25, [`decisions.md`](decisions.md)), then 3433, the
+   follow-up prompts to the full design.
 
 On 2026-11-03 Nick added Bad Apple and DOOM after the maze chase, open
 ([`decisions.md`](decisions.md)): "anything that can display graphics

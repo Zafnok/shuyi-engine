@@ -42,7 +42,7 @@ fn spied() -> (Game<Toy>, Seen) {
 }
 
 fn stick() -> StickDef {
-    StickDef::new(50, 35)
+    StickDef::DEFAULT
 }
 
 /// A pad holding `buttons`, sticks centred.

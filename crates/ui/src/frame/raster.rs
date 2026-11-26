@@ -426,7 +426,8 @@ fn blit(
 /// takes its default.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-// Built with `Tolerance::new` or `default()`: it may grow (ADR-0039).
+// Built with `Tolerance::new` and `with_pixels`, or `default()`: it may grow
+// (ADR-0039), and no constructor takes both numbers (ADR-0151).
 #[non_exhaustive]
 pub struct Tolerance {
     /// The most a colour channel of a pixel may differ (0 to 255) before
@@ -437,17 +438,24 @@ pub struct Tolerance {
 }
 
 impl Tolerance {
-    /// Up to `channel` in each colour channel, and up to `pixels` pixels
-    /// past that.
-    pub const fn new(channel: u8, pixels: u32) -> Self {
-        Self { channel, pixels }
+    /// Up to `channel` in each colour channel, and no pixel past that.
+    #[must_use]
+    pub const fn new(channel: u8) -> Self {
+        Self { channel, pixels: 0 }
+    }
+
+    /// The same tolerance, with up to `pixels` pixels past the channel's.
+    #[must_use]
+    pub const fn with_pixels(mut self, pixels: u32) -> Self {
+        self.pixels = pixels;
+        self
     }
 }
 
 impl Default for Tolerance {
     /// 2 in each channel (a GPU's rounding), and no pixel past that.
     fn default() -> Self {
-        Self::new(2, 0)
+        Self::new(2)
     }
 }
 

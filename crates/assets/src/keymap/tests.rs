@@ -1268,14 +1268,27 @@ fn system_menu_items_are_buttons_but_never_in_a_chord() {
     }
 }
 
-/// `StickDef::new` builds what a literal built, and the default is the
-/// thresholds a keymap file without them gets (ADR-0039, ticket 2083).
+/// The `with_` methods build what a literal built (`StickDef::new(80, 10)`
+/// before ticket 3503), and the default is the thresholds a keymap file
+/// without them gets (ADR-0039, ticket 2083).
 #[test]
 fn a_sticks_constructor_builds_what_a_literal_built() {
     let literal = StickDef {
         press_percent: 80,
         release_percent: 10,
     };
-    assert_eq!(StickDef::new(80, 10), literal);
-    assert_eq!(StickDef::default(), StickDef::new(50, 35));
+    assert_eq!(
+        StickDef::DEFAULT
+            .with_press_percent(80)
+            .with_release_percent(10),
+        literal
+    );
+    assert_eq!(
+        StickDef::default(),
+        StickDef {
+            press_percent: 50,
+            release_percent: 35,
+        }
+    );
+    assert_eq!(StickDef::DEFAULT, StickDef::default());
 }
