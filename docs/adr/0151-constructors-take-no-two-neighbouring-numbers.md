@@ -1,4 +1,4 @@
-# ADR-0150: Constructors take no two neighbouring numbers, checked by `cargo xtask api`
+# ADR-0151: Constructors take no two neighbouring numbers, checked by `cargo xtask api`
 
 - **Status:** Accepted
 - **Date:** 2026-11-25

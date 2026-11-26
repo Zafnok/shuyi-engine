@@ -1,5 +1,5 @@
 // The constructors allowed to take two neighbouring numbers (ticket 3503,
-// ADR-0150). `cargo xtask api` (crates/xtask/src/api/constructors.rs) reads
+// ADR-0151). `cargo xtask api` (crates/xtask/src/api/constructors.rs) reads
 // it.
 //
 // - The rule: a `pub fn` of a `#[non_exhaustive]` type that returns `Self`

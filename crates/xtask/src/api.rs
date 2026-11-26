@@ -12,7 +12,7 @@
 //! public API that changes no file of the book needs a `Book:` line in the
 //! PR's ticket (ticket 2815). A change to the contract's schemas that
 //! breaks a client raises its `VERSION` by exactly one over the base's,
-//! and any other leaves it ([`contract`], ticket 2052, ADR-0150); each such
+//! and any other leaves it ([`contract`], ticket 2052, ADR-0151); each such
 //! break is a finding of `shuyi-cli`, and needs its `Breaking:` line.
 //! A head's listing line that names an outside crate [`OUTSIDE_CRATES`]
 //! doesn't allow in its crate fails the run (ADR-0119, ticket 2089): any
@@ -20,7 +20,7 @@
 //! ([`reached_outside`], ticket 2090). A constructor of a head's
 //! `#[non_exhaustive]` type that takes two neighbouring numbers, and that
 //! [`constructors::FILE`] doesn't list, fails it too ([`constructors`],
-//! ticket 3503, ADR-0150).
+//! ticket 3503, ADR-0151).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -496,7 +496,7 @@ pub fn verdict(crates: &[CrateApi]) -> Label {
 }
 
 /// The crate whose release a break of the contract's schemas is
-/// (ADR-0150 §3).
+/// (ADR-0151 §3).
 const CONTRACT_CRATE: &str = "shuyi-cli";
 
 /// What `cargo xtask api` found: the summary (empty when it couldn't

@@ -427,7 +427,7 @@ fn blit(
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 // Built with `Tolerance::new` and `with_pixels`, or `default()`: it may grow
-// (ADR-0039), and no constructor takes both numbers (ADR-0150).
+// (ADR-0039), and no constructor takes both numbers (ADR-0151).
 #[non_exhaustive]
 pub struct Tolerance {
     /// The most a colour channel of a pixel may differ (0 to 255) before

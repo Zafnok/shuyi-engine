@@ -1,4 +1,4 @@
-//! The rule against neighbouring numbers (ticket 3503, ADR-0150): a
+//! The rule against neighbouring numbers (ticket 3503, ADR-0151): a
 //! constructor of a type that can grow takes no two neighbouring arguments a
 //! caller could swap without a word.
 //!
@@ -387,7 +387,7 @@ pub fn error(problems: &[Problem]) -> Option<String> {
         let _ = writeln!(text, "  {}", problem.describe());
     }
     Some(format!(
-        "{} problem(s) with constructors that take two neighbouring numbers (ADR-0150):\n\
+        "{} problem(s) with constructors that take two neighbouring numbers (ADR-0151):\n\
          {text}A caller can swap two such arguments without a word. Name them: a named \
          constructor (`MusicSwitch::crossfade`), a `with_<field>`, or a plain value whose \
          fields name them. Where the order is the meaning (a width then a height), list the \

@@ -140,7 +140,7 @@ impl AudioManifest {
 /// [`crossfade`](Self::crossfade), and change it with
 /// [`with_in_ms`](Self::with_in_ms) and [`with_overlap`](Self::with_overlap)
 /// (ADR-0039; no constructor takes both lengths, which a call could swap:
-/// ADR-0150).
+/// ADR-0151).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct MusicSwitch {

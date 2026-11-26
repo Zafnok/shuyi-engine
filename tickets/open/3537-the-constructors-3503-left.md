@@ -16,7 +16,7 @@ completed:
 ## Context
 
 3503 made the rule of
-[ADR-0150](../../docs/adr/0150-constructors-take-no-two-neighbouring-numbers.md):
+[ADR-0151](../../docs/adr/0151-constructors-take-no-two-neighbouring-numbers.md):
 a constructor of a `#[non_exhaustive]` type takes no two neighbouring
 integers, floats or tuples of one type, which a call could swap without a
 word. `cargo xtask api` checks it, and `tools/constructors.ron` lists what
@@ -49,7 +49,7 @@ None.
 ## Scope
 
 **In:**
-- Each constructor above changes shape as ADR-0150 says: a named
+- Each constructor above changes shape as ADR-0151 says: a named
   constructor, a `with_<field>` (from a `DEFAULT` where no field must be
   chosen), or a plain value whose fields name them. Keep `const fn` where it
   was. 3503's `PadState`, `StickDef` and `MusicSwitch` are the pattern.
@@ -76,7 +76,7 @@ lands.
 
 ## Implementation steps
 
-1. Read ADR-0150, then the entries "ticket 3537 changes it" in
+1. Read ADR-0151, then the entries "ticket 3537 changes it" in
    `tools/constructors.ron`; run `cargo xtask api` to see the check pass
    before any change.
 2. Change the constructors crate by crate, with their call sites, and

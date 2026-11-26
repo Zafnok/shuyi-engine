@@ -482,7 +482,7 @@ pub fn splitmix64(seed: u64) -> u64 {
 /// turns that into this. A view (ADR-0039, kind 3): build it with
 /// [`MusicClock::new`] and [`with_position`](MusicClock::with_position), or
 /// [`MusicClock::from_elapsed`] (no constructor takes both times, which a
-/// call could swap: ADR-0150).
+/// call could swap: ADR-0151).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct MusicClock {

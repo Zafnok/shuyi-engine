@@ -1,6 +1,6 @@
 # ADR-0039: Public types that can grow: non-exhaustive config and views with constructors, plain values left open
 
-- **Status:** Accepted; kinds 2 to 5 amended by ADR-0150 (a constructor takes no
+- **Status:** Accepted; kinds 2 to 5 amended by ADR-0151 (a constructor takes no
   two neighbouring numbers, checked by `cargo xtask api` against
   `tools/constructors.ron`)
 - **Date:** 2026-10-23

@@ -533,7 +533,7 @@ impl Default for RepeatDef {
 ///
 /// Read from keymap files (ADR-0039, kind 5, built as kind 2): built from
 /// [`DEFAULT`](Self::DEFAULT) with the `with_` methods (no constructor takes
-/// both percents, which a call could swap: ADR-0150), and a field added
+/// both percents, which a call could swap: ADR-0151), and a field added
 /// later is `#[serde(default)]`, so keymap files keep loading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

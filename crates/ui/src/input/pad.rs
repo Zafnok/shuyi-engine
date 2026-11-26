@@ -262,7 +262,7 @@ const STANDARD_BUTTONS: u32 = 16;
 /// A view a backend fills in (ADR-0039, kind 3): built with
 /// [`new`](Self::new) (or [`Default`], nothing held) and the `with_`
 /// methods, and its fields read and assigned. No constructor takes both
-/// sticks, which a call could swap (ADR-0150).
+/// sticks, which a call could swap (ADR-0151).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[non_exhaustive]
 pub struct PadState {

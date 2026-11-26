@@ -176,7 +176,7 @@ until it lands.
   entry listed twice. `CrateApi` keeps the head's constructors; `run` adds
   the check's one error and appends a **Constructors, fail** section to the
   summary. A missing file allows nothing.
-- The rule is ADR-0150, which amends ADR-0039 kinds 2 to 5; ADR-0039's
+- The rule is ADR-0151, which amends ADR-0039 kinds 2 to 5; ADR-0039's
   status line states it and names the check and the file. The
   `work-ticket` and `write-ticket` skills' ADR-0039 lines name it too.
 - Measured on 2026-11-25 over every catalog crate with its chosen
@@ -209,7 +209,7 @@ until it lands.
 
 **Deviations.**
 
-- The rule is a new ADR (ADR-0150) that amends ADR-0039, not text inside
+- The rule is a new ADR (ADR-0151) that amends ADR-0039, not text inside
   ADR-0039: the `write-adr` skill never rewrites an accepted ADR's
   decision. ADR-0039's status line names the rule, the check and the file.
 - 2096 is not done, so the listing's reader is here; 2096's clause now
