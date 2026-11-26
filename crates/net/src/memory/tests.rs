@@ -294,6 +294,11 @@ fn a_delay_of_zero_counts_as_one() {
 #[test]
 fn a_delay_max_below_the_min_counts_as_the_min() {
     let faults = Faults::none().with_delay_min(4).with_delay_max(2);
+    assert_eq!(
+        (faults.delay_min(), faults.delay_max()),
+        (4, 2),
+        "kept as set"
+    );
     assert_eq!(faults.delays(), (4, 4));
     assert_eq!(Faults::none().with_delay_max(3).delays(), (1, 3));
     let (mut net, mut a, mut b) = linked();
@@ -342,4 +347,37 @@ fn an_unreliable_send_draws_five_and_a_reliable_one_draws_one() {
     a.disconnect(b.id());
     want.next_u32();
     assert_eq!(net.shared.borrow().rng, want, "a disconnect draws one");
+}
+
+#[test]
+fn a_chance_of_zero_never_comes_up() {
+    // 5,000 sends draw 15,000 chances: a draw of 0 comes up about 15
+    // times, and counts for nothing at a chance of 0.
+    let (mut net, mut a, b) = linked();
+    net.set_faults(Faults::none().with_seed(5).with_delay_max(4));
+    for _ in 0..5_000 {
+        a.send(b.id(), Channel::Unreliable, b"x").unwrap();
+    }
+    assert_eq!((a.stats().dropped(), a.stats().duplicated()), (0, 0));
+}
+
+#[test]
+fn a_step_delivers_in_the_order_things_happened_across_links() {
+    let (mut net, mut a, mut b) = linked();
+    let c = net.endpoint();
+    b.send(a.id(), Channel::Reliable, b"first").unwrap();
+    net.connect(a.id(), c.id());
+    net.step();
+    assert_eq!(
+        a.poll(),
+        [
+            NetEvent::Message {
+                peer: b.id(),
+                channel: Channel::Reliable,
+                bytes: b"first".to_vec(),
+            },
+            NetEvent::Connected(c.id()),
+        ]
+    );
+    assert_eq!(b.poll(), []);
 }

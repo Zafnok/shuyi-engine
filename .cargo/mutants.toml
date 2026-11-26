@@ -158,6 +158,9 @@ exclude_re = [
     # item's index is checked once, before it runs, and only a run item
     # fails, so `i` never equals `failed` there: `>=` is the same test.
     'pool\.rs:\d+:\d+: replace > with >= in run',
+    # A chance is clamped at 1,000 (`per_mille > PER_MILLE`): at exactly
+    # 1,000 both branches give 1,000, so `>=` is the same clamp.
+    'faults\.rs:\d+:\d+: replace > with >= in clamp_per_mille',
     # The MCP server's game tool program is ended when the server drops it:
     # a process killed and reaped leaves nothing a test can read (it would
     # end anyway once its stdin closes).
