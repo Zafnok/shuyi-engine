@@ -502,9 +502,11 @@ fn wav_and_ogg_read_a_sounds_header_as_the_manifest_check_does() {
         });
         assert_eq!(problem, format_problem(name, &bytes), "{name} {bytes:?}");
     }
+    // The headers have no `data` chunk and no last page: no length.
     let sound = |channels| Sound {
         channels,
         sample_rate: rate,
+        length_ms: None,
     };
     assert_eq!(alone(&Wav, "a.wav", &wav(1, rate, 3)), Ok(sound(1)));
     assert_eq!(alone(&OggVorbis, "a.ogg", &ogg(2, rate)), Ok(sound(2)));

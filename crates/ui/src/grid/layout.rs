@@ -83,23 +83,41 @@ pub struct Grid {
 }
 
 impl Grid {
-    /// `tiles` tiles of `tile` pixels from the map tile `origin`, whose
-    /// top-left pixel is `corner`, laid top-down at the zoom `scale`.
-    pub const fn top_down(
-        origin: Pos,
-        corner: (i32, i32),
-        tile: (i32, i32),
-        tiles: (i32, i32),
-        scale: i32,
-    ) -> Self {
+    /// One tile of `tile` pixels, the map tile `origin`, its top-left pixel
+    /// the console's, laid top-down at zoom 1. Set the rest with
+    /// [`with_corner`](Self::with_corner), [`with_tiles`](Self::with_tiles)
+    /// and [`with_scale`](Self::with_scale): no constructor takes two pairs,
+    /// which a call could swap (ADR-0151).
+    pub const fn top_down(origin: Pos, tile: (i32, i32)) -> Self {
         Self {
             origin,
-            corner,
+            corner: (0, 0),
             tile,
-            tiles,
-            scale,
+            tiles: (1, 1),
+            scale: 1,
             projection: Projection::TopDown,
         }
+    }
+
+    /// The same grid, the origin's top-left pixel at `corner`.
+    #[must_use]
+    pub const fn with_corner(mut self, corner: (i32, i32)) -> Self {
+        self.corner = corner;
+        self
+    }
+
+    /// The same grid, `tiles` tiles drawn, across × down.
+    #[must_use]
+    pub const fn with_tiles(mut self, tiles: (i32, i32)) -> Self {
+        self.tiles = tiles;
+        self
+    }
+
+    /// The same grid, at the zoom `scale` (which `tile` already counts).
+    #[must_use]
+    pub const fn with_scale(mut self, scale: i32) -> Self {
+        self.scale = scale;
+        self
     }
 
     /// Where `tile` is, as tiles right of and below the origin, if drawn.
@@ -202,7 +220,9 @@ mod tests {
 
     #[test]
     fn tiles_are_laid_from_the_corner_in_their_size() {
-        let g = Grid::top_down(p(5, -2), (4, 8), (24, 20), (3, 2), 1);
+        let g = Grid::top_down(p(5, -2), (24, 20))
+            .with_corner((4, 8))
+            .with_tiles((3, 2));
         assert_eq!(g.projection, Projection::TopDown);
         assert_eq!(g.offset(p(5, -2)), Some((0, 0)));
         assert_eq!(g.offset(p(7, -1)), Some((2, 1)));
@@ -254,19 +274,24 @@ mod tests {
         assert_eq!(top.tile_at((4, 8), (24, 20), (28, 28)), (1, 1));
         assert_eq!(top.tile_at((4, 8), (24, 20), (3, 7)), (-1, -1));
         assert_eq!(top.tile_at((0, 0), (0, -3), (5, 6)), (5, 6), "at least 1");
-        let g = Grid::top_down(p(5, -2), (4, 8), (24, 20), (3, 2), 1);
+        let g = Grid::top_down(p(5, -2), (24, 20))
+            .with_corner((4, 8))
+            .with_tiles((3, 2));
         assert_eq!(g.tile_at_px((4, 8)), Some(p(5, -2)));
         assert_eq!(g.tile_at_px((75, 47)), Some(p(7, -1)));
         for out in [(3, 8), (4, 7), (76, 8), (4, 48)] {
             assert_eq!(g.tile_at_px(out), None, "{out:?}");
         }
-        let far = Grid::top_down(p(i32::MAX, 0), (0, 0), (8, 8), (2, 1), 1);
+        let far = Grid::top_down(p(i32::MAX, 0), (8, 8)).with_tiles((2, 1));
         assert_eq!(far.tile_at_px((9, 0)), None, "past the last position");
     }
 
     #[test]
     fn a_zoomed_grid_draws_every_art_pixel_as_a_square() {
-        let g = Grid::top_down(p(0, 0), (8, 0), (48, 40), (3, 2), 2);
+        let g = Grid::top_down(p(0, 0), (48, 40))
+            .with_corner((8, 0))
+            .with_tiles((3, 2))
+            .with_scale(2);
         assert_eq!(g.art_tile(), Rect::new(0, 0, 24, 20));
         // From the tile's corner: twice as far, twice as big.
         let mark = Rect::new(3, -2, 5, 7);
@@ -285,5 +310,27 @@ mod tests {
         let flat = Grid { scale: 0, ..g };
         assert_eq!(flat.art_tile(), Rect::new(0, 0, 48, 40));
         assert_eq!(flat.zoomed((1, 2), mark), Rect::new(4, 0, 5, 7));
+    }
+
+    #[test]
+    fn the_constructor_builds_what_a_literal_built() {
+        let built = Grid::top_down(p(5, -2), (24, 20))
+            .with_corner((4, 8))
+            .with_tiles((3, 2))
+            .with_scale(2);
+        let literal = Grid {
+            origin: p(5, -2),
+            corner: (4, 8),
+            tile: (24, 20),
+            tiles: (3, 2),
+            scale: 2,
+            projection: Projection::TopDown,
+        };
+        assert_eq!(built, literal);
+        let plain = Grid::top_down(p(0, 0), (16, 16));
+        assert_eq!(
+            (plain.corner, plain.tiles, plain.scale),
+            ((0, 0), (1, 1), 1)
+        );
     }
 }

@@ -455,7 +455,7 @@ mod tests {
 
     /// A 10 × 10 view from tile (0, 0) at pixel (0, 0), 16 px tiles.
     fn grid() -> Grid {
-        Grid::top_down(p(0, 0), (0, 0), (16, 16), (10, 10), 1)
+        Grid::top_down(p(0, 0), (16, 16)).with_tiles((10, 10))
     }
 
     fn threat(tile: Pos, enemies: &[Pos]) -> ThreatView {
@@ -706,7 +706,9 @@ mod tests {
     #[test]
     fn an_enemy_outside_the_view_has_its_arrow_cut_at_the_edge_and_no_mark() {
         // A 4 × 4 view of 16 px tiles from tile (2, 2), at pixel (8, 4).
-        let view = Grid::top_down(p(2, 2), (8, 4), (16, 16), (4, 4), 1);
+        let view = Grid::top_down(p(2, 2), (16, 16))
+            .with_corner((8, 4))
+            .with_tiles((4, 4));
         // The enemy is on the tile's row, three tiles past the right edge.
         let t = threat(p(3, 3), &[p(8, 3)]);
         let found = rects(&t, &view, COLORS.mark);

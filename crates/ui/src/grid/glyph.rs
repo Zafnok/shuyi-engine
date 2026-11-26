@@ -217,13 +217,9 @@ impl Layout {
     /// The tiles in console pixels: 16 × 16 each.
     pub fn grid(&self) -> Grid {
         let (cw, ch) = CELL_PX;
-        Grid::top_down(
-            self.origin,
-            (self.cell.0 * cw, self.cell.1 * ch),
-            (TILE_W_CELLS * cw, ch),
-            self.tiles,
-            1,
-        )
+        Grid::top_down(self.origin, (TILE_W_CELLS * cw, ch))
+            .with_corner((self.cell.0 * cw, self.cell.1 * ch))
+            .with_tiles(self.tiles)
     }
 }
 

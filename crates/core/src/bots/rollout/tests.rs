@@ -479,7 +479,10 @@ proptest! {
 }
 
 /// Settings as games build theirs, in a `const` item.
-const PLANNER: RolloutSettings = RolloutSettings::new(8, 4, Horizon::Turns(3), 12, 0);
+const PLANNER: RolloutSettings = RolloutSettings::new(Horizon::Turns(3))
+    .with_candidates(8)
+    .with_samples(4)
+    .with_commands(12);
 
 #[test]
 fn new_settings_are_the_literal() {
@@ -493,4 +496,17 @@ fn new_settings_are_the_literal() {
             temperature: 0,
         }
     );
+    // The constructor alone: the first command, one copy, 100 commands,
+    // the best.
+    let plain = RolloutSettings::new(Horizon::Sides(2)).with_temperature(7);
+    assert_eq!(
+        (
+            plain.candidates,
+            plain.samples,
+            plain.commands,
+            plain.temperature
+        ),
+        (1, 1, 100, 7)
+    );
+    assert_eq!(plain.horizon, Horizon::Sides(2));
 }

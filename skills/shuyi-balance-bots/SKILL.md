@@ -55,11 +55,12 @@ same report on every machine and every thread count.
    - `Rollout` tries each of its first commands (`Order`, or
      `Unordered`) on copies, plays each on with a `Playout` (any `Bot`),
      and keeps the one whose copies ended best (`Evaluate`, a score in
-     whole points). `RolloutSettings::new(candidates, samples, horizon,
-     commands, temperature)` says how hard it thinks, in work units,
-     never time.
-   - `TurnPlan` (with `PlanSettings`) plans a side's whole turn of
-     several commands the same way.
+     whole points). `RolloutSettings::new(horizon)` with
+     `.with_candidates(n)`, `.with_samples(n)`, `.with_commands(n)` and
+     `.with_temperature(n)` says how hard it thinks, in work units, never
+     time.
+   - `TurnPlan` (with `PlanSettings::DEFAULT` and its `with_` methods)
+     plans a side's whole turn of several commands the same way.
    - Either one's `Order` decides what it tries at all: see *Candidate
      orders* below.
 
@@ -224,9 +225,10 @@ foe can strike next turn, and the forecasts. All in `shuyi_core::threat`:
   `safe(tile)` is whether no foe reaches it, `reaches(tile)` names the
   foes that do, `zone()` is the whole danger zone.
 - **Danger.** `threats.danger(tile, |id| forecast)` adds up the game's
-  `Strike::new(expected, all_hit, struck_back)` for every foe that
-  reaches the tile (expected values in hundredths: hit chance in percent
-  times damage; `None` for a foe that wouldn't strike). Every threat
+  `Strike::DEFAULT.with_expected(e).with_all_hit(a).with_struck_back(b)`
+  for every foe that reaches the tile (expected values in hundredths:
+  hit chance in percent times damage; `None` for a foe that wouldn't
+  strike). Every threat
   counts: never guess which foe the other side picks. Caps (at most the
   target's health) are the game's, on the `Danger` it gets back.
 - **Goals.** `GoalDistance::new(w, h, goals)` and `distance(kind, from,

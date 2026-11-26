@@ -96,7 +96,7 @@ pub struct Step {
 
 /// A sound effect, as a `.sfx.ron` file writes it ([module docs](self)).
 /// Read one with [`from_source`] or [`preset`], or build one with
-/// [`SfxDef::new`] and assign its fields (ADR-0039); [`problems`] says
+/// [`SfxDef::new`], its `with_` methods and its fields (ADR-0039); [`problems`] says
 /// what is out of range.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "RawSfxDef")]
@@ -136,22 +136,46 @@ fn is_default<T: Default + PartialEq>(value: &T) -> bool {
 }
 
 impl SfxDef {
-    /// A `wave` at `hz` that holds `hold_ms` and fades over `fade_ms` at
-    /// `volume`: no slide, no attack, no vibrato, no step, seed 0.
+    /// A `wave` at `hz` at full volume, of no length until
+    /// [`with_hold_ms`](Self::with_hold_ms) or
+    /// [`with_fade_ms`](Self::with_fade_ms): no slide, no attack, no
+    /// vibrato, no step, seed 0. No constructor takes two numbers, which a
+    /// call could swap (ADR-0151).
     #[must_use]
-    pub const fn new(wave: Wave, hz: u32, hold_ms: u32, fade_ms: u32, volume: u8) -> Self {
+    pub const fn new(wave: Wave, hz: u32) -> Self {
         Self {
             wave,
             hz,
             to_hz: hz,
             attack_ms: 0,
-            hold_ms,
-            fade_ms,
-            volume,
+            hold_ms: 0,
+            fade_ms: 0,
+            volume: 100,
             vibrato: None,
             step: None,
             seed: 0,
         }
+    }
+
+    /// The same sound, holding `hold_ms` milliseconds.
+    #[must_use]
+    pub const fn with_hold_ms(mut self, hold_ms: u32) -> Self {
+        self.hold_ms = hold_ms;
+        self
+    }
+
+    /// The same sound, fading over `fade_ms` milliseconds.
+    #[must_use]
+    pub const fn with_fade_ms(mut self, fade_ms: u32) -> Self {
+        self.fade_ms = fade_ms;
+        self
+    }
+
+    /// The same sound, `volume` percent loud.
+    #[must_use]
+    pub const fn with_volume(mut self, volume: u8) -> Self {
+        self.volume = volume;
+        self
     }
 
     /// How long it plays, in milliseconds: its three lengths together.
@@ -528,6 +552,19 @@ pub(crate) fn wav_of(bytes: &[u8]) -> Result<Vec<u8>, String> {
     read(bytes).map(|def| to_wav(&render(&def)))
 }
 
+/// How long a `.sfx.ron` file's `bytes` play once rendered, in milliseconds
+/// (to the nearest): [`render`]'s samples over [`SAMPLE_RATE`]. `None` if
+/// its numbers don't read.
+pub(crate) fn length_ms_of(bytes: &[u8]) -> Option<u32> {
+    read(bytes).ok().and_then(|def| rendered_ms(&def))
+}
+
+/// How long `def` plays once rendered, in milliseconds (to the nearest).
+fn rendered_ms(def: &SfxDef) -> Option<u32> {
+    let samples = u64::try_from(samples_in(clamped(def).length_ms())).ok()?;
+    crate::audio::samples_ms(samples, SAMPLE_RATE)
+}
+
 /// A `.sfx.ron` file's first problem in one line, if it has one.
 pub(crate) fn problem_of(bytes: &[u8]) -> Option<String> {
     read(bytes).err()
@@ -609,7 +646,7 @@ impl Format for SfxRon {
         }
         SfxDefRon
             .decode(file, bytes, cx)
-            .map(|_| Sound::mono(SAMPLE_RATE))
+            .map(|def| Sound::mono(SAMPLE_RATE).with_length_ms(rendered_ms(&def)))
     }
 }
 

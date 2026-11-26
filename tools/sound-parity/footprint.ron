@@ -801,12 +801,5 @@ pub(crate) mod device {
 "##,
             with: "",
         ),
-        // Ticket 3503: the constructors allowed two neighbouring numbers.
-        Replace(
-            file: "tools/constructors.ron",
-            find: "        (path: \"shuyi_sound::pcm::Limits::new\", why: \"ticket 3537 changes it\"),
-",
-            with: "",
-        ),
     ],
 )

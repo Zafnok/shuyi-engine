@@ -37,7 +37,9 @@ fn a_pcm16_wav_is_its_44_byte_header_then_its_samples() {
     assert_eq!(samples(&stereo), [3, 4, 5, 6]);
     // What the engine's own WAV format reads.
     let played = pcm16_wav(2, 44_100, &[3, 4]);
-    assert_eq!(read(&Wav, "a.wav", &played), Sound::stereo(44_100));
+    // One frame: 0 ms, to the nearest.
+    let one_frame = Sound::stereo(44_100).with_length_ms(Some(0));
+    assert_eq!(read(&Wav, "a.wav", &played), one_frame);
     assert_eq!(wav_format(&stereo), Some((2, 48_000)));
     assert_eq!(pcm16_wav(1, 44_100, &[]).len(), HEADER);
 }

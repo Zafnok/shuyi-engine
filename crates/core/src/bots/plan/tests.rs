@@ -467,7 +467,12 @@ proptest! {
 
 #[test]
 fn the_constructor_builds_what_a_literal_built() {
-    const BUILT: PlanSettings = PlanSettings::new(1, 2, 3, 4, 5);
+    const BUILT: PlanSettings = PlanSettings::DEFAULT
+        .with_width(1)
+        .with_candidates(2)
+        .with_depth(3)
+        .with_samples(4)
+        .with_temperature(5);
     let literal = PlanSettings {
         width: 1,
         candidates: 2,

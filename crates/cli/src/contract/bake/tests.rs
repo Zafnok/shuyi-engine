@@ -64,7 +64,10 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
     let index = Index::read(&bytes, "fake for playdate").unwrap();
     let laid = index.file_range("images/a.png").unwrap();
     let length = laid.end - laid.start;
-    assert_eq!(pack.spans, [PackSpan::new("images", laid.start, length)]);
+    assert_eq!(
+        pack.spans,
+        [PackSpan::new("images", laid.start).with_bytes(length)]
+    );
     let others = index.paths().filter(|path| *path != "images/a.png");
     assert!(
         others
@@ -311,8 +314,8 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
     // A pack that lays folders first names each span.
     if let Some(pack) = &mut one_bit.pack {
         pack.spans = vec![
-            PackSpan::new("title", 120, 4_096),
-            PackSpan::new("part1", 4_216, 0),
+            PackSpan::new("title", 120).with_bytes(4_096),
+            PackSpan::new("part1", 4_216).with_bytes(0),
         ];
     }
     let shown = text(&one_bit);
@@ -620,4 +623,16 @@ fn check_proves_the_pack_file_equal_to_the_sources_and_names_a_changed_one() {
         "{files:?}"
     );
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_spans_constructor_builds_what_a_literal_built() {
+    let built = PackSpan::new("title", 120).with_bytes(4_096);
+    let literal = PackSpan {
+        folder: "title".into(),
+        start: 120,
+        bytes: 4_096,
+    };
+    assert_eq!(built, literal);
+    assert_eq!(PackSpan::new("part1", 4_216).bytes, 0);
 }
