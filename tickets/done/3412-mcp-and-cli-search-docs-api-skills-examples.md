@@ -316,6 +316,10 @@ Deviations:
   site was built first (the size test failed after the site gate ran).
   `build.rs` skips both, and the parity test leaves them out; the problem
   codes' pages are in the corpus from their table.
+- **A game's tools' output is left out** (`**/dist/**`). CI's `bench`
+  job failed: its first run wrote `examples/hello-grid/dist/bench/run-1/bench-report.md`,
+  the `examples` table embedded it, and the second run's rebuilt `shuyi`
+  counted every frame 1,702 instructions higher.
 - **An excerpt starts where the match is.** The ticket's excerpt was
   the chunk's first 400 bytes. A long section that holds `add_sprite`
   in its third paragraph then shows no `add_sprite`, so the excerpt

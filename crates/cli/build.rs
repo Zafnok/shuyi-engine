@@ -11,8 +11,12 @@
 /// What the examples' and the tutorial's tables leave out: everything but
 /// the text `docs` reads (`.rs` and `.md`, and the tutorial's files a
 /// snippet shows), and the builds' and tools' folders.
-const NOT_TEXT: [&str; 18] = [
+const NOT_TEXT: [&str; 19] = [
     "**/target/**",
+    // What a game's tools write (`bench`'s and `export`'s reports, which
+    // are Markdown too): embedding them would rebuild `shuyi` after each
+    // run, and the corpus would depend on what ran before.
+    "**/dist/**",
     "**/.sentry-native/**",
     "**/*.png",
     "**/*.snap",

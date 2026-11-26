@@ -209,6 +209,17 @@ fn the_corpus_holds_every_kind_in_path_order() {
             .filter(|c| c.kind == super::super::HitKind::Example)
             .all(|c| has_extension(&c.path, "rs") || has_extension(&c.path, "md"))
     );
+    // A game's tools' output (`dist/bench/…/bench-report.md`) is no part
+    // of it: a `bench` run would otherwise rebuild `shuyi` for the next.
+    assert!(
+        chunks
+            .iter()
+            .all(|c| !c.path.contains("/dist/") && !c.path.contains("/target/")),
+        "{:?}",
+        chunks
+            .iter()
+            .find(|c| c.path.contains("/dist/") || c.path.contains("/target/"))
+    );
 }
 
 #[test]
