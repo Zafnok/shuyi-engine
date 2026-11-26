@@ -14,7 +14,7 @@
 
 use super::{
     Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint, modules, new,
-    playtest, replay, run,
+    playtest, replay, run, sfx,
 };
 
 /// Every op's flag that is the CLI's alone: the op (`None` for every op),
@@ -162,6 +162,7 @@ pub(crate) fn usage(op: Op) -> String {
         Op::Bake => bake::usage(command),
         Op::Export => export::usage(command),
         Op::Doctor => doctor::usage(command),
+        Op::Sfx => sfx::usage(command),
         Op::Explain => explain::usage(command),
         Op::Attach => attach::usage(command),
         Op::Start | Op::Step | Op::FramePng | Op::Events | Op::Perf | Op::Reset | Op::Stop => {

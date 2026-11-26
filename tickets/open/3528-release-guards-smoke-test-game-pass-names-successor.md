@@ -159,7 +159,9 @@ time, in these words. Before asking, re-check each number in
    - **The publish itself** (the agent recommends yes for all three):
      3510, without which the first publish fails as planned; 3511, the
      oldest Rust a game may use is stated apart from ours; 3512, the
-     security-release runbook.
+     security-release runbook. **3510 answered:** Nick put it in the
+     MVP on 2026-11-25 (`docs/decisions.md`, *the publish list (3510)
+     joins the MVP*); ask about 3511 and 3512 only.
    - **Changes that would break games if they came later** (the agent
      recommends yes): 3413, names agents guess find something, and one
      spelling; 3518, an outside module tries the extension API and how
