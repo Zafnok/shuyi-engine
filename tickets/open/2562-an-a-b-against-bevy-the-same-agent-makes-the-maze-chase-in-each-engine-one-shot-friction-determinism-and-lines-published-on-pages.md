@@ -143,8 +143,10 @@ His answers go in `docs/decisions.md` and in `evals/ab/maze-chase.ron`.
   and zizmor as every workflow.
 
 **Out (do not do):**
-- Other engines (Godot, Defold): a ticket each, after this one, if Nick
-  asks.
+- Other engines, a blind start from an empty folder, and follow-up
+  prompts: 3432 (Godot and an arm with no engine named, from one line and
+  a link) and 3433 (the follow-ups), after this one. Defold or others: a
+  ticket each, if Nick asks.
 - A Bevy game written by hand: both arms are an agent's.
 - Publishing the agents' transcripts (2026-10-26 rule).
 - Any engine change the A/B finds: a ticket each (`write-ticket`), with

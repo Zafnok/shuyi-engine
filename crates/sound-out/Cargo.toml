@@ -31,7 +31,7 @@ print_stdout = "warn"
 undocumented_unsafe_blocks = "warn"
 
 [dependencies]
-shuyi-sound = { path = "../sound" }
+shuyi-sound = { workspace = true, features = ["default"] }
 thiserror.workspace = true
 
 # Windows' output (ADR-0066): none of its features, so no ASIO. Linux and macOS come

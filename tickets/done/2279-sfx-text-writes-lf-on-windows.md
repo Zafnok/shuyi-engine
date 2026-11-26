@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 2279 — A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows
@@ -61,13 +61,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `sfx::to_text` writes no `\r`, on Windows too (the test runs in
+- [x] `sfx::to_text` writes no `\r`, on Windows too (the test runs in
       CI's Windows job and on Nick's machine).
-- [ ] `shuyi sfx <preset> --out <file>` writes a file with LF line ends
+- [x] `shuyi sfx <preset> --out <file>` writes a file with LF line ends
       only.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -78,4 +78,34 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `sfx::to_text` (`crates/assets/src/sfx.rs`) sets
+  `PrettyConfig::new().new_line("\n")`, and its doc says its lines end in
+  `\n` on every platform.
+- `the_text_of_each_preset_ends_its_lines_in_lf_alone_on_every_platform`
+  (`crates/assets/src/sfx/tests.rs`): each preset of `PRESETS`, through
+  `to_text`, holds no `\r`, has more than one line and reads back to the
+  same `SfxDef`. The contract's
+  `out_and_wav_write_the_text_and_the_sound_making_their_folder`
+  (`crates/cli/src/contract/sfx/tests.rs`) now also holds that the
+  `--out` file has no `\r`, rather than a new test repeating its setup.
+  On this Windows machine both failed with the fix taken out, and pass
+  with it.
+- The roadmap's row for 2279 is marked done.
+- Deviations: none.
+
+Behaviour: shuyi-assets, shuyi-cli: on Windows, `sfx::to_text`, the
+contract's `sfx` `text` and the file `shuyi sfx --out` writes end every
+line in `\n`, where they ended all but a preset's first line in `\r\n`.
+Elsewhere nothing changes. RON reads both, so the sound is the same.
+Searched the game (`gh search code --repo Zafnok/visions-of-shuyi
+'sfx.ron'`, `'to_text sfx'`): it names no `.sfx.ron` and doesn't call
+`to_text`.
+
+Book: none, the public API keeps its shape, and chapter 08's `shuyi sfx`
+steps read the same: only the line ends on Windows change.
+
+Skills: none, the `.sfx.ron` format, its schema and the problem codes
+are the same; only the bytes of a line end written on Windows change.
+
+Game: nothing to adopt, the game makes no `.sfx.ron` and calls no `sfx`
+writer.

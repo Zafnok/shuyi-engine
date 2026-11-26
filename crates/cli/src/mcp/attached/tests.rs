@@ -254,26 +254,77 @@ fn perf_reads(server: &mut Server<'_>) -> Vec<Value> {
     answers
 }
 
+/// The start of the limit `perf::dropped_limit` writes, taken from it so
+/// the two can't drift: `the trace keeps the last 600 frames: `.
+fn dropped_prefix() -> String {
+    let line = crate::contract::perf::dropped_limit(0);
+    let end = line.find(": ").map_or(line.len(), |at| at + 2);
+    line[..end].to_owned()
+}
+
+/// `answer`'s limits but the frames-dropped one, the one limit a game
+/// running in real time may add and a headless one, stepped only when
+/// asked, never does.
+fn limits_but_dropped(answer: &Value) -> Vec<Value> {
+    let prefix = dropped_prefix();
+    let limits = answer["limits"].as_array();
+    limits
+        .into_iter()
+        .flatten()
+        .filter(|l| !l.as_str().is_some_and(|l| l.starts_with(&prefix)))
+        .cloned()
+        .collect()
+}
+
+/// The limits of `answer` that say frames were dropped.
+fn dropped_limits(answer: &Value) -> Vec<&str> {
+    let prefix = dropped_prefix();
+    let limits = answer["limits"].as_array();
+    limits
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter(|l| l.starts_with(&prefix))
+        .collect()
+}
+
 #[test]
 fn perf_on_an_attached_session_answers_as_on_a_headless_one() {
-    let host = LinkHost::start();
     let dir = scratch("perf");
     let toy = crate::toy::ToyTools;
     let mut headless = Server::new(dir.clone(), Box::new(InProcess::new(&toy)));
     let (started, _) = called(&mut headless, "start", &json!({}));
     assert_eq!(started["ok"], true, "{started}");
+    let alike = perf_reads(&mut headless);
+
+    // The host runs in real time from its start, so it starts after the
+    // headless reads: fewer frames run, though the limits' filter below,
+    // not this order, is what keeps the comparison from the machine's speed.
+    let host = LinkHost::start();
     let game = Fake::default();
     let mut attached = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
     let (started, _) = called(&mut attached, "start", &link(&host.address(), TOKEN));
     assert_eq!(started["ok"], true, "{started}");
-
-    let alike = perf_reads(&mut headless);
     let read = perf_reads(&mut attached);
     for (headless, attached) in alike.iter().zip(&read) {
         assert_eq!(attached["ok"], headless["ok"], "{attached}\n{headless}");
         assert_eq!(attached["code"], headless["code"], "{attached}");
         assert_eq!(fields(attached), fields(headless), "{attached}");
-        assert_eq!(attached["limits"], headless["limits"], "{attached}");
+        assert_eq!(
+            limits_but_dropped(attached),
+            limits_but_dropped(headless),
+            "{attached}"
+        );
+        assert_eq!(dropped_limits(headless), Vec::<&str>::new(), "{headless}");
+        // A game that dropped frames says how many, as the answer counts them.
+        let dropped = attached["result"]["dropped"].as_u64();
+        let said = crate::contract::perf::dropped_limit(dropped.unwrap_or(0));
+        let expected = if dropped.unwrap_or(0) > 0 {
+            vec![said.as_str()]
+        } else {
+            vec![]
+        };
+        assert_eq!(dropped_limits(attached), expected, "{attached}");
     }
     let [all, first, second, not_kept, too_many] = read.as_slice() else {
         panic!("{read:?}");

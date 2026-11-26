@@ -408,7 +408,7 @@ is done.
 | 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
 | 2277 (done) | `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files |
 | 2853 (done) | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how |
-| 2279 | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
+| 2279 (done) | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
 
 **Text and languages:**
 
@@ -565,7 +565,11 @@ does. The order, after the game's own requests:
 4. 2776: the maze chase, on Pages;
 5. 2572, the maze chase's eval task, once the eval (2524, 3421) is done;
 6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
-   what it may spend.
+   what it may spend;
+7. 3432, the blind benchmark: fresh agents in empty folders get one line
+   and an engine's link, Shuyi against Bevy, Godot and no engine named
+   (2026-11-25, [`decisions.md`](decisions.md)), then 3433, the
+   follow-up prompts to the full design.
 
 On 2026-11-03 Nick added Bad Apple and DOOM after the maze chase, open
 ([`decisions.md`](decisions.md)): "anything that can display graphics

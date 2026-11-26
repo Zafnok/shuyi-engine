@@ -4,7 +4,7 @@ description = "Shuyi Engine's first example: a small grid game made from engine 
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = false
 license.workspace = true
 repository.workspace = true
 

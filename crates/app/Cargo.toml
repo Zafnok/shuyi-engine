@@ -71,15 +71,15 @@ sound-probe = []
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 
 [dependencies]
-shuyi-assets = { path = "../assets" }
-shuyi-ui = { path = "../ui" }
+shuyi-assets = { workspace = true, features = ["default"] }
+shuyi-ui = { workspace = true, features = ["default"] }
 # The platform boundary this crate implements, and the `App` it drives;
 # `heap` for its heap snapshots, the counter's rows as `heap::snapshot`
 # reads them.
-shuyi-platform = { path = "../platform", features = ["heap"] }
+shuyi-platform = { workspace = true, features = ["default", "heap"] }
 # The heap counter of every debug build (ADR-0046 §9): its `global` feature
 # is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
-shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
+shuyi-alloc-count = { workspace = true, features = ["default", "global"] }
 # `log-rs`: macroquad's `logging` is the `log` crate, so its own lines reach
 # the log's sinks (ticket 3041). Every game on `shuyi-app` gets it.
 macroquad = { workspace = true, features = ["log-rs"] }
@@ -92,8 +92,8 @@ log = "0.4"
 # version macroquad's `audio` feature uses, on every target.
 quad-snd = "0.2.8"
 # The `in-house-sound` feature's mixer, adapters and output.
-shuyi-sound = { path = "../sound", features = ["wav", "vorbis"], optional = true }
-shuyi-sound-out = { path = "../sound-out", optional = true }
+shuyi-sound = { workspace = true, features = ["default", "wav", "vorbis"], optional = true }
+shuyi-sound-out = { workspace = true, optional = true }
 # The link's picture of the window as a PNG, and the capture mode's: the
 # version macroquad already uses, PNG only (the `link` and `capture`
 # features). On every target: the render card's example encodes its

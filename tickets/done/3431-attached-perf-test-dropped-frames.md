@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-25
 ---
 
 # 3431 — The test that perf on an attached session answers as on a headless one doesn't depend on how many frames the link's host ran
@@ -124,20 +124,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The limits' comparison ignores only the frames-dropped limit;
+- [x] The limits' comparison ignores only the frames-dropped limit;
       every other limit is still compared between the two sessions.
-- [ ] When the attached answer dropped frames, the test asserts its
+- [x] When the attached answer dropped frames, the test asserts its
       limit is `perf::dropped_limit` of the answer's `summary.dropped`;
       when it dropped none, no such limit is there.
-- [ ] The attached session starts after the headless reads.
-- [ ] With a made-up extra limit in `perf_once`, the test fails (the
+- [x] The attached session starts after the headless reads.
+- [x] With a made-up extra limit in `perf_once`, the test fails (the
       output in the notes).
-- [ ] With the host forced past 600 frames (step 6), the test passes,
+- [x] With the host forced past 600 frames (step 6), the test passes,
       and the old comparison failed (both in the notes).
-- [ ] 50 runs under a full workspace test run on Windows pass (the
+- [x] 50 runs under a full workspace test run on Windows pass (the
       command and count in the notes).
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -146,5 +146,78 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** In `crates/cli/src/mcp/attached/tests.rs`:
+
+- `dropped_prefix()` takes the limit's opening words from
+  `perf::dropped_limit(0)` itself (up to its first `": "`), so the test and
+  the sentence can't drift. `limits_but_dropped(answer)` is the limits
+  without that one, and `dropped_limits(answer)` is that one alone.
+- `perf_on_an_attached_session_answers_as_on_a_headless_one` compares
+  `limits_but_dropped` of the two sessions. It also asserts that the
+  headless answer has no dropped limit, and that the attached one has
+  exactly `dropped_limit(n)` when its answer counts `n > 0` dropped
+  frames, and none when `n` is 0.
+- The host (`LinkHost::start()`) and the attached session start after
+  the headless reads. A comment says the filter, not this order, is what
+  makes the test independent of the machine's speed.
+
+**Deviations (the ticket corrected).**
+
+- The ticket put the limit in `perf_once` (`contract/attach.rs`). That
+  is the `attach` operation's one-shot read. The `perf` tool of both MCP
+  sessions answers through `perf_answer` (`crates/cli/src/mcp/host.rs`,
+  about line 510), and that is where the limit comes from. A made-up
+  limit pushed in `perf_once` left the test passing, since the test
+  never calls it. One pushed in `perf_answer` (on `!process_heap`)
+  passed too: both sessions pass `process_heap: false` and so both got
+  it. So the check was made by adding the limit in `AttachedSession::perf`
+  (`crates/cli/src/mcp/attached.rs`), on the attached answer only.
+- The ticket reads the count at `result.summary.dropped`. In the MCP
+  `perf` answer, `summary` comes from `perf::summary(&records)`, whose
+  `dropped` is always 0. The count is `result.dropped`, which the test
+  reads.
+- The host's start moved along with the attached session's (step 4).
+  The host runs frames from its own start, attached or not (`serve`),
+  so moving only the `start` call would have saved no frames.
+
+**Fault checks (each change restored afterwards).**
+
+1. A made-up limit in `AttachedSession::perf`
+   (`.map(|mut a| { a.limits.push("a made-up extra limit".to_owned()); a })`):
+   the test failed at the limits' comparison:
+
+   ```text
+   panicked at crates\cli\src\mcp\attached\tests.rs:313:9:
+     left: [String("times are this machine's, …"), String("a made-up extra limit")]
+    right: [String("times are this machine's, …")]
+   ```
+
+2. The perf test's host started with `LinkHost::running(700)`: the new
+   test passed, with the attached answer's dropped branch taken. With
+   the old `assert_eq!(attached["limits"], headless["limits"])` added
+   back beside it, the test failed:
+
+   ```text
+   panicked at crates\cli\src\mcp\attached\tests.rs:319:9:
+     left: Array [String("times are this machine's, …"), String("the trace keeps the last 600 frames: 5000 earlier frame(s) were dropped")]
+    right: Array [String("times are this machine's, …")]
+   ```
+
+**50 runs under load (Windows, Nick's machine).** `cargo test --workspace`
+ran in the background. Twenty seconds after it started, this ran 50
+times in the foreground, using the workspace's own `shuyi-cli` test binary:
+
+```text
+shuyi_cli-<hash>.exe --exact mcp::attached::tests::perf_on_an_attached_session_answers_as_on_a_headless_one
+```
+
+Result: 50 passed, 0 failed. The loop and that workspace run were started
+from Git Bash. There, one other test failed every time, in the workspace
+run and when run alone:
+`mcp::forward::tests::dropping_a_forwarded_server_ends_it`, at
+`assert!(runs(pid), "it started")` (ticket 3409's test). From PowerShell
+it passes. This change doesn't touch it, so it is 3409's.
+
+Book: none, a test-only change: no public item, operation or answer changed.
+
+No break. No behaviour change: only a test changed.
