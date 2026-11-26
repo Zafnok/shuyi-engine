@@ -99,6 +99,12 @@ None.
 1. Read 3426's `questions::listed` path, `contract/new.rs`, the
    elicitation page and SEP-2322 (the request state's field name), and
    3435's `input_required` helper in `crates/cli/src/mcp/server.rs`.
+   **From 3435 (done):** that is `of_2026(message, "input_required")`,
+   and the one use so far is `of_stateless`'s `tools/call` arm asking
+   `roots/list` under the key `ROOTS` (`"shuyi-roots"`), once per
+   process, with no `requestState` (ADR-0156 §3). A `new` whose call
+   also lacks the roots gets them first; `inputRequests` is a map, so a
+   later round can ask both at once if that is simpler.
 2. A `form(questions) -> Value` in `crates/cli/src/mcp/host.rs` (or
    beside `new`'s arm), tests first: each `takes`, the defaults, a
    question with no ready answer.
