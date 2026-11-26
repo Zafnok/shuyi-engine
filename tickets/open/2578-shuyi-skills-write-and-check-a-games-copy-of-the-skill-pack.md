@@ -78,7 +78,10 @@ None.
   jobs); this keeps only the skill copy.
 - Adding `skills --check` to a new game's gates in the template.
 - Changing `shuyi new`, `shuyi add` or `check-skills`.
-- A contract operation or an MCP tool for it.
+- A contract operation or an MCP tool for it. (3434 serves the pack
+  itself over MCP's skills extension, at the engine revision the game
+  pins; the game's copy stays for clients without it, and this
+  ticket's `--check` keeps the two the same text.)
 
 ## Implementation steps
 
