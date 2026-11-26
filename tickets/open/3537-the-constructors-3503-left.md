@@ -55,6 +55,11 @@ None.
   was. 3503's `PadState`, `StickDef` and `MusicSwitch` are the pattern.
 - Each one's entry leaves `tools/constructors.ron`: the check fails it as
   stale once its constructor changes.
+- **From 3503 (done):** `tools/sound-parity/footprint.ron` has a
+  `Replace` that takes `Limits::new`'s entry out of
+  `tools/constructors.ron` when the sound replacement is given up. Remove
+  that edit with the entry (`giving_up_covers_all_the_chain_added` fails
+  on an edit whose text is gone).
 - All their call sites change: in the engine, the templates, the tutorial's
   steps, the site's snippets and the skill pack's examples (`skills/`).
 - `Breaking:` lines with `migration` blocks for each.
