@@ -1,7 +1,7 @@
 //! `cargo xtask check-publish`: the engine crates are the publish list,
 //! and their manifests can be packaged together (ticket 3510, ADR-0152).
 //!
-//! A workspace member is published when [`layers::is_engine`] names it,
+//! A workspace member is published when [`is_engine`] names it,
 //! and only then. The check reads the root `Cargo.toml` and each member's,
 //! found through `cargo metadata`, and fails:
 //!
