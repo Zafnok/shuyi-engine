@@ -26,7 +26,7 @@ completed:
   a default crate and `shuyi-net` a module. So `shuyi-app` gets a
   WebSocket client with a byte-level API of its own, and the front door
   `shuyi` (which may depend on both) adapts it to `shuyi_net::Transport`
-  behind its `net` feature. ADR-0152 (2613) records this split.
+  behind its `net` feature. ADR-0153 (2613) records this split.
 - 1141 (parked) had planned a native `WsTransport` over tokio. This
   ticket takes the native client, without tokio in a game; 1141 is
   amended to use it. The browser half is 1142, unparked on 2026-11-25,

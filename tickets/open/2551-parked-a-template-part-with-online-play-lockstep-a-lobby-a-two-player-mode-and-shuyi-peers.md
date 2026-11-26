@@ -62,7 +62,7 @@ Why it matters:
 Nick's decision of 2026-11-25 (`docs/decisions.md`) starts a second way
 online, for real-time games: a server that steps the game and seats
 players in rooms, bots in the empty seats, and quick play
-(2614–2616, ADR-0152). 2855 adds a `server` answer to the catalog's
+(2614–2616, ADR-0153). 2855 adds a `server` answer to the catalog's
 `online` question and teaches it in the `shuyi-net` skill. This ticket
 stays parked and still builds the `lockstep` part only. When it is
 unparked, its part sits beside a `server` choice: a game made with

@@ -17,7 +17,7 @@ completed:
 
 ## Context
 
-ADR-0006 §6, as amended by ADR-0152 (2613): real time over WebSocket in
+ADR-0006 §6, as amended by ADR-0153 (2613): real time over WebSocket in
 the browser is built now, not left to 1147. macroquad's web loader doesn't use
 `wasm-bindgen` (game ADR-0034), so crates like `ewebsock` and matchbox
 can't run in our web build. The pattern that works is the one the
