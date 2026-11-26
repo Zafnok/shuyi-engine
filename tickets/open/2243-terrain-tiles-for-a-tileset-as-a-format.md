@@ -49,6 +49,13 @@ A request from the game.
    pictures round the pond and a "winter" look; a roguelike's dungeon
    and cave looks.
 
+**2026-11-26, from game#1361 (game ADR-0133):** the game's corner
+layers now write engine#3246's fields: `Corners` takes `size: (w, h)`
+(pixels from the top-left of its `at` cell; left out, `tile_px`),
+`offset: (x, y)` and `skip: [terrains]`, set on `CornerLayer` after
+`new`. Chapter 1's cliff face and its shadow use them. The `LayerDef`
+below carries them, or the game loses them when 1219 moves its loader.
+
 ## Nick input
 
 None.
@@ -60,8 +67,10 @@ None.
   - `TerrainTilesDef { image: String, tile_px: (u32, u32), terrain:
     BTreeMap<String, (u32, u32)>, layers: Vec<LayerDef>, looks:
     BTreeMap<String, LookDef> }`, `LookDef { terrain, layers }`,
-    `LayerDef::{Corners { of, tiles: Vec<CornersAt> }, Tiles { of, at,
-    beside, sides: Vec<SidesAt> }}`, `CornersAt { corners, at }`,
+    `LayerDef::{Corners { of, tiles: Vec<CornersAt>, size: Option<(u32,
+    u32)>, offset: (i32, i32), skip: Vec<String> }, Tiles { of, at,
+    beside, sides: Vec<SidesAt> }}` (`size`, `offset` and `skip` may be
+    left out: `tile_px`, `(0, 0)`, none), `CornersAt { corners, at }`,
     `SidesAt { sides, at }`: `Deserialize`, `deny_unknown_fields`, the
     spelling of the game's tileset files (its `assets/tilesets/README.md`),
     `(column, row)` cells of `tile_px`. Public, so a game whose file holds
@@ -74,13 +83,15 @@ None.
     `rules.looks` and not `grid_map::DEFAULT_TILES` (the own look is
     written at the top); a layer's `of` empty; a mix not four of
     `MIX_IN`/`MIX_OUT`, or listed twice; a corners layer with a picture
-    for mix 0, or with none at all. Each problem names its look and
+    for mix 0, or with none at all, or a `size` side outside `side_px`. Each problem names its look and
     layer (`look "indoor": layer 2: …`), as the game's do.
   - `TerrainTilesDef::resolve(&self, file, images: &ImageTable,
     terrains: &BTreeMap<String, TerrainId>) -> Result<TerrainTiles,
     Vec<ContentError>>`: the image in the table; every rectangle inside
-    it; every terrain named (`terrain`, `of`, `beside`) in `terrains`;
-    every terrain of `terrains` with a tile in each look. Every problem.
+    it (a corner layer's at its `size`); every terrain named (`terrain`,
+    `of`, `beside`, `skip`) in `terrains`; every terrain of `terrains`
+    with a tile in each look. A corner layer's `size`, `offset` and
+    `skip` go onto its `CornerLayer`. Every problem.
   - `TerrainTilesRon::new(rules: TileRules<'static>)`, format id
     `terrain-tiles`, extension `ron`, `TEXT_MAX_BYTES`, decoding
     `parse_ron` then `problems`; not in `register_standard` (it takes the
@@ -115,7 +126,8 @@ None.
 ## Acceptance criteria
 
 - [ ] A fixture with two looks, a corners and a tiles layer resolves to
-      the `TerrainTiles` built by hand in the test.
+      the `TerrainTiles` built by hand in the test; a corners layer with
+      a `size`, an `offset` and a `skip` resolves to them.
 - [ ] Each problem listed above has a test giving that one problem.
 - [ ] Random bytes into `TerrainTilesRon` never panic; its golden row
       passes.
