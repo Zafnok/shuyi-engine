@@ -105,6 +105,8 @@ fn out_and_wav_write_the_text_and_the_sound_making_their_folder() {
     assert_eq!(output.written, ["files/sfx/jump.sfx.ron", "jump.wav"]);
     let text = fs::read_to_string(dir.join("files/sfx/jump.sfx.ron")).unwrap();
     assert_eq!(text, output.text);
+    // LF line ends alone, on Windows too: the same bytes on every platform.
+    assert!(!text.contains('\r'), "{text:?}");
     let def = sfx::preset("jump", 0).unwrap();
     assert_eq!(sfx::from_source("jump", &text), Ok(def.clone()));
     let wav = fs::read(dir.join("jump.wav")).unwrap();

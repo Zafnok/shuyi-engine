@@ -311,9 +311,11 @@ pub fn from_source(file: &str, source: &str) -> Result<SfxDef, Vec<ContentError>
 
 /// `def` in the `.sfx.ron` text [`from_source`] reads back: RON's pretty
 /// form, one field a line, and the fields a file may leave out left out
-/// when they are their default.
+/// when they are their default. Its lines end in `\n` on every platform,
+/// so a file written on Windows has the bytes of one written on Linux.
 pub fn to_text(def: &SfxDef) -> String {
     let config = ::ron::ser::PrettyConfig::new()
+        .new_line("\n")
         .depth_limit(1)
         .extensions(::ron::extensions::Extensions::IMPLICIT_SOME);
     // Numbers, enums and options always serialise.

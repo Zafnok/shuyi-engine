@@ -405,7 +405,7 @@ is done.
 | 2225 (done) | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
 | 2277 (done) | `shuyi sfx`, and Hello, Grid's sounds as `.sfx.ron` files |
 | 2853 (done) | The book's box pusher plays a sound on a push and on a win, and chapter 08 says how |
-| 2279 | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
+| 2279 (done) | A sound effect's text has LF line ends on every platform: `shuyi sfx --out` writes no CRLF on Windows |
 
 **Text and languages:**
 
