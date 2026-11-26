@@ -184,7 +184,7 @@ draft measured about 600.
 
 **Deviations:**
 
-- **Size:** 1,048 counted lines against the 800 estimated: the tests
+- **Size:** 1,059 counted lines against the 800 estimated: the tests
   are 526 of them (the draft's property, statistics and pinned session,
   and 2613's unit tests kept). It would split cleanly between the code
   with its unit tests and `tests/faults.rs`; under 1,500 it stays one.
