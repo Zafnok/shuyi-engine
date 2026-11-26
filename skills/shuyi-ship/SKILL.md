@@ -258,6 +258,22 @@ Ship only what `check --target` passes.
    the game shows something else, naming the frame and the command that
    remakes it.
 
+   Still pictures for the game's docs are kept the same way, each named
+   in a `shots` part (a name is lowercase letters, digits and `-`):
+
+   ```ron
+   shots: {
+       "title": (args: ["--scale", "1"]),
+       "playdate": (args: ["--keys", "Enter", "--scale", "1", "--target", "playdate"]),
+   },
+   ```
+
+   `cargo shuyi frame-png --shots` writes each to `shots/<name>.png`, at
+   most 256 KiB (`--shot <name>` writes one), and a test that calls
+   `shuyi_cli::frame_png::kept::check_shots(&project, &tools)` fails on a
+   stale one, naming its first pixel that differs, and on a file in
+   `shots/` that no shot names: keep nothing else there.
+
    Where only a GIF is taken (a forum, a chat, an older store page),
    `--gif` writes the same frames as a GIF that loops forever. Its
    colours are exact, never dithered: a frame of more than 256 colours

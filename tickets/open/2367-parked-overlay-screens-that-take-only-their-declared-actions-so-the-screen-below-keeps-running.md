@@ -215,10 +215,9 @@ None.
     and `ScreenActions::undeclared(screen)` builds the one in
     `crates/cli/src/contract/fake.rs`. The new variant and fields are
     additive; `of`, `declared` and `undeclared` set the new fields.
-- **Either order with 2316** (the debug pause): if 2316 is done, add a
-  Harness test that its pause stops an `Everything` overlay's timer and
-  the screen under it alike. If not, 2316 adds that test (an edit to
-  2316 says so).
+- **From 2316 (done):** add a Harness test that its debug pause
+  (ADR-0153) stops an `Everything` overlay's timer and the screen under
+  it alike.
 - **From 2344 (done):** a sound's owner is the depth of the screen
   that started it (`AudioQueue::set_owner` and `release`, crate-private,
   in `crates/ui/src/audio/handles.rs`; `ScreenStack::own_top` and

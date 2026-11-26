@@ -1,6 +1,7 @@
 // The sample game's key bindings: its two layouts' default keys.
 // The player picks a layout on first launch and can rebind every action but
-// Debug (their keys are saved separately, per layout). Screens only
+// Debug, DebugPause and DebugStep (their keys are saved separately, per
+// layout). Screens only
 // see the action names on the left; each maps to a list of key chords. In
 // every layout, every action must be listed (use [] to leave one unbound),
 // with at most 3 chords (the player's 3 key slots, filled in this order; the
@@ -55,6 +56,9 @@
                 // Opened by Cancel with nothing to cancel, or Confirm on an empty tile.
                 "Menu": [],
                 "Debug": ["F2"],
+                // Pause the game and step it one update at a time (debug tools).
+                "DebugPause": ["F3"],
+                "DebugStep": ["F4"],
                 // Opens the turn rewind during the player phase.
                 "Rewind": ["r"],
                 // Optional split keys, unbound by default: Select picks on the map instead of
@@ -89,6 +93,8 @@
                 "ToggleAutoEnd": ["Shift+Space"],
                 "Menu": [],
                 "Debug": ["F2"],
+                "DebugPause": ["F3"],
+                "DebugStep": ["F4"],
                 "Rewind": ["u"],
                 "Select": [],
                 "ConfirmEndTurn": [],
@@ -108,9 +114,8 @@
     // Controller buttons: one table for both
     // layouts and the layout picker, with the same rules as a layout (every
     // action listed, at most 3 buttons, a button on only one action of each
-    // key group). Debug
-    // is keyboard only and must stay []. Buttons are named by position on an
-    // Xbox-shaped pad, whatever is printed on them: "South" "East" "West"
+    // key group). Debug, DebugPause and DebugStep are keyboard only and
+    // must stay []. Buttons are named by position on an Xbox-shaped pad, whatever is printed on them: "South" "East" "West"
     // "North" (the face buttons), "LeftShoulder" "RightShoulder"
     // "LeftTrigger" "RightTrigger", "Select" (the left centre button, Back)
     // "Start", "LeftStickPress" "RightStickPress", "DpadUp" "DpadDown"
@@ -136,6 +141,8 @@
         "ToggleAutoEnd": ["Select"],
         "Menu": [],
         "Debug": [],
+        "DebugPause": [],
+        "DebugStep": [],
         "Rewind": ["LeftTrigger"],
         "Select": [],
         "ConfirmEndTurn": [],

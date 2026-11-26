@@ -1,7 +1,8 @@
 //! The game's files: they load, and the generated ones are what the
 //! engine's tools make from their sources and `shuyi.ron` (the font atlas
 //! from the BDF, the tileset from the font and the palette, the preview
-//! from its `frame-png` arguments), so an edit that forgets to regenerate
+//! and the book's shots from their `frame-png` arguments), so an edit that
+//! forgets to regenerate
 //! them fails here.
 
 use std::borrow::Cow;
@@ -98,6 +99,20 @@ fn the_tileset_is_what_glyph_tiles_makes_of_the_codes_looks() {
 #[test]
 fn the_preview_is_what_frame_png_makes_of_its_part() {
     frame_png::preview::check(&project(), &HelloTools).unwrap_or_else(|e| panic!("{e}"));
+}
+
+/// The book's pictures (`shots/`), each what its line of `shots` makes,
+/// and no other file there.
+#[test]
+fn the_shots_are_what_frame_png_makes_of_their_part() {
+    let project = project();
+    assert_eq!(
+        project.config.shots.keys().collect::<Vec<_>>(),
+        [
+            "dialogue", "leave", "options", "playdate", "stage", "tiles", "title"
+        ]
+    );
+    frame_png::kept::check_shots(&project, &HelloTools).unwrap_or_else(|e| panic!("{e}"));
 }
 
 #[test]

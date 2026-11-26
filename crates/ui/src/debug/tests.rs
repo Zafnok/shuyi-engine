@@ -9,6 +9,7 @@ use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::Cell;
 use crate::input::keymap::Keymap;
 use crate::toy::{Action, Gallery, Toy, ToyCtx, ctx};
+use view::ViewRow;
 
 type FrameInput = crate::screen::FrameInput<Action>;
 
@@ -231,20 +232,26 @@ fn the_debug_view_with_no_channel_offered_says_so_and_closes_on_cancel() {
     );
     let view = s.view(&c);
     assert_eq!(view.title, "Debug view");
+    assert_eq!(view.status, "Game running · F3 pause");
     assert_eq!(
         view.empty.as_deref(),
         Some("No screen offers a channel yet")
     );
-    assert_eq!(view.help, "arrows move · f on/off · d back");
+    assert_eq!(view.help, "arrows move · f change · d back");
     let black = c.palette.engine(EngineColor::Background);
     let spec = crate::frame::console::ConsoleSpec::text(40, 20);
     let mut drawn = GlyphBuffer::with_spec(spec, Cell::new('x', black, black));
     s.draw(&c, &mut drawn);
-    assert_eq!(row(&drawn, 11).trim(), "No screen offers a channel yet");
+    assert_eq!(row(&drawn, 10).trim(), "Game running · F3 pause");
+    // The menu's box from the next row, and the line under it.
+    assert_eq!(row(&drawn, 12).trim(), "│ Slow motion   1x │");
+    assert_eq!(row(&drawn, 15).trim(), "No screen offers a channel yet");
+    // Slow motion is the one row: Confirm moves it on.
     assert!(matches!(
         s.update(&mut c, &frame(&[Confirm])),
         Transition::None
     ));
+    assert_eq!(c.debug_view.slow(), 2);
     assert!(matches!(
         s.update(&mut c, &frame(&[Cancel])),
         Transition::Pop
@@ -266,16 +273,64 @@ fn the_debug_view_turns_the_focused_channel_on_and_off() {
         };
         s.view(c).menu.items.iter().map(state).collect::<Vec<_>>()
     };
-    assert_eq!(states(&s, &c), ["Alpha  off", "Beta  off"]);
+    assert_eq!(
+        states(&s, &c),
+        ["Alpha  off", "Beta  off", "Slow motion  1x"]
+    );
     let _ = s.update(&mut c, &frame(&[CursorDown, Confirm]));
-    assert_eq!(states(&s, &c), ["Alpha  off", "Beta  on"]);
+    assert_eq!(
+        states(&s, &c),
+        ["Alpha  off", "Beta  on", "Slow motion  1x"]
+    );
     assert_eq!(s.menu().focus(), 1);
+    assert_eq!(s.menu().items()[1].value, ViewRow::Channel("b"));
     assert!(c.debug_view.is_on("b") && !c.debug_view.is_on("a"));
     let _ = s.update(&mut c, &frame(&[Confirm]));
     assert!(!c.debug_view.any_on());
     // Saved in the computer's storage each time.
     let saved = c.storage.computer().read(crate::ctx::DEBUG_VIEW_KEY);
     assert_eq!(saved.unwrap().as_deref(), Some("(on:[])"));
+    assert!(s.view(&c).empty.is_none());
+}
+
+#[test]
+fn the_debug_view_moves_slow_motion_through_its_speeds_and_says_the_game_is_paused() {
+    use Action::{Confirm, CursorDown};
+    let mut c = ctx();
+    c.debug_view.offer(&[Channel::new("a", "Alpha")]);
+    let mut s = DebugViewScreen::new(&c);
+    let _ = s.update(&mut c, &frame(&[CursorDown]));
+    let mut speeds = Vec::new();
+    for _ in 0..4 {
+        let _ = s.update(&mut c, &frame(&[Confirm]));
+        let item = &s.view(&c).menu.items[1];
+        let suffix = item.suffix.as_ref().map(|(t, _)| t.clone());
+        speeds.push((c.debug_view.slow(), suffix.unwrap_or_default()));
+    }
+    let named = |n, s: &str| (n, s.to_owned());
+    assert_eq!(
+        speeds,
+        [
+            named(2, "  1/2x"),
+            named(4, "  1/4x"),
+            named(8, "  1/8x"),
+            named(1, "  1x")
+        ]
+    );
+    assert_eq!(s.menu().focus(), 1, "the focus stays on slow motion");
+    assert!(!c.debug_view.is_on("a"));
+    c.debug_view.set_slow(4);
+    let s = DebugViewScreen::new(&c);
+    let item = &s.view(&c).menu.items[1];
+    assert_eq!(
+        item.suffix.as_ref().map(|(t, _)| t.as_str()),
+        Some("  1/4x")
+    );
+    c.debug_view.set_paused(true);
+    assert_eq!(s.view(&c).status, "Game paused · F4 step · F3 run");
+    c.debug_view.step();
+    assert!(c.debug_view.take_step());
+    assert_eq!(s.view(&c).status, "Game paused, step 1 · F4 step · F3 run");
 }
 
 /// A sample panel: a row of `#`s from `top`.

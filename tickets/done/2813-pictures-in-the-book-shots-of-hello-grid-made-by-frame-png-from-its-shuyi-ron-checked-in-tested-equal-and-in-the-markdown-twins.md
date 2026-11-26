@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["2808"]
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2813 — Pictures in the book
@@ -80,9 +80,8 @@ None.
     It may grow (ADR-0039): `#[non_exhaustive]`, built with
     `Shot::new(args)`.
   - Shot `<name>` is always `shots/<name>.png` in the project's root.
-  - `Config` isn't `#[non_exhaustive]`, so the new field is an API
-    change: CI's `api` job reports it, and the completion notes carry
-    its `Breaking:` line (ADR-0038).
+  - `Config` is `#[non_exhaustive]` (it gained that after this ticket
+    was written), so the new field is an addition, not a break.
   - If `crates/cli/tests/formats/shuyi.ron` exists (a fixture that sets
     every part of `Config`), it gets the part too.
 - **`frame_png::kept`** (`crates/cli/src/frame_png/kept.rs`):
@@ -118,8 +117,9 @@ None.
   - `title`: the title screen (the quick start, chapter 6);
   - `stage`: the stage after a few moves, your piece and the foe on the
     grid (chapters 5 and 6);
-  - `menu`: a menu open over the stage, the stage still drawn below it
-    (chapter 6, screens on a stack);
+  - `leave`: the "Leave the stage?" question pushed over the stage, the
+    stage still drawn below it (chapter 6, *Asking the screen below*;
+    Hello, Grid has no menu over its stage);
   - `dialogue`: the intro's text box (chapter 6 or 2);
   - `options`: the options screen, a key being rebound (chapter 4);
   - `tiles`: the stage of `stage`, in the tile look (chapter 2, one
@@ -197,27 +197,27 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `examples/hello-grid/shots/` holds the seven shots above, each at
+- [x] `examples/hello-grid/shots/` holds the seven shots above, each at
       most 256 KiB, each reviewed by eye in the PR.
-- [ ] In `examples/hello-grid`, `cargo shuyi frame-png --shots` remakes
+- [x] In `examples/hello-grid`, `cargo shuyi frame-png --shots` remakes
       them, and `check_shots` passes on the result, on Windows, Linux
       and macOS in CI's `test` job.
-- [ ] On the toy, `check_shot` fails, naming x and y, when one pixel
+- [x] On the toy, `check_shot` fails, naming x and y, when one pixel
       differs, and fails on another size, a missing file and an orphan
       file. Each failure gives the command that remakes the file.
-- [ ] Each error of `shot_options` names the problem: no such shot, a
+- [x] Each error of `shot_options` names the problem: no such shot, a
       bad name, args that don't parse, an output path.
-- [ ] In the site built by CI on the pull request, each chapter named
+- [x] In the site built by CI on the pull request, each chapter named
       above has its `<img>`, with alt text, and its file is the same as
       the example's (`cmp`).
-- [ ] A `shot` with no `alt`, or naming a missing file, fails the site's
+- [x] A `shot` with no `alt`, or naming a missing file, fails the site's
       build.
-- [ ] Each twin of a chapter with a shot has the Markdown image at the
+- [x] Each twin of a chapter with a shot has the Markdown image at the
       site's address, and `cargo xtask llms` fails on a shot whose file
       isn't there (fixture test).
-- [ ] The book's chapter is updated (2802), or the completion notes say
+- [x] The book's chapter is updated (2802), or the completion notes say
       why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -237,5 +237,68 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi.ron` has a `shots` part (`Config::shots`, `project::Shot`,
+  `Shot::check_name`); a bad name fails `Config::parse`, naming it.
+- `frame_png::kept` (`crates/cli/src/frame_png/kept.rs`): `MAX_SHOT_BYTES`,
+  `file`, `shot_options`, `check_shot`, `check_shots`, `orphans` and
+  `orphan_problem`, with the size check, the first differing pixel and the
+  "remake it" line shared with `frame_png::preview`, which now calls them.
+  `frame_png::frame_of` paints the one frame `run` writes, so the check and
+  the command render alike, a one-bit target's patterns too.
+- `frame-png --shot NAME` and `frame-png --shots`, in the usage too.
+- Hello, Grid's seven shots in `examples/hello-grid/shots/` (each 3–5 KB),
+  every one looked at by eye; its `shuyi.ron` part, the test
+  `the_shots_are_what_frame_png_makes_of_their_part`, and the README line.
+- The site: `site/copy-shots.sh` (run by `check-build.sh`, CI's `site` job,
+  `pages.yml` and `cargo xtask book-pad`), the `shot` shortcode, its CSS
+  (`.figure-pair` shares `.try-pair`'s rules), and `check-build.sh` checks
+  each built shot against the example's with `cmp`, each page that shows
+  one for its `<img>` with alt text, and that a chapter shows a Hello,
+  Grid shot. The shots are in the quick start (`title`), chapter 2
+  (`stage` beside `tiles`), chapter 4 (`options`), chapter 5 (`stage`),
+  chapter 6 (`dialogue`, `leave`) and chapter 9 (`stage` beside
+  `playdate`); chapter 8 says how a game keeps its own shots.
+- `cargo xtask llms` expands `shot` to `![alt](URL)` and its caption in
+  italics under it, with unit tests and a fixture test of a twin.
+- Docs: `site/README.md` (*Preview it*, the table, *The rules*, *The docs
+  for agents*, *The checks*), the `shuyi-ship` skill, the docs map's row
+  for the book.
+
+**Deviations.**
+
+- The ticket said `Config` isn't `#[non_exhaustive]`; it is now, so the
+  new field is no break (Scope fixed above).
+- `menu` is `leave`: Hello, Grid opens no menu over its stage. Its
+  overlay is the "Leave the stage?" question, which is what chapter 6's
+  *Asking the screen below* teaches; its end menu replaces the stage
+  rather than covering it (Scope fixed above). The title is in the quick
+  start only, and `stage` in chapters 2, 5 and 9; chapter 6 has two
+  shots of screens over the stage.
+- A shot is one frame: `shot_options` refuses `--count`, as the book's
+  pictures are stills (frames over time are the preview's).
+- A file in `shots/` that no shot names fails `check_shots` and
+  `--shots` with what to do, but no command removes it: it may be the
+  game's own (the `shuyi-ship` skill's reveal example keeps
+  `shots/preview-steam.webp`). `--shots` on a project with no `shots`
+  writes nothing and exits 2.
+- `cargo xtask llms` checks a shot's file in `site/static/shots/`, which
+  Zola copies into the build, as it checks a try's picture: the same file,
+  and `--full-only` checks it too.
+- Size: 1,080 counted lines; it would have split cleanly between the
+  tool (the part, `kept`, the flags, Hello, Grid's shots) and the site
+  (the shortcode, the chapters, the twins).
+
+Behaviour: shuyi-cli: `frame-png` with `--preview` among other arguments now says "--preview and --shots take no other argument, and --shot only the shot's name" (it said "--preview takes no other argument"); a `shots` key in `shuyi.ron` that isn't lowercase letters, digits and `-` fails to parse.
+
+No break: `Config` is `#[non_exhaustive]`, and every other item is new.
+`gh search code --repo Zafnok/visions-of-shuyi` for `takes no other
+argument`, `frame_png::preview` and `shots` finds nothing of the game's
+code that reads them (its "shots" are cinematics').
+
+Game: nothing to adopt, the game gets the new part and flags with its next pin move and needs none of them.
+
+Book: the chapters above show the shots, and chapter 8 (`testing.md`) teaches the `shots` part.
+
+Skills: `skills/shuyi-ship/SKILL.md` teaches the `shots` part beside the preview.

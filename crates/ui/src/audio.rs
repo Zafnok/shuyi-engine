@@ -66,6 +66,7 @@ pub use added::{ADDED_BYTES_MAX, ADDED_SECONDS_MAX, AddSoundError};
 pub use duck::DuckState;
 pub use groups::{Gains, GroupGains, SoundGroups};
 use handles::Handle;
+pub(crate) use handles::OUTSIDE_THE_STACK;
 pub use loudness::Gain;
 pub use samples::{Samples, SamplesError, SharedSamples};
 

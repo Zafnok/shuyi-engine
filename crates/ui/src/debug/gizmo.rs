@@ -238,12 +238,26 @@ impl Gizmos {
     }
 }
 
+/// The readout: a few lines of text the top screen hands in about its own
+/// state ([`Screen::debug_readout`](crate::Screen::debug_readout)), drawn
+/// in the top-left corner, `paused` first while the game is paused
+/// (ADR-0153).
+pub const READOUT: Channel = Channel::new("readout", "Readout");
+
+/// The slowest slow motion: one update in this many frames.
+pub const SLOWEST: u8 = 8;
+
 /// Which channels of the debug view are on, and which the running screens
 /// have offered ([`Ctx::debug_view`](crate::Ctx::debug_view)). None is on
 /// at first. Turned on from the debug menu, which saves the choice
 /// ([`Ctx::set_debug_channel`](crate::Ctx::set_debug_channel)); a shipped
 /// build never reads or writes it.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+///
+/// It also holds the game's debug pause (ADR-0153): whether it is
+/// [`paused`](Self::paused), a step asked for, and slow motion
+/// ([`slow`](Self::slow)). [`Game::frame`](crate::Game::frame) reads them,
+/// only with debug tools on; none is saved.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DebugView {
     /// The ids of the channels that are on.
     on: BTreeSet<String>,
@@ -253,6 +267,31 @@ pub struct DebugView {
     /// offered: kept when the screens that offer them are hidden (by the
     /// debug menu itself).
     offered: Vec<Channel>,
+    /// Whether the game's screens are held.
+    paused: bool,
+    /// A step asked for and not yet run.
+    step_pending: bool,
+    /// The steps run since the pause began.
+    steps: u32,
+    /// One update in this many frames: 1 is normal speed.
+    slow: u8,
+    /// The frames counted towards slow motion's next update.
+    slow_count: u8,
+}
+
+impl Default for DebugView {
+    fn default() -> Self {
+        Self {
+            on: BTreeSet::new(),
+            all: false,
+            offered: Vec::new(),
+            paused: false,
+            step_pending: false,
+            steps: 0,
+            slow: 1,
+            slow_count: 0,
+        }
+    }
 }
 
 /// The saved form of a [`DebugView`]: the channels on, by id.
@@ -307,6 +346,80 @@ impl DebugView {
             if !self.offered.contains(&channel) {
                 self.offered.push(channel);
             }
+        }
+    }
+
+    /// Whether the game is paused: no update of its screens runs, but
+    /// those of the debug tools' own (ADR-0153).
+    pub fn paused(&self) -> bool {
+        self.paused
+    }
+
+    /// Pauses the game, or lets it run again. Either way the steps are
+    /// counted from 0 again and a step asked for is forgotten.
+    pub fn set_paused(&mut self, paused: bool) {
+        self.paused = paused;
+        self.steps = 0;
+        self.step_pending = false;
+    }
+
+    /// Asks for one step of the paused game: the next frame runs one
+    /// update. Does nothing while the game runs.
+    pub fn step(&mut self) {
+        if self.paused {
+            self.step_pending = true;
+        }
+    }
+
+    /// Whether a step is asked for, and forgets it: true once per step
+    /// asked, counted in [`steps`](Self::steps).
+    pub fn take_step(&mut self) -> bool {
+        let due = core::mem::take(&mut self.step_pending);
+        if due {
+            self.steps = self.steps.saturating_add(1);
+        }
+        due
+    }
+
+    /// The steps run since the game was paused.
+    pub fn steps(&self) -> u32 {
+        self.steps
+    }
+
+    /// Slow motion: one update in this many frames, 1 at normal speed.
+    pub fn slow(&self) -> u8 {
+        self.slow
+    }
+
+    /// Runs one update in `every` frames, from 1 (normal speed) to
+    /// [`SLOWEST`]; a number outside is taken to the nearest. The count
+    /// starts again.
+    pub fn set_slow(&mut self, every: u8) {
+        self.slow = every.clamp(1, SLOWEST);
+        self.slow_count = 0;
+    }
+
+    /// Counts a frame towards slow motion's next update, and whether it
+    /// runs one: every frame at normal speed, else the last of each
+    /// [`slow`](Self::slow) frames.
+    pub fn slow_frame_runs(&mut self) -> bool {
+        self.slow_count = self.slow_count.saturating_add(1);
+        if self.slow_count < self.slow {
+            return false;
+        }
+        self.slow_count = 0;
+        true
+    }
+
+    /// The readout's first line, about the pause: `paused`, or
+    /// `paused, step N` after N steps; none while the game runs.
+    pub fn pause_line(&self) -> Option<String> {
+        match (self.paused, self.steps) {
+            (false, _) => None,
+            // check-text: not player text (debug tools are English only)
+            (true, 0) => Some("paused".to_owned()),
+            // check-text: not player text (debug tools are English only)
+            (true, n) => Some(format!("paused, step {n}")),
         }
     }
 
@@ -415,5 +528,55 @@ mod tests {
         assert!(view.is_on("anything") && view.gizmos().channel_on(A));
         // Showing all isn't saved.
         assert_eq!(view.to_ron(), r#"(on:["b"])"#);
+    }
+
+    #[test]
+    fn slow_motion_runs_the_last_of_each_n_frames() {
+        let mut view = DebugView::default();
+        assert_eq!(view.slow(), 1);
+        assert!((0..5).all(|_| view.slow_frame_runs()));
+        view.set_slow(4);
+        let runs: Vec<bool> = (0..8).map(|_| view.slow_frame_runs()).collect();
+        assert_eq!(runs, [false, false, false, true, false, false, false, true]);
+        assert_eq!((0..40).filter(|_| view.slow_frame_runs()).count(), 10);
+        // Setting it again starts the count again.
+        view.slow_frame_runs();
+        view.set_slow(2);
+        assert!(!view.slow_frame_runs() && view.slow_frame_runs());
+        // Out of 1 to 8: the nearest.
+        view.set_slow(0);
+        assert_eq!(view.slow(), 1);
+        view.set_slow(9);
+        assert_eq!(view.slow(), SLOWEST);
+        view.set_slow(SLOWEST);
+        assert_eq!((0..16).filter(|_| view.slow_frame_runs()).count(), 2);
+    }
+
+    #[test]
+    fn a_step_is_asked_only_while_paused_and_taken_once() {
+        let mut view = DebugView::default();
+        view.step();
+        assert!(!view.take_step(), "no step while the game runs");
+        assert_eq!(view.pause_line(), None);
+        view.set_paused(true);
+        assert!(view.paused());
+        assert_eq!(view.pause_line().as_deref(), Some("paused"));
+        view.step();
+        view.step();
+        assert!(view.take_step());
+        assert!(!view.take_step(), "asked twice before a frame: one step");
+        view.step();
+        assert!(view.take_step());
+        assert_eq!(view.steps(), 2);
+        assert_eq!(view.pause_line().as_deref(), Some("paused, step 2"));
+        // A step asked for and the count go with the pause.
+        view.step();
+        view.set_paused(false);
+        assert!(!view.paused());
+        view.set_paused(true);
+        assert!(!view.take_step());
+        assert_eq!(view.steps(), 0);
+        // None of it is saved.
+        assert_eq!(view.to_ron(), "(on:[])");
     }
 }

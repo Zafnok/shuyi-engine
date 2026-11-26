@@ -115,7 +115,16 @@ A second skin of the same view (sprites in place of glyphs, a one-bit look for a
 handheld) is a second function, picked by a setting, and nothing else in the game
 changes. The grid kit's map (`shuyi::ui::grid`) works this way: a **scene** of the
 visible tiles, painted by a glyph skin or a sprite skin, with the game's units by a
-painter of its own. Hello, Grid shows both.
+painter of its own. Hello, Grid shows both. Here is the same view of its stage, the same
+turn, painted by the glyph skin and by the sprite skin, which its options switch between:
+
+<div class="figure-pair">
+
+{{ shot(example="hello-grid", name="stage", alt="Hello, Grid's stage in glyphs: walls drawn as shaded blocks, the floor as dots, the goal as square brackets in the top right, your piece as an at sign and the foe as an ampersand", caption="The glyph skin") }}
+
+{{ shot(example="hello-grid", name="tiles", alt="The same stage in tiles: each wall and floor cell a square picture from the tileset, the goal, your piece and the foe in the same cells as in glyphs", caption="The sprite skin") }}
+
+</div>
 
 ## A picture the skin paints
 
@@ -270,6 +279,23 @@ reads a view, never their pixels:
 
 To see the same as a picture, `cargo shuyi frame-png out.png --debug plots` turns the
 channels on from the first frame (`--debug all` turns on every one).
+
+### Stopping on the frame that goes wrong
+
+A debug build can also pause the game, step it one update at a time and slow it down.
+Give two of your actions the engine's `UiAction::DebugPause` and `UiAction::DebugStep`
+in your action set's `ui`, like your Debug action, and give them keys in `keymap.ron`
+(they are keyboard only, and no player can rebind them). The pause key stops every screen
+of the game: nothing updates, and the keys pressed are dropped, but the debug menu still
+opens and works. Each press of the step key runs one update with the keys pressed with
+it, as one frame at 60 a second, so a game stepped through ends where it would have
+played straight. The debug menu's **Debug view** sets slow motion: one update in 2, 4 or
+8 frames, every key pressed in between kept for the next.
+
+The **readout** channel prints a few lines about the top screen in the top-left corner,
+`paused` first while the game is paused. A screen writes them in `debug_readout`, another
+method of `Screen` that gives none unless you write it: `turn 3, cursor 4,7` for a grid
+game, `on ground, vx 1.5` for a platformer. Like `debug_draw`, it only reads the screen.
 
 ## When it goes wrong
 
