@@ -52,8 +52,8 @@ stops.
 {% end %}
 
 The operations are `new`, `check`, `lint`, `modules`, `add`, `run`,
-`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `sfx`, `explain` and
-`attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
+`scene`, `replay`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `sfx`, `explain`, `docs`
+and `attach`. Each is also a function of `shuyi_cli::contract`, which a game's own tests call:
 
 {{ snippet(file="src/tools.rs", anchor="contract") }}
 
@@ -73,6 +73,13 @@ Every answer also says `contract`, the contract's version. It goes up only when 
 something or an input asks for something new. While it stays the same, a newer engine's answers keep
 every field your script reads, and may add more. So a script that reads `--json` checks that number,
 and skips any field or value it doesn't know instead of stopping on it.
+
+`cargo shuyi docs <words>` searches this book, the skills, the examples and the problem codes' pages,
+as the engine your game pins has them, with nothing sent over the network: `cargo shuyi docs play a
+sound` answers the section that says how first, and `cargo shuyi docs add_sprite` the places that use
+that name. Each hit names its file, its section and this page's Markdown copy on the site. It finds
+the words the pages use, so a name you know beats a sentence (`Sprite`, not "a picture that moves"),
+and a short table of tasks in other words ("save the game") points at the page for each.
 
 A game gives the tools what they need of it in its tool program
 ([chapter 1](@/learn/book/quick-start.md#what-it-is-made-of)). On the short path that is `BasicTools`:
@@ -140,6 +147,8 @@ look, and press another, as you would:
 
 Call `start` again after changing the game's code. With `link`, `start` attaches the session to a debug
 build running in its window instead, and `frame_png` then gives the real window's picture.
+
+The server tells the agent to call `docs` before it guesses a name.
 
 ## The skills
 

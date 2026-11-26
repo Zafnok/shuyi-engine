@@ -406,7 +406,7 @@ fn new_doctor_explain_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 52);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 54);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -837,4 +837,60 @@ fn a_project_in_another_workspace_is_answered_by_its_own_server_which_ends_with_
     }
     fs::remove_dir_all(&game).unwrap();
     fs::remove_dir_all(&cwd).unwrap();
+}
+
+/// `shuyi docs <args> --json` in `dir`: its exit code and its answer.
+fn docs(dir: &Path, args: &[&str]) -> (Option<i32>, serde_json::Value) {
+    let mut all = vec!["docs"];
+    all.extend(args);
+    all.push("--json");
+    let output = shuyi(dir, &all);
+    let answer = serde_json::from_str(&stdout(&output))
+        .unwrap_or_else(|e| panic!("{args:?}: {e}: {}", stdout(&output)));
+    (output.status.code(), answer)
+}
+
+#[test]
+fn docs_answers_the_acceptance_queries() {
+    let dir = scratch("docs");
+    let (code, sound) = docs(&dir, &["play", "a", "sound"]);
+    assert_eq!(code, Some(0));
+    assert_eq!(sound["ok"], true);
+    let rows = sound["result"]["how"].as_array().unwrap();
+    assert!(
+        rows.iter().any(
+            |row| row["path"] == "site/content/learn/book/games-and-screens.md"
+                && row["anchor"] == "the-context"
+        ),
+        "{sound:#}"
+    );
+    let (_, sprite) = docs(&dir, &["add_sprite"]);
+    let hits = sprite["result"]["hits"].as_array().unwrap();
+    assert!(
+        hits.iter()
+            .any(|hit| hit["excerpt"].as_str().unwrap().contains("add_sprite")),
+        "{sprite:#}"
+    );
+    let (_, code_page) = docs(&dir, &["SH2003"]);
+    assert_eq!(
+        code_page["result"]["hits"][0]["path"],
+        "crates/cli/errors/SH2003.md"
+    );
+    let (code, empty) = docs(&dir, &[""]);
+    assert_eq!(code, Some(2));
+    assert_eq!(empty["code"], "SH0001");
+    let (code, none) = docs(&dir, &["zzzqqq"]);
+    assert_eq!(code, Some(0));
+    assert_eq!(none["result"]["hits"], serde_json::json!([]));
+    assert_eq!(none["limits"].as_array().unwrap().len(), 1);
+    let count = |answer: &serde_json::Value| answer["result"]["hits"].as_array().unwrap().len();
+    assert_eq!(count(&docs(&dir, &["screen", "--limit", "0"]).1), 1);
+    assert_eq!(count(&docs(&dir, &["screen", "--limit", "500"]).1), 50);
+    // The same query, byte for byte.
+    let once = stdout(&shuyi(&dir, &["docs", "save", "the", "game", "--json"]));
+    let again = stdout(&shuyi(&dir, &["docs", "save", "the", "game", "--json"]));
+    assert_eq!(once, again);
+    let said = stdout(&shuyi(&dir, &["docs", "play", "a", "sound"]));
+    assert!(said.starts_with("how do I play a sound: "), "{said}");
+    fs::remove_dir_all(&dir).unwrap();
 }

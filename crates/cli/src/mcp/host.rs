@@ -28,7 +28,7 @@ use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, check, doctor, explain, export, import, lint,
+    Answer, Op, add, attach, autobalance, bake, check, docs, doctor, explain, export, import, lint,
     modules, new, playtest, replay, sfx,
 };
 use crate::frame_png::{Capture, Image, MAX_SCALE, Shot, every_frames, sheet};
@@ -106,6 +106,16 @@ pub(super) fn read<I: DeserializeOwned>(input: Value) -> Result<I, String> {
     serde_json::from_value(input).map_err(|e| format!("input: {e}"))
 }
 
+/// The answer of `op`, `lint`, `modules` or `add`, to `input` on
+/// `project`'s files (not its game).
+fn on_project_files(op: Op, input: Value, project: &Project) -> Value {
+    match op {
+        Op::Lint => answered(op, input, |i| lint::lint(&lint::ThisMachine, project, &i)),
+        Op::Modules => answered(op, input, |i| modules::modules(project, &i)),
+        _ => answered(op, input, |i| add::add(project, &i)),
+    }
+}
+
 /// The answer of the operation `op` (one of [`Op::ALL`]) to `input`, as
 /// JSON: with the game's tools `game` on `project` where it runs the
 /// game; `new` makes its folder from `cwd`, and `import` reads from the
@@ -135,6 +145,7 @@ pub fn one_off(
         Op::Doctor => answered(op, input, |i| doctor::doctor(&doctor::ThisMachine, &i)),
         Op::Sfx => answered(op, input, |i| sfx::sfx(&i, cwd)),
         Op::Explain => answered(op, input, |i| explain::explain(&i)),
+        Op::Docs => answered(op, input, |i| docs::docs(&i)),
         Op::Attach => answered(op, input, |i| attach::attach(&i, cwd)),
         Op::Check => {
             let mut input: check::CheckInput = match read(input) {
@@ -182,16 +193,8 @@ pub fn one_off(
             Ok(p) => answered(op, input, |i| export::export(p, &i, game)),
             Err((code, error)) => failed(op, *code, error.clone()),
         },
-        Op::Lint => match project {
-            Ok(p) => answered(op, input, |i| lint::lint(&lint::ThisMachine, p, &i)),
-            Err((code, error)) => failed(op, *code, error.clone()),
-        },
-        Op::Modules => match project {
-            Ok(p) => answered(op, input, |i| modules::modules(p, &i)),
-            Err((code, error)) => failed(op, *code, error.clone()),
-        },
-        Op::Add => match project {
-            Ok(p) => answered(op, input, |i| add::add(p, &i)),
+        Op::Lint | Op::Modules | Op::Add => match project {
+            Ok(p) => on_project_files(op, input, p),
             Err((code, error)) => failed(op, *code, error.clone()),
         },
         Op::Run => {
