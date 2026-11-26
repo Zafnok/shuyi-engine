@@ -171,6 +171,12 @@ Deviations:
   version 24 and the golden rows of decoded maps moved (the Breaking
   lines below); the ticket didn't name these.
 
+- The ticket left the tileset's file format to the game. Since then
+  2243 gave the engine its own (`terrain-tiles`, `TerrainTilesDef`), and
+  game#1219 moves the game onto it. That format can't yet write a look's
+  `props`: follow-up ticket 2281 adds them. The merge of `main` builds
+  2243's looks with `Look::new`.
+
 No ADR: `props` follow the look data of game ADR-0052 and ADR-0058 (a
 map's file names look data beside its terrain, which the rules never
 see) and the painting of ADR-0133 (a picture at its own size, cut to
