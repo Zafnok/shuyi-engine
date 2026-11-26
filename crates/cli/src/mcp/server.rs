@@ -4,7 +4,7 @@
 //! - **The old protocol** ([`PROTOCOL_VERSIONS`]): `initialize`, `ping`,
 //!   `tools/list` and `tools/call`, for a client that starts with
 //!   `initialize` and sends no version in a request's `_meta`.
-//! - **2026-07-28** ([`STATELESS`]): a request whose `params._meta` holds
+//! - **2026-07-28** (`STATELESS`): a request whose `params._meta` holds
 //!   `io.modelcontextprotocol/protocolVersion`. `server/discover`,
 //!   `tools/list`, `tools/call` and `subscriptions/listen`; each result
 //!   carries `resultType` and the server's `serverInfo`, and a version the
@@ -43,7 +43,7 @@ use crate::project::Project;
 /// The versions of the old MCP protocol, the one `initialize` starts,
 /// that the server speaks: it answers with the client's if it is one of
 /// them, else with the first. 2026-07-28 has no `initialize`, so it isn't
-/// one of them ([`STATELESS`]).
+/// one of them (`STATELESS`).
 pub const PROTOCOL_VERSIONS: [&str; 4] = ["2025-06-18", "2025-11-25", "2025-03-26", "2024-11-05"];
 
 /// What the server tells a client it is for.
