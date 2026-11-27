@@ -142,6 +142,13 @@ image and a size in pixels: `props: { "lamp": (at: (4, 0), size: (16, 32)) }`. T
 skin stands it on its tile, so a picture taller than a tile reaches up over the one
 above. They are only a look: the rules never see them, and the glyph skin draws none.
 
+A person's faces in a talk, or a card's front and back, are a **picture set**: a file for
+each id that names its pictures, `( id: "ana", pictures: { "happy": "ana/smile.png" } )`,
+read with `PictureSetRon`. The game gives the format the names every set must have and the
+largest a picture may be (`PictureRules`), and makes the set it draws from with
+`PictureSetDef::resolve` once its images are known. Whether an id has a picture of a name,
+which a dialogue check asks of each expression a script shows, is `name_problem`.
+
 ## A picture the skin paints
 
 Pictures from the game's image files are made before the game runs. Some
