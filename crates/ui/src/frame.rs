@@ -37,6 +37,7 @@ pub mod portrait;
 #[cfg(any(test, feature = "raster"))]
 pub mod raster;
 pub mod shape;
+pub mod slice;
 pub mod snapshot;
 
 pub use color::{ColorSet, EngineColor, Palette, Rgb};
