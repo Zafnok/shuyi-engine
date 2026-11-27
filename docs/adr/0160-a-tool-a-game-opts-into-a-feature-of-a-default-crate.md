@@ -1,6 +1,6 @@
 # ADR-0160: A tool a game opts into: an off-by-default feature of the default crate it belongs beside, and of `shuyi-cli` for its command
 
-- **Status:** Accepted
+- **Status:** Accepted; §5 amended by ADR-0162 (a format with its pure function is a feature, even when a shipped game runs it)
 - **Date:** 2026-11-27
 - **Related tickets:** 2259 (this: corner sheets made from one tile),
   2283 (the same sheet turned from 5 drawn pieces), 2260 (part sets,

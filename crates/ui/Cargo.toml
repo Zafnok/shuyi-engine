@@ -31,6 +31,11 @@ onebit-reference = []
 # `shuyi-cli`'s `frame-png` and a game that paints a picture at run time.
 # The tests have it anyway.
 raster = []
+# `parts`: a part set's look painted into a painted picture (ticket 2260,
+# ADR-0162): `frame::parts::paint`, with `shuyi-assets`' `parts` feature, which
+# reads the set and rolls the look. No dependency and no `std`. A game that
+# makes its people's pictures from parts turns it on.
+parts = ["shuyi-assets/parts"]
 # `toy`: a toy game of a few screens over the sample game's actions, for
 # this crate's integration tests, with a stage stepping core's toy tick
 # simulation.
@@ -54,13 +59,14 @@ schemars = { version = "1", optional = true, default-features = false, features 
 
 [dev-dependencies]
 # The toy game for the integration tests in tests/.
-shuyi-ui = { path = ".", default-features = false, features = ["toy"] }
+shuyi-ui = { path = ".", default-features = false, features = ["toy", "parts"] }
 # The Harness the integration tests drive the toy with (a dev-dependency
 # cycle Cargo allows: it is built on this crate as the tests see it).
 shuyi-platform = { path = "../platform", default-features = false, features = ["harness"] }
 # A sample game's actions and keymap file for the tests, and the golden
 # tables (the one-bit renderer's dithered pictures, `tests/golden/`), and
-# the count of parses, which no frame makes (ticket 2266).
-shuyi-assets = { path = "../assets", default-features = false, features = ["sample-actions", "golden", "parse-count"] }
+# the count of parses, which no frame makes (ticket 2266), and the part
+# sets' fixture, a PNG (ticket 2260).
+shuyi-assets = { path = "../assets", default-features = false, features = ["sample-actions", "golden", "parse-count", "png", "parts"] }
 proptest.workspace = true
 insta.workspace = true

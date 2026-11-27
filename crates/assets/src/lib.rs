@@ -18,7 +18,8 @@
 //! ([`picture_set`]). With the `sfx` feature, sound
 //! effects written as a few numbers (`sfx`); with the `corners` feature, a
 //! terrain's corner pictures made from its one tile, for a tool
-//! (`corners`). Each
+//! (`corners`); with the `parts` feature, part sets, pictures made of
+//! grey-keyed parts and a look rolled from a seed (`parts`). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
 //!
@@ -73,6 +74,8 @@ pub mod names;
 pub mod onebit;
 pub mod pack;
 pub mod palette;
+#[cfg(feature = "parts")]
+pub mod parts;
 pub mod picture_set;
 // The engine's own: semver doesn't cover it (its doc, ADR-0119).
 #[doc(hidden)]

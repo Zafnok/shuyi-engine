@@ -136,6 +136,7 @@ pub const API_CRATES: &[ApiCrate] = &[
             "mp3",
             "sfx",
             "corners",
+            "parts",
         ]),
     },
     ApiCrate {
@@ -148,6 +149,7 @@ pub const API_CRATES: &[ApiCrate] = &[
             "raster",
             "toy",
             "schema",
+            "parts",
         ]),
     },
     ApiCrate {

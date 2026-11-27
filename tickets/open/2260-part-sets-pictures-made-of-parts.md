@@ -5,7 +5,7 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:
@@ -215,6 +215,11 @@ None.
 
 Nothing breaks, and nothing changes for a game that doesn't opt in: no
 `Breaking:` line.
+
+**Estimated size:** about 1,800 lines (code 800, tests 750, docs 250).
+
+**Split:** past 1,400 lines, split off the skin's half (`paint`, its
+tests and the raster snapshot) into a new ticket.
 
 **Out (do not do):**
 - **Making it the main way to draw people.** Nothing that exists today

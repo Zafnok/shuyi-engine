@@ -51,6 +51,12 @@ sfx = []
 # turns it on through `shuyi-cli`'s `corners` feature, its tools'; and here
 # too only if it builds the layer with `corners::layer` as it runs.
 corners = []
+# `parts`: part sets, pictures made of grey-keyed parts (faces, figures),
+# a look rolled from a seed per kind (ticket 2260, ADR-0162): `parts::PartSet`,
+# its format `PartsRon` and `PartSet::appearance`. No dependency and no
+# `std`. A game turns it on through `shuyi-ui`'s `parts` feature, which
+# paints a look; and here alone for rules or tools that roll without painting.
+parts = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -87,6 +93,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx", "corners"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx", "corners", "parts"] }
 # The heap counter `tests/lang_load.rs` reads (ticket 2266).
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

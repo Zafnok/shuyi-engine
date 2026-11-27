@@ -1824,6 +1824,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "mp3",
             "sfx",
             "corners",
+            "parts",
         ],
     ),
     (
@@ -1836,6 +1837,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "raster",
             "toy",
             "schema",
+            "parts",
         ],
     ),
     (
