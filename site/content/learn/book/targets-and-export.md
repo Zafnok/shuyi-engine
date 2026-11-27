@@ -619,8 +619,9 @@ data folder on a computer, and in the browser's storage on the web. It holds the
 place, the versions, the frame, the screen on top and the log's last lines, never the player's
 settings or saves, and it stays on the player's machine. The player sends it to you; the game's
 version in it is `shuyi.ron`'s `app.version`. On Windows and Linux its `frames` are the stack as
-offsets into the program, which that version's debug file turns into functions and lines with
-`addr2line` ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
+offsets into the program, which that version's debug file turns into functions, files and lines:
+`cargo shuyi crash crash-<when>.ron --symbols <package>.debug`, with the debug file kept for that
+release ([crash-reports.md](https://github.com/Zafnok/shuyi-engine/blob/main/docs/crash-reports.md#reading-the-frames)).
 
 Beside the reports, in the `logs` folder, the game keeps its log: `latest.log` of the last run
 and `previous-1.log` to `previous-3.log` of the three before, a line each for its warnings, its errors

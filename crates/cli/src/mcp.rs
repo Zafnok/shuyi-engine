@@ -382,7 +382,10 @@ const REPLAY: &str = "Re-run a record (a file in the game's folder) by the game'
 /// What `crash`'s tool does.
 const CRASH: &str = "Read a crash report (`crash-<when>.ron`, from the server's working folder), \
      with no game: the panic's message and place, the versions, the frame, the top screen, the \
-     log, std's backtrace, and whether it holds a record for `replay` with `crash`.";
+     log, std's backtrace, whether it holds a record for `replay` with `crash`, and the stack's \
+     `frames`, innermost first. Give `symbols`, the debug file of the report's build \
+     (`<package>.debug`, from the same folder), to name each frame's function, file and line; \
+     without it they are offsets into the program.";
 
 /// What `attach`'s tool does.
 const ATTACH: &str = "Reach a game's debug build already running in its window, over the live link \

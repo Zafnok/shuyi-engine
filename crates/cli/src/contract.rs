@@ -16,7 +16,7 @@
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds; with `--perf`, the frames' times | [`run`], [`perf`] |
 //! | `scene` | the scene or stage on screen after a script; with `--path` one value of its data, with `--shape` its shape | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ; with `--crash`, a crash report's record replayed to its panic | [`replay`] |
-//! | `crash <report>` | a crash report read, with no game: the panic, the versions, the frames as offsets, the log | [`crash`] |
+//! | `crash <report>` | a crash report read, with no game: the panic, the versions, the frames (named from the build's debug file with `--symbols`), the log | [`crash`] |
 //! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands (none: a plain bot run); each try's commands and record for `replay`, each bot's outcomes counted and the spread of its numbers | [`playtest`] |
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
