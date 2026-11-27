@@ -36,6 +36,7 @@ use crate::lighting::{self, LightingRon};
 use crate::names::{self, Names, NamesRon};
 use crate::onebit::{PatternMapDef, PatternMapRon};
 use crate::palette::{PaletteDef, PaletteRon};
+use crate::picture_set::{PictureRules, PictureSetRon};
 use crate::ron::{Ron, parse_ron};
 use crate::tileset::{TerrainTilesRon, TileRules};
 use shuyi_core::TerrainId;
@@ -207,6 +208,21 @@ pub(crate) const fn terrain_tiles() -> TerrainTilesRon {
     TerrainTilesRon::new(TILE_RULES)
 }
 
+/// A card's two faces, as a picture set (`cards/fox.ron`).
+pub(crate) const PICTURE_SET: &str = r#"(
+    id: "fox",
+    pictures: { "front": "fox/front.png", "back": "back.png", "foil": "fox/foil.png" },
+)"#;
+
+/// The rules of [`PICTURE_SET`]: a front and a back, at most 64×96.
+pub(crate) const PICTURE_RULES: PictureRules<'static> =
+    PictureRules::new(&["front", "back"], (64, 96));
+
+/// The picture set format of the tests' rules.
+pub(crate) const fn picture_set() -> PictureSetRon {
+    PictureSetRon::new(PICTURE_RULES)
+}
+
 /// The language packs of a game with no tokens and the tests' limits.
 pub(crate) fn lang_pack() -> LangPackRon {
     LangPackRon::new(LIMITS, &NoTokens)
@@ -367,6 +383,7 @@ fn every_built_in_has_its_id_extensions_and_limit() {
     named(&Dlg::<NoDirective>::new(), "dlg", &["dlg"], TEXT_MAX_BYTES);
     named(&map_text(), "map", &["map"], TEXT_MAX_BYTES);
     named(&terrain_tiles(), "terrain-tiles", &["ron"], TEXT_MAX_BYTES);
+    named(&picture_set(), "picture-set", &["ron"], TEXT_MAX_BYTES);
     named(
         &KeymapRon::<sample::Action>::new(),
         "keymap",
@@ -719,6 +736,34 @@ fn a_font_atlas_is_read_with_the_png_beside_it() {
             "fonts/atlas.ron"
         )),
         ["base/fonts/atlas.png: file not found in asset bundle"]
+    );
+}
+
+#[test]
+fn a_picture_set_is_named_as_its_file_and_has_the_names_the_game_requires() {
+    let bytes = PICTURE_SET.as_bytes();
+    let def = alone(&picture_set(), "cards/fox.ron", bytes).unwrap_or_else(|e| panic!("{e:?}"));
+    let images = ImageTable::new(
+        [
+            ("cards/fox/front.png", ImageInfo::new(64, 96)),
+            ("cards/back.png", ImageInfo::new(64, 96)),
+            ("cards/fox/foil.png", ImageInfo::new(8, 8)),
+        ]
+        .into(),
+    );
+    let set = def.resolve("cards/fox.ron", "cards", &images, None, &PICTURE_RULES);
+    let names: Vec<String> = set
+        .map(|s| s.pictures.into_iter().map(|p| p.name).collect())
+        .unwrap_or_default();
+    assert_eq!(names, ["front", "back", "foil"]);
+    assert_eq!(
+        shown(alone(&picture_set(), "cards/wolf.ron", bytes)),
+        ["cards/wolf.ron: id \"fox\" isn't the file's name \"wolf\""]
+    );
+    let more = PictureSetRon::new(PictureRules::new(&["front", "back", "side"], (64, 96)));
+    assert_eq!(
+        shown(alone(&more, "cards/fox.ron", bytes)),
+        ["cards/fox.ron: missing required picture \"side\""]
     );
 }
 
@@ -1533,6 +1578,22 @@ proptest! {
             // What the file alone passes resolves without a panic too.
             if let Ok(def) = alone(&terrain_tiles(), "tiles/farm.ron", bytes) {
                 let _ = def.resolve("tiles/farm.ron", &terrain_tiles_images(), &terrains);
+            }
+        }
+    }
+
+    #[test]
+    fn no_bytes_panic_the_picture_set_format(
+        random in bytes(),
+        text in TEXT,
+        set in edited(PICTURE_SET),
+    ) {
+        let images = ImageTable::new([("cards/back.png", ImageInfo::new(64, 96))].into());
+        for bytes in [random.as_slice(), text.as_bytes(), set.as_bytes()] {
+            decodes(&picture_set(), "cards/fox.ron", bytes);
+            // What the file alone passes resolves without a panic too.
+            if let Ok(def) = alone(&picture_set(), "cards/fox.ron", bytes) {
+                let _ = def.resolve("cards/fox.ron", "cards", &images, None, &PICTURE_RULES);
             }
         }
     }
