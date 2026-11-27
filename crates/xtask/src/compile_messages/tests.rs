@@ -38,7 +38,10 @@ fn a_fixtures_texts_are_its_first_marked_lines() {
         expectations(source),
         texts(&["`Title` is not a screen", "write `impl Screen`"])
     );
-    assert!(expectations("fn main() {}\n//~ late\n").is_empty());
+    assert_eq!(
+        expectations("fn main() {}\n//~ late\n"),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
@@ -68,7 +71,7 @@ fn a_diagnostic_with_no_file_goes_to_no_fixture() {
     assert!(!all.contains("build failed"), "{all}");
     // One in another file goes to none either.
     let engine = "warning: unused import\n --> D:\\shuyi\\crates\\ui\\src\\lib.rs:1:5\n";
-    assert!(split(engine).is_empty());
+    assert_eq!(split(engine), BTreeMap::new());
 }
 
 #[test]

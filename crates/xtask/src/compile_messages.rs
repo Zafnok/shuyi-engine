@@ -20,6 +20,7 @@
 //! It reads the human format: the short one drops the label and the note.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -108,7 +109,7 @@ pub fn verdict(name: &str, expected: &[String], diagnostics: &[String]) -> Optio
     }
     let mut message = format!("{FIXTURES}/{name}.rs: the compiler's output lacks");
     for text in missing {
-        message.push_str(&format!("\n  {text:?}"));
+        let _ = write!(message, "\n  {text:?}");
     }
     message.push_str("\nits output:\n");
     message.push_str(&output);
@@ -144,10 +145,7 @@ pub fn manifest(root: &Path) -> String {
         ("shuyi-platform", "platform"),
         ("shuyi-cli", "cli"),
     ] {
-        text.push_str(&format!(
-            "{package} = {{ path = \"{}\" }}\n",
-            crate_path(folder)
-        ));
+        let _ = writeln!(text, "{package} = {{ path = \"{}\" }}", crate_path(folder));
     }
     text
 }
