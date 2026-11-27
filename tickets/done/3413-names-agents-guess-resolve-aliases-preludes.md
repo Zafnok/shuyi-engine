@@ -318,7 +318,10 @@ is drawn from the data.
 
 Skills: none, no schema, template, format or problem code changes.
 
-Size: 2,329 counted lines, past the limit after the valve's split: the
+Formats: none, only the rustdoc of `Formats` changed (its first words
+and two doc aliases); no format or the registry's behaviour did.
+
+Size: 2,331 counted lines, past the limit after the valve's split: the
 index, the terms, the aliases and the check are one change (aliases
 without the check drift, the check without the aliases fails, the
 page's table without the data has no source), and the text files are
