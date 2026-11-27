@@ -1076,7 +1076,7 @@ mod tests {
 
     /// Where [`Brittle`]'s panic is, as this build compiled it.
     fn brittle_place(location: Option<&str>) -> bool {
-        let tail = format!("fake.rs:{BRITTLE_LINE}:13");
+        let tail = format!("fake.rs:{BRITTLE_LINE}:9");
         location.is_some_and(|place| place.ends_with(&tail))
     }
 

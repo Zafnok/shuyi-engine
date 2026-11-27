@@ -213,7 +213,7 @@ pub fn stamp(engine: &str, game: &str, content: ContentHash) -> Made {
 pub struct Brittle(pub u32, pub bool);
 
 /// The line of [`Brittle`]'s panic, for the tests that read its place.
-pub const BRITTLE_LINE: u32 = line!() + 15;
+pub const BRITTLE_LINE: u32 = line!() + 14;
 
 impl shuyi_core::TurnRules for Brittle {
     type Command = u32;
@@ -227,9 +227,7 @@ impl shuyi_core::TurnRules for Brittle {
 
     fn apply(&mut self, add: &u32) -> Result<Vec<u32>, String> {
         self.0 += add.min(&1);
-        if *add == 9 && !self.1 {
-            panic!("nine is too many");
-        }
+        assert!(*add != 9 || self.1, "nine is too many");
         self.0 += add.saturating_sub(1);
         Ok(vec![self.0])
     }

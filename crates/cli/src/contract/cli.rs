@@ -496,6 +496,28 @@ mod tests {
     }
 
     #[test]
+    fn crash_reads_a_report_from_the_folder_it_is_given_with_no_project() {
+        let dir = std::env::temp_dir().join(format!("shuyi-cli-crash-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let report = shuyi_platform::crash::CrashReport::new(1, "boom");
+        fs::write(dir.join("crash-1.ron"), report.to_text()).unwrap();
+        fs::write(dir.join("f"), "").unwrap();
+        for (items, exit) in [
+            (&["crash-1.ron"][..], 0),
+            (&["crash-1.ron", "--json"], 0),
+            (&["nope.ron"], 1),
+            (&["f"], 1),
+            (&[], 2),
+            (&["a", "b", "--json"], 2),
+        ] {
+            let got = without_project("crash", &args(items), &dir, "shuyi");
+            assert_eq!(got, Some(exit), "{items:?}");
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn json_is_a_flag_anywhere() {
         assert_eq!(
             split_json(&args(&["a", "--json", "b"])),
@@ -722,7 +744,7 @@ mod tests {
     }
 
     #[test]
-    fn the_ops_without_a_project_are_new_doctor_sfx_explain_docs_attach_crash_and_schema() {
+    fn the_ops_without_a_project_are_new_doctor_sfx_explain_docs_attach_and_schema() {
         let dir = std::env::temp_dir().join(format!("shuyi-cli-free-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
@@ -779,20 +801,6 @@ mod tests {
         );
         assert_eq!(without_project("sfx", &[], &dir, "shuyi"), Some(2));
         assert_eq!(without_project("explain", &[], &dir, "shuyi"), Some(0));
-        // `crash` reads a report from the folder it is given.
-        let report = shuyi_platform::crash::CrashReport::new(1, "boom");
-        fs::write(dir.join("crash-1.ron"), report.to_text()).unwrap();
-        for (items, exit) in [
-            (&["crash-1.ron"][..], 0),
-            (&["crash-1.ron", "--json"], 0),
-            (&["nope.ron"], 1),
-            (&["f"], 1),
-            (&[], 2),
-            (&["a", "b", "--json"], 2),
-        ] {
-            let got = without_project("crash", &args(items), &dir, "shuyi");
-            assert_eq!(got, Some(exit), "{items:?}");
-        }
         assert_eq!(without_project("attach", &[], &dir, "shuyi"), Some(2));
         assert_eq!(
             without_project("attach", &args(&["127.0.0.1:1", "--json"]), &dir, "shuyi"),

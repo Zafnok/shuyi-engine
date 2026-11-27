@@ -371,6 +371,18 @@ const DOCS: &str = "Search the engine's docs, as this server embeds them at the 
      \"how do I\" rows whose task the query asks. `kinds` keeps only `learn`, `skill`, \
      `example` or `code` hits. Call it before guessing a type's or a function's name.";
 
+/// What `replay`'s tool does.
+const REPLAY: &str = "Re-run a record (a file in the game's folder) by the game's rules: a state \
+     hash per step; with `other`, the first step where two runs differ. A panic in the rules \
+     stops the run at its step (not ok). With `crash`, `record` is a crash report: the game's \
+     record it holds runs once, ok when it plays to its end without a panic, and `crash` says \
+     where the replay panicked beside the report's panic.";
+
+/// What `crash`'s tool does.
+const CRASH: &str = "Read a crash report (`crash-<when>.ron`, from the server's working folder), \
+     with no game: the panic's message and place, the versions, the frame, the top screen, the \
+     log, std's backtrace, and whether it holds a record for `replay` with `crash`.";
+
 /// What `attach`'s tool does.
 const ATTACH: &str = "Reach a game's debug build already running in its window, over the live link \
      (`address` and `token`: its log line `shuyi link: listening on ..., token ...`; the \
@@ -457,19 +469,8 @@ fn description(op: Op, session: bool) -> &'static str {
              ok when no stage is open. `path` (a JSON Pointer, `/hero/x`) answers one value of \
              its data instead, and `shape` its data's JSON Schema."
         }
-        (Op::Replay, _) => {
-            "Re-run a record (a file in the game's folder) by the game's rules: a state hash per \
-             step; with `other`, the first step where two runs differ. A panic in the rules \
-             stops the run at its step (not ok). With `crash`, `record` is a crash report: the \
-             game's record it holds runs once, ok when it plays to its end without a panic, and \
-             `crash` says where the replay panicked beside the report's panic."
-        }
-        (Op::Crash, _) => {
-            "Read a crash report (`crash-<when>.ron`, from the server's working folder), with no \
-             game: the panic's message and place, the versions, the frame, the top screen, the \
-             log, std's backtrace, whether it holds a record for `replay` with `crash`, and its \
-             frames as offsets into the program."
-        }
+        (Op::Replay, _) => REPLAY,
+        (Op::Crash, _) => CRASH,
         (Op::Playtest, _) => {
             "Each of the game's named bots (its `entrants`, or the game's choice) plays `tries` \
              tries of a `stage` (or `every_stage`) on every core; the game's checks say per bot \
