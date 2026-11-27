@@ -108,6 +108,14 @@ impl<W> Tasks<W> {
         }
     }
 
+    /// The work of each task still working.
+    pub fn works(&self) -> impl Iterator<Item = &W> {
+        self.tasks.values().filter_map(|task| match &task.state {
+            State::Working(work) => Some(work),
+            _ => None,
+        })
+    }
+
     /// Whether there is a task `id`.
     pub fn has(&self, id: &str) -> bool {
         self.tasks.contains_key(id)

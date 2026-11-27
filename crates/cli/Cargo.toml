@@ -94,6 +94,13 @@ dialoguer = { version = "0.12", default-features = false }
 # `font-atlas`, with `jis`: a Japanese BDF font's JIS X 0208 code points
 # read as Unicode, through the EUC-JP decoder's table.
 encoding_rs = { version = "0.8.35", default-features = false, features = ["alloc"], optional = true }
+# `crash --symbols`: a crash report's frames named from the debug file of
+# its build (DWARF in a PE or ELF file, ticket 3441). `loader` reads the
+# file (with `object`, `memmap2` and `typed-arena`); `rustc-demangle`
+# writes Rust's names as people read them. Without the default
+# `cpp_demangle` and `smallvec`. The developer's tools only: nothing of it
+# reaches a game.
+addr2line = { version = "0.27", default-features = false, features = ["loader", "rustc-demangle"] }
 
 [build-dependencies]
 shuyi-embed = { workspace = true }
@@ -109,3 +116,11 @@ shuyi-assets = { path = "../assets", features = ["png", "jpeg", "webp", "qoi", "
 proptest.workspace = true
 # The toy's perf summary and trace, as committed snapshots.
 insta.workspace = true
+
+# `crash --symbols`'s tests (ticket 3441), where test builds carry DWARF:
+# `object` finds a function of the test program in its symbol table, and
+# `backtrace` takes a frame of its stack as the crash hook takes one, with
+# its module's base on Windows. The `object` version is `addr2line`'s.
+[target.'cfg(any(target_os = "linux", all(windows, target_env = "gnu")))'.dev-dependencies]
+object = { version = "0.40", default-features = false, features = ["read"] }
+backtrace = "0.3.77"

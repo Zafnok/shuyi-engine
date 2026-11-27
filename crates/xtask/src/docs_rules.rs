@@ -257,6 +257,7 @@ pub fn judge(
         }
         PrKind::Bot => return Verdict::Exempt(format!("a bot's PR. {ways}")),
         PrKind::Sonar => return Verdict::Exempt(format!("a Sonar batch. {ways}")),
+        PrKind::Post => return Verdict::Exempt(format!("a post for News. {ways}")),
         PrKind::None => return Verdict::Exempt(format!("no ticket is named. {ways}")),
     };
     match waived(id, ticket(id).as_deref(), &rule.mark, &ways) {

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use shuyi_platform::crash::CodeFrame;
+
 use super::*;
 
 fn scratch(name: &str) -> PathBuf {
@@ -31,7 +33,13 @@ fn a_report_reads_with_what_it_holds() {
     let answer = crash(&CrashInput::new("c.ron"), &dir);
     assert!(answer.ok, "{answer:?}");
     assert_eq!(answer.op, Op::Crash);
-    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
+    assert_eq!(
+        answer.limits,
+        [
+            "no frames: the report is from macOS or the web, which take none, or from an engine \
+          older than its frames"
+        ]
+    );
     let out = answer.result.unwrap();
     assert_eq!(
         (out.message.as_str(), out.location.as_deref(), out.frame),
@@ -84,13 +92,113 @@ fn a_report_that_cant_be_read_or_isnt_one_fails_with_the_reason() {
 }
 
 #[test]
-fn crash_takes_one_report() {
+fn without_symbols_the_frames_are_offsets_and_say_so() {
+    let dir = scratch("offsets");
+    let mut report = report();
+    report.frames = vec![CodeFrame::new(Some(0x1a2b)), CodeFrame::new(None)];
+    fs::write(dir.join("c.ron"), report.to_text()).unwrap();
+    let answer = crash(&CrashInput::new("c.ron"), &dir);
+    assert!(answer.ok, "{answer:?}");
+    assert_eq!(
+        answer.limits,
+        [
+            "no --symbols: the frames are offsets into the program; give the debug file of its \
+          build to name them"
+        ]
+    );
+    let out = answer.result.unwrap();
+    assert_eq!(
+        out.frames,
+        [NamedFrame::new(Some(0x1a2b)), NamedFrame::new(None)]
+    );
+    assert_eq!(out.frames[0].offset.as_deref(), Some("0000000000001a2b"));
+    let written = text(&out);
+    assert!(
+        written
+            .contains("replays it\nframes:\n  0000000000001a2b\n  in another module\nbacktrace:\n"),
+        "{written}"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_named_frame_is_written_with_what_is_known_of_it() {
+    let mut named = NamedFrame::new(Some(0x10));
+    named.function = Some("game::rules::step".to_owned());
+    named.file = Some("game/src/rules.rs".to_owned());
+    named.line = Some(9);
+    assert_eq!(
+        frame_line(&named),
+        "0000000000000010 game::rules::step at game/src/rules.rs:9"
+    );
+    named.line = None;
+    assert_eq!(
+        frame_line(&named),
+        "0000000000000010 game::rules::step at game/src/rules.rs"
+    );
+    named.function = None;
+    named.line = Some(3);
+    assert_eq!(
+        frame_line(&named),
+        "0000000000000010 at game/src/rules.rs:3"
+    );
+    named.file = None;
+    assert_eq!(frame_line(&named), "0000000000000010");
+}
+
+#[test]
+fn a_debug_file_that_cant_be_read_or_isnt_a_program_fails_with_the_reason() {
+    let dir = scratch("debug");
+    let mut report = report();
+    report.frames = vec![CodeFrame::new(Some(0x10))];
+    fs::write(dir.join("c.ron"), report.to_text()).unwrap();
+    fs::write(dir.join("notes.txt"), "not a program").unwrap();
+    let with = |symbols: &str| {
+        let mut input = CrashInput::new("c.ron");
+        input.symbols = Some(symbols.to_owned());
+        crash(&input, &dir)
+    };
+    let missing = with("nope.debug");
+    assert_eq!(missing.code.as_deref(), Some("SH3004"));
+    assert!(missing.error.unwrap().starts_with("nope.debug: "));
+    let wrong = with("notes.txt");
+    assert_eq!(wrong.code.as_deref(), Some("SH3020"));
+    assert_eq!(wrong.exit_code(), 1);
+    assert!(wrong.error.unwrap().starts_with("notes.txt: "));
+    // The report is read first: a report that isn't one says so.
+    let mut input = CrashInput::new("notes.txt");
+    input.symbols = Some("nope.debug".to_owned());
+    assert_eq!(crash(&input, &dir).code.as_deref(), Some("SH3018"));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn crash_takes_one_report_and_its_debug_file() {
     let args = |items: &[&str]| -> Vec<String> { items.iter().map(|s| (*s).to_owned()).collect() };
     assert_eq!(parse_args(&args(&["c.ron"])), Ok(CrashInput::new("c.ron")));
-    for wrong in [&[][..], &["a", "b"], &["--bogus"]] {
+    let mut with = CrashInput::new("c.ron");
+    with.symbols = Some("g.debug".to_owned());
+    for items in [
+        &["c.ron", "--symbols", "g.debug"][..],
+        &["--symbols", "g.debug", "c.ron"],
+    ] {
+        assert_eq!(parse_args(&args(items)), Ok(with.clone()), "{items:?}");
+    }
+    for wrong in [
+        &[][..],
+        &["a", "b"],
+        &["--bogus"],
+        &["c.ron", "--symbols"],
+        &["c.ron", "--symbols", "--json"],
+        &["--symbols", "g.debug"],
+        &["c.ron", "--symbols", "a", "--symbols", "b"],
+    ] {
         assert!(parse_args(&args(wrong)).is_err(), "{wrong:?}");
     }
-    assert_eq!(usage("shuyi"), "usage: shuyi crash <report> [--json]");
+    assert_eq!(
+        usage("shuyi"),
+        "usage: shuyi crash <report> [--symbols <file>] [--json]"
+    );
 }
 
 /// Whether `value` is what `schema` describes, its `$ref`s read in
@@ -164,11 +272,22 @@ fn conforms(
 #[test]
 fn the_answer_is_json_its_schema_describes() {
     let dir = scratch("schema");
-    fs::write(dir.join("c.ron"), report().to_text()).unwrap();
+    let mut framed = report();
+    framed.frames = vec![CodeFrame::new(Some(0x10)), CodeFrame::new(None)];
+    fs::write(dir.join("c.ron"), framed.to_text()).unwrap();
     let [_, output] = crate::contract::op_schemas(Op::Crash, false);
     let schema: serde_json::Value = serde_json::from_str(&output.text).unwrap();
+    // Frames named by hand: every field of a named frame, set.
+    let mut named = crash(&CrashInput::new("c.ron"), &dir);
+    if let Some(out) = named.result.as_mut() {
+        let first = &mut out.frames[0];
+        first.function = Some("game::step".to_owned());
+        first.file = Some("game/src/lib.rs".to_owned());
+        first.line = Some(3);
+    }
     for answer in [
         crash(&CrashInput::new("c.ron"), &dir),
+        named,
         crash(&CrashInput::new("nope.ron"), &dir),
     ] {
         let json: serde_json::Value = serde_json::from_str(&answer.to_json()).unwrap();

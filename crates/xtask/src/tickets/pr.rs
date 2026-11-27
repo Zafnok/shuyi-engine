@@ -8,6 +8,8 @@
 //!   `NNNN-MMMM` too): a PR that only writes or edits open tickets;
 //! - `Game NNNN: …`: a game ticket's small change, which needs no ticket here
 //!   (the `write-ticket` skill) and adds nothing to the public API;
+//! - `Post: …`: a post for the website's News, which changes only
+//!   `site/content/news/` and needs no ticket (ticket 2805);
 //! - `sonar(…)`, `[advisory #N] …`, `engine-pin…`, or a `dependabot/` branch:
 //!   the bots' and the Sonar batches' PRs, which keep their own rules.
 //!
@@ -19,6 +21,10 @@ use super::{Folder, Ticket, is_four_digits, ticket_id_from_branch};
 
 /// The paths a ticket-only PR may change.
 const TICKET_ONLY_PATHS: &[&str] = &["tickets/", "docs/ROADMAP.md", "docs/decisions.md"];
+
+/// The paths a post's PR may change: News's posts and their pictures, and
+/// the list of pictures someone else made (`AGENTS.md` rule 7).
+const POST_PATHS: &[&str] = &["site/content/news/", "THIRD_PARTY_ASSETS.md"];
 
 /// A pull request as the checks read it: its head branch and, in CI, its
 /// title.
@@ -45,6 +51,8 @@ pub enum PrKind {
     TicketsOnly(Vec<String>),
     /// `Game NNNN: …`: a game ticket's small change.
     GameSmall(String),
+    /// `Post: …`: a post for News, and nothing else.
+    Post,
     /// Dependabot, an advisory or the game's pin watcher.
     Bot,
     /// A batch of Sonar findings (ADR-0017).
@@ -80,8 +88,8 @@ pub fn pr_kind(title: Option<&str>, branch: &str) -> Result<PrKind, String> {
         (None, None) => Err(format!(
             "neither the title `{title}` nor the branch `{branch}` names a ticket. Title a \
              ticket's work `[NNNN] …`, a PR that only writes or edits tickets `Ticket NNNN: …` \
-             (or `Tickets NNNN, MMMM: …`), and a game ticket's small change `Game NNNN: …` \
-             (tickets/README.md, *Pull requests*)."
+             (or `Tickets NNNN, MMMM: …`), a game ticket's small change `Game NNNN: …`, \
+             and a post for News `Post: …` (tickets/README.md, *Pull requests*)."
         )),
     }
 }
@@ -103,6 +111,9 @@ fn title_kind(title: &str) -> Option<PrKind> {
     }
     if title.starts_with("sonar(") {
         return Some(PrKind::Sonar);
+    }
+    if title.starts_with("Post: ") {
+        return Some(PrKind::Post);
     }
     if let Some(rest) = title.strip_prefix('[') {
         let (id, _) = rest.split_once(']')?;
@@ -143,7 +154,7 @@ fn id_list(list: &str) -> Option<Vec<String>> {
 }
 
 /// The errors of a PR of `kind`, given every ticket and the files it
-/// `changed` (read only for a ticket-only PR).
+/// `changed` (read only for a ticket-only PR and a post's).
 pub(super) fn check_pr(tickets: &[Ticket], kind: &PrKind, changed: &[String]) -> Vec<String> {
     let find = |id: &str| tickets.iter().find(|t| t.fields.id.as_deref() == Some(id));
     match kind {
@@ -185,6 +196,18 @@ pub(super) fn check_pr(tickets: &[Ticket], kind: &PrKind, changed: &[String]) ->
             }
             errors
         }
+        PrKind::Post => changed
+            .iter()
+            .find(|file| !POST_PATHS.iter().any(|path| file.starts_with(path)))
+            .map(|file| {
+                format!(
+                    "a post's PR changes only {}, but this one changes `{file}`. Title a \
+                     ticket's work `[NNNN] …`.",
+                    POST_PATHS.join(" and ")
+                )
+            })
+            .into_iter()
+            .collect(),
         PrKind::GameSmall(_) | PrKind::Bot | PrKind::Sonar | PrKind::None => Vec::new(),
     }
 }
@@ -235,6 +258,19 @@ mod tests {
             pr_kind(Some("Game 0859: a hook the game needs"), "claude/y-9f"),
             Ok(PrKind::GameSmall("0859".to_string()))
         );
+    }
+
+    #[test]
+    fn a_post_title_is_a_post_on_any_branch_but_a_tickets() {
+        for branch in ["claude/x-1a2b", "post-2026-12-01-snake", "patch-1"] {
+            assert_eq!(
+                pr_kind(Some("Post: Snake runs in real time"), branch),
+                Ok(PrKind::Post)
+            );
+        }
+        assert!(pr_kind(Some("Post: x"), "t2051-x").is_err());
+        let why = pr_kind(Some("Post snake"), "patch-1").unwrap_err();
+        assert!(why.contains("`Post: …`"), "{why}");
     }
 
     #[test]
@@ -361,6 +397,27 @@ mod tests {
         assert!(errors[0].contains("`[2051] …`"), "{errors:?}");
         assert!(
             errors[1].contains("no ticket with that id exists"),
+            "{errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_post_changes_only_news_and_the_third_party_list() {
+        let changed = ids(&[
+            "site/content/news/2026-12-01-snake/index.md",
+            "site/content/news/2026-12-01-snake/cover.png",
+            "THIRD_PARTY_ASSETS.md",
+        ]);
+        let left = check_pr(&[], &PrKind::Post, &changed);
+        assert!(left.is_empty(), "{left:?}");
+        let changed = ids(&[
+            "site/content/news/2026-12-01-snake.md",
+            "site/templates/news.html",
+        ]);
+        let errors = check_pr(&[], &PrKind::Post, &changed);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(
+            errors[0].contains("`site/templates/news.html`"),
             "{errors:?}"
         );
     }

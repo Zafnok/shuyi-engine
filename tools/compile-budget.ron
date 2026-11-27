@@ -31,6 +31,10 @@ Budget(
     // `shuyi new`'s prompts in a terminal (ticket 3423): `dialoguer`,
     // `console`, `shell-words`, `encode_unicode`, `unicode-width` and the
     // `windows-sys` `console` builds on, in the game's tools only. 150: plus
-    // `sys-locale` for the system's languages (ticket 2349).
-    dependencies: 150,
+    // `sys-locale` for the system's languages (ticket 2349). 159: plus 9 for
+    // `shuyi crash --symbols` (ticket 3441), in the game's tools only:
+    // `addr2line`, `gimli`, `object`, `memmap2`, `typed-arena`,
+    // `stable_deref_trait`, `rustc-demangle`, and `ruzstd` and `twox-hash`
+    // for the zstd-compressed debug sections `addr2line`'s loader reads.
+    dependencies: 159,
 )

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2520"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3441 — `shuyi crash --symbols`
@@ -185,7 +185,7 @@ schemas aside.
 
 ## Acceptance criteria
 
-- [ ] A `shuyi-cli` test, compiled only on Linux and Windows GNU
+- [x] A `shuyi-cli` test, compiled only on Linux and Windows GNU
       (`cfg(any(target_os = "linux", all(windows, target_env = "gnu")))`,
       where test builds carry DWARF), finds an `#[inline(never)]`
       function of its own test binary by a name unique to the test in
@@ -194,25 +194,25 @@ schemas aside.
       `relative_address_base()`, plus 4), and `crash --symbols <the test
       binary>` names that offset with the function, its file and a line
       inside it.
-- [ ] An offset outside every function is counted in `limits`, not an
+- [x] An offset outside every function is counted in `limits`, not an
       error.
-- [ ] A report with no `frames` reads, and `limits` says why there are
+- [x] A report with no `frames` reads, and `limits` says why there are
       none.
-- [ ] On Linux and Windows GNU, a `shuyi-cli` test names a frame of its
+- [x] On Linux and Windows GNU, a `shuyi-cli` test names a frame of its
       own stack, taken as 2598's hook takes it (the return address
       minus the executable's load address: `backtrace`'s
       `module_base_address` on Windows, the lowest start of the
       executable's lines in `/proc/self/maps` on Linux), with
       `addr2line`'s `Loader` over that binary.
-- [ ] The PR description has step 5's answer, its frames named in
+- [x] The PR description has step 5's answer, its frames named in
       `shuyi_app` and hello-grid.
-- [ ] The schemas have their line in `versions.json`, and
+- [x] The schemas have their line in `versions.json`, and
       `contract::VERSION` rose only for a break (`cargo xtask contract`
       passes).
-- [ ] `cargo deny check` passes with no change to `deny.toml`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo deny check` passes with no change to `deny.toml`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -227,5 +227,108 @@ schemas aside.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi crash <report> [--symbols <file>]`: `CrashInput::symbols`
+  (`#[serde(default)]`), `CrashOutput::frames: Vec<NamedFrame>`, and
+  `NamedFrame { offset, function, file, line }` (`#[non_exhaustive]`,
+  `NamedFrame::new(offset)`, the offset as sixteen hex digits). Without
+  `--symbols` the frames are offsets; with it, each is named from the
+  debug file.
+- The lookup is `crates/cli/src/contract/crash/symbols.rs`:
+  `addr2line::Loader` at `relative_address_base() + offset - 1` (an
+  offset of 0 names nothing); each frame `find_frames` gives, an inlined
+  function first, is a `NamedFrame` of its own at the same offset; where
+  the debug information names no function, the symbol table's name
+  (`find_symbol`, demangled), only for an address in the file's `.text`:
+  `object`'s symbol map gives the nearest symbol before any address,
+  however far, so without that check an offset past every function would
+  be named by the last symbol.
+- A debug file that can't be opened is `SH3004`; one `Loader` can't read
+  is a new code, `SH3020` (`debug-file`, Operation, exit 1), with its row
+  in `codes.rs`'s `TABLE` and its page `crates/cli/errors/SH3020.md`.
+- `limits`: no `--symbols` (when the report has frames), "N of M frames
+  fall outside every function: the debug file may be from another build"
+  (M counts the frames with an offset), and a report with no frames.
+- `crash::text` writes a `frames:` section before the backtrace: the
+  offset, the function, ` at file:line`, or `in another module`.
+- The help line in `lib.rs`, `crash::usage`, the MCP tool's description
+  (`mcp::CRASH`) and the contract module's table say `--symbols`. The
+  `crash` schemas are regenerated; `cargo xtask contract` finds no break
+  (both fields additive), so `contract::VERSION` stays 62, and
+  `versions.json` gains its line at 62.
+- Tests: `crash/symbols/tests.rs`, compiled on Linux and Windows GNU only,
+  over the test program's own DWARF: a function found by its symbol
+  (`object`), 4 bytes in, named with its file and a line inside it
+  through `crash --symbols`; the lookup 1 byte before the return address
+  (a function's first byte names what lies before it); an
+  `#[inline(always)]` function a frame of its own before its caller; the
+  symbol table's name for a dependency's function, which has no DWARF
+  (`[profile.dev.package."*"] debug = false`); offsets outside every
+  function (far past the code, and 0) counted in `limits`; and a frame
+  of the test's own stack taken as 2598's hook takes it (`backtrace`'s
+  `ip`, minus `module_base_address` on Windows or the lowest start of the
+  program's lines in `/proc/self/maps` on Linux), named. In
+  `crash/tests.rs`, on every OS: the offsets without `--symbols` and
+  their limit, the text of a named frame, `SH3004`/`SH3020`/`SH3018` in
+  that order, the arguments, and the answer with named frames against
+  its schema. `cli.rs`'s test runs `--symbols` through the command line
+  with its exit codes (0, 1, 2).
+- Step 5, on this machine (Windows GNU), at `f4c7be94` (`main`'s tip):
+  hello-grid built for release with
+  `CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_RELEASE_DEBUG=line-tables-only`,
+  kept as `hello-grid.debug`, its copy stripped with `objcopy
+  --strip-all` as `shuyi export --release` strips it, run with
+  `SHUYI_PANIC_AT_FRAME=3`. `crash --symbols hello-grid.debug` named all
+  17 of the report's frames in the program, as 46 frames with the
+  inlined ones: the hook in
+  `shuyi_app::crash` (`frames.rs:97`, `crash.rs:349`), the panic in
+  `frame_or_crash<hello_grid::Hello>` (`crates/app/src/lib.rs:705-706`),
+  `run_app<hello_grid::Hello>` (`lib.rs:570`), hello-grid's `main`
+  (`examples/hello-grid/src/main.rs:57`), and the C runtime's `main` and
+  `__tmainCRTStartup` from the symbol table; two frames in other
+  modules. The stripped program given as `--symbols` counts 17 of 17
+  outside every function; a text file is `SH3020`. The output is in the
+  PR description.
+- Docs: `docs/contract.md`'s `crash` row; `docs/crash-reports.md`,
+  *Reading a report* and *Reading the frames*: `shuyi crash --symbols`,
+  keeping and passing the debug file, the remapped file names, the
+  by-hand recipe (which points at `shuyi export --release` for remapped
+  paths) beside the `addr2line` one. The book's *When a player's game
+  crashes* and the `shuyi-debug-replay` skill (step 1, and `SH3020`)
+  say `--symbols`.
+- Deviations:
+  - `addr2line` 0.27 (gimli 0.34, `object` 0.40), not 0.25 (gimli 0.32,
+    `object` 0.37), with `object` 0.40 as the dev-dependency: the
+    `backtrace` the stack test needs resolves to 0.3.77, which brings
+    `addr2line` 0.27, so 0.25 would put two of each in `Cargo.lock`. The
+    API the ticket names is the same in 0.27. 3071, still open, now says
+    to use `object` 0.40.
+  - The two dev-dependencies are target-specific (Linux and Windows
+    GNU), where their tests compile.
+  - Step 5's build turns on `debug_assertions`
+    (`CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true`): `SHUYI_PANIC_AT_FRAME`
+    is read only with debug tools (`shuyi_ui::DEBUG_TOOLS`) or a game's
+    `with_record_in_release`, and hello-grid asks for neither. No code
+    moves for it, so the lookup is the same as a shipped build's.
+- `tools/compile-budget.ron`'s `dependencies` rises from 150 to 159: a
+  new game's tools (`shuyi-cli`) gain `addr2line`, `gimli`, `object`,
+  `memmap2`, `typed-arena`, `stable_deref_trait`, `rustc-demangle`,
+  `ruzstd` and `twox-hash` (the last two for the zstd-compressed debug
+  sections `addr2line`'s loader reads). The ten tutorial steps' locks gain
+  the same crates, nothing else moved. Nothing reaches a shipped game.
+- 3071's clause on the `object` version, 3337's "3441 (open)" and the
+  roadmap's row now say 3441 is done.
+- No ticket: the game reads its frames by hand (its `docs/releasing.md`,
+  from game ticket 0918, with `addr2line`), which still works, and
+  pointing it at `cargo shuyi crash --symbols` is the game's own choice
+  at a pin move. Searched the game for
+  `CrashOutput` and `shuyi crash` (`gh search code --repo
+  Zafnok/visions-of-shuyi`): only that ticket's text, no code.
+
+No break: `CrashInput` and `CrashOutput` are `#[non_exhaustive]`, both
+fields are additive, and `NamedFrame` is new.
+
+Behaviour: shuyi-cli: `crash`'s answer has `frames`, and its `limits` say when a report has frames and no `--symbols` was given, and when it has none.
+
+Behaviour: shuyi-cli: `crash`'s text writes a `frames:` section, and its usage line is `crash <report> [--symbols <file>] [--json]`.
+
+Behaviour: shuyi-cli: a new problem code, `SH3020` (`debug-file`).

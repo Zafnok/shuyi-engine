@@ -290,7 +290,7 @@ impl Verdict {
     pub fn of(counted: usize, kind: Option<&PrKind>) -> Self {
         if matches!(
             kind,
-            Some(PrKind::Bot | PrKind::Sonar | PrKind::TicketsOnly(_))
+            Some(PrKind::Bot | PrKind::Sonar | PrKind::TicketsOnly(_) | PrKind::Post)
         ) {
             Verdict::Exempt
         } else if counted > LIMIT {
@@ -518,7 +518,7 @@ fn pr_ticket(
     .kind()?;
     let ticket = match &kind {
         PrKind::Work(id) => ticket_file(repo_root, id, !strict),
-        PrKind::Bot | PrKind::Sonar | PrKind::TicketsOnly(_) => TicketSource::Exempt,
+        PrKind::Bot | PrKind::Sonar | PrKind::TicketsOnly(_) | PrKind::Post => TicketSource::Exempt,
         PrKind::GameSmall(id) => TicketSource::Missing(format!(
             "game ticket {id}'s small change (`Game {id}: …`) has no ticket here to say why"
         )),
