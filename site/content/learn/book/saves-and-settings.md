@@ -94,7 +94,9 @@ volume for each sound group, whether voices play, the frame cap, the layout of k
 language) and the game's own. The sound groups are `master` over everything, `music`, `sfx` and
 `voice` under it, and `ui`, the menus' sounds, under `sfx`; each volume goes from 0 to
 100 on a loudness curve, so every step sounds like the same change. `ctx.volume(MUSIC)`
-reads one.
+reads one. A game whose players read the number as a share of full volume says
+`volume_curve: Linear` in its audio manifest: then 20 plays at 20% of full, 1 at 1%,
+and 100 at full, for every group.
 
 A game adds groups of its own in its audio manifest (`audio.ron`), each under a parent
 (`master` if it names none) and with the volume a new player starts at; an entry may set
@@ -111,7 +113,8 @@ sounds: [
 ```
 
 A `ducks` list lowers a group while a voice plays, so the words are heard over the
-music: down to a position on the same loudness curve (80 is 12 dB down) over `attack_ms`,
+music: down to a position on the loudness curve (80 is 12 dB down, on either volume
+curve) over `attack_ms`,
 and back over `release_ms` once the voice has ended. Only `voice` can lower another group
 for now, and a voice the player turned down to 0 lowers nothing:
 

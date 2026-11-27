@@ -70,7 +70,7 @@ pub use formats::{
 pub use formats::{Flac, FlacTrack};
 #[cfg(feature = "mp3")]
 pub use formats::{Mp3, Mp3Track};
-pub use groups::{DuckRule, GroupDef};
+pub use groups::{DuckRule, GroupDef, VolumeCurve};
 
 /// Licenses a credit may have. `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
@@ -127,6 +127,10 @@ pub struct AudioManifest {
     /// Music, voice clips and sounds started with a handle don't count.
     #[serde(default)]
     pub max_voices: Option<u16>,
+    /// How every group's volume becomes its gain (ADR-0158):
+    /// [`VolumeCurve::Decibels`] unless the file says `volume_curve:
+    /// Linear`.
+    pub volume_curve: VolumeCurve,
 }
 
 impl AudioManifest {
@@ -627,6 +631,8 @@ struct RawFile {
     ducks: Vec<groups::RawDuck>,
     #[serde(default)]
     max_voices: Option<u16>,
+    #[serde(default)]
+    volume_curve: VolumeCurve,
     sounds: Vec<RawSound>,
     music: Vec<RawMusic>,
     pools: Vec<RawPool>,
@@ -1000,6 +1006,7 @@ pub fn from_source(
             music_fade_in_ms: raw.music_fade_in_ms,
             music_overlap: raw.music_overlap,
             max_voices: raw.max_voices,
+            volume_curve: raw.volume_curve,
             ..AudioManifest::default()
         },
     };
@@ -2518,6 +2525,32 @@ pub(crate) mod tests {
         assert_eq!(errors(&built_in), Vec::<String>::new());
         let later = with_groups(r#"        (id: "rain", parent: "weather"), (id: "weather"),"#);
         assert_eq!(errors(&later), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_manifest_may_play_its_volumes_on_a_straight_line() {
+        let full = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(full.volume_curve, VolumeCurve::Decibels);
+        let linear = FULL.replacen(
+            "    sounds: [",
+            "    volume_curve: Linear,\n    sounds: [",
+            1,
+        );
+        let m = from_source("a.ron", &linear, &all_files()).unwrap_or_default();
+        assert_eq!(m.volume_curve, VolumeCurve::Linear);
+        let decibels = FULL.replacen(
+            "    sounds: [",
+            "    volume_curve: Decibels,\n    sounds: [",
+            1,
+        );
+        let m = from_source("a.ron", &decibels, &all_files()).unwrap_or_default();
+        assert_eq!(m.volume_curve, VolumeCurve::Decibels);
+        let unknown = FULL.replacen(
+            "    sounds: [",
+            "    volume_curve: Cubic,\n    sounds: [",
+            1,
+        );
+        assert!(from_source("a.ron", &unknown, &all_files()).is_err());
     }
 
     #[test]
