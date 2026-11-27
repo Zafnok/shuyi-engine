@@ -9,7 +9,7 @@ use hello_grid::app_info::APP;
 use hello_grid::{CONSOLE, FONT_PNG, TITLE, sound};
 use shuyi::app::page::{self, PageLimits};
 use shuyi::app::{AppConfig, CrashReports, Window};
-use shuyi::assets::bundle::Layer;
+use shuyi::prelude::Layer;
 
 /// The window, titled with the game's name: the console at twice its
 /// size, and a small margin, with the game's icon (none yet). It opens

@@ -7,9 +7,8 @@ use std::collections::BTreeMap;
 
 use hello_grid::hot_palette::HotPalette;
 use hello_grid::{Hello, bundle_over, ctx_from, file, game};
-use shuyi::assets::bundle::Layer;
-use shuyi::platform::harness::{FRAME_DT, Harness};
-use shuyi::ui::frame::EngineColor;
+use shuyi::prelude::test::{FRAME_DT, Harness};
+use shuyi::prelude::{EngineColor, Layer};
 
 /// The game's palette file with its panel colour changed to `panel`.
 fn palette(panel: &str) -> Vec<u8> {

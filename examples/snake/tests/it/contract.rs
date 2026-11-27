@@ -5,11 +5,10 @@
 
 use std::fs;
 
-use shuyi_cli::contract::check::{CheckInput, check, targets};
-use shuyi_cli::contract::replay::{ReplayInput, replay};
-use shuyi_cli::contract::run::{RunInput, keys, scene};
-use shuyi_cli::project::Project;
-use shuyi_cli::serde_json::json;
+use shuyi_cli::prelude::serde_json::json;
+use shuyi_cli::prelude::{
+    CheckInput, Project, ReplayInput, RunInput, check, keys, replay, scene, targets,
+};
 
 use crate::{playthrough, root, scratch, tools};
 

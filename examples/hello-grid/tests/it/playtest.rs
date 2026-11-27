@@ -7,16 +7,15 @@ use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::rules::{Command, Error, Side};
 use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_error, playtest_run};
-use shuyi::core::bots::playtest::{
+use shuyi::core::prelude::{PlayError, Pos};
+use shuyi::prelude::test::{
     Check, Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant,
     judge, play_tries,
 };
-use shuyi::core::{PlayError, Pos};
-use shuyi_cli::contract::Answer;
-use shuyi_cli::contract::playtest::{self, PlaytestInput, PlaytestOutput, playtest};
-use shuyi_cli::contract::replay::Record;
-use shuyi_cli::serde_json;
-use shuyi_cli::{GameArg, GameTools};
+use shuyi_cli::contract::playtest;
+use shuyi_cli::prelude::{
+    Answer, GameArg, GameTools, PlaytestInput, PlaytestOutput, Record, playtest, serde_json,
+};
 
 const FIFTY: Tries = Tries::new(50);
 
@@ -174,7 +173,7 @@ fn command(dir: &std::path::Path, more: &[&str]) -> PlaytestOutput {
         "--report".to_owned(),
         path(&file),
     ]);
-    let code = shuyi_cli::main_with(args.into_iter(), Some(&HelloTools));
+    let code = shuyi_cli::prelude::main_with(args.into_iter(), Some(&HelloTools));
     assert_eq!(code, 0);
     let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{e}"));
     let answer: Answer<Vec<PlaytestOutput>> =

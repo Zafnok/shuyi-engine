@@ -49,14 +49,14 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use hello_grid::PACK_STAMP;
 use hello_grid::tools::HelloTools;
-use shuyi::assets::bundle::{Bundle, Layer};
 use shuyi::assets::format::Formats;
 use shuyi::assets::image::ImageTable;
 use shuyi::assets::pack::{Content, InMemory, Index, Pack, PackFile, PackInfo, write};
 use shuyi::assets::target::TargetProfile;
-use shuyi::core::{ContentHash, SimRng};
+use shuyi::core::prelude::{ContentHash, SimRng};
+use shuyi::prelude::{Bundle, Layer};
 use shuyi_alloc_count::{global, tags};
-use shuyi_cli::GameTools;
+use shuyi_cli::prelude::GameTools;
 
 /// A release build's counter: there the global one is compiled out
 /// (`global::COUNTING`), and a binary has one global allocator.

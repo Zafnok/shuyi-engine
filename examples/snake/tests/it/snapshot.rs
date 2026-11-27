@@ -4,14 +4,13 @@
 //! beside each `.snap` is the picture.
 
 use shuyi::prelude::UiAction;
-use shuyi_cli::BasicTools;
-use shuyi_cli::codec::encode_png;
+use shuyi_cli::prelude::{BasicTools, encode_png};
 use snake::{Data, Own};
 
 use crate::{at_title, eat_first_food, stage};
 
 /// The frame `h` shows, as a PNG.
-fn png(h: &shuyi::platform::harness::Harness<Data>) -> Vec<u8> {
+fn png(h: &shuyi::prelude::test::Harness<Data>) -> Vec<u8> {
     let image = BasicTools::<UiAction, Own>::picture(h, 1).unwrap_or_else(|e| panic!("{e}"));
     encode_png(image.width, image.height, &image.rgba).unwrap_or_else(|e| panic!("{e}"))
 }

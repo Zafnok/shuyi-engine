@@ -12,10 +12,9 @@ use hello_grid::map::{FOE_TILE, HERO_TILE, TERRAIN_LOOKS, TILE_COLUMNS, TILE_PX,
 use hello_grid::rules::Side;
 use hello_grid::tools::HelloTools;
 use hello_grid::{FONT_PNG, FONT_RON, Hello, REQUIRED_GLYPHS};
-use shuyi::ui::GameData;
-use shuyi_cli::Project;
-use shuyi_cli::codec::decode_png;
+use shuyi::prelude::GameData;
 use shuyi_cli::font_atlas::{AtlasChars, atlas_ron, build_atlas, read_font};
+use shuyi_cli::prelude::{Project, decode_png};
 use shuyi_cli::{frame_png, glyph_tiles};
 
 /// The example's folder, which holds its `shuyi.ron`.
@@ -130,7 +129,7 @@ fn the_web_build_is_the_games_binary() {
 #[test]
 fn the_data_reads_a_file_a_step_and_says_what_it_did_not_read() {
     use hello_grid::DataLoad;
-    use shuyi::assets::bundle::Bundle;
+    use shuyi::prelude::Bundle;
 
     let bundle = Bundle::new(vec![hello_grid::layer()]);
     let formats = hello_grid::formats();
@@ -197,7 +196,7 @@ fn the_card_counts_the_games_files_where_its_load_takes_more_than_a_frame() {
     assert_eq!(counts, expected, "a frame a file, after the card's");
     assert_eq!(app.errors(), None);
     assert_eq!(
-        app.game().map(shuyi::ui::Game::screens),
+        app.game().map(shuyi::prelude::Game::screens),
         Some(vec!["title"])
     );
 }

@@ -10,10 +10,9 @@ use hello_grid::preview::{self, HelloPreview};
 use hello_grid::screens::Talk;
 use hello_grid::tools::Start;
 use hello_grid::{Action, Hello, bundle, ctx_from, file};
-use shuyi::assets::bundle::Layer;
-use shuyi::assets::font::CellWidths;
-use shuyi::platform::harness::{FRAME_DT, Harness};
-use shuyi::ui::Screen;
+use shuyi::prelude::test::{FRAME_DT, Harness};
+use shuyi::prelude::text::CellWidths;
+use shuyi::prelude::{Layer, Screen};
 use shuyi::ui::dialogue::preview::{DialoguePreview, PreviewView, Tab};
 
 /// The game's scene file.

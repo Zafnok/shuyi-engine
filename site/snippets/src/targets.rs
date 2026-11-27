@@ -8,8 +8,7 @@
 mod tests {
     use std::path::Path;
 
-    use shuyi_cli::contract::target::{Level, engine_profiles};
-    use shuyi_cli::project::Config;
+    use shuyi_cli::prelude::{Config, Level, engine_profiles};
 
     #[test]
     fn the_project_file_reads_and_names_the_engines_targets() {

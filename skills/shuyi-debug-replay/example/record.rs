@@ -2,7 +2,7 @@
 //! `records/bump.ron`, played by the rules, and what must hold of them.
 
 use rules::{Command, Error, Stage, parse_map};
-use shuyi_core::{Dir, TurnRules, state_hash};
+use shuyi_core::prelude::{Dir, TurnRules, state_hash};
 
 /// The stage's map, as the game reads it.
 const MAP: &str = include_str!("../../game/files/stage.map");

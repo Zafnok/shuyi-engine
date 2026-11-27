@@ -2,9 +2,8 @@
 //! stamp, the rules' events of a session, and a check that finds what its
 //! files lack.
 
-use shuyi::assets::{ContentError, Layer};
-use shuyi::prelude::{BasicGame, UiAction};
-use shuyi_cli::{GameArg, GameTools};
+use shuyi::prelude::{BasicGame, ContentError, Layer, UiAction};
+use shuyi_cli::prelude::{GameArg, GameTools};
 use snake::tools::{Tools, events, lines, seed_of};
 
 use crate::{at_title, tools};

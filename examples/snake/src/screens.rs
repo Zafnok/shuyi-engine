@@ -7,16 +7,14 @@
 
 use std::any::Any;
 
-use shuyi::assets::lighting::Lighting;
-use shuyi::core::tick::TickRecord;
-use shuyi::core::{Dir, Pos, StateHash, TerrainId, TickSim};
+use shuyi::core::prelude::{Dir, Pos, StateHash, TerrainId, TickRecord, TickSim};
+use shuyi::prelude::grid::{
+    GlyphSkin, Grid, GridSkin, Lighting, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
+    Terrains, UnitPainter, WalkSpeeds, glyph,
+};
+use shuyi::prelude::text::print_centred_styled;
 use shuyi::prelude::*;
 use shuyi::ui::frame::Palette;
-use shuyi::ui::grid::{
-    GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs, Terrains,
-    UnitPainter, WalkSpeeds, glyph,
-};
-use shuyi::ui::screens::print_centred_styled;
 use shuyi::ui::tick::TickDriver;
 
 use crate::Data;
