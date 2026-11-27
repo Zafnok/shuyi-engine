@@ -31,7 +31,7 @@ toy = ["shuyi-ui/toy"]
 jis = ["dep:encoding_rs"]
 # `corners`: the `corners` command, a terrain's corner sheet made from its
 # recipe, and `corners::check`, which a game's test keeps it equal with
-# (ticket 2259, ADR-0159). Off by default: a game that doesn't make its
+# (ticket 2259, ADR-0160). Off by default: a game that doesn't make its
 # corner pictures builds none of it.
 corners = ["shuyi-assets/corners"]
 

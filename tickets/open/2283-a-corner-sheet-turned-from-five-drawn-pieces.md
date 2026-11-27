@@ -19,7 +19,7 @@ completed:
 line: 2259 made a terrain's corner sheet from its one tile
 (`shuyi_assets::corners::generate`, behind `shuyi-assets`' `corners`
 feature; `shuyi-cli`'s `corners` command, `make` and `check`;
-ADR-0159). This ticket adds its second recipe, for hand-drawn art.
+ADR-0160). This ticket adds its second recipe, for hand-drawn art.
 
 A dual grid needs only 5 pieces drawn: one corner in (mix 8, `#...`),
 two side by side (12, `##..`), two across (9, `#..#`), three in (14,

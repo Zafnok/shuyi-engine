@@ -16,7 +16,7 @@ completed:
 ## Context
 
 2259 (done) makes a terrain's 15 corner pictures into a PNG of their own
-(`shuyi_assets::corners`, `shuyi-cli`'s `corners` command, ADR-0159).
+(`shuyi_assets::corners`, `shuyi-cli`'s `corners` command, ADR-0160).
 But a tileset has one picture: `TerrainTiles::image`, and every rect of
 its looks, a `CornerLayer`'s included, is a cell of it
 (`crates/assets/src/tileset.rs`). So a game that makes its shore today

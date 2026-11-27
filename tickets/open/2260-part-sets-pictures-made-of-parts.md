@@ -112,7 +112,7 @@ None.
 
   If the choice is a module and it answers a concern in
   `docs/modules.ron`: 2259 (done) added no concern, as it isn't a module
-  (it is a feature of `shuyi-assets` and `shuyi-cli`, ADR-0159, a home
+  (it is a feature of `shuyi-assets` and `shuyi-cli`, ADR-0160, a home
   to weigh here too). Add a `pictures` concern ("Pictures made from
   data", `alternatives: false`) with its `drawn` answer (`by:
   "default"`, `ready`) and this one, and its catalog row; or no concern

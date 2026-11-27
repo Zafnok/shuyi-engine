@@ -1,6 +1,6 @@
 # ADR-0009: Modules: a small default engine, a direction per stage, and opt-in crates that say what they are for
 
-- **Status:** Accepted; §2's Time concern extended by ADR-0148 (a grid stage takes turns or ticks); §4 extended by ADR-0159 (a tool a game opts into is a feature of a default crate)
+- **Status:** Accepted; §2's Time concern extended by ADR-0148 (a grid stage takes turns or ticks); §4 extended by ADR-0160 (a tool a game opts into is a feature of a default crate)
 - **Date:** 2026-10-16
 - **Related tickets:** 2003 (the catalog and opting in), 2004 (guides
   per direction and per move), 1120, 1122, 1126, 1127 (perspective

@@ -1,4 +1,4 @@
-# ADR-0159: A tool a game opts into: an off-by-default feature of the default crate it belongs beside, and of `shuyi-cli` for its command
+# ADR-0160: A tool a game opts into: an off-by-default feature of the default crate it belongs beside, and of `shuyi-cli` for its command
 
 - **Status:** Accepted
 - **Date:** 2026-11-27

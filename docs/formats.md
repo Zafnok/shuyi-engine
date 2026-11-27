@@ -445,7 +445,7 @@ What each one reads:
   A corner layer's 15 pictures may also be made, not drawn: a
   `<name>.corners.ron` recipe, a tool's input that no game loads, makes
   them into a PNG from one tile (`shuyi_assets::corners`, behind its
-  `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0159).
+  `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0160).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

@@ -333,7 +333,7 @@ The golden table `crates/assets/tests/golden/corners.ron` (row
 the `determinism` job; the no-std job builds the feature too. The look
 snapshot is `crates/cli/tests/fixtures/corners/shore.png`.
 
-**Where it lives, and why** (ADR-0159, which extends ADR-0009 §4). The
+**Where it lives, and why** (ADR-0160, which extends ADR-0009 §4). The
 home is an off-by-default feature of the default crate the code belongs
 beside (`shuyi-assets`, beside `tileset` and `image`), and a feature of
 the same name of `shuyi-cli` for the command. Weighed:
