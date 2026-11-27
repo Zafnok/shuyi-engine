@@ -160,14 +160,14 @@ None.
       line; a good save clears it.
 - [x] A build with debug tools off installs no `BasicReload`
       (`Game::modules` lists only the game's).
-- [ ] A game made by `shuyi new` reloads its text and map under
+- [x] A game made by `shuyi new` reloads its text and map under
       `cargo shuyi run --watch` with no code of its own (checked by
       hand; say so in the completion notes).
 - [x] The completion notes have a `Behaviour:` line: a short-path game
       with debug tools lists the `basic_reload` module and reloads its
       files under `run --watch`.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -216,6 +216,21 @@ What was done:
   after every hook, once; outside a reload at the next frame), and
   `crates/platform/tests/it/basic_reload.rs` (the harness criteria, on the
   blank template's files and the grid stage's `stage.map`).
+
+Checked by hand, at `d57641a4` (this branch with `main`'s tip merged): a
+game made with `shuyi new --template grid --no-input --engine-path` this
+checkout, and a scratch test of its own (not in this PR) that drives the
+game's `game::game().over(disk).harness()` as `run --watch` lays a folder:
+its modules are `["basic_reload"]`; a saved `en.ron` subtitle shows on the
+title's next frame; on the stage (`["title", "stage"]`), a saved
+`stage.map` brings the game back to `["title"]` with the new text kept and
+no reload error; a broken `stage.map` keeps the stage playable and shows
+its error. Not looked at in a window: this session can't see one, so the
+watched folder's polling itself (`shuyi_app`, 2220's) was not run here.
+
+Size: 1,118 counted lines. It would split cleanly into `Ctx::restart` with
+`Game::reloaded` honouring it (`ctx.rs`, `game.rs`, `screen.rs` and
+`restart_tests.rs`, about 200) and the rest, which needs it.
 
 Deviations:
 
