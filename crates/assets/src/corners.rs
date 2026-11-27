@@ -1,7 +1,6 @@
 //! Corner sheets made, not drawn (the `corners` feature, off by default):
 //! the 15 pictures of a [`CornerLayer`] made from a terrain's one tile
-//! ([`generate`]), or from 5 drawn pieces and their quarter turns
-//! ([`rotated`]), at tool time and in integers. Hand-drawn corner layers
+//! ([`generate`]), at tool time and in integers. Hand-drawn corner layers
 //! stay the grid kit's way; this is a tool a game opts into, for one
 //! terrain's edges or all of them.
 //!
@@ -56,7 +55,7 @@ const COLUMNS: u32 = 8;
 /// A sheet's pictures down.
 const ROWS: u32 = 2;
 
-/// The longest side a tile or a piece may have, in pixels.
+/// The longest side a tile may have, in pixels.
 pub const MAX_SIDE: u32 = 256;
 
 /// The most lattice points a [`Wobble`] has across (and down).
@@ -64,11 +63,6 @@ pub const MAX_CELLS: u8 = 32;
 
 /// The strongest a [`Wobble`] is.
 pub const MAX_STRENGTH: u8 = 100;
-
-/// The mixes [`rotated`] takes a drawn piece of, in its order: one corner
-/// in (`#...`), two side by side (`##..`), two across (`#..#`), three in
-/// (`###.`) and all four (`####`).
-pub const PIECES: [u8; 5] = [8, 12, 9, 14, 15];
 
 /// A wavy edge: value noise added to the field, on a lattice that repeats
 /// every picture. Build it with [`Wobble::new`] (ADR-0039).
@@ -166,25 +160,12 @@ fn hex<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[u8; 3], D::Error> {
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum CornersError {
-    /// The tile, or the first piece, has no pixels.
+    /// The tile has no pixels.
     #[error("the tile is empty: {0:?} pixels across and down")]
     Empty((u32, u32)),
-    /// A side of the tile, or of a piece, is over [`MAX_SIDE`].
+    /// A side of the tile is over [`MAX_SIDE`].
     #[error("the tile is {0:?} pixels across and down: a side may be at most 256")]
     TooLarge((u32, u32)),
-    /// A piece isn't the first piece's size.
-    #[error("piece {piece} is {size:?} pixels across and down, and the first is {first:?}")]
-    PiecesDiffer {
-        /// The piece, from 0.
-        piece: usize,
-        /// Its size.
-        size: (u32, u32),
-        /// The first piece's.
-        first: (u32, u32),
-    },
-    /// The pieces aren't square: a quarter turn wouldn't fit its place.
-    #[error("the pieces are {0:?} pixels across and down: a piece to turn must be square")]
-    NotSquare((u32, u32)),
     /// A wobble's `cells` is 0 or over [`MAX_CELLS`].
     #[error("a wobble's cells are 1 to 32, not {0}")]
     Cells(u8),
@@ -288,71 +269,4 @@ fn put(image: &mut Image, (x, y): (u32, u32), pixel: [u8; 4]) {
     if let Some(to) = image.rgba.get_mut(i..i + 4) {
         to.copy_from_slice(&pixel);
     }
-}
-
-/// Copies `picture` into `sheet` with its top-left at `(x, y)`.
-fn blit(sheet: &mut Image, picture: &Image, (x, y): (u32, u32)) {
-    for py in 0..picture.height {
-        for px in 0..picture.width {
-            let pixel = picture.pixel(px, py).unwrap_or([0; 4]);
-            put(sheet, (x + px, y + py), pixel);
-        }
-    }
-}
-
-/// `picture` turned a quarter clockwise: its top-left goes to the top-right.
-fn turn(picture: &Image) -> Image {
-    let (w, h) = (picture.width, picture.height);
-    let mut turned = Image::filled(h, w, [0; 4]);
-    for y in 0..h {
-        for x in 0..w {
-            let pixel = picture.pixel(x, y).unwrap_or([0; 4]);
-            put(&mut turned, (h - 1 - y, x), pixel);
-        }
-    }
-    turned
-}
-
-/// Mix `m` turned a quarter clockwise: top-left to top-right, top-right
-/// to bottom-right, bottom-right to bottom-left, bottom-left to top-left.
-const fn turn_mix(m: u8) -> u8 {
-    let (tl, tr, bl, br) = (m & 8, m & 4, m & 2, m & 1);
-    (tl >> 1) | (tr >> 2) | (br << 1) | (bl << 2)
-}
-
-/// The sheet made from the drawn pieces of the mixes [`PIECES`], in that
-/// order: each other mix is a quarter turn of one of them, and mix 15 is
-/// its piece as drawn.
-///
-/// # Errors
-/// An empty first piece, a side over [`MAX_SIDE`], a piece of another
-/// size than the first, or pieces that aren't square.
-pub fn rotated(pieces: [&Image; 5]) -> Result<Image, CornersError> {
-    let first = tile_size(pieces[0])?;
-    for (piece, image) in pieces.iter().enumerate() {
-        let size = (image.width, image.height);
-        if size != first {
-            return Err(CornersError::PiecesDiffer { piece, size, first });
-        }
-    }
-    if first.0 != first.1 {
-        return Err(CornersError::NotSquare(first));
-    }
-    let mut sheet = Image::filled(first.0 * COLUMNS, first.1 * ROWS, [0; 4]);
-    let mut filled = [false; MIXES];
-    for (image, mut m) in pieces.into_iter().zip(PIECES) {
-        let mut picture = image.clone();
-        for _ in 0..4 {
-            if let Some(done) = filled.get_mut(usize::from(m))
-                && !*done
-            {
-                *done = true;
-                let at = sheet_rect((0, 0), first, m);
-                blit(&mut sheet, &picture, (at.x, at.y));
-            }
-            picture = turn(&picture);
-            m = turn_mix(m);
-        }
-    }
-    Ok(sheet)
 }

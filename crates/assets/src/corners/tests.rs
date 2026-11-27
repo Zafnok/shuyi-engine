@@ -17,20 +17,23 @@ fn tile(w: u32, h: u32) -> Image {
     tile
 }
 
+/// The `size` picture of `image` at `at`.
+fn crop(image: &Image, at: (u32, u32), size: (u32, u32)) -> Image {
+    let rows = (at.1..at.1 + size.1).map(|y| (y * image.width + at.0) as usize * 4);
+    let rgba = rows
+        .flat_map(|i| image.rgba[i..i + size.0 as usize * 4].to_vec())
+        .collect();
+    Image {
+        width: size.0,
+        height: size.1,
+        rgba,
+    }
+}
+
 /// Mix `m`'s picture of `sheet`, whose pictures are `size`.
 fn picture(sheet: &Image, size: (u32, u32), m: u8) -> Image {
     let at = sheet_rect((0, 0), size, m);
-    let mut picture = Image::filled(size.0, size.1, [0; 4]);
-    for y in 0..size.1 {
-        for x in 0..size.0 {
-            put(
-                &mut picture,
-                (x, y),
-                sheet.pixel(at.x + x, at.y + y).unwrap(),
-            );
-        }
-    }
-    picture
+    crop(sheet, (at.x, at.y), size)
 }
 
 fn is_in(picture: &Image, x: u32, y: u32) -> bool {
@@ -179,52 +182,32 @@ proptest! {
         assert_seamless((w, h), Wobble::new(seed).with_cells(cells).with_strength(strength));
     }
 
-    #[test]
-    fn four_quarter_turns_give_the_piece_back(side in 1..=12u32, seed in any::<u8>()) {
-        let mut piece = tile(side, side);
-        piece.rgba.iter_mut().for_each(|b| *b ^= seed);
-        let turned = turn(&turn(&turn(&turn(&piece))));
-        prop_assert_eq!(turned, piece);
+}
+
+/// On mix 12 (`##..`), whose edge is between rows 11 and 12: each row
+/// below `rim_from` is the tile's, each from there to `clear_from` the
+/// rim's, and the rest clear.
+fn assert_rim(side: RimSide, rim_from: u32, clear_from: u32) {
+    let rim = Rim::new([1, 2, 3], side).with_width(2);
+    let tile = tile(24, 24);
+    let top = picture(&generate(&tile, None, Some(rim)).unwrap(), SIZE, 0b1100);
+    for (x, y) in (0..24).flat_map(|y| (0..24).map(move |x| (x, y))) {
+        let want = match y {
+            y if y < rim_from => tile.pixel((x + 12) % 24, (y + 12) % 24).unwrap(),
+            y if y < clear_from => [1, 2, 3, 255],
+            _ => [0; 4],
+        };
+        assert_eq!(top.pixel(x, y), Some(want), "{side:?} ({x}, {y})");
     }
 }
 
 #[test]
-fn an_outside_rim_lines_the_out_side_of_the_edge() {
-    let rim = Rim::new([1, 2, 3], RimSide::Outside).with_width(2);
-    let tile = tile(24, 24);
-    let top = picture(&generate(&tile, None, Some(rim)).unwrap(), SIZE, 0b1100);
-    for x in 0..24 {
-        for y in 0..12 {
-            assert_eq!(top.pixel(x, y), tile.pixel((x + 12) % 24, (y + 12) % 24));
-        }
-        for y in 12..14 {
-            assert_eq!(top.pixel(x, y), Some([1, 2, 3, 255]), "({x}, {y})");
-        }
-        for y in 14..24 {
-            assert_eq!(top.pixel(x, y), Some([0; 4]), "({x}, {y})");
-        }
-    }
-}
-
-#[test]
-fn an_inside_rim_lines_the_in_side_of_the_edge() {
-    let rim = Rim::new([9, 8, 7], RimSide::Inside).with_width(2);
-    let tile = tile(24, 24);
-    let top = picture(&generate(&tile, None, Some(rim)).unwrap(), SIZE, 0b1100);
-    for x in 0..24 {
-        for y in 0..10 {
-            assert_eq!(top.pixel(x, y), tile.pixel((x + 12) % 24, (y + 12) % 24));
-        }
-        for y in 10..12 {
-            assert_eq!(top.pixel(x, y), Some([9, 8, 7, 255]), "({x}, {y})");
-        }
-        for y in 12..24 {
-            assert_eq!(top.pixel(x, y), Some([0; 4]), "({x}, {y})");
-        }
-    }
+fn a_rim_lines_its_side_of_the_edge() {
+    assert_rim(RimSide::Outside, 12, 14);
+    assert_rim(RimSide::Inside, 10, 12);
     // A rim of no width draws none.
-    let none = generate(&tile, None, Some(rim.with_width(0))).unwrap();
-    assert_eq!(none, plain());
+    let none = Rim::new([1, 2, 3], RimSide::Inside).with_width(0);
+    assert_eq!(generate(&tile(24, 24), None, Some(none)).unwrap(), plain());
 }
 
 #[test]
@@ -250,123 +233,32 @@ fn an_odd_tile_lines_up_as_the_painter_centres_it() {
 
 #[test]
 fn the_tile_and_the_wobble_must_be_in_range() {
-    let tile24 = tile(24, 24);
-    assert_eq!(
-        generate(&tile(0, 4), None, None),
-        Err(CornersError::Empty((0, 4)))
-    );
-    assert_eq!(
-        generate(&tile(257, 4), None, None),
-        Err(CornersError::TooLarge((257, 4)))
-    );
-    assert!(generate(&tile(256, 1), None, None).is_ok());
+    let made = |(w, h), wobble| generate(&tile(w, h), wobble, None).err();
+    assert_eq!(made((0, 4), None), Some(CornersError::Empty((0, 4))));
+    assert_eq!(made((257, 4), None), Some(CornersError::TooLarge((257, 4))));
+    assert_eq!(made((256, 1), None), None);
     let wobble = Wobble::new(1);
+    let cells = |cells| made((24, 24), Some(wobble.with_cells(cells)));
+    assert_eq!(cells(0), Some(CornersError::Cells(0)));
+    assert_eq!(cells(33), Some(CornersError::Cells(33)));
     assert_eq!(
-        generate(&tile24, Some(wobble.with_cells(0)), None),
-        Err(CornersError::Cells(0))
+        made((24, 24), Some(wobble.with_cells(32).with_strength(100))),
+        None
     );
-    assert_eq!(
-        generate(&tile24, Some(wobble.with_cells(33)), None),
-        Err(CornersError::Cells(33))
-    );
-    assert!(
-        generate(
-            &tile24,
-            Some(wobble.with_cells(32).with_strength(100)),
-            None
-        )
-        .is_ok()
-    );
-    assert_eq!(
-        generate(&tile24, Some(wobble.with_strength(101)), None),
-        Err(CornersError::Strength(101))
-    );
-}
-
-/// Five square pieces, each its own.
-fn pieces(side: u32) -> Vec<Image> {
-    (0..5u8)
-        .map(|i| {
-            let mut piece = tile(side, side);
-            piece.rgba.chunks_mut(4).for_each(|p| p[2] = i * 40);
-            piece
-        })
-        .collect()
-}
-
-fn five(pieces: &[Image]) -> [&Image; 5] {
-    [&pieces[0], &pieces[1], &pieces[2], &pieces[3], &pieces[4]]
-}
-
-#[test]
-fn rotated_fills_every_mix_from_five_pieces_and_their_turns() {
-    let drawn = pieces(16);
-    let sheet = rotated(five(&drawn)).unwrap();
-    assert_eq!((sheet.width, sheet.height), (128, 32));
-    let size = (16, 16);
-    for (m, piece) in PIECES.into_iter().zip(&drawn) {
-        assert_eq!(&picture(&sheet, size, m), piece, "mix {m} is as drawn");
-    }
-    // `#...` turned once is `.#..`; `#..#` turned once is `.##.`.
-    assert_eq!(picture(&sheet, size, 4), turn(&drawn[0]));
-    assert_eq!(picture(&sheet, size, 6), turn(&drawn[2]));
-    assert_eq!(picture(&sheet, size, 1), turn(&turn(&drawn[0])));
-    assert_eq!(picture(&sheet, size, 5), turn(&drawn[1]));
-    assert_eq!(picture(&sheet, size, 13), turn(&drawn[3]));
-    assert_eq!(in_count(&picture(&sheet, size, 0)), 0);
-    for m in 1..16 {
-        assert_eq!(in_count(&picture(&sheet, size, m)), 256, "mix {m}");
-    }
-}
-
-#[test]
-fn a_quarter_turn_moves_each_corner_clockwise() {
-    assert_eq!([8, 4, 1, 2].map(turn_mix), [4, 1, 2, 8]);
-    assert_eq!(turn_mix(0b1001), 0b0110);
-    assert_eq!(turn_mix(15), 15);
-    let mut piece = Image::filled(2, 2, [0; 4]);
-    put(&mut piece, (0, 0), [1, 1, 1, 1]);
-    assert_eq!(turn(&piece).pixel(1, 0), Some([1, 1, 1, 1]));
-}
-
-#[test]
-fn rotated_takes_square_pieces_of_one_size() {
-    let mut drawn = pieces(16);
-    drawn[3] = tile(16, 8);
-    assert_eq!(
-        rotated(five(&drawn)),
-        Err(CornersError::PiecesDiffer {
-            piece: 3,
-            size: (16, 8),
-            first: (16, 16)
-        })
-    );
-    let flat = vec![tile(16, 8); 5];
-    assert_eq!(rotated(five(&flat)), Err(CornersError::NotSquare((16, 8))));
-    let empty = vec![tile(0, 0); 5];
-    assert_eq!(rotated(five(&empty)), Err(CornersError::Empty((0, 0))));
+    let strong = made((24, 24), Some(wobble.with_strength(101)));
+    assert_eq!(strong, Some(CornersError::Strength(101)));
 }
 
 #[test]
 fn a_layer_names_each_mix_in_its_place() {
-    assert_eq!(
-        sheet_rect((0, 96), (24, 24), 9),
-        ImageRect {
-            x: 24,
-            y: 120,
-            w: 24,
-            h: 24
-        }
-    );
-    let layer = layer(BTreeSet::from([TerrainId(1)]), (3, 4), (16, 8));
-    assert_eq!(layer.tiles[0], None);
-    for m in 1..16u8 {
-        assert_eq!(
-            layer.tiles[usize::from(m)],
-            Some(sheet_rect((3, 4), (16, 8), m))
-        );
-    }
-    assert_eq!(layer.of, BTreeSet::from([TerrainId(1)]));
+    let nine = sheet_rect((0, 96), (24, 24), 9);
+    assert_eq!((nine.x, nine.y, nine.w, nine.h), (24, 120, 24, 24));
+    let of = BTreeSet::from([TerrainId(1)]);
+    let layer = layer(of.clone(), (3, 4), (16, 8));
+    let want: Vec<_> = (0..16)
+        .map(|m| (m > 0).then(|| sheet_rect((3, 4), (16, 8), m)))
+        .collect();
+    assert_eq!((layer.of, layer.tiles.to_vec()), (of, want));
 }
 
 const GENERATED: &str = r##"(
@@ -379,136 +271,69 @@ const GENERATED: &str = r##"(
 )
 "##;
 
-const ROTATED: &str = r#"(
-    make: Rotated(
-        image: "shore.png",
-        size: (16, 16),
-        pieces: [(0, 0), (16, 0), (32, 0), (48, 0), (64, 0)],
-    ),
-    out: "shore-corners.png",
-)
-"#;
-
-/// The pictures the recipes above name: `terrain.png` 48 × 24, `shore.png`
-/// 80 × 16.
+/// The picture the recipe above names: `terrain.png`, 48 × 24.
 fn pictures(path: &str) -> Result<Image, String> {
     match path {
         "tiles/terrain.png" => Ok(tile(48, 24)),
-        "shore.png" => Ok(tile(80, 16)),
         _ => Err("no such file".to_owned()),
     }
 }
 
+/// The sheet the recipe `text`, the file `w.corners.ron`, makes.
+fn made(text: &str) -> Result<Image, String> {
+    let recipe = recipe::parse("w.corners.ron", text).map_err(|e| e.to_string())?;
+    recipe.sheet(pictures)
+}
+
 #[test]
 fn a_recipe_is_read_and_makes_its_sheet() {
-    let recipe = recipe::parse("art/water.corners.ron", GENERATED).unwrap();
+    let recipe = recipe::parse("w.corners.ron", GENERATED).unwrap();
     assert_eq!(recipe.out, "tiles/water-corners.png");
-    assert_eq!(recipe.file(), "art/water.corners.ron");
+    assert_eq!(recipe.file(), "w.corners.ron");
     let Make::Generated {
         tile: at,
         wobble,
         rim,
-    } = &recipe.make
-    else {
-        panic!("{:?}", recipe.make);
-    };
+    } = &recipe.make;
     assert_eq!((at.at, at.size), ((24, 0), (24, 24)));
-    assert_eq!(*wobble, Some(Wobble::new(7)));
-    assert_eq!(
-        *rim,
-        Some(Rim::new([0xE8, 0xF4, 0xFF], RimSide::Outside).with_width(2))
-    );
-    let mut shifted = tile(48, 24);
-    shifted.rgba = shifted
-        .rgba
-        .chunks(48 * 4)
-        .flat_map(|row| row[24 * 4..].to_vec())
-        .collect();
-    shifted.width = 24;
+    let foam = Rim::new([0xE8, 0xF4, 0xFF], RimSide::Outside).with_width(2);
+    assert_eq!((*wobble, *rim), (Some(Wobble::new(7)), Some(foam)));
+    let shifted = crop(&tile(48, 24), (24, 0), (24, 24));
     let want = generate(&shifted, *wobble, *rim).unwrap();
     assert_eq!(recipe.sheet(pictures), Ok(want));
     // Left out, the wobble and the rim are none.
     let bare =
         "(make: Generated(tile: (image: \"a.png\", at: (0, 0), size: (8, 8))), out: \"b.png\")";
     let bare = recipe::parse("bare.corners.ron", bare).unwrap();
-    assert!(matches!(
-        bare.make,
-        Make::Generated {
-            wobble: None,
-            rim: None,
-            ..
-        }
-    ));
-
-    let turned = recipe::parse("shore.corners.ron", ROTATED).unwrap();
-    let drawn = tile(80, 16);
-    let piece = |i: u32| {
-        let mut piece = Image::filled(16, 16, [0; 4]);
-        for y in 0..16 {
-            for x in 0..16 {
-                put(&mut piece, (x, y), drawn.pixel(16 * i + x, y).unwrap());
-            }
-        }
-        piece
-    };
-    let drawn: Vec<_> = (0..5).map(piece).collect();
-    assert_eq!(turned.sheet(pictures), Ok(rotated(five(&drawn)).unwrap()));
+    let Make::Generated { wobble, rim, .. } = bare.make;
+    assert_eq!((wobble, rim), (None, None));
 }
 
 #[test]
 fn a_bad_recipe_says_its_file_and_line() {
-    let unknown = GENERATED.replace("seed: 7", "seed: 7, size: 3");
-    let e = recipe::parse("w.corners.ron", &unknown)
-        .unwrap_err()
-        .to_string();
+    let bad = |from: &str, to: &str| made(&GENERATED.replace(from, to)).unwrap_err();
+    let e = bad("seed: 7", "seed: 7, size: 3");
     assert!(
         e.starts_with("w.corners.ron:4:") && e.contains("size"),
         "{e}"
     );
-    let colour = GENERATED.replace("#E8F4FF", "E8F4FF");
-    let e = recipe::parse("w.corners.ron", &colour)
-        .unwrap_err()
-        .to_string();
+    let e = bad("#E8F4FF", "E8F4FF");
     assert!(
         e.starts_with("w.corners.ron:5:") && e.contains("#RRGGBB"),
         "{e}"
     );
-    let four = ROTATED.replace(", (64, 0)]", "]");
-    let e = recipe::parse("s.corners.ron", &four)
-        .unwrap_err()
-        .to_string();
+    // A tile outside its picture: the line of its `at`.
+    let e = bad("at: (24, 0)", "at: (25, 0)");
     assert!(
-        e.starts_with("s.corners.ron:5:") && e.contains("5 pieces, not 4"),
+        e.starts_with("w.corners.ron:3: the tile,") && e.contains("terrain.png, 48×24"),
         "{e}"
     );
-    // A piece outside its picture: the line of the pieces.
-    let outside = ROTATED.replace("(64, 0)]", "(72, 0)]");
-    let e = recipe::parse("s.corners.ron", &outside)
-        .unwrap()
-        .sheet(pictures)
-        .unwrap_err();
-    assert!(
-        e.starts_with("s.corners.ron:5: piece 5,") && e.contains("shore.png, 80×16"),
-        "{e}"
-    );
-    let outside = GENERATED.replace("at: (24, 0)", "at: (25, 0)");
-    let e = recipe::parse("w.corners.ron", &outside)
-        .unwrap()
-        .sheet(pictures)
-        .unwrap_err();
-    assert!(e.starts_with("w.corners.ron:3: the tile,"), "{e}");
     // A picture that isn't there, and a sheet that can't be made.
-    let missing = GENERATED.replace("tiles/terrain.png", "gone.png");
-    let e = recipe::parse("w.corners.ron", &missing)
-        .unwrap()
-        .sheet(pictures)
-        .unwrap_err();
-    assert_eq!(e, "gone.png: no such file");
-    let strong = GENERATED.replace("strength: 30", "strength: 120");
-    let e = recipe::parse("w.corners.ron", &strong)
-        .unwrap()
-        .sheet(pictures)
-        .unwrap_err();
+    assert_eq!(
+        bad("tiles/terrain.png", "gone.png"),
+        "gone.png: no such file"
+    );
+    let e = bad("strength: 30", "strength: 120");
     assert_eq!(e, "w.corners.ron: a wobble's strength is 0 to 100, not 120");
 }
 
@@ -524,12 +349,6 @@ fn hash(sheet: &Image) -> String {
 #[test]
 fn golden_a_recipes_sheet_is_the_same_on_every_platform() {
     let mut golden = crate::golden!("tests/golden/corners.ron");
-    for (row, text) in [("generated", GENERATED), ("rotated", ROTATED)] {
-        let sheet = recipe::parse("fixed.corners.ron", text)
-            .unwrap()
-            .sheet(pictures)
-            .unwrap();
-        golden.check(row, hash(&sheet));
-    }
+    golden.check("generated", hash(&made(GENERATED).unwrap()));
     golden.assert();
 }

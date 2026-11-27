@@ -3,14 +3,15 @@
 - **Status:** Accepted
 - **Date:** 2026-11-27
 - **Related tickets:** 2259 (this: corner sheets made from one tile),
-  2260 (part sets, which weighs the same homes)
+  2283 (the same sheet turned from 5 drawn pieces), 2260 (part sets,
+  which weighs the same homes)
 - **Extends:** ADR-0009 §4 (what a module is, and the two kinds of
   plugin that keep their own form)
 
 ## Context
 
-Ticket 2259 makes a terrain's 15 corner pictures from its one tile, or
-from 5 drawn pieces and their quarter turns, at tool time. The result
+Ticket 2259 makes a terrain's 15 corner pictures from its one tile at
+tool time (and 2283 from 5 drawn pieces and their quarter turns). The result
 is an ordinary PNG a game checks in, and a check keeps it equal to its
 recipe. Hand-drawn corner layers stay the grid kit's way. A game opts
 in, for one terrain or all of them, and may drop the recipe after one

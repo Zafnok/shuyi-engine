@@ -45,10 +45,9 @@ mp3 = ["dep:nanomp3"]
 # `sfx::SfxDef`, the formats `SfxDefRon` and `SfxRon`, and ten presets.
 # No dependency and no `std`. A game turns it on in its own `Cargo.toml`.
 sfx = []
-# `corners`: a terrain's 15 corner pictures made from its one tile, or
-# turned from 5 drawn pieces, at tool time and in integers (ticket 2259,
-# ADR-0159): `corners::generate`, `corners::rotated`, the sheet's layout
-# (`corners::layer`) and its recipe. No dependency and no `std`. A game
+# `corners`: a terrain's 15 corner pictures made from its one tile, at tool
+# time and in integers (ticket 2259, ADR-0159): `corners::generate`, the
+# sheet's layout (`corners::layer`) and its recipe. No dependency and no `std`. A game
 # turns it on through `shuyi-cli`'s `corners` feature, its tools'; and here
 # too only if it builds the layer with `corners::layer` as it runs.
 corners = []

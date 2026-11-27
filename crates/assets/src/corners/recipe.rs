@@ -13,10 +13,8 @@
 //! )
 //! ```
 //!
-//! or `make: Rotated(image: "tiles/shore.png", size: (16, 16), pieces:
-//! [(0, 0), (16, 0), (32, 0), (48, 0), (64, 0)])`, the pieces of the mixes
-//! [`PIECES`](super::PIECES) in that order. Paths are relative to the
-//! recipe's folder. `wobble` and `rim` may be left out.
+//! Paths are relative to the recipe's folder. `wobble` and `rim` may be
+//! left out.
 
 use crate::prelude::*;
 
@@ -48,8 +46,8 @@ pub struct Recipe {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct Source {
     file: String,
-    /// The line of the tile's `at`, or the `pieces`.
-    pictures: usize,
+    /// The line of the tile's `at`.
+    tile: usize,
 }
 
 /// How a sheet is made.
@@ -66,18 +64,6 @@ pub enum Make {
         /// Its edges' rim, if any.
         rim: Option<Rim>,
     },
-    /// From 5 drawn pieces and their quarter turns
-    /// ([`rotated`](super::rotated)).
-    Rotated {
-        /// The picture the pieces are in, from the recipe's folder.
-        image: String,
-        /// A piece's size, across and down.
-        size: (u32, u32),
-        /// Each piece's top-left in it, for the mixes
-        /// [`PIECES`](super::PIECES) in order: a list of 5.
-        #[serde(deserialize_with = "five")]
-        pieces: [(u32, u32); 5],
-    },
 }
 
 /// A tile in a picture.
@@ -93,15 +79,6 @@ pub struct Tile {
     pub size: (u32, u32),
 }
 
-/// A list of exactly 5 places.
-fn five<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[(u32, u32); 5], D::Error> {
-    let places = Vec::<(u32, u32)>::deserialize(d)?;
-    let count = places.len();
-    places
-        .try_into()
-        .map_err(|_| serde::de::Error::custom(format!("5 pieces, not {count}")))
-}
-
 /// The recipe `text`, read from `file` (a path shown in errors, and the
 /// one a tool remakes it from).
 ///
@@ -110,13 +87,9 @@ fn five<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[(u32, u32); 5], D::Er
 /// an unknown field, a colour not `#RRGGBB`, a missing field.
 pub fn parse(file: &str, text: &str) -> Result<Recipe, ContentError> {
     let mut recipe: Recipe = crate::ron::parse_ron(file, text)?;
-    let key = match recipe.make {
-        Make::Generated { .. } => "at",
-        Make::Rotated { .. } => "pieces",
-    };
     recipe.from = Source {
         file: file.to_owned(),
-        pictures: line_of(text, key).unwrap_or(1),
+        tile: line_of(text, "at").unwrap_or(1),
     };
     Ok(recipe)
 }
@@ -145,55 +118,29 @@ impl Recipe {
     /// written in the recipe (from its folder).
     ///
     /// # Errors
-    /// `picture`'s, a tile or piece outside its picture (with the
+    /// `picture`'s, a tile outside its picture (with the
     /// recipe's file and line), or the sheet's ([`CornersError`](super::CornersError)).
     pub fn sheet(&self, picture: impl Fn(&str) -> Result<Image, String>) -> Result<Image, String> {
-        let decoded = |path: &str| picture(path).map_err(|e| format!("{path}: {e}"));
-        let sheet = match &self.make {
-            Make::Generated { tile, wobble, rim } => {
-                let image = decoded(&tile.image)?;
-                let tile = self.cut(&image, &tile.image, tile.at, tile.size, "the tile")?;
-                super::generate(&tile, *wobble, *rim)
-            }
-            Make::Rotated {
-                image,
-                size,
-                pieces,
-            } => {
-                let picture = decoded(image)?;
-                let mut cut = Vec::with_capacity(pieces.len());
-                for (i, at) in pieces.iter().enumerate() {
-                    let what = format!("piece {}", i + 1);
-                    cut.push(self.cut(&picture, image, *at, *size, &what)?);
-                }
-                let Ok(cut) = <&[Image; 5]>::try_from(&cut[..]) else {
-                    return Err("a recipe has 5 pieces".to_owned());
-                };
-                super::rotated(cut.each_ref())
-            }
-        };
-        sheet.map_err(|e| format!("{}: {e}", self.from.file))
+        let Make::Generated { tile, wobble, rim } = &self.make;
+        let image = picture(&tile.image).map_err(|e| format!("{}: {e}", tile.image))?;
+        let cut = self.cut(&image, tile)?;
+        super::generate(&cut, *wobble, *rim).map_err(|e| format!("{}: {e}", self.from.file))
     }
 
-    /// The `size` picture at `at` of `image`, the picture at `path`.
-    fn cut(
-        &self,
-        image: &Image,
-        path: &str,
-        at: (u32, u32),
-        size: (u32, u32),
-        what: &str,
-    ) -> Result<Image, String> {
+    /// The tile `tile` cut out of its picture, `image`.
+    fn cut(&self, image: &Image, tile: &Tile) -> Result<Image, String> {
+        let (at, size) = (tile.at, tile.size);
         let rect = ImageRect::cell((0, 0), size, at);
         if !image.info().holds(rect) {
             return Err(format!(
-                "{}:{}: {what}, {}×{} pixels at ({}, {}), lies outside {path}, {}×{} pixels",
+                "{}:{}: the tile, {}×{} pixels at ({}, {}), lies outside {}, {}×{} pixels",
                 self.from.file,
-                self.from.pictures,
+                self.from.tile,
                 size.0,
                 size.1,
                 at.0,
                 at.1,
+                tile.image,
                 image.width,
                 image.height,
             ));

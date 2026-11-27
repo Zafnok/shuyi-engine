@@ -159,41 +159,28 @@ fn tiles_picture() -> Image {
             }
         }
     };
-    let tile = |colour: fn(u32, u32) -> [u8; 4]| {
-        let rgba = (0..24)
-            .flat_map(|y| (0..24).flat_map(move |x| colour(x, y)))
-            .collect();
+    let tile = |on: [u8; 4], off: [u8; 4], dotted: fn(u32, u32) -> bool| {
+        let pixel = move |x, y| if dotted(x, y) { on } else { off };
+        let rgba = (0..24).flat_map(|y| (0..24).flat_map(move |x| pixel(x, y)));
         Image {
             width: 24,
             height: 24,
-            rgba,
+            rgba: rgba.collect(),
         }
     };
-    let grass = tile(|x, y| {
-        if (x * 3 + y * 5) % 7 == 0 {
-            [70, 140, 60, 255]
-        } else {
-            [90, 170, 70, 255]
-        }
+    let grass = tile([70, 140, 60, 255], [90, 170, 70, 255], |x, y| {
+        (x * 3 + y * 5) % 7 == 0
     });
-    let water = tile(|x, y| {
-        if (x + 2 * y) % 8 < 2 {
-            [70, 120, 210, 255]
-        } else {
-            [40, 80, 170, 255]
-        }
+    let water = tile([70, 120, 210, 255], [40, 80, 170, 255], |x, y| {
+        (x + 2 * y) % 8 < 2
     });
     let at = |id: shuyi_core::TerrainId| tile_at(u32::from(id.0), 0);
     paint(&mut picture, at(GRASS).x, 0, &grass);
     paint(&mut picture, at(WATER).x, 0, &water);
     let wobble = Wobble::new(3).with_strength(40);
     let rim = Rim::new([232, 244, 255], RimSide::Outside).with_width(2);
-    paint(
-        &mut picture,
-        0,
-        96,
-        &generate(&water, Some(wobble), Some(rim)).unwrap(),
-    );
+    let shore = generate(&water, Some(wobble), Some(rim)).unwrap();
+    paint(&mut picture, 0, 96, &shore);
     picture
 }
 

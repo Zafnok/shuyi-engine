@@ -152,8 +152,7 @@ A game may draw them, or make them from the water's one tile with a tool it opts
 ```
 
 `cargo shuyi corners files-src/water.corners.ron` writes the sheet, a PNG of 8 × 2 pictures
-that the game draws as it draws a drawn one; `make: Rotated(...)` makes it from 5 drawn
-pieces and their quarter turns instead. The corners sit round the point, so their edges
+that the game draws as it draws a drawn one. The corners sit round the point, so their edges
 come out rounded and meet without a seam. The tileset names the sheet's pictures by their
 cells (`shuyi_assets::corners::sheet_rect`), and a test keeps the sheet equal to its recipe:
 `shuyi_cli::corners::check`, which fails naming the file and the command that remakes it.

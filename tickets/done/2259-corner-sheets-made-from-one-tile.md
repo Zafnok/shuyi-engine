@@ -279,9 +279,10 @@ recipe into a new ticket.
 - [x] The same tile, wobble and rim give the same sheet every run; two
   seeds give different sheets; `strength: 0` gives the sheet with no
   wobble.
-- [x] `rotated`: mix 4's picture is mix 8's piece turned a quarter
+- [ ] `rotated`: mix 4's picture is mix 8's piece turned a quarter
   clockwise, and mix 6's is mix 9's turned once; all 15 mixes are
-  filled; pieces of two sizes, or not square, are an error.
+  filled; pieces of two sizes, or not square, are an error. Split off
+  to 2283.
 - [x] `layer(of, (0, 96), (24, 24))` equals the toy's hand-built shore
   layer's mixes 1 to 15 (`crates/ui/src/toy/grid.rs`, `layered`): the
   same layout.
@@ -290,7 +291,7 @@ recipe into a new ticket.
   command that remakes it; a missing `out` fails too; a bad recipe fails
   with its file and line.
 - [x] A golden table, `tests/golden/corners.ron` in the chosen crate, has rows
-  `generated` and `rotated` holding the FNV hash (`shuyi_assets::fnv`)
+  `generated` and `rotated` (2283 adds that one) holding the FNV hash (`shuyi_assets::fnv`)
   of a fixed recipe's sheet, and the `determinism` job runs it on
   wasm32. The sheet is an asset a tool makes, not a frame's look, so its
   hash may be golden (`shuyi_assets::golden`, *What goes in a table*).
@@ -321,14 +322,14 @@ recipe into a new ticket.
 
 **What was done.** `shuyi_assets::corners`, behind a new `corners`
 feature of `shuyi-assets` (off by default, no dependency, `no_std`):
-`generate`, `rotated`, `sheet_rect`, `layer`, `Wobble`, `Rim`, `RimSide`,
+`generate`, `sheet_rect`, `layer`, `Wobble`, `Rim`, `RimSide`,
 `CornersError`, and the recipe (`corners::recipe`: `parse`, `Recipe`,
-`Make`, `Tile`, and `Recipe::sheet`, which cuts the tile or pieces out of
-their pictures and makes the sheet, purely). `shuyi_cli::corners`, behind
+`Make`, `Tile`, and `Recipe::sheet`, which cuts the tile out of its
+picture and makes the sheet, purely). `shuyi_cli::corners`, behind
 a new `corners` feature of `shuyi-cli` (off by default, turning the first
 on): `make`, `check` and the command `corners [--check] <recipe>...`.
-The golden table `crates/assets/tests/golden/corners.ron` (rows
-`generated`, `rotated`) runs with `shuyi-assets`' tests, so on wasm32 in
+The golden table `crates/assets/tests/golden/corners.ron` (row
+`generated`) runs with `shuyi-assets`' tests, so on wasm32 in
 the `determinism` job; the no-std job builds the feature too. The look
 snapshot is `crates/cli/tests/fixtures/corners/shore.png`.
 
@@ -354,6 +355,11 @@ builds none of it, tools included. With `--features corners`,
 golden row or toy picture changed.
 
 **Deviations.**
+- **Split, at the ticket's `**Split:**` line:** `rotated`, `PIECES`,
+  their two errors and the `Rotated` recipe went to 2283, with their
+  acceptance case and the golden table's `rotated` row. With them the
+  PR measured 1,816 counted lines. `Make` and `CornersError` are
+  `#[non_exhaustive]`, so 2283 adds to them without a break.
 - `Wobble::new(seed)` and `Rim::new(colour, side)`, with
   `with_strength`, `with_cells` and `with_width`, in place of
   constructors of every field: ADR-0151 refuses a constructor of two
@@ -368,13 +374,10 @@ golden row or toy picture changed.
   (`an_odd_tile_lines_up_as_the_painter_centres_it`).
 - `W` keeps `N` exact and rounds once, toward zero: `blend × strength /
   12800`, with `blend = N × 4wh`.
-- `pieces` is read as a list of exactly 5 (RON reads a fixed-size array
-  as a tuple, and the ticket writes a list).
-- A tile or piece outside its picture is found when the sheet is made,
-  not as the recipe parses: only then is the picture's size known. Its
-  error gives the line of the recipe's `at` (made from a tile) or
-  `pieces` (turned), found in the recipe's text, as RON gives no line
-  for a value.
+- A tile outside its picture is found when the sheet is made, not as
+  the recipe parses: only then is the picture's size known. Its error
+  gives the line of the recipe's `at`, found in the recipe's text, as
+  RON gives no line for a value.
 - `make` and `check` both hand `read` the paths as the recipe writes
   them, from its folder: the caller's `read` resolves them (the command
   joins the recipe's folder). The command a stale sheet's message ends
@@ -389,8 +392,8 @@ golden row or toy picture changed.
   tile under it, a made layer only rounds the inner corners and adds the
   rim, since a convex corner's in pixels lie on the water tile anyway.
 
-**Follow-up tickets.** 2282: a corner layer's pictures in an image of
-their own.
+**Follow-up tickets.** 2283: the sheet turned from 5 drawn pieces (the
+split). 2282: a corner layer's pictures in an image of their own.
 
 Breaking: none. Everything is new and behind two features that are off
 by default.
