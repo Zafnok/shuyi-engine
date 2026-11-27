@@ -205,7 +205,7 @@ What was done:
   the frame's update, so a new key works on the frame that told of it.
 - `BasicGame::game` installs `BasicReload` first when
   `shuyi_ui::DEBUG_TOOLS` and `ctx.debug_tools` are on.
-- ADR-0162 records it, amending ADR-0071 §4 and ADR-0040 §3 (a file reload's
+- ADR-0164 records it, amending ADR-0071 §4 and ADR-0040 §3 (a file reload's
   hook may replace the data read from files and ask for a restart). The
   *Hot reload* section of `docs/formats.md`, the base part's row in
   `docs/templates.md`, the template's `AGENTS.md` row for
@@ -228,7 +228,7 @@ no reload error; a broken `stage.map` keeps the stage playable and shows
 its error. Not looked at in a window: this session can't see one, so the
 watched folder's polling itself (`shuyi_app`, 2220's) was not run here.
 
-Size: 1,118 counted lines. It would split cleanly into `Ctx::restart` with
+Size: 1,131 counted lines. It would split cleanly into `Ctx::restart` with
 `Game::reloaded` honouring it (`ctx.rs`, `game.rs`, `screen.rs` and
 `restart_tests.rs`, about 200) and the rest, which needs it.
 

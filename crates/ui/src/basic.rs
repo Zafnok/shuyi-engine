@@ -13,7 +13,7 @@
 //! on disk. [`BasicReload`], a module a game on the short path installs
 //! with debug tools on (`shuyi_platform::BasicGame::game`), hands the
 //! context what reloaded: the new text, colours and keys, and a game
-//! started over at its first screen for a new own part (ADR-0162).
+//! started over at its first screen for a new own part (ADR-0164).
 
 use crate::prelude::*;
 use alloc::collections::{BTreeMap, BTreeSet};

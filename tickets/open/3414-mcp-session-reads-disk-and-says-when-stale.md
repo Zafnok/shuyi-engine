@@ -178,7 +178,7 @@ None.
   `basic_reload` module (`shuyi_ui::basic::BasicReload`) with debug
   tools on, which reloads the text, palette, keymap and the game's own
   part (a map, dialogue) in a session too, a new own part starting the
-  game over at its first screen (ADR-0162): add a test that a text edit
+  game over at its first screen (ADR-0164): add a test that a text edit
   shows in the next `step`'s frame and is listed in its `reloads`.
 - **Either order with 2270:** if 2270 is done, a game built with
   `disk-files` already reads its files layer from disk, so lay no second

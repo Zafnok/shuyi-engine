@@ -1,4 +1,4 @@
-# ADR-0162: The short path reloads its own files, and starts over at its first screen on a new own part
+# ADR-0164: The short path reloads its own files, and starts over at its first screen on a new own part
 
 - **Status:** Accepted
 - **Date:** 2026-11-27

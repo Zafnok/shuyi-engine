@@ -1090,7 +1090,7 @@ the folder `shuyi.ron`'s `assets` names (`assets` until it says) over its
 embedded files. A file deleted keeps its last bytes until the game restarts. It
 isn't on the web or a console.
 
-A game on the short path needs no module of its own (ADR-0162):
+A game on the short path needs no module of its own (ADR-0164):
 `BasicGame::game` installs `shuyi_ui::basic::BasicReload` (`basic_reload`)
 first, with debug tools on. `BasicData::load` records what each of the English,
 the keymap, the palette and the game's own part read (`bundle::recording`), and

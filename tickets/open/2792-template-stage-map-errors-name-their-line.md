@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-2269 (done, [ADR-0162](../../docs/adr/0162-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md))
+2269 (done, [ADR-0164](../../docs/adr/0164-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md))
 made a short-path game reload its own part under `cargo shuyi run --watch`,
 and show a broken file's errors over the frame (`Ctx::reload_errors`) and
 in `cargo shuyi check`. On a game made with `shuyi new --template grid`, a

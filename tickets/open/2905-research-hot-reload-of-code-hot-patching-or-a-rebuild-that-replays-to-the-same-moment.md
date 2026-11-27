@@ -105,7 +105,7 @@ None. This is technical.
 - **From 2269 (done):** a game on the short path under `run --watch`
   reloads its own part (a map, dialogue) by starting over at its first
   screen on the same context (`Ctx::restart`, `BasicReload`,
-  [ADR-0162](../../docs/adr/0162-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md)),
+  [ADR-0164](../../docs/adr/0164-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md)),
   so the player loses their place in the stage. Say in this ticket's
   report whether the rebuild-and-replay keeps that place for a data
   reload too (replay the session to the same moment on the new own
