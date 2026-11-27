@@ -102,9 +102,9 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// rules (ADR-0139), version 22's target profile its
 /// graphics tier, version 23's sound cue and `Sound` kind their files'
 /// lengths, version 24's map look the pictures placed on its tiles, and
-/// version 24's target profile its texture limit, beside the atlas kind
+/// version 25's target profile its texture limit, beside the atlas kind
 /// (ADR-0156).
-pub const VERSION: u32 = 24;
+pub const VERSION: u32 = 25;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";
