@@ -61,6 +61,9 @@ python -m http.server --directory public 1111
 | `config.toml` | The site's settings. `base_url` is for `zola serve`; the build passes `--base-url` |
 | `content/` | The pages: `_index.md` (the home page's text), `learn/`, `community.md`, `sponsor.md`, `news/` (one Markdown file a post) and `examples/` (one page an example, named as its folder in `examples/`) |
 | `content/changelog.md`, `content/news/generated/` | **Never committed**: `cargo xtask changelog --site site/content` writes the Changelog page and a News post for each release (`release-vX-Y-Z.md`, or `changes-YYYY-MM.md` before the first tag), and `pages.yml` runs it before `zola build`. It needs the tags and the whole history (`git clone` in full, not shallow) |
+| `content/news/` | News's posts (ticket 2805, [Posts](#posts)): one `YYYY-MM-DD-slug.md` a post, or a folder `YYYY-MM-DD-slug/` with `index.md` and its pictures; `_template.md`, the file a post is copied from, which `config.toml`'s `ignored_content` keeps from being a page; and `2026-11-27-an-example-post/`, the draft that shows every field |
+| `content/community/how-to-post.md` | How to post, for Nick: in the browser, or with the agent |
+| `data/authors.toml` | The posts' authors, by the key a post names in `extra.author` |
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
 | `content/learn/` | Learn: `_index.md`, the one way in; `book/`, the book ([The book's order](#the-book-s-order)); `errors/`, which `errors.sh` writes; and `playground.md`, the playground ([The playground](#the-playground)) |
 | `content/learn/book/` | The book ([ADR-0090](../docs/adr/0090-one-book-the-project-folded-into-the-chapters-a-newcomer-mark-around-a-passage-and-a-readers-filter-kept-in-the-browser.md)): `_index.md`, its front page, whose `extra.parts` gives its order; its flat pages, each naming its part in `extra.part` (`before-you-start.md`; the chapters, numbered by `extra.chapter`; the appendices, lettered by `extra.appendix`, the glossary the last); `box-pusher/`, its project; and `guides/`, the guides |
@@ -87,7 +90,20 @@ python -m http.server --directory public 1111
 | `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
+| `templates/news.html`, `post.html`, `atom.xml`, `taxonomy_*.html` | News (ten posts a page), a post (its cover, author, tags, and the older and newer post), the feeds (all of News, and one per tag, each post's author from `data/authors.toml`) and the tags' pages; `macros.html`'s `post_list` and `post_meta` are shared |
 | `llms-header.md` | The start of `llms.txt`: its title, its summary and what Shuyi is ([The docs for agents](#the-docs-for-agents)) |
+
+## Posts
+
+A post is Markdown with the front matter of
+[`content/news/_template.md`](content/news/_template.md), which explains
+each field. `draft = true` keeps it off the live site (`zola build` leaves
+drafts out; `zola serve --drafts` shows them). Its PR is titled `Post: …`
+and changes only `content/news/` (and `THIRD_PARTY_ASSETS.md`), so CI asks
+for no ticket. Nick's steps, by hand or with the agent's `write-post`
+skill, are [How to post](content/community/how-to-post.md). A release
+post is never written by hand: `cargo xtask changelog` writes it (with
+no author, and the `release` tag).
 
 ## The rules
 
@@ -757,6 +773,7 @@ bash copy-previews.sh
 bash copy-shots.sh
 cargo xtask check-book
 zola check --skip-external-links
+zola check --skip-external-links --drafts
 bash check-build.sh
 ```
 
@@ -783,7 +800,10 @@ unknown, or if a page with a Rust block has no `z-keyword`, which is
 highlighting turned off, or if an example's preview isn't in the build as
 the example has it, or isn't in its card, or if an example's shot isn't
 in the build as the example has it, or a page that shows one has no
-picture of it with alt text. The `test` job builds and
+picture of it with alt text, or if the draft example post is in the
+build or the template post is a page; built once more with `--drafts`, it
+fails unless the example is on News, in the feed, on its tag's page and in
+its tag's feed. The `test` job builds and
 tests `snippets/`.
 `cargo xtask check-links` reads `content/` like the rest of the
 repository's Markdown, and leaves the `@/` links to Zola.

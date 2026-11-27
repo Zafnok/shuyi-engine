@@ -5,6 +5,6 @@
 <article class="prose">
   <h1>Posts tagged “{{ term.name }}”</h1>
   {{ macros::post_list(pages=term.pages) }}
-  <p><a href="{{ get_url(path='news/') }}">All news</a></p>
+  <p><a href="{{ get_url(path='news/') }}">All news</a> · <a href="{{ term.permalink ~ 'atom.xml' | safe }}">This tag's feed (Atom)</a></p>
 </article>
 {% endblock content %}
