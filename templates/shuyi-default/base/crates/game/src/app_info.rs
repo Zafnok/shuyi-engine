@@ -2,7 +2,7 @@
 //! Who the game is, as `shuyi.ron`'s `app` says: its name, id and version, and the
 //! name its saves are kept under.
 
-use shuyi::platform::AppInfo;
+use shuyi::prelude::AppInfo;
 
 /// Who the game is: the window's title, the loading card and the storage read it.
 // check-text: not player text, who the game is (`shuyi.ron`'s `app`)

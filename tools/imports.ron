@@ -1,0 +1,317 @@
+// What the code a game is made from or learns from may name (ticket 3438,
+// ADR-0161): the template (templates/), the examples (examples/), the
+// book's snippets (site/snippets/) and the skill pack's worked examples
+// (skills/). `cargo xtask check-imports` (crates/xtask/src/imports.rs)
+// reads each `.rs` file's `use` trees and the paths in its code, and CI's
+// `layers` job runs it.
+//
+// A path under a prelude passes. Any other engine path passes only under an
+// entry of `allowed`, in the files or folders of its `in` (every file read,
+// when it has none), and each entry says why no prelude holds it. An entry
+// nothing names fails, as does one whose `in` names a file that is gone.
+// A new deep import in these files is a choice made here, in the same PR:
+// put it in a prelude when a game on its domain names it, or allow it here
+// with why.
+(
+    preludes: [
+        // `shuyi-platform`'s prelude with `run_game` (ADR-0036 §6), and its
+        // domains: `grid`, `text`, `audio` and `test`.
+        "shuyi::prelude",
+        // A game's own crate reaches the core's prelude through `shuyi`; its
+        // rules crate depends on `shuyi-core` and names it directly.
+        "shuyi::core::prelude",
+        "shuyi_core::prelude",
+        "shuyi_cli::prelude",
+    ],
+    allowed: [
+        // The facade's own root.
+        (
+            path: "shuyi::files",
+            why: "the macro that embeds a game's files, at the facade's root: a game's `lib.rs` names it once",
+        ),
+        (
+            path: "shuyi::enabled_modules",
+            why: "the modules a game turned on, at the facade's root: a game's start names it once",
+        ),
+        // The backend and the targets' entry points.
+        (
+            path: "shuyi::app",
+            in: [
+                "examples/hello-grid/src",
+                "templates/shuyi-default/base/crates/game/src/lib.rs",
+                "site/snippets/src/preview.rs",
+            ],
+            why: "the macroquad backend's start and its options (a window, the page, the watched files): a program's `main` and its preview name it; a game's screens never do",
+        ),
+        (
+            path: "shuyi_playdate",
+            in: ["examples/hello-grid/src/playdate.rs"],
+            why: "the Playdate backend's entry point, in the one file a Playdate build adds",
+        ),
+        (
+            path: "shuyi_alloc_count",
+            in: ["examples/hello-grid/examples/asset_memory.rs"],
+            why: "the counting allocator, which only a program that measures its memory installs",
+        ),
+        // The assets' formats and files, which a game's loading and its
+        // tests name by their module.
+        (
+            path: "shuyi::assets::Formats",
+            in: ["site/snippets/src/assets.rs", "skills/shuyi-cinematic", "skills/shuyi-dialogue"],
+            why: "the formats' registry, which a file of the game's own kind registers its format in",
+        ),
+        (
+            path: "shuyi::assets::format",
+            in: ["examples/hello-grid", "examples/snake", "site/snippets/src/assets.rs"],
+            why: "the formats' registry and the asset kinds, named where a game loads its files and the assets chapter shows them",
+        ),
+        (
+            path: "shuyi::assets::ron",
+            in: ["examples/hello-grid/src/lib.rs", "examples/snake/src/lib.rs", "site/snippets/src/assets.rs"],
+            why: "the RON format a game's own file kind is read with, where it registers that kind",
+        ),
+        (
+            path: "shuyi::assets::palette",
+            in: ["examples/hello-grid", "examples/snake/src/tools.rs", "site/snippets/src/screens.rs"],
+            why: "the palette file, which a game's loading and its tools read: no screen names it",
+        ),
+        (
+            path: "shuyi::assets::keymap",
+            in: ["examples/hello-grid", "site/snippets"],
+            why: "the keymap file and its keys and chords, which a game's loading, its tools and the actions chapter read; a screen names actions (`ActionSet`, `UiAction`, in `shuyi::prelude`)",
+        ),
+        (
+            path: "shuyi::assets::onebit",
+            in: ["examples/hello-grid", "examples/snake/src/tools.rs"],
+            why: "the one-bit look's pattern file, which a one-bit target's loading and tools read",
+        ),
+        (
+            path: "shuyi::assets::bitmap",
+            in: ["examples/hello-grid"],
+            why: "the one-bit bitmap file, which a one-bit target's loading and its test read",
+        ),
+        (
+            path: "shuyi::assets::image",
+            in: ["examples/hello-grid"],
+            why: "the image table, which a game's loading and its asset tests build",
+        ),
+        (
+            path: "shuyi::assets::pack",
+            in: ["examples/hello-grid"],
+            why: "the baked pack's own types, which the example's pack tests and its memory program name",
+        ),
+        (
+            path: "shuyi::assets::target",
+            in: ["examples/hello-grid/examples/asset_memory.rs", "examples/hello-grid/src/tools.rs"],
+            why: "a target's profile, which a game's tools read",
+        ),
+        (
+            path: "shuyi::assets::hot",
+            in: ["examples/hello-grid/src/hot_palette.rs", "site/snippets/src/assets.rs"],
+            why: "hot reload's types, in the one file of the example that reloads and the assets chapter's snippet",
+        ),
+        (
+            path: "shuyi::assets::sfx",
+            in: ["examples/hello-grid/src/sound.rs"],
+            why: "the sound effects' generator, behind the assets' `sfx` feature a game turns on itself",
+        ),
+        (
+            path: "shuyi_assets::golden",
+            in: ["examples/hello-grid/tests/golden.rs", "examples/snake/tests/golden.rs"],
+            why: "the golden table, behind the assets' `golden` feature a game's golden test turns on",
+        ),
+        (
+            path: "shuyi_assets::message",
+            in: ["examples/hello-grid/tests/it/parses.rs"],
+            why: "the parse counter, behind the assets' `parse-count` feature the one test that counts turns on",
+        ),
+        // Modules a game turns to for one job, named by their module.
+        (
+            path: "shuyi::assets::dialogue",
+            in: ["examples/hello-grid", "site/snippets", "skills/shuyi-dialogue"],
+            why: "the dialogue files, named by their module where a game talks, as the shuyi-dialogue skill shows",
+        ),
+        (
+            path: "shuyi::ui::dialogue",
+            in: ["examples/hello-grid", "site/snippets/src/preview.rs", "skills/shuyi-dialogue"],
+            why: "the dialogue player, its text box and its preview, named by their module where a game talks",
+        ),
+        (
+            path: "shuyi::assets::cinematic",
+            in: ["skills/shuyi-cinematic"],
+            why: "the cinematic files, named by their module where a game plays one, as the shuyi-cinematic skill shows",
+        ),
+        (
+            path: "shuyi::ui::cinematic",
+            in: ["skills/shuyi-cinematic"],
+            why: "the cinematic player, named by its module where a game plays one",
+        ),
+        (
+            path: "shuyi::ui::widgets",
+            in: ["examples/hello-grid/src", "skills/shuyi-dialogue"],
+            why: "the menu widget and its views, named by their module in the screens that show a menu",
+        ),
+        (
+            path: "shuyi::ui::screens",
+            in: ["examples/hello-grid"],
+            why: "the engine's ready-made options, key and profile screens, which a game that keeps its own menu builds on",
+        ),
+        (
+            path: "shuyi::ui::settings",
+            in: ["examples/hello-grid", "site/snippets/src/saves.rs"],
+            why: "the settings' file and its fields, where a game keeps settings of its own, as the saves chapter shows",
+        ),
+        (
+            path: "shuyi::ui::storage",
+            in: ["examples/hello-grid/tests/it/options.rs", "site/snippets/src/saves.rs"],
+            why: "the storage and its save bundle, which the saves chapter and a test of a save name",
+        ),
+        (
+            path: "shuyi::ui::profiles",
+            in: ["examples/hello-grid/tests/it/profiles.rs"],
+            why: "the player profiles' ids, in the test of the profiles screen",
+        ),
+        (
+            path: "shuyi::ui::frame",
+            in: [
+                "examples/hello-grid",
+                "examples/snake/src/screens.rs",
+                "site/snippets/src/frame.rs",
+                "templates/shuyi-default",
+            ],
+            why: "the frame's painted items, the palette and the one-bit raster: a skin and a test of a look name them (graphics are a skin, ADR-0002 §4); a screen paints through the prelude's glyph buffer",
+        ),
+        (
+            path: "shuyi::ui::debug",
+            in: [
+                "examples/hello-grid",
+                "site/snippets",
+                "templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid.rs",
+            ],
+            why: "the debug menu and the gizmos, a debug build's own, named by their module",
+        ),
+        (
+            path: "shuyi::ui::input",
+            in: [
+                "examples/hello-grid/src",
+                "examples/snake/src/tools.rs",
+                "site/snippets",
+                "templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs",
+            ],
+            why: "how the controls fit a target and a key's name: a game's tools and the actions chapter name them (rule 8: text names keys through the keymap)",
+        ),
+        (
+            path: "shuyi::ui::tick",
+            in: ["examples/snake/src/screens.rs", "site/snippets/src/rules.rs"],
+            why: "the tick driver, which a tick game's one screen of play runs its steps through",
+        ),
+        (
+            path: "shuyi::ui::frame_cap",
+            in: ["examples/hello-grid"],
+            why: "the frame cap's setting, which the example's options offer",
+        ),
+        (
+            path: "shuyi::ui::perf",
+            in: ["examples/hello-grid/tests/it"],
+            why: "the frame times' clock and the heap's text, which the example's tests of its numbers read",
+        ),
+        (
+            path: "shuyi::ui::module",
+            in: ["examples/hello-grid/src/preview.rs"],
+            why: "a module's install error, in the dialogue preview that installs one",
+        ),
+        (
+            path: "shuyi::ui::ScreenHook",
+            in: ["examples/hello-grid/src/lib.rs"],
+            why: "a hook on every screen, which a game installs once in its start",
+        ),
+        (
+            path: "shuyi::ui::RawInputEvent",
+            in: ["examples/hello-grid/tests/it"],
+            why: "the backend's raw input, which a test feeds the Harness to press what a player presses",
+        ),
+        // The platform's start types beside the prelude's.
+        (
+            path: "shuyi::platform::Progress",
+            in: ["examples/hello-grid"],
+            why: "a load's progress, which a game that loads in steps reports",
+        ),
+        (
+            path: "shuyi::platform::OneBitLook",
+            in: ["examples/hello-grid/src/lib.rs"],
+            why: "the one-bit look a one-bit target's start sets",
+        ),
+        (
+            path: "shuyi::platform::SystemHook",
+            in: ["examples/snake/src/lib.rs"],
+            why: "a hook on the system's events, which a game installs once in its start",
+        ),
+        (
+            path: "shuyi::platform::CrashRecord",
+            in: ["skills/shuyi-cinematic/example/stages.rs", "skills/shuyi-dialogue/example/stages.rs"],
+            why: "the crash record a skill's worked example gives its stage's start",
+        ),
+        (
+            path: "shuyi::platform::ChosenFile",
+            in: ["site/snippets/src/saves.rs"],
+            why: "a file the player chose, in the saves chapter's import",
+        ),
+        (
+            path: "shuyi::platform::Frame",
+            in: ["examples/hello-grid/src/tools.rs"],
+            why: "the frame the tools read a picture from",
+        ),
+        (
+            path: "shuyi::platform::Show",
+            in: ["examples/hello-grid/src/tools.rs"],
+            why: "how the tools show a frame",
+        ),
+        (
+            path: "shuyi::platform::headless",
+            in: ["examples/hello-grid/src/tools.rs", "examples/hello-grid/tests/it/files.rs"],
+            why: "the headless platform under the Harness, which the tools and the files' test drive",
+        ),
+        (
+            path: "shuyi::platform::App",
+            in: ["examples/hello-grid/tests/it/files.rs"],
+            why: "the app the Harness runs, which the files' test reads",
+        ),
+        (
+            path: "shuyi::platform::LoadSlice",
+            in: ["examples/hello-grid/tests/it/files.rs"],
+            why: "a load's step, which the files' test plays one by one",
+        ),
+        (
+            path: "shuyi::platform::Millis",
+            in: ["examples/hello-grid/tests/it/files.rs"],
+            why: "the time a load's step takes, in the files' test",
+        ),
+        // The tools' own modules, which the example's tests of the tools
+        // exercise.
+        (
+            path: "shuyi_cli::frame_png",
+            in: ["examples/hello-grid", "examples/snake/tests/it/files.rs"],
+            why: "`frame-png`'s own functions (its arguments and its run), which the tests of the tools call; its scripts and shots are in `shuyi_cli::prelude`",
+        ),
+        (
+            path: "shuyi_cli::contract",
+            in: ["examples/hello-grid/tests/it/contract.rs", "examples/hello-grid/tests/it/playtest.rs"],
+            why: "the contract's own test: it reads each operation's module (`new`, `doctor`, `perf`, `Op`), past the operations a game's tests call",
+        ),
+        (
+            path: "shuyi_cli::font_atlas",
+            in: ["examples/hello-grid/tests/it/files.rs"],
+            why: "`font-atlas`, which the files' test runs to check the checked-in atlas",
+        ),
+        (
+            path: "shuyi_cli::glyph_tiles",
+            in: ["examples/hello-grid/tests/it/files.rs"],
+            why: "`glyph-tiles`, which the files' test runs to check the checked-in tiles",
+        ),
+        (
+            path: "shuyi_cli::app_info",
+            in: ["site/snippets/src/targets.rs"],
+            why: "`app-info`'s check, which the targets chapter shows",
+        ),
+    ],
+)

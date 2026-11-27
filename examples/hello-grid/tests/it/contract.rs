@@ -8,21 +8,18 @@ use std::path::{Path, PathBuf};
 
 use hello_grid::Hello;
 use hello_grid::tools::{HelloTools, StageRecord, Start as HelloStart};
-use shuyi::core::{ContentHash, Made};
-use shuyi::platform::harness::Harness;
-use shuyi::platform::session::SessionRecord;
+use shuyi::core::prelude::{ContentHash, Made};
+use shuyi::prelude::test::{Harness, SessionRecord};
 use shuyi::ui::RawInputEvent;
 use shuyi::ui::debug::DebugMenuScreen;
-use shuyi_cli::GameTools;
-use shuyi_cli::contract::check::{CheckInput, check};
+use shuyi_cli::contract;
 use shuyi_cli::contract::doctor::{DoctorInput, ThisMachine, doctor};
-use shuyi_cli::contract::import::{ImportInput, import};
 use shuyi_cli::contract::new::{Engine, NewInput, new};
-use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
-use shuyi_cli::contract::replay::{ReplayInput, replay};
-use shuyi_cli::contract::run::{RunInput, keys, run, run_at, scene, scene_at};
-use shuyi_cli::contract::session::{Event, SessionInput};
-use shuyi_cli::{GameArg, contract, serde_json};
+use shuyi_cli::prelude::{
+    CheckInput, Event, GameArg, GameTools, ImportInput, PlaytestInput, PlaytestOutput, ReplayInput,
+    RunInput, SessionInput, check, import, keys, playtest, replay, run, run_at, scene, scene_at,
+    serde_json,
+};
 
 /// The game's folder, its project's root.
 fn root() -> &'static Path {
@@ -238,7 +235,7 @@ fn a_crash_record_holds_the_commands_taken_and_the_pending_one() {
     use hello_grid::rules::Chase;
     use hello_grid::screens::StageScreen;
     use hello_grid::screens::stage::crash_record;
-    use shuyi::core::{Bot, RandomBot, Sides, TurnRules};
+    use shuyi::core::prelude::{Bot, RandomBot, Sides, TurnRules};
 
     let title = HelloStart::from_options(&[]).unwrap().harness();
     assert_eq!(crash_record(title.game()), None);

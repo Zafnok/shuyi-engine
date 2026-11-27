@@ -7,13 +7,10 @@
 
 use std::sync::Arc;
 
-use shuyi::assets::ContentError;
-use shuyi::assets::bundle::Bundle;
 use shuyi::assets::hot::{Hot, Reload};
 use shuyi::assets::palette::PaletteDef;
-use shuyi::ui::Ctx;
-use shuyi::ui::frame::{EngineColor, Palette};
-use shuyi::ui::module::{Hook, Install, Module};
+use shuyi::prelude::{Bundle, ContentError, Ctx, EngineColor, Hook, Install, Module};
+use shuyi::ui::frame::Palette;
 
 use crate::prelude::*;
 use crate::{Hello, formats};

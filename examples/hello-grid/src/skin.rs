@@ -4,13 +4,12 @@
 
 use crate::prelude::*;
 
+use shuyi::prelude::text::StyledText;
+use shuyi::prelude::{BoxStyle, Cell, Ctx, EngineColor, GameData, GlyphBuffer, Rect, Rgb};
 use shuyi::ui::dialogue::TextView;
 use shuyi::ui::dialogue::text_box::{self, glyph::BoxPlace};
-use shuyi::ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
-use shuyi::ui::frame::{EngineColor, Palette, Rgb};
-use shuyi::ui::text::StyledText;
+use shuyi::ui::frame::Palette;
 use shuyi::ui::widgets::menu::{self, MenuView};
-use shuyi::ui::{Ctx, GameData};
 
 /// What the title shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -205,7 +204,7 @@ pub fn paint_end<G: GameData>(ctx: &Ctx<G>, view: &EndView, buf: &mut GlyphBuffe
 
 #[cfg(test)]
 mod tests {
-    use shuyi::ui::frame::ConsoleSpec;
+    use shuyi::prelude::ConsoleSpec;
 
     use super::*;
     use crate::rules::Outcome;

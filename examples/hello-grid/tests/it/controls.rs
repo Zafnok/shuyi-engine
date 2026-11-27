@@ -6,9 +6,7 @@
 use std::path::Path;
 
 use hello_grid::tools::{HelloTools, controls};
-use shuyi_cli::contract::check::{CheckInput, targets};
-use shuyi_cli::contract::target::{TargetCheck, engine_profiles};
-use shuyi_cli::project::Project;
+use shuyi_cli::prelude::{CheckInput, Project, TargetCheck, engine_profiles, targets};
 
 #[test]
 fn every_screen_declares_its_actions_and_they_fit_every_target() {

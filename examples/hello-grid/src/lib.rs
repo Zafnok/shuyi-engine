@@ -54,40 +54,36 @@ use alloc::collections::BTreeMap;
 use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
-use shuyi::assets::ContentError;
-use shuyi::assets::audio::AudioManifest;
 use shuyi::assets::bitmap::OneBitFile;
-use shuyi::assets::bundle::Bundle;
-#[cfg(all(feature = "std", not(feature = "packed")))]
-use shuyi::assets::bundle::Embedded;
-#[cfg(feature = "std")]
-use shuyi::assets::bundle::Layer;
 use shuyi::assets::dialogue::{DialogueFile, DialogueTable};
-use shuyi::assets::font::{FontAtlasDef, FontAtlasRon};
 use shuyi::assets::format::{AssetKind, Formats};
-use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::assets::image::{ImageId, ImageTable};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon, Layout};
-use shuyi::assets::lang::{Lang, SourceText};
-use shuyi::assets::lighting::Lighting;
 use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::pack::{Bake, Pack};
 use shuyi::assets::palette::{PaletteDef, PaletteRon};
 use shuyi::assets::ron::Ron;
-use shuyi::assets::voice::ClipVariant;
 #[cfg(feature = "std")]
-use shuyi::core::Made;
-use shuyi::core::TerrainId;
+use shuyi::core::prelude::Made;
+use shuyi::core::prelude::TerrainId;
 #[cfg(feature = "std")]
-use shuyi::core::{StateHash, state_hash};
+use shuyi::core::prelude::{StateHash, state_hash};
+use shuyi::platform::OneBitLook;
+#[cfg(all(feature = "std", not(feature = "packed")))]
+use shuyi::prelude::Embedded;
 #[cfg(feature = "std")]
-use shuyi::platform::{Card, Setup, Start};
-use shuyi::platform::{Look, OneBitLook};
+use shuyi::prelude::Layer;
+use shuyi::prelude::Look;
+use shuyi::prelude::audio::{AudioManifest, ClipVariant};
+use shuyi::prelude::grid::{GridMap, Lighting, MapText, SpriteSkin};
+use shuyi::prelude::text::{Font, FontAtlasDef, FontAtlasRon, Lang, SourceText};
+use shuyi::prelude::{Bundle, ContentError};
+#[cfg(feature = "std")]
+use shuyi::prelude::{Card, Setup, Start};
+use shuyi::prelude::{ConsoleSpec, Ctx, EngineColor, Game, GameData, GameHooks};
+use shuyi::ui::ScreenHook;
 use shuyi::ui::debug::DebugMenuScreen;
-use shuyi::ui::frame::onebit::{Font, PatternMap};
-use shuyi::ui::frame::{ConsoleSpec, EngineColor};
-use shuyi::ui::grid::SpriteSkin;
-use shuyi::ui::{Ctx, Game, GameData, GameHooks, ScreenHook};
+use shuyi::ui::frame::onebit::PatternMap;
 
 pub use action::Action;
 pub use loading::DataLoad;
@@ -748,7 +744,7 @@ mod tests {
         let english: std::collections::BTreeMap<String, String> =
             ron::from_str(include_str!("../files/en.ron")).unwrap();
         for (key, text) in &english {
-            let parsed = shuyi::assets::message::Message::parse(text);
+            let parsed = shuyi::prelude::text::Message::parse(text);
             assert!(parsed.is_ok(), "{key}: {parsed:?}");
         }
     }

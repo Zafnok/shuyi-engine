@@ -34,9 +34,9 @@ use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
-use shuyi::core::{Pos, TurnRules, flow_field};
-use shuyi::platform::harness::Harness;
-use shuyi_cli::contract::target::engine_profiles;
+use shuyi::core::prelude::{Pos, TurnRules, flow_field};
+use shuyi::prelude::test::Harness;
+use shuyi_cli::prelude::engine_profiles;
 
 /// The game at its title, its first stage seeded with `seed`, run as the
 /// engine's target `id` (`desktop`, `web`).

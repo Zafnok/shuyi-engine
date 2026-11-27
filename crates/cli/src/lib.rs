@@ -87,6 +87,33 @@ pub use serde_json;
 /// the raster in `shuyi-ui`).
 pub use shuyi_ui::frame::raster::test_card;
 
+/// What a game's tool program and its tests name (ADR-0161), with `use
+/// shuyi_cli::prelude::*;`: the game's tools ([`GameTools`], [`BasicTools`]
+/// and their plans), [`main_with`], the project, and the contract's
+/// operations a game's tests call, with their inputs and outputs (`check`,
+/// `run` and `scene`, `replay`, `playtest`, `autobalance`, `import`,
+/// `bake`, the session's types and the targets' profiles), and
+/// `frame-png`'s scripts, shots and pictures.
+pub mod prelude {
+    pub use crate::codec::{decode_png, encode_png};
+    pub use crate::contract::Answer;
+    pub use crate::contract::autobalance::{AutobalanceInput, AutobalanceOutput, autobalance};
+    pub use crate::contract::bake::{BakeInput, bake};
+    pub use crate::contract::check::{CheckInput, check, targets};
+    pub use crate::contract::import::{ImportInput, Importers, import};
+    pub use crate::contract::playtest::{PlaytestInput, PlaytestOutput, Summary, playtest};
+    pub use crate::contract::replay::{Record, ReplayInput, ReplayRun, replay, ticks, turns};
+    pub use crate::contract::run::{RunInput, keys, run, run_at, scene, scene_at};
+    pub use crate::contract::session::{Event, Headless, Scene, Session, SessionInput};
+    pub use crate::contract::target::{Level, TargetCheck, engine_profiles, one_bit};
+    pub use crate::frame_png::{Capture, Image, Painter, Script, Shot, Step, sheet};
+    pub use crate::project::Config;
+    pub use crate::{
+        AutobalancePlan, BasicTools, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools,
+        OneBitSkin, PlaytestPlan, Project, Tunable, main_with, serde_json,
+    };
+}
+
 /// The commands of `shuyi` that aren't operations of the contract
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name

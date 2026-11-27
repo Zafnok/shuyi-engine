@@ -6,11 +6,10 @@ use std::path::Path;
 
 use shuyi::app::run_dialogue_preview;
 use shuyi::assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
-use shuyi::prelude::*;
+use shuyi::prelude::{Rect, *};
 use shuyi::ui::dialogue::preview::{Play, PreviewGame, PreviewScreen, Showing};
 use shuyi::ui::dialogue::text_box::glyph::{self, BoxPlace};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView};
-use shuyi::ui::frame::glyph_buffer::Rect;
 
 use crate::{Data, game};
 
@@ -141,8 +140,8 @@ pub fn main() {
 mod tests {
     use std::collections::BTreeMap;
 
-    use shuyi::assets::bundle::Layer;
     use shuyi::assets::dialogue::{Present, parse_dlg};
+    use shuyi::prelude::Layer;
     use shuyi::ui::dialogue::preview::DialoguePreview;
 
     use super::*;

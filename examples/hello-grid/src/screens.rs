@@ -12,14 +12,13 @@ use core::any::Any;
 use crate::prelude::*;
 
 use shuyi::assets::dialogue::{Present, Side as Speaker};
+use shuyi::prelude::{Ctx, FrameInput, GlyphBuffer, Screen, Transition};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
-use shuyi::ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi::ui::input::ui_actions;
 use shuyi::ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
 use shuyi::ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
 use shuyi::ui::screens::profiles::ProfilesScreen;
 use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
-use shuyi::ui::{Ctx, FrameInput, Screen, Transition};
 
 pub use stage::StageScreen;
 

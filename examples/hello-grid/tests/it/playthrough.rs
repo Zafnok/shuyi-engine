@@ -7,10 +7,10 @@ use hello_grid::map::MOVE;
 use hello_grid::rules::{Outcome, Side, TRIP_PERCENT};
 use hello_grid::screens::{End, Leave, StageScreen, Talk, Title};
 use shuyi::assets::dialogue::{DialogueTable, NoDirective, parse_dlg};
-use shuyi::core::{Pos, Sides, SimRng};
-use shuyi::platform::harness::Harness;
-use shuyi::ui::grid::MapUnit;
-use shuyi::ui::{Game, GameHooks};
+use shuyi::core::prelude::{Pos, Sides, SimRng};
+use shuyi::prelude::grid::MapUnit;
+use shuyi::prelude::test::Harness;
+use shuyi::prelude::{Game, GameHooks};
 
 use crate::{play_out, stage, title, title_on, to_the_foe, to_the_goal, walk_to};
 

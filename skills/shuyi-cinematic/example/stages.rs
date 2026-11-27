@@ -40,6 +40,6 @@ pub fn crash_record() -> Option<shuyi::platform::CrashRecord<Data>> {
 
 /// The game's tools: the engine's, for a game on the short path.
 #[cfg(feature = "tools")]
-pub fn tools() -> shuyi_cli::BasicTools<UiAction, Own> {
-    shuyi_cli::BasicTools::new(crate::game())
+pub fn tools() -> shuyi_cli::prelude::BasicTools<UiAction, Own> {
+    shuyi_cli::prelude::BasicTools::new(crate::game())
 }

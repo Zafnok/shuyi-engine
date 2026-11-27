@@ -289,6 +289,11 @@ pub const GATES: &[Gate] = &[
     gate("engine lint", "test", CODE)
         .fast(Fast::IfChanged(".rs"))
         .steps(&["cargo run -q -p shuyi-cli --locked -- lint"]),
+    // The template's, the examples', the snippets' and the skills' imports
+    // through the preludes (ADR-0161).
+    gate("imports", "layers", CODE)
+        .fast(Fast::Yes)
+        .steps(&["cargo xtask check-imports"]),
     gate("skill loaders", "tickets", Filter::Always)
         .steps(&["pwsh -File scripts/sync-agent-skills.ps1 -Check"]),
     gate("tickets' checks", "tickets", Filter::Always).steps(&[
@@ -1467,13 +1472,24 @@ mod tests {
     fn fast_runs_the_quick_gates_and_the_lint_only_on_rust() {
         assert_eq!(
             running(&["crates/core/src/lib.rs"], true),
-            ["fmt", "typos", "ticket-lint", "engine lint"]
+            ["fmt", "typos", "ticket-lint", "engine lint", "imports"]
         );
         assert_eq!(
             running(&["crates/core/Cargo.toml"], true),
-            ["fmt", "typos", "ticket-lint"]
+            ["fmt", "typos", "ticket-lint", "imports"]
         );
         assert_eq!(running(&["docs/x.md"], true), ["typos", "ticket-lint"]);
+    }
+
+    /// The fast set (the pre-push hook's) checks the imports of the code a
+    /// game learns from, and of the list (ticket 3438).
+    #[test]
+    fn the_fast_set_runs_check_imports() {
+        let imports = GATES.iter().find(|g| g.name == "imports").unwrap();
+        assert_eq!(imports.steps, ["cargo xtask check-imports"]);
+        for path in ["examples/hello-grid/src/lib.rs", "tools/imports.ron"] {
+            assert!(running(&[path], true).contains(&"imports"), "{path}");
+        }
     }
 
     #[test]
@@ -1678,7 +1694,7 @@ done
             text.ends_with(
                 "|
 
-CI only (`cargo xtask gates --list` gives each reason): skill loaders, tickets' checks.
+CI only (`cargo xtask gates --list` gives each reason): imports, skill loaders.
 "
             ),
             "{text}"
@@ -1693,7 +1709,7 @@ CI only (`cargo xtask gates --list` gives each reason): skill loaders, tickets' 
         );
         assert!(listed.contains("(`cargo xtask gates --list`)"), "{listed}");
         assert!(
-            listed.contains("| skill loaders | `tickets` | CI only: needs Xvfb |"),
+            listed.contains("| imports | `layers` | CI only: needs Xvfb |"),
             "{listed}"
         );
         assert!(listed.contains("CI only: needs Chromium"), "{listed}");
