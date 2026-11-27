@@ -172,6 +172,9 @@ None.
   MCP host's answer with the CLI's `--questions --json` for the same
   `set`.
 - Ticket 3437's context now says what holds after this ticket.
+- Deviation: `cargo xtask check-skills` no longer exists; the skill
+  pack is checked by the gates' `skill examples` and `skill loaders` and
+  by `cargo xtask docs-rules`, which all pass.
 
 Behaviour: shuyi-cli: `new::new` refuses an input with `questions`
 (`SH0001`); the MCP `new` tool reads a relative `answers` from the
