@@ -49,8 +49,9 @@ unless the person who asked for the game wants one.
 A tileset for a grid map's sprite skin is a PNG of tiles that the game's
 skin cuts by rectangle; `cargo shuyi glyph-tiles` draws one from the
 font and the palette, when `shuyi.ron` has a `glyph_tiles` entry. Its
-ground (a tile per terrain, the corner and tile layers over them, other
-looks by name) is a `terrain-tiles` RON file beside it: the game
+ground (a tile per terrain, the corner and tile layers over them, the
+pictures a map places on its tiles by name, `props: { "lamp": (at: (4,
+0), size: (16, 32)) }`, other looks by name) is a `terrain-tiles` RON file beside it: the game
 registers `tileset::TerrainTilesRon` with the looks its maps name and
 the tile sizes it allows, and makes the skin's tiles with
 `TerrainTilesDef::resolve`, which reports every picture outside the PNG

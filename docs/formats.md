@@ -426,14 +426,20 @@ What each one reads:
   `layers` painted over them and other `looks` by the name a map's look
   gives, each picture a `(column, row)` cell of `tile_px` cells. A corner
   layer may give its pictures a `size` (left out, `tile_px`), an
-  `offset` and terrains to `skip`. The module docs of `tileset` have a
-  file. The format checks the file alone (`TerrainTilesDef::problems`): a
+  `offset` and terrains to `skip`. Each look may name the pictures a map
+  places on its tiles (`props`, ticket 2281): a cell and a `size` in
+  pixels (left out, `tile_px`), `props: { "lamp": (at: (4, 0), size:
+  (16, 32)) }`; a look's `props` are its own. The module docs of
+  `tileset` have a file. The format checks the file alone (`TerrainTilesDef::problems`): a
   side of `tile_px` or a `size` outside the rules' `side_px`; a look's
   name not one of the rules' `looks`, or `outdoor` (the own look, written
   at the top); a layer whose `of` is empty; a mix not four of `#` and
   `.`, or listed twice; a corner layer with a picture for `....`, or with
-  none. Each problem names its look and layer (`look "winter": layer 2:
-  …`).
+  none; a picture to place with an empty name, or a side of its `size` 0
+  or outside `side_px`. Each problem names its look and layer or picture
+  (`look "winter": layer 2: …`, `look "winter": prop "lamp": …`).
+  `TerrainTilesDef::resolve` reports a picture outside the image, a
+  picture to place too.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

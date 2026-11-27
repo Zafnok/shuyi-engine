@@ -21,6 +21,7 @@
 //!
 //! Over the layers, a look may also have pictures a map places by hand
 //! ([`Look::props`]): a lamp at a gate, where no terrain says one goes.
+//! A file names them in a look's `props`, each its own.
 //!
 //! These are the tiles as a skin paints them. A file writes them as a
 //! [`TerrainTilesDef`], read by the format [`TerrainTilesRon`] and checked
@@ -45,6 +46,9 @@
 //!         // `offset: (1, 3)` and `skip: ["soil"]` (none).
 //!         Tiles(of: ["tilled"], at: (3, 0)),
 //!     ],
+//!     // Pictures a map places on its tiles by name, over the layers.
+//!     // Optional: `size` (left out, `tile_px`).
+//!     props: { "lamp": (at: (3, 1), size: (16, 32)), "sign": (at: (0, 2)) },
 //!     // Other looks, by the name a map's look gives.
 //!     looks: { "winter": (terrain: { "soil": (0, 2), "tilled": (1, 2), "water": (2, 2) }) },
 //! )
@@ -62,7 +66,9 @@ use crate::format::AssetKind;
 use crate::image::{ImageId, ImageRect};
 
 mod def;
-pub use def::{CornersAt, LayerDef, LookDef, SidesAt, TerrainTilesDef, TerrainTilesRon, TileRules};
+pub use def::{
+    CornersAt, LayerDef, LookDef, PropAt, SidesAt, TerrainTilesDef, TerrainTilesRon, TileRules,
+};
 
 /// How many mixes four yes-or-no places have: a layer has a picture for
 /// each (or none).

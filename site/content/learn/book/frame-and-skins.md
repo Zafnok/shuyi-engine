@@ -137,9 +137,10 @@ for](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-built-
 A few things no terrain says, a lamp at a gate or a signpost at a crossing, a map
 places by hand in its file's `look`:
 `look: (props: { (19, 5): "lamp" })`. The tileset's look says what each name is drawn as
-(`Look::props`), and the sprite skin stands it on its tile, so a picture taller than a
-tile reaches up over the one above. They are only a look: the rules never see them, and
-the glyph skin draws none.
+(`Look::props`); a `terrain-tiles` file writes it in the look's own `props`, a cell of the
+image and a size in pixels: `props: { "lamp": (at: (4, 0), size: (16, 32)) }`. The sprite
+skin stands it on its tile, so a picture taller than a tile reaches up over the one
+above. They are only a look: the rules never see them, and the glyph skin draws none.
 
 ## A picture the skin paints
 

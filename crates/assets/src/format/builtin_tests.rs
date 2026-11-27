@@ -166,7 +166,8 @@ pub(crate) const TILE_LOOKS: &[&str] = &["outdoor", "winter", "cave"];
 /// The rules of these tests, as a game writes them in a `const`.
 pub(crate) const TILE_RULES: TileRules<'static> = TileRules::new(TILE_LOOKS, 8..=64);
 
-/// A farm's terrain tiles: two looks, a corners and a tiles layer, in
+/// A farm's terrain tiles: two looks, a corners and a tiles layer, two
+/// pictures a map may place on the own look (none on the other), in
 /// [`terrain_tiles_images`]' image.
 pub(crate) const TERRAIN_TILES: &str = r##"(
     image: "tiles/farm.png",
@@ -180,6 +181,7 @@ pub(crate) const TERRAIN_TILES: &str = r##"(
         Tiles(of: ["tilled"], at: (3, 0), beside: ["water"],
               sides: [(sides: ".#.#", at: (3, 1))]),
     ],
+    props: { "lamp": (at: (3, 1), size: (16, 32)), "sign": (at: (0, 2)) },
     looks: {
         "winter": (terrain: { "soil": (0, 2), "tilled": (1, 2), "water": (2, 2) }, layers: [
             Corners(of: ["water", "tilled"], tiles: [(corners: "#...", at: (3, 2))]),
