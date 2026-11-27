@@ -77,7 +77,7 @@ fn options_read_out_or_check() {
 }
 
 #[test]
-fn the_repositorys_terms_have_their_shape() {
+fn the_terms_in_the_repository_have_their_shape() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let terms = read_terms(&fs::read_to_string(root.join(TERMS)).unwrap()).unwrap();
     let open = ticket_ids(&root.join("tickets/open")).unwrap();
