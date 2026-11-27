@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 3541 — shuyi-embed's walk takes a file that vanishes mid-walk as gone, and enters no skipped folder
@@ -78,13 +78,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A file that vanishes between `read_dir` and `metadata` is left
+- [x] A file that vanishes between `read_dir` and `metadata` is left
       out of the walk, not an error; any other read error still is.
-- [ ] A folder `**/target/**` matches is not entered, and its files are
+- [x] A folder `**/target/**` matches is not entered, and its files are
       neither embedded nor watched.
-- [ ] `crates/cli`'s embedded tables hold the same files as before (a
+- [x] `crates/cli`'s embedded tables hold the same files as before (a
       test or a before/after listing in the notes).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -93,5 +93,38 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `walk` (`crates/embed/src/lib.rs`) reads each entry through `kind_of`,
+  and each folder's listing through `gone_is_none`: a `NotFound` is the
+  entry left out (a folder gone before its `read_dir` is neither walked
+  nor in `Walk::folders`, so cargo isn't told to watch a missing path).
+  Any other error is still `Error::Read`.
+- `walk` doesn't enter a folder a skip pattern matches whole
+  (`skips_folder`: the pattern is `**`, or ends `/**` after parts that
+  match the folder, as `**/target/**` does `target` and `04-push/target`).
+  A pattern that skips only some of a folder's files (`**/*.png`,
+  `art/*`) still enters it.
+- **The decision on `Walk::skipped`:** a skipped folder lists nothing
+  there, not `target/`. `Layer::leaving_out` binary-searches exact file
+  paths (`crates/assets/src/bundle.rs`, `left_out`), so it doesn't read a
+  folder entry that way; `skipped!`'s only use is the embed fixture
+  (`crates/embed/fixture`), whose patterns skip files. `crates/cli`
+  never includes a `skipped!` list. The game (`gh search code --repo
+  Zafnok/visions-of-shuyi 'skipped!'`, `'shuyi_embed'`) reads only
+  `walk.files` (`crates/content/src/layer_files.rs`); its `leaving_out`
+  list is its own `playdate_left_out.rs`, not a walk's.
+- Docs: the crate's top docs, `walk`, `Walk`, `Table::skip`,
+  `Written::watched` and `skipped!` say both. ADR-0138 is accepted and
+  left as it is: its §1 says what the table and list are, which holds.
+- Tests (`crates/embed/src/tests.rs`): the vanished entry
+  (`kind_of` on a path that doesn't exist), another error still failing
+  (a NUL in the path; `gone_is_none` on a permission error), the skipped
+  folder not entered, listed or watched (by `walk` and `write_to`), a
+  partly skipped folder still entered, and which patterns skip a folder.
+- **`crates/cli`'s tables, before and after** (each `shuyi_embed_*.rs`
+  of its `OUT_DIR`, built on this worktree): all seven tables are
+  byte-identical. The `examples` and `tutorial` `_skipped` lists lost the
+  files of folders skipped whole (`.cargo/`, `font/`, `examples/`,
+  `.sentry-native/`); nothing reads them.
+- Deviations: none.
+
+Behaviour: shuyi-embed: `walk` leaves out a file or folder deleted while it walks, where it failed; a folder a skip pattern matches whole (`dir/**`) isn't entered, so its files are no longer in `Walk::skipped`, `skipped!` or `Written::watched`, and a change in it no longer reruns the build script.

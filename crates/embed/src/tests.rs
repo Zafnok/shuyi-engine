@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{Entry, Error, Table, matches, paths_source, same_but_case, table_source, walk};
+use super::{
+    Entry, Error, Table, gone_is_none, kind_of, matches, paths_source, same_but_case, skips_folder,
+    table_source, walk,
+};
 
 /// An empty folder of its own for test `name`.
 fn scratch(name: &str) -> PathBuf {
@@ -106,6 +109,91 @@ fn skipped_files_are_left_out_and_listed() {
     let walk = walk(&root, &skip).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(paths(&walk), ["data/one.ron"]);
     assert_eq!(walk.skipped, ["README.md", "data/README.md"]);
+}
+
+#[test]
+fn a_file_gone_before_it_is_read_is_left_out_not_an_error() {
+    let root = scratch("vanished");
+    // A path its folder listed, deleted by a build running beside the walk.
+    let gone = root.join("target/debug/out/build_script_build.o");
+    assert!(matches!(kind_of(&gone), Ok(None)), "{:?}", kind_of(&gone));
+    put(&root, "here.txt", "here");
+    assert!(kind_of(&root.join("here.txt")).is_ok_and(|kind| kind.is_some_and(|k| k.is_file())));
+}
+
+#[test]
+fn any_other_read_error_still_fails_naming_the_path() {
+    // A NUL in a path is refused by every host, and isn't "not found".
+    let bad = Path::new("bad\0name");
+    match kind_of(bad) {
+        Err(Error::Read { path, error }) => {
+            assert_eq!(path, bad);
+            assert_ne!(error.kind(), std::io::ErrorKind::NotFound);
+        }
+        other => panic!("{other:?}"),
+    }
+    let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+    assert!(gone_is_none::<()>(Err(denied)).is_err());
+    let missing = std::io::Error::from(std::io::ErrorKind::NotFound);
+    assert!(matches!(gone_is_none::<()>(Err(missing)), Ok(None)));
+}
+
+#[test]
+fn a_folder_a_pattern_skips_whole_is_neither_entered_listed_nor_watched() {
+    let root = scratch("skip-folder");
+    put(&root, "step/src/main.rs", "fn main() {}");
+    put(&root, "step/target/debug/out/a.o", "object");
+    put(&root, "target/b.rs", "built");
+    let skip = ["**/target/**".to_owned()];
+    let walk = walk(&root, &skip).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(paths(&walk), ["step/src/main.rs"]);
+    assert_eq!(walk.skipped, Vec::<String>::new());
+    assert_eq!(
+        walk.folders,
+        [root.clone(), root.join("step"), root.join("step/src")]
+    );
+}
+
+#[test]
+fn a_table_watches_nothing_in_a_folder_it_skips_whole() {
+    let game = scratch("table-skip-folder");
+    put(&game, "files/one.rs", "one");
+    put(&game, "files/target/debug/two.rs", "two");
+    let written = Table::new("files")
+        .skip("**/target/**")
+        .write_to(&game, &game)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let files = game.join("files");
+    assert_eq!(written.watched, [files.clone(), files.join("one.rs")]);
+    let table = fs::read_to_string(&written.table).unwrap_or_default();
+    assert!(!table.contains("two.rs"), "{table}");
+    let skipped = fs::read_to_string(&written.skipped).unwrap_or_default();
+    assert_eq!(skipped, "&[\n]");
+}
+
+#[test]
+fn a_folder_a_pattern_skips_only_in_part_is_still_entered() {
+    let root = scratch("skip-part");
+    put(&root, "art/one.png", "picture");
+    put(&root, "art/one.ron", "data");
+    let skip = ["**/*.png".to_owned(), "art/*".to_owned()];
+    let walk = walk(&root, &skip).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(walk.skipped, ["art/one.png", "art/one.ron"]);
+    assert_eq!(walk.folders, [root.clone(), root.join("art")]);
+}
+
+#[test]
+fn which_patterns_skip_a_folder_whole() {
+    assert!(skips_folder("**/target/**", "target"));
+    assert!(skips_folder("**/target/**", "04-push/target"));
+    assert!(skips_folder("sounds/**", "sounds"));
+    assert!(skips_folder("**", "anything/at/all"));
+    assert!(!skips_folder("**/target/**", "targets"));
+    assert!(!skips_folder("**/target/**", "target-old"));
+    assert!(!skips_folder("sounds/**", "music"));
+    assert!(!skips_folder("sounds/*", "sounds"));
+    assert!(!skips_folder("**/*.png", "art"));
+    assert!(!skips_folder("target", "target"));
 }
 
 #[test]
