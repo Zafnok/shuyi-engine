@@ -162,7 +162,7 @@ and its files 250, modules, guides and the docs map 100).
 
 ## Implementation steps
 
-1. Read ADR-0155, the completion notes of 2613–2617, 2789 and 2790, and
+1. Read ADR-0155, the completion notes of 2613–2617, 2621, 2789 and 2790, and
    `examples/trails`. Note the names that landed and the byte costs of
    the `net` feature.
 2. Rewrite `skills/shuyi-net/SKILL.md` and set `version` and

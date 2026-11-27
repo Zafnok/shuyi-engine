@@ -13,9 +13,12 @@ the same deliveries in every run. It is the base of the rooms
 of a game server, where the server broadcasts each step's inputs and
 every client steps the same rules
 ([ADR-0155](../../docs/adr/0155-real-time-rooms-a-server-broadcasts-each-steps-inputs.md)).
-It serves fixed-tick games. The rooms (2614), the quick-play director
-(2615) and the server (2616) are planned; lockstep, rollback and a
-referee are parked (1140–1150).
+It serves fixed-tick games. Its `room` module is that room's server
+side: a `Room` seats players in a game's seats, rides the empty ones with
+the game's bot, steps the real sim and writes each step's inputs for
+every player, and `room::wire` is their bytes. The client that follows a
+room (2621), the quick-play director (2615) and the server (2616) are
+planned; lockstep, rollback and a referee are parked (1140–1150).
 
 ## What it is not for
 
@@ -23,8 +26,10 @@ referee are parked (1140–1150).
   floats. A server's sockets are `shuyi-server`'s (2616), a native
   client's `shuyi-app`'s behind its `net` feature (2617), and the web's
   our own JS plugin's (1142).
-- **Rooms, bots and the wire's frames.** Those are 2614's, on this crate.
 - **A turn game played by two peers.** That is lockstep (1140), parked.
+- **Watching by choice, names and chat.** A room's only watchers are
+  players waiting for the next round's seat, and it carries no text
+  from players (ADR-0155 §6).
 - **Sharing a transport between threads.** Nothing here is `Send`: a
   game's transport lives on its main thread.
 
@@ -40,6 +45,12 @@ referee are parked (1140–1150).
   default feature reaches the crate.
 - **Dependencies:** `shuyi-core`, for the faults' `SimRng`, which every
   game has already; nothing outside the engine.
+
+- **The rooms** cost a game nothing until it builds one: `Room` is
+  generic over the game's `RoomGame`, and runs on the server. The
+  client's size in a game is measured with the client (2621).
+  `room::testing::Dots`, a test game, is behind the `testing` feature,
+  off by default.
 
 ## How to start
 
@@ -110,6 +121,34 @@ afresh, the same seed keeps drawing where it was.
 Code written against `impl Transport` runs unchanged over a real
 backend. `stats()` counts each end's bytes and messages both ways, and
 the messages the faults lost (`dropped`) and sent twice (`duplicated`).
+
+To put a tick game in a room, implement `room::RoomGame` for it: its
+`TickSim`, its seats (at most 8), its steps a second, its longest round
+and its pause between rounds, and its bot, a pure function of the sim
+and the room's rng. A host steps the room at the game's rate and sends
+each frame it writes to its peer on the `Reliable` channel:
+
+```rust
+use shuyi_net::PeerId;
+use shuyi_net::room::testing::Dots; // the `testing` feature's game
+use shuyi_net::room::wire::{ClientMsg, Frame};
+use shuyi_net::room::{Joined, Outbox, Room};
+
+let mut room = Room::new(Dots, 7);
+assert_eq!(room.join(PeerId(1)), Ok(Joined::Seat(0)));
+// What a peer sends, read with `ClientMsg::decode`.
+room.receive(PeerId(1), ClientMsg::Alive);
+let mut out = Outbox::new();
+room.step(&mut out);
+for (peer, frame) in &out.frames {
+    let bytes = frame.encode(); // sent to `peer`
+    assert_eq!(Frame::decode::<Dots>(&bytes).as_ref(), Ok(frame));
+    assert_eq!(*peer, PeerId(1));
+}
+```
+
+A peer the room lets go, silent for five seconds of steps, is in
+`out.drop`, for the host to close.
 
 ## Beside its alternatives
 

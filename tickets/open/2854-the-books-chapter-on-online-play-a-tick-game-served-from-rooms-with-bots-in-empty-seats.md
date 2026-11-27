@@ -152,7 +152,7 @@ tests 300, glossary and links 50).
 
 ## Implementation steps
 
-1. Read ADR-0155, 2614's and 2615's completion notes, and
+1. Read ADR-0155, 2614's, 2621's and 2615's completion notes, and
    `examples/trails` (its README, `src/`, `trails-server`). Write the
    chapter's outline against the names that actually landed. A name in
    this ticket that changed is used as it landed.

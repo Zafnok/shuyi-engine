@@ -76,7 +76,7 @@ None.
     `#[non_exhaustive]`, lowercase in JSON. `Server` is a tick game's
     rooms: the hub is the game's 2615 `Director` over its `RoomGame`,
     the same code its `shuyi-server` binary runs (2616; trails' is
-    2789), in memory, and the peers are its `RoomClient`s (2614). Each
+    2789), in memory, and the peers are its `RoomClient`s (2621). Each
     peer's check is 2529's room hash check against the hub's room. `PeersInput` gains `via:
     Via` with `serde(default)`, so an input without it reads as
     before.
