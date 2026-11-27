@@ -305,15 +305,16 @@ pub const GATES: &[Gate] = &[
     // `check-publish --index` needs the network: CI's `layers` job runs it.
     gate("layers", "layers", CODE).steps(&["cargo xtask check-layers", "cargo xtask check-publish"]),
     // CI runs it on every pull request; it reads the site, the problem
-    // codes, Hello, Grid's files, the tickets (the feature cards) and the
-    // guides (the book's, copied by `site-data`).
-    // As CI: the codes' pages and the playground's files are written
-    // before `zola check` reads them.
+    // codes, the examples (Hello, Grid's files, each one's preview.png and
+    // shots/), the tickets (the feature cards) and the guides (the book's,
+    // copied by `site-data`).
+    // As CI: the codes' pages, the playground's files, the previews and the
+    // shots are written before `zola check` reads them (ticket 3540).
     gate("site", "site", Filter::Always)
         .local(Local::Under(&[
             "site/",
             "crates/cli/errors/",
-            "examples/hello-grid/",
+            "examples/",
             "tickets/",
             "docs/guides/",
         ]))
@@ -321,6 +322,8 @@ pub const GATES: &[Gate] = &[
             "bash site/errors.sh",
             "cargo xtask site-data --site site",
             "bash site/copy-playground.sh",
+            "bash site/copy-previews.sh",
+            "bash site/copy-shots.sh",
             "site: zola check --skip-external-links",
             "cargo xtask check-book",
             "bash site/check-build.sh",
@@ -1059,6 +1062,51 @@ mod tests {
             .filter(|g| plan(g, &outputs, &paths, fast) == Plan::Run)
             .map(|g| g.name)
             .collect()
+    }
+
+    /// Every `site/copy-*.sh` script runs in the site gate before `zola
+    /// check`, which fails on a page whose copied file is missing (ticket
+    /// 3540).
+    #[test]
+    fn the_site_gate_runs_every_copy_script_before_zola_check() {
+        let site = GATES.iter().find(|g| g.name == "site").unwrap();
+        let check = site
+            .steps
+            .iter()
+            .position(|s| s.contains("zola check"))
+            .expect("the site gate runs zola check");
+        let before = &site.steps[..check];
+        let mut scripts: Vec<String> = std::fs::read_dir(repo().join("site"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| {
+                n.starts_with("copy-")
+                    && Path::new(n)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("sh"))
+            })
+            .collect();
+        scripts.sort();
+        assert!(scripts.len() >= 3, "too few copy scripts: {scripts:?}");
+        for script in scripts {
+            let step = format!("bash site/{script}");
+            assert!(
+                before.contains(&step.as_str()),
+                "{step} missing before zola check"
+            );
+        }
+    }
+
+    /// A change to any example's preview or shots runs the site gate,
+    /// whose copies read them (ticket 3540).
+    #[test]
+    fn an_examples_pictures_run_the_site_gate() {
+        for path in [
+            "examples/snake/preview.png",
+            "examples/snake/shots/stage.png",
+        ] {
+            assert!(running(&[path], false).contains(&"site"), "{path}");
+        }
     }
 
     #[test]

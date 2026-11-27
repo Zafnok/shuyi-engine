@@ -1,5 +1,6 @@
 {
-    "audio manifest: audio-manifest": "d66bc4a0d2bb9116",
+    "atlas: atlas": "06b92642f53bb0ce",
+    "audio manifest: audio-manifest": "6a89170b58fc3b14",
     "cinematic: cinematic": "167ed17e95bbec57",
     "credits: credits": "42d3660ba2c63852",
     "dialogue: dlg": "29ff446f9cb0cc53",
@@ -35,6 +36,6 @@
     "sound: sfx": "299a456d276e923b",
     "sound: wav": "cdc1d4a2131dae80",
     "table: ron": "98796f7f12ecbdba",
-    "target profile: target-ron": "31afa9f9cdf0050a",
+    "target profile: target-ron": "1ad5636909773ba1",
     "terrain tiles: terrain-tiles": "9fdbb9bc698589b6",
 }

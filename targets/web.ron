@@ -9,6 +9,9 @@
         good_text_px: 12,
         // The canvas goes full screen and back (`set_fullscreen`).
         windowed: true,
+        // WebGL 2 promises 2048 (ADR-0136 §3): an atlas's pages are no
+        // bigger.
+        max_texture_side: 2048,
     ),
     frame_rate: (target: 60, floor: 30),
     input: (

@@ -570,6 +570,8 @@ parts a code job or a crate's test reads stay code: `site/tutorial/`,
 bash site/errors.sh          # the problem codes' pages, which the book links
 cargo xtask site-data --site site
 bash site/copy-playground.sh
+bash site/copy-previews.sh   # each example's preview.png, for the Examples cards
+bash site/copy-shots.sh      # each example's shots/, the book's pictures
 (cd site && zola check --skip-external-links)
 cargo xtask check-book
 bash site/check-build.sh    # builds twice, with two base URLs, and checks both

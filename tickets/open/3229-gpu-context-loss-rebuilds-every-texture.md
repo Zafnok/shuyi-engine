@@ -72,10 +72,11 @@ runs `tools/web-check/check.py capture` on it. Chromium's
 `WEBGL_lose_context` extension (`loseContext()`, `restoreContext()`)
 makes a real loss and restore on demand, under SwiftShader as on a GPU.
 
-**Either order with 2222:** if 2222 is done, the forget path also drops
-its atlas pages, and they are packed again from the kept sources on the
-next frame; if not, nothing to do (2222 adds its pages to the path when
-it lands).
+**From 2222 (done):** an atlas's pages are painted pictures of the
+frame (ADR-0157, `shuyi_ui::frame::atlas`), uploaded with the other
+painted pictures (`PaintedTextures`, `crates/app/src/painted.rs`): the
+forget path drops them with those, and they are uploaded again from the
+frame's pixels on the next frame. Nothing to pack again.
 
 **Either order with 2337:** if 2337 is done, its two materials are
 programs like macroquad's own, so the plugin replays them with the rest,

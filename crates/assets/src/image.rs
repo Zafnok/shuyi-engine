@@ -251,7 +251,7 @@ impl ImageId {
 }
 
 /// A rectangle of an image, in image pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ImageRect {
     /// Left edge.
     pub x: u32,

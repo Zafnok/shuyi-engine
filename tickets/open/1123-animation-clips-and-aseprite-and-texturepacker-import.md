@@ -45,10 +45,15 @@ None.
   way. What an import needs that packing doesn't (a trimmed frame's
   offset and its size before trimming, as TexturePacker's
   `spriteSourceSize` and `sourceSize` give) is added here as optional
-  fields of an entry. **Either order with 2222:** if 2222 is done, add
-  those fields to its `Atlas`; if not, write `Atlas` in
-  `shuyi_assets::atlas` with the shape 2222's Scope names, and 2222
-  adds the packer to it.
+  fields of an entry. **From 2222 (done):** `Atlas` is in
+  `crates/assets/src/atlas.rs` (ADR-0157): add those fields to it, in
+  this crate since its fields are private. `Placed { page, rect }` is
+  the table's entry, with public fields and no `#[non_exhaustive]`: an
+  optional field on it is a break (a `Breaking:` line), or put the
+  import's fields beside it. An imported page has no free space to
+  insert into: give it a skyline that is full (`Page`'s private
+  `skyline`, one segment at the page's height), so `Atlas::insert`
+  starts a new page. Its binary form is the private `Form` there.
 - The clips stay 2231's (`AnimationClip<ImageRect>`, `AnimationSet`,
   `frame_at`): an importer fills a clip's frames with the rectangles of
   the atlas's entries.
@@ -122,9 +127,8 @@ in `frame_at`'s docs: nothing to do here.
 
 ## Implementation steps
 
-1. Read 2231's `anim` module and 2222's `atlas` module (if 2222 is
-   done), then add the import fields to `Atlas` (or write it, as Scope
-   says) and its RON form.
+1. Read 2231's `anim` module and 2222's `atlas` module, then add the
+   import fields to `Atlas` and its RON form.
 2. Write the two importers with fixture files and error tests.
 3. Do the `asefile` measurement.
 
