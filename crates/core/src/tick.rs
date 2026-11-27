@@ -183,9 +183,9 @@ impl TickInput {
     }
 }
 
-/// A game's rules that step in time: 60 fixed steps a second
-/// ([`STEPS_PER_SECOND`](crate::STEPS_PER_SECOND)), each given the players'
-/// input for it.
+/// A fixed update, or physics process: a game's rules that step in time,
+/// 60 fixed steps a second ([`STEPS_PER_SECOND`](crate::STEPS_PER_SECOND)),
+/// each given the players' input for it.
 ///
 /// # Contract
 ///
@@ -203,6 +203,8 @@ impl TickInput {
 /// - [`hash`](Self::hash) changes when the state does and is the same on
 ///   every platform: most simply `state_hash(self)`'s
 ///   ([`state_hash`](crate::state_hash)).
+#[doc(alias = "physics_process")]
+#[doc(alias = "FixedUpdate")]
 pub trait TickSim {
     /// What happened in a step.
     type Event;

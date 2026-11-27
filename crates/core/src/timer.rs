@@ -85,8 +85,8 @@ pub const fn ms_from_steps(steps: u32) -> u64 {
     steps as u64 * MS_PER_SECOND / STEPS_PER_SECOND as u64
 }
 
-/// A timer that fires once, after `length` steps or turns, and waits to be
-/// [restarted](Self::restart).
+/// A timer, or cooldown: it fires once, after `length` steps or turns,
+/// and waits to be [restarted](Self::restart).
 ///
 /// It is the cooldown too. Advance it by 1 each step or turn, and:
 ///
@@ -108,6 +108,8 @@ pub const fn ms_from_steps(steps: u32) -> u64 {
 ///
 /// The default has a length of 0 and is ready.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[doc(alias = "Timer")]
+#[doc(alias = "Cooldown")]
 pub struct Countdown {
     /// What [`restart`](Self::restart) starts it from.
     length: u32,

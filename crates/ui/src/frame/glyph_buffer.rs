@@ -812,9 +812,14 @@ impl GlyphBuffer {
         }
     }
 
-    /// Adds `sprite` with its `clip` clipped to its `dest` and to the
-    /// buffer; `src` and `dest` are kept as given. One with nothing to show
-    /// (wholly outside, or an empty `src`, `dest` or `clip`) is dropped.
+    /// Draws a sprite, part of an image, at a pixel rectangle: adds `sprite`
+    /// with its `clip` clipped to its `dest` and to the buffer; `src` and
+    /// `dest` are kept as given. One with nothing to show (wholly outside,
+    /// or an empty `src`, `dest` or `clip`) is dropped.
+    #[doc(alias = "draw_sprite")]
+    #[doc(alias = "draw_texture")]
+    #[doc(alias = "draw_image")]
+    #[doc(alias = "spr")]
     pub fn add_sprite(&mut self, sprite: Sprite) {
         if sprite.src.is_empty() {
             return;
@@ -1035,12 +1040,14 @@ impl GlyphBuffer {
         }
     }
 
-    /// Writes `text` left to right from `(x, y)`, clipped to the buffer:
-    /// one `char` per cell, and a wide one ([`widths`](Self::widths)) in
-    /// two, its second a continuation in the same colours. A no-break
+    /// Draws text: writes `text` left to right from `(x, y)`, clipped to the
+    /// buffer: one `char` per cell, and a wide one
+    /// ([`widths`](Self::widths)) in two, its second a continuation in the
+    /// same colours. A no-break
     /// space ([`NO_BREAK_SPACE`]) is written as a space. A wide one
     /// that the buffer's edge would cut isn't drawn. Returns how many
     /// cells were written.
+    #[doc(alias = "draw_text")]
     pub fn print(&mut self, x: i32, y: i32, text: &str, fg: Rgb, bg: Rgb) -> u16 {
         self.print_with(x, y, text, |c, glyph| *c = Cell::new(glyph, fg, bg))
     }

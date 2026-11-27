@@ -870,7 +870,7 @@ The parked ones are under *Parked* below.
 | 2374 | Eight-way on square maps: the path arrow, steering and an eight-way choice in the grid template (after 2117) |
 | 2375 | The log on screen in debug builds: a `log` channel and the console's newest lines (after 2315 and 2356) |
 | 2377 | The system's reduced-motion preference as the default of the player's motion setting |
-| 2378 | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
+| 2378 (done) | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
 | 3419 (done) | `run`'s answer lists the plays the cue rules dropped (after 2345) |
 | 2380 | The profiles screen asks the system keyboard for a name (after 2346) |
 | 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |

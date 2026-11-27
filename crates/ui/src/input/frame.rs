@@ -125,23 +125,34 @@ impl<A: ActionSet> FrameInput<A> {
         self
     }
 
-    /// The actions pressed this frame, in order, without the key repeats
-    /// that [`actions`](Self::actions) has after them: what a fixed step
-    /// reads. A tick stage reads them through its
+    /// Just pressed: the actions pressed this frame, in order, without the
+    /// key repeats that [`actions`](Self::actions) has after them: what a
+    /// fixed step reads. A tick stage reads them through its
     /// [`TickDriver`](crate::tick::TickDriver), which gives each to one
     /// step.
+    #[doc(alias = "just_pressed")]
+    #[doc(alias = "is_key_pressed")]
+    #[doc(alias = "is_action_just_pressed")]
+    #[doc(alias = "btnp")]
     pub fn presses(&self) -> &[A] {
         &self.presses
     }
 
-    /// The actions let go this frame, in order: each when no key or button
-    /// holds it any more.
+    /// Just released: the actions let go this frame, in order, each when no
+    /// key or button holds it any more.
+    #[doc(alias = "just_released")]
+    #[doc(alias = "is_key_released")]
     pub fn released(&self) -> &[A] {
         &self.released
     }
 
-    /// The actions whose key or button is down at the end of this frame, in
-    /// the game's order ([`ActionSet::ALL`]).
+    /// Whether a key is down, as actions: the actions whose key or button
+    /// is down at the end of this frame, in the game's order
+    /// ([`ActionSet::ALL`]).
+    #[doc(alias = "is_key_down")]
+    #[doc(alias = "is_action_pressed")]
+    #[doc(alias = "keyboard_check")]
+    #[doc(alias = "btn")]
     pub fn held(&self) -> &[A] {
         &self.held
     }
@@ -190,9 +201,12 @@ impl<A: ActionSet> FrameInput<A> {
         self
     }
 
-    /// Seconds since the previous frame: always finite and at least 0, so
-    /// a screen adds it up as it is. It is for what only looks: rules count
+    /// The delta time: seconds since the previous frame, always finite and
+    /// at least 0, so a screen adds it up as it is. It is for what only looks: rules count
     /// [`ticks`](Self::ticks) or turns, with `shuyi_core::timer`.
+    #[doc(alias = "delta")]
+    #[doc(alias = "delta_time")]
+    #[doc(alias = "deltaTime")]
     pub fn dt(&self) -> f32 {
         self.dt
     }

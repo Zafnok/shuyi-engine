@@ -99,9 +99,11 @@ impl AssetKind for ImageInfo {
     const NAME: &'static str = "image";
 }
 
-/// An image's pixels: four bytes each (red, green, blue, alpha), row by
-/// row from the top.
+/// A texture: an image's pixels, four bytes each (red, green, blue, alpha),
+/// row by row from the top.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[doc(alias = "Texture")]
+#[doc(alias = "Texture2D")]
 pub struct Image {
     /// Width in pixels.
     pub width: u32,

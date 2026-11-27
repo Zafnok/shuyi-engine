@@ -522,8 +522,10 @@ pub fn target_layer_name(layer: &str, target: &str) -> String {
     format!("{layer}{TARGET_MARK}{target}")
 }
 
-/// The layers a game reads its files from.
+/// An asset bundle, or pack: the layers a game reads its files from.
 #[derive(Debug, Clone)]
+#[doc(alias = "AssetBundle")]
+#[doc(alias = "pck")]
 pub struct Bundle {
     /// Every layer: those that ship first, then the test layers.
     layers: Vec<Layer>,

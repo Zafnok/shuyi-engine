@@ -12,6 +12,8 @@
 pub mod cues;
 pub mod player;
 
+pub use cues::CopyId;
+
 use crate::alloc_prelude::*;
 
 use shuyi_assets::audio::MAX_VOLUME;
@@ -29,8 +31,10 @@ use crate::platform::Millis;
 pub enum SoundRequest {
     /// Play file `variant` of a sound cue once, at `volume` (0–1) times
     /// `cue_volume`: the cue rules picked both ([`cues`], ADR-0139), and a
-    /// backend plays what it is told. Build it with [`SoundRequest::sound`]
-    /// and [`with_pick`](Self::with_pick) (ADR-0039).
+    /// backend plays what it is told. It is the copy `copy`, which
+    /// [`StopCopy`](Self::StopCopy) may stop alone before it ends. Build it
+    /// with [`SoundRequest::sound`], [`with_pick`](Self::with_pick) and
+    /// [`with_copy`](Self::with_copy) (ADR-0039).
     #[non_exhaustive]
     Sound {
         /// The sound cue.
@@ -44,6 +48,17 @@ pub enum SoundRequest {
         /// A sound the game added plays at its own volume, full, whatever
         /// this says.
         cue_volume: u8,
+        /// Which copy of the cue this play is, as the cue rules count them
+        /// ([`CopyId::NONE`] by default: one no rules counted, which nothing
+        /// stops alone).
+        copy: CopyId,
+    },
+    /// Stop the copy `copy` of a sound cue alone, at once: the cue rules
+    /// cut it to make room for another play (ADR-0139 §4). The other copies
+    /// of its file play on, and a copy that has ended already is no error.
+    StopCopy {
+        /// The copy, as its [`Sound`](Self::Sound) said.
+        copy: CopyId,
     },
     /// Play file `variant` of a sound cue until [`Stop`](Self::Stop) of its
     /// `id`, at `volume` times `cue_volume`: looped if the cue says so, else
@@ -148,7 +163,18 @@ impl SoundRequest {
             volume,
             variant: 0,
             cue_volume: MAX_VOLUME,
+            copy: CopyId::NONE,
         }
+    }
+
+    /// The same request, the copy `copy` of its cue, if it is a
+    /// [`Sound`](Self::Sound); any other is left as it is.
+    #[must_use]
+    pub fn with_copy(mut self, copy: CopyId) -> Self {
+        if let Self::Sound { copy: c, .. } = &mut self {
+            *c = copy;
+        }
+        self
     }
 
     /// The same request, playing file `variant` at `cue_volume` percent, if
@@ -356,16 +382,26 @@ mod tests {
                 volume: 0.5,
                 variant: 0,
                 cue_volume: 100,
+                copy: CopyId::NONE,
             }
         );
         assert_eq!(
-            SoundRequest::sound("click", 0.5).with_pick(2, 40),
+            SoundRequest::sound("click", 0.5)
+                .with_pick(2, 40)
+                .with_copy(CopyId::new(7)),
             SoundRequest::Sound {
                 cue: "click".into(),
                 volume: 0.5,
                 variant: 2,
                 cue_volume: 40,
+                copy: CopyId::new(7),
             }
+        );
+        let id = shuyi_ui::audio::AudioQueue::<Voice>::default().start_sound("hum");
+        assert_eq!(
+            SoundRequest::start(id, "hum", 1.0).with_copy(CopyId::new(7)),
+            SoundRequest::start(id, "hum", 1.0),
+            "a sound started with a handle is no copy"
         );
         let id = shuyi_ui::audio::AudioQueue::<Voice>::default().start_sound("hum");
         assert_eq!(

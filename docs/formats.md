@@ -231,6 +231,35 @@ What each one reads:
   `sounds`), and listed with why (`Harness::dropped_sounds`). A sound started with a handle is picked the same way, and is
   never dropped. In Rust a cue takes them with `SoundCue::with_rules`
   (`CueRules::DEFAULT.with_min_gap_ms(40)`).
+  **Copies and voices** (ticket 2378, ADR-0139 §4), each optional too: a
+  play that sounds is a copy of its cue until its start plus its file's
+  length (below), and one whose length is unknown holds nothing.
+  `max_copies` (written bare) is the most copies of the cue at once, with
+  `when_full` saying what a play past it does: `Skip` (the default) drops
+  it, `StopOldest` cuts the cue's oldest copy and plays (a footstep with
+  `max_copies: 1, when_full: StopOldest` restarts). `priority` (0–255,
+  higher wins, 128 when left out) settles who keeps a voice: the
+  manifest's `max_voices`, at the top of the file and written bare, is the
+  most copies of all cues at once, and a play past it cuts the copy with
+  the lowest priority, the oldest of those, if that is at most its own,
+  and is dropped otherwise. Music, voice clips and sounds started with a
+  handle count toward neither. Each play goes through its gap, then its
+  cue's copies, then the voices; a dropped play draws no file or volume.
+  `max_copies: 0` and `max_voices: 0` are errors at their line, and so is
+  a file read whose length can't be measured, of a cue whose copies are
+  counted (it has `max_copies`, or the manifest has `max_voices`):
+
+  ```ron
+  (music_fade_ms: 500, max_voices: 12, sounds: [
+      (id: "hit", files: ["sfx/hit_1.wav", "sfx/hit_2.wav"], volume: 80,
+       credit: Own, max_copies: 3, when_full: StopOldest, priority: 200),
+  ], music: [], pools: [], credits: [])
+  ```
+
+  A drop is listed with why (`Copies`, `Voices`), and each copy cut as
+  `Cut` under its own cue. In Rust, `CueRules::with_max_copies(Some(3),
+  WhenFull::StopOldest)` and `with_priority(200)`, and the manifest's
+  `max_voices` field.
   **A sound's length** (ticket 2280, ADR-0139 §4) is measured, never
   written: the check keeps each file's in the cue's `lengths_ms` (read
   with `SoundCue::length_ms(file)`), from `audio::sound_length_ms`, in
@@ -242,7 +271,8 @@ What each one reads:
   and an OGG with no last page. A manifest built in code measures its
   sounds with `AudioManifest::measure_sounds(read)`. The `Sound` kind has
   the same `length_ms`. The cue rules end a copy of a sound at its start
-  plus its file's length (ticket 2378).
+  plus its file's length (ticket 2378, above); the lengths are measured,
+  never written in the manifest.
   **A loop region** (ticket 2397): a looped track may say `loop_start_ms`
   and `loop_end_ms`, both or neither, with `0 <= start < end <=
   length_ms`. It plays from its start up to `loop_end_ms` once, then
@@ -442,6 +472,10 @@ What each one reads:
   (`look "winter": layer 2: …`, `look "winter": prop "lamp": …`).
   `TerrainTilesDef::resolve` reports a picture outside the image, a
   picture to place too.
+  A corner layer's 15 pictures may also be made, not drawn: a
+  `<name>.corners.ron` recipe, a tool's input that no game loads, makes
+  them into a PNG from one tile (`shuyi_assets::corners`, behind its
+  `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0160).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

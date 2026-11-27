@@ -212,7 +212,11 @@ const PERCENT_LIMIT: u32 = (u32::MAX / 100) * 100;
 /// The most redraws one [`SimRng::roll_percent`] makes.
 const MAX_REDRAWS: u32 = 16;
 
-/// The seeded simulation RNG, kept in the game's state.
+/// Random numbers: the seeded simulation RNG, kept in the game's state.
+#[doc(alias = "Random")]
+#[doc(alias = "Rng")]
+#[doc(alias = "randi")]
+#[doc(alias = "rnd")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct SimRng {

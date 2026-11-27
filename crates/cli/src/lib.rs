@@ -4,7 +4,8 @@
 //! the exporters `export` runs ([`export`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
-//! `web` and `private-assets`, each a module of library functions with a
+//! `web`, `private-assets` and, with the `corners` feature, `corners`,
+//! each a module of library functions with a
 //! thin wrapper here; `repos`, which puts the game on GitHub with its
 //! private files' repository, keys and secrets (its `--help`; not part
 //! of the library's API: it acts on the developer's GitHub account); `reveal`,
@@ -43,6 +44,8 @@ pub mod check_keys;
 pub mod check_text;
 pub mod codec;
 pub mod contract;
+#[cfg(feature = "corners")]
+pub mod corners;
 pub mod export;
 pub mod font_atlas;
 pub mod frame_png;
@@ -99,6 +102,7 @@ pub const COMMANDS: &[&str] = &[
     "font-atlas",
     "app-info",
     "glyph-tiles",
+    "corners",
     "frame-png",
     "web",
     "private-assets",
@@ -191,6 +195,10 @@ commands:
   app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
                                      constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
+  corners [--check] <recipe.corners.ron>...
+                                     make each terrain's corner sheet from its recipe, a PNG
+                                     at its `out`; --check: fail if one is missing or stale
+                                     (shuyi-cli's `corners` feature)
   frame-png <out.png> [steps]        render a scripted game frame to a PNG; with --every and
                                      --count, frames over time as a sheet, an APNG or a
                                      GIF; --preview: the game's preview.png from its
@@ -403,6 +411,7 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         },
         "app-info" => app_info(project, args),
         "glyph-tiles" => glyph_tiles(project, args),
+        "corners" => Ok(corners(project, args, game)),
         "frame-png" => match game {
             Some(game) => Ok(frame_png(project, args, game)),
             None => Ok(game::run_in_game_program(project, name, args)),
@@ -736,6 +745,28 @@ fn app_info(project: &Project, args: &[String]) -> Outcome {
             1
         }
     })
+}
+
+/// `corners`: in this program if it has the `corners` feature, else in the
+/// game's tool program if the project names one, else an error saying how
+/// to turn it on.
+fn corners(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
+    #[cfg(feature = "corners")]
+    {
+        let _ = game;
+        corners::main(project.config.command(), args)
+    }
+    #[cfg(not(feature = "corners"))]
+    {
+        if game.is_none() && project.config.game.is_some() {
+            return game::run_in_game_program(project, "corners", &from_the_root(project, args));
+        }
+        eprintln!(
+            "corners: this program is built without shuyi-cli's `corners` feature: turn it \
+             on in the game's dependency on shuyi-cli (features = [\"corners\"])"
+        );
+        1
+    }
 }
 
 fn glyph_tiles(project: &Project, args: &[String]) -> Outcome {

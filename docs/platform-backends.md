@@ -413,6 +413,19 @@ same: a `SoundRequest::Sound` or `Start` already names its file (`variant`)
 and its volume (`cue_volume`), and a backend never picks. A sound the game
 added (`SoundRequest::Add`) plays at its own volume, full.
 
+**Stop one copy alone.** The cue rules count each play of a sound as a copy
+until its file's length has passed (ADR-0139 §4, ticket 2378), within a
+cue's `max_copies` and the manifest's `max_voices`, so a backend's own
+voice maximum never drops or steals a sound by a rule of its own. A
+`SoundRequest::Sound` names its copy (`copy`, a `CopyId`; `CopyId::NONE`
+for one no rules counted), and the rules cut one to make room with
+`SoundRequest::StopCopy { copy }`, just before the play that takes its
+place: stop that playback alone, and leave the other copies of its file
+playing. A copy that has ended already is no error. The shared `Player`
+does it for a backend that writes `Backend` (it keeps each copy's
+`Playing` until `StopCopy` names it or its length has passed, and calls
+`stop_playing`); a backend of a game's own does the same.
+
 **Don't write the rules of playing yourself.** A cue's files, handled
 sounds, fades and the music clock are
 `shuyi_platform::audio::player::Player`'s (ADR-0063). It keeps a slot for

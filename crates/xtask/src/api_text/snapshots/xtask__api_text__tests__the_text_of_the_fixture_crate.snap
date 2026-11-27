@@ -1,0 +1,30 @@
+---
+source: crates/xtask/src/api_text/tests.rs
+expression: "text(\"fixture\", \"a crate for the tests\", &listing(), &index())"
+---
+# fixture: a crate for the tests
+#
+# Its public API, an item a line, as `cargo public-api` lists it. After ` // `,
+# an item's first doc sentence, its doc aliases (the names other engines use)
+# and its deprecation. Made by `cargo xtask api-text` (ticket 3413).
+
+pub mod fixture
+pub mod fixture::timer // The clock.
+pub enum fixture::timer::Align // Where it is.
+pub fixture::timer::Align::Centered // In the middle.
+pub struct fixture::timer::Countdown // A timer: it fires once, after its length. // aliases: Timer, Alarm, Delay
+pub fixture::timer::Countdown::length: u32 // Its length.
+impl fixture::Countdown
+pub fn fixture::Countdown::reset(&mut self) // The old name of `restart`. // deprecated: renamed `restart`
+pub fn fixture::Countdown::restart(&mut self) // Starts it again.
+impl core::clone::Clone for fixture::Countdown
+pub fn fixture::Countdown::clone(&self) -> Self
+pub trait fixture::timer::Tick // A thing that ticks.
+pub fn fixture::timer::Tick::tick(&mut self) // One tick.
+pub enum fixture::Align // Where it is.
+pub fixture::Align::Centered // In the middle.
+pub struct fixture::Countdown // A timer: it fires once, after its length. // aliases: Timer, Alarm, Delay
+pub fixture::Countdown::length: u32 // Its length.
+pub struct fixture::Inner // Reached only through the re-export.
+pub trait fixture::Tick // A thing that ticks.
+pub fn fixture::Tick::tick(&mut self) // One tick.

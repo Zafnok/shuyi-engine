@@ -233,7 +233,11 @@ pub struct Dropped {
     /// The cue.
     pub cue: String,
     /// Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`
-    /// after its last play that sounded.
+    /// after its last play that sounded; `copies`, one while its cue's
+    /// `max_copies` copies sounded; `voices`, one while the manifest's
+    /// `max_voices` copies sounded, each of a higher priority; or `cut`, a
+    /// copy that was sounding, stopped to make room for another play (the
+    /// cue is the cut copy's). A later engine may add a word.
     pub why: String,
 }
 

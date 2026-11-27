@@ -595,8 +595,11 @@ fn reserved<F: Format>(format: &F) -> Option<RegisterError> {
         })
 }
 
-/// The formats of every kind ([module docs](self)).
+/// The asset server's importers: the formats of every kind ([module
+/// docs](self)).
 #[derive(Default)]
+#[doc(alias = "AssetServer")]
+#[doc(alias = "Importer")]
 pub struct Formats {
     /// One [`KindList`] per kind that has a format.
     kinds: Vec<Box<dyn Kind>>,

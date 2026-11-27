@@ -76,13 +76,17 @@ None.
     `in-house-sound` backend implements). A backend ticket that
     implements one adds it to its profile.
 - **The voice limit.** The cue rules' voice limit is the smaller of the
-  audio manifest's `max_voices` (2378 adds it) and the target's
+  audio manifest's `max_voices` (2378 added it) and the target's
   `channels`, a `None` on either side being no limit. `shuyi
   check --target` warns when a game's `max_voices` is over its target's
   `channels`: a warning in the target's report, which doesn't fail.
-  **Either order with 2378:** if 2378 is done, `App` caps `max_voices`
-  with `channels` here; if not, nothing to do (2378 reads `channels`
-  when it lands).
+  **From 2378 (done):** `Cues::apply` (`crates/platform/src/audio/cues.rs`)
+  reads the manifest's `max_voices` in `make_room`; this ticket passes it
+  the smaller of that and `channels` (through `App`, which keeps the
+  `Cues`). The desktop's and the web's profiles say `channels: 32`, the
+  in-house mixer's `VOICES` (`crates/app/src/audio/in_house.rs`), so `App`
+  admits no more cue copies than that mixer has; until then the mixer
+  skips a play past it with a warning in the log.
 - **`display.color` moves to `capabilities.colour`.** The profile format
   has no version field (read 2026-10-20). `display.color` is still read
   for one more minor release (2005's rule), so a game's own profile

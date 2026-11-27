@@ -8,12 +8,17 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
-/// A tile position. Signed so neighbour maths can go negative before bounds
-/// checks; `(0, 0)` is the top-left tile, `x` grows right, `y` grows down.
+/// A point, a vector of two integers: a tile position. Signed so neighbour
+/// maths can go negative before bounds checks; `(0, 0)` is the top-left
+/// tile, `x` grows right, `y` grows down.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[doc(alias = "Vec2")]
+#[doc(alias = "Vector2")]
+#[doc(alias = "IVec2")]
+#[doc(alias = "Point")]
 pub struct Pos {
     /// Column.
     pub x: i32,

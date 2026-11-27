@@ -33,9 +33,11 @@ This copy documents Shuyi Engine 0.3.0 at commit [`0123456`](https://github.com/
 
 ## API
 
-- [`shuyi`](https://docs.invalid/engine/api/shuyi/index.html): rustdoc's HTML. The front door.
-- [`shuyi_core`](https://docs.invalid/engine/api/shuyi_core/index.html): rustdoc's HTML. The core.
-- [`shuyi_window`](https://docs.invalid/engine/api/shuyi_window/index.html): rustdoc's HTML. The backend.
+Each crate's API is rustdoc's HTML, and its items as text: a line each, its signature, its first doc sentence and the names other engines use for it (its doc aliases), to read or search whole.
+
+- [`shuyi`](https://docs.invalid/engine/api/shuyi/index.html): rustdoc's HTML, and [its items as text](https://docs.invalid/engine/api/shuyi.txt). The front door.
+- [`shuyi_core`](https://docs.invalid/engine/api/shuyi_core/index.html): rustdoc's HTML, and [its items as text](https://docs.invalid/engine/api/shuyi_core.txt). The core.
+- [`shuyi_window`](https://docs.invalid/engine/api/shuyi_window/index.html): rustdoc's HTML, and [its items as text](https://docs.invalid/engine/api/shuyi_window.txt). The backend.
 
 ## Released versions
 

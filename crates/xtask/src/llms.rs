@@ -4,8 +4,8 @@
 //! - a Markdown twin of every Learn page (`site/content/learn/`, drafts
 //!   aside) at its URL with `index.md` on the end: its title, a `Source:`
 //!   line, then its text with each `snippet` shortcode replaced by the code
-//!   it shows, each `try_it` and `shot` by its pictures as images, and its
-//!   links made absolute;
+//!   it shows, each `try_it` and `shot` by its pictures as images,
+//!   `engine_terms` by appendix A's table, and its links made absolute;
 //! - `llms.txt`: `site/llms-header.md`, the version and the commit, then the
 //!   links, a list per Learn section, the contract, the API docs, the
 //!   released versions' copies and the optional reading;
@@ -26,7 +26,7 @@ use std::process::Command;
 
 use pulldown_cmark::{Event, LinkType, Options as Extensions, Parser, Tag, TagEnd};
 
-use crate::{book, tries};
+use crate::{api_text, book, tries};
 
 #[cfg(test)]
 mod tests;
@@ -868,10 +868,13 @@ fn expand(shown: &str, body: &str, first_line: usize, snippets: &Path) -> (Strin
             }
             Some(Ok(call)) => {
                 at = open + 2 + call.len;
-                if opener == "{{" && matches!(call.name, "snippet" | "try_it" | "shot") {
+                if opener == "{{"
+                    && matches!(call.name, "snippet" | "try_it" | "shot" | "engine_terms")
+                {
                     let expanded = match call.name {
                         "snippet" => snippet(call.args, snippets),
                         "try_it" => try_it(call.args, snippets),
+                        "engine_terms" => engine_terms(call.args, snippets),
                         _ => shot(call.args, snippets),
                     };
                     match expanded {
@@ -1012,6 +1015,23 @@ fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
         None => whole(&source),
     };
     Ok(format!("```{language}\n{}\n```", lines.join("\n")))
+}
+
+/// The `engine_terms` shortcode (`site/templates/shortcodes/engine_terms.md`,
+/// ticket 3413): appendix A's table, from `site/data/engine-terms.toml`
+/// beside `site/snippets`. It takes no argument.
+fn engine_terms(args: &str, snippets: &Path) -> Result<String, String> {
+    if !args.trim().is_empty() {
+        return Err(format!(
+            "engine_terms: it takes no argument, and was given `{args}`"
+        ));
+    }
+    let path = snippets.with_file_name("data").join("engine-terms.toml");
+    let text =
+        fs::read_to_string(&path).map_err(|e| format!("engine_terms: {}: {e}", api_text::TERMS))?;
+    Ok(api_text::table(&api_text::read_terms(&text)?)
+        .trim_end()
+        .to_owned())
 }
 
 /// The `try_it` shortcode (`site/templates/shortcodes/try_it.md`, ticket
@@ -1536,12 +1556,16 @@ fn llms_txt(listing: &Listing) -> String {
          on a game, each with a typed input and a typed answer, on the command line or over MCP\n\
          - [Its schemas, version {version}]({base}contract/schemas/v{version}/index.md): the JSON \
          Schema of each operation's input and answer\n\
-         \n## API\n\n"
+         \n## API\n\n\
+         Each crate's API is rustdoc's HTML, and its items as text: a line each, its signature, \
+         its first doc sentence and the names other engines use for it (its doc aliases), to read \
+         or search whole.\n\n"
     );
     for krate in listing.crates {
         let _ = writeln!(
             out,
-            "- [`{0}`]({base}api/{0}/index.html): rustdoc's HTML. {1}",
+            "- [`{0}`]({base}api/{0}/index.html): rustdoc's HTML, and [its items as \
+             text]({base}api/{0}.txt). {1}",
             krate.lib, krate.description
         );
     }

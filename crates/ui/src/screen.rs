@@ -42,13 +42,18 @@ use crate::frame::glyph_buffer::GlyphBuffer;
 
 pub use crate::input::frame::FrameInput;
 
-/// One screen of a game: a title, a map, a menu overlay, …
+/// A scene, or a room: one screen of a game, a title, a map, a menu
+/// overlay, …
+#[doc(alias = "Scene")]
+#[doc(alias = "Room")]
 pub trait Screen<G: GameData> {
     /// A stable, unique `snake_case` name, for tests and debugging.
     fn name(&self) -> &'static str;
 
-    /// Handles one frame: `input` holds this frame's actions (often none)
-    /// and elapsed time. Called only while this screen is on top.
+    /// The frame's process, or update: handles one frame, `input` holding
+    /// this frame's actions (often none) and elapsed time. Called only while
+    /// this screen is on top.
+    #[doc(alias = "process")]
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G>;
 
     /// Paints the screen. An opaque screen must cover the whole buffer.
@@ -201,7 +206,11 @@ impl fmt::Debug for ScreenResult {
     }
 }
 
-/// What a screen asks the stack to do after an update.
+/// A change of scene: what a screen asks the stack to do after an update.
+#[doc(alias = "change_scene")]
+#[doc(alias = "load_scene")]
+#[doc(alias = "NextState")]
+#[doc(alias = "room_goto")]
 pub enum Transition<G: GameData> {
     /// Stay on this screen.
     None,
@@ -220,7 +229,9 @@ pub enum Transition<G: GameData> {
 }
 
 impl<G: GameData> Transition<G> {
-    /// [`Transition::PopWith`] `value`.
+    /// A signal to the screen below: [`Transition::PopWith`] `value`.
+    #[doc(alias = "signal")]
+    #[doc(alias = "emit_signal")]
     pub fn pop_with<T: Any>(value: T) -> Self {
         Self::PopWith(ScreenResult::new(value))
     }

@@ -1,0 +1,318 @@
+# The words of other engines and what each is in Shuyi Engine (ticket
+# 3413): the table of the book's appendix A, *Coming from another engine*
+# (site/content/learn/book/from-another-engine.md), which its shortcode
+# `engine_terms` draws, and the doc aliases the engine's items carry.
+#
+# A `[[term]]` is a row:
+#
+# - `shuyi`: Shuyi's words, inline Markdown, with the chapters that explain
+#   them as links (`[6](@/learn/book/games-and-screens.md)`);
+# - `paths`: the public items they name, each at a path of its own crate
+#   (`shuyi_ui::screen::Screen`), as rustdoc shows it;
+# - `aliases`: the words the first path's item carries as
+#   `#[doc(alias = "…")]`, so rustdoc's search finds it by them: identifiers
+#   only, as rustdoc refuses a space (the engines' words with spaces stay in
+#   the columns);
+# - `godot`, `unity`, `bevy`, `gamemaker`, `pico8`: each engine's word,
+#   inline Markdown, or "—" when it has none.
+#
+# A row Shuyi has no counterpart for starts `shuyi` with "none yet", names
+# no path, and names the open ticket that plans it (`ticket`) or says
+# `planned = false`.
+#
+# A `[[guess]]` is a name an agent guesses from another engine that no row
+# covers: `name` is a doc alias of the item at `path`.
+#
+# `cargo xtask api-text --check` (CI's `api` job) holds this file to the
+# code: every path names a public item, every alias here is on its item,
+# every `doc(alias)` of the engine's crates is here, and a row's ticket is
+# open.
+
+[[term]]
+shuyi = "a `Screen` on the screen stack ([6](@/learn/book/games-and-screens.md))"
+paths = ["shuyi_ui::screen::Screen"]
+aliases = ["Scene", "Room"]
+godot = "a scene"
+unity = "a scene"
+bevy = "a state (`States`)"
+gamemaker = "a room"
+pico8 = "the game's modes"
+
+[[term]]
+shuyi = "a `Transition`: `Push`, `Pop`, `Replace` ([6](@/learn/book/games-and-screens.md#the-stack))"
+paths = ["shuyi_ui::screen::Transition"]
+aliases = ["change_scene", "load_scene", "NextState", "room_goto"]
+godot = "`change_scene_to_file`"
+unity = "`SceneManager.LoadScene`"
+bevy = "`NextState`"
+gamemaker = "`room_goto`"
+pico8 = "—"
+
+[[term]]
+shuyi = "a plain struct the game owns, in a screen or in the state its `TurnRules` change ([5](@/learn/book/rules-as-commands.md))"
+paths = ["shuyi_core::turn::TurnRules"]
+godot = "a node"
+unity = "a GameObject"
+bevy = "an entity"
+gamemaker = "an instance"
+pico8 = "—"
+
+[[term]]
+shuyi = "`Screen::update`, which changes the state through commands ([6](@/learn/book/games-and-screens.md#a-screen), [5](@/learn/book/rules-as-commands.md))"
+paths = ["shuyi_ui::screen::Screen::update"]
+aliases = ["process"]
+godot = "`_process`"
+unity = "`Update()`"
+bevy = "a system"
+gamemaker = "the Step event"
+pico8 = "`_update`"
+
+[[term]]
+shuyi = "`Screen::draw`, a skin painting a view ([2](@/learn/book/frame-and-skins.md))"
+paths = ["shuyi_ui::screen::Screen::draw"]
+godot = "`_draw`"
+unity = "—"
+bevy = "—"
+gamemaker = "the Draw event"
+pico8 = "`_draw`"
+
+[[term]]
+shuyi = "a real-time game's fixed steps ([5](@/learn/book/rules-as-commands.md))"
+paths = ["shuyi_core::tick::TickSim"]
+aliases = ["physics_process", "FixedUpdate"]
+godot = "`_physics_process`"
+unity = "`FixedUpdate()`"
+bevy = "`FixedUpdate`"
+gamemaker = "—"
+pico8 = "—"
+
+[[term]]
+shuyi = "`input.dt()`, the frame's seconds, for what a screen shows; rules count steps or turns ([5](@/learn/book/rules-as-commands.md))"
+paths = ["shuyi_ui::input::frame::FrameInput::dt"]
+aliases = ["delta", "delta_time", "deltaTime"]
+godot = "`delta`"
+unity = "`Time.deltaTime`"
+bevy = "`Time`"
+gamemaker = "`delta_time`"
+pico8 = "—"
+
+[[term]]
+shuyi = "the game's data, `ctx.game`, on the context every screen shares ([6](@/learn/book/games-and-screens.md#the-context))"
+paths = ["shuyi_ui::ctx::Ctx"]
+aliases = ["autoload", "Singleton"]
+godot = "an autoload"
+unity = "a singleton"
+bevy = "a resource (`Res`)"
+gamemaker = "a global variable"
+pico8 = "a global"
+
+[[term]]
+shuyi = "an `ActionSet` and the player's keymap ([4](@/learn/book/actions.md))"
+paths = ["shuyi_assets::keymap::action_set::ActionSet", "shuyi_ui::input::keymap::Keymap"]
+aliases = ["InputMap", "ButtonInput", "InputAction"]
+godot = "the input map's actions"
+unity = "the Input System's actions"
+bevy = "`ButtonInput` (keys)"
+gamemaker = "`keyboard_check` (keys)"
+pico8 = "`btn`, `btnp`"
+
+[[term]]
+shuyi = "a kind of asset and its formats, through the registry ([3](@/learn/book/assets-and-formats.md))"
+paths = ["shuyi_assets::format::Formats"]
+aliases = ["AssetServer", "Importer"]
+godot = "a resource (`.tres`), an import"
+unity = "an asset, a ScriptableObject"
+bevy = "an asset, the `AssetServer`"
+gamemaker = "an included file"
+pico8 = "the cart's data"
+
+[[term]]
+shuyi = "the bundle's layers, and a baked pack ([3](@/learn/book/assets-and-formats.md#layers))"
+paths = ["shuyi_assets::bundle::Bundle", "shuyi_assets::bundle::Layer"]
+aliases = ["AssetBundle", "pck"]
+godot = "a `.pck` file"
+unity = "an AssetBundle"
+bevy = "—"
+gamemaker = "—"
+pico8 = "the cart"
+
+[[term]]
+shuyi = "the `SimRng` kept in the rules' state ([5](@/learn/book/rules-as-commands.md#turnrules))"
+paths = ["shuyi_core::rng::SimRng"]
+aliases = ["Random", "Rng", "randi", "rnd"]
+godot = "`randi()`"
+unity = "`Random`"
+bevy = "—"
+gamemaker = "`random`"
+pico8 = "`rnd`"
+
+[[term]]
+shuyi = "a screen's answer (`Transition::pop_with`), or the rules' events ([6](@/learn/book/games-and-screens.md#asking-the-screen-below), [5](@/learn/book/rules-as-commands.md))"
+paths = ["shuyi_ui::screen::Transition::pop_with"]
+aliases = ["signal", "emit_signal"]
+godot = "a signal"
+unity = "an event"
+bevy = "an event"
+gamemaker = "a user event"
+pico8 = "—"
+
+[[term]]
+shuyi = "`Storage`, in the player's profile ([7](@/learn/book/saves-and-settings.md))"
+paths = ["shuyi_ui::storage::Storage"]
+aliases = ["PlayerPrefs", "ConfigFile", "cartdata", "SaveFile"]
+godot = "`user://`, `ConfigFile`"
+unity = "`PlayerPrefs`"
+bevy = "—"
+gamemaker = "`ini_open`"
+pico8 = "`cartdata`, `dset`"
+
+[[term]]
+shuyi = "a module, turned on with `cargo shuyi add` ([6](@/learn/book/games-and-screens.md#modules))"
+paths = ["shuyi_ui::module::Module"]
+aliases = ["Plugin", "Addon"]
+godot = "a plugin, an addon"
+unity = "a package"
+bevy = "a `Plugin`"
+gamemaker = "an extension"
+pico8 = "—"
+
+[[term]]
+shuyi = "none yet: a game builds its pieces in code, from its data"
+ticket = "2221"
+godot = "a packed scene's instance"
+unity = "a prefab"
+bevy = "a scene"
+gamemaker = "—"
+pico8 = "—"
+
+[[term]]
+shuyi = "a `Tween`, drawn from the time alone ([2](@/learn/book/frame-and-skins.md#things-that-move))"
+paths = ["shuyi_core::ease::Tween"]
+aliases = ["AnimationCurve"]
+godot = "a tween"
+unity = "a coroutine"
+bevy = "—"
+gamemaker = "an animation curve"
+pico8 = "—"
+
+[[term]]
+shuyi = "`cargo test`, with the Harness ([8](@/learn/book/testing.md))"
+paths = ["shuyi_platform::harness::Harness"]
+aliases = ["TestRunner"]
+godot = "unit tests (GUT)"
+unity = "the Test Runner"
+bevy = "tests over an `App`"
+gamemaker = "—"
+pico8 = "—"
+
+[[term]]
+shuyi = "a target's profile, and `cargo shuyi web` ([9](@/learn/book/targets-and-export.md))"
+paths = ["shuyi_assets::target::TargetProfile"]
+aliases = ["ExportPreset", "BuildProfile"]
+godot = "an export preset"
+unity = "a build profile"
+bevy = "—"
+gamemaker = "a target"
+pico8 = "export"
+
+# The names agents guess that no row above covers.
+
+[[guess]]
+name = "draw_sprite"
+path = "shuyi_ui::frame::glyph_buffer::GlyphBuffer::add_sprite"
+
+[[guess]]
+name = "draw_texture"
+path = "shuyi_ui::frame::glyph_buffer::GlyphBuffer::add_sprite"
+
+[[guess]]
+name = "draw_image"
+path = "shuyi_ui::frame::glyph_buffer::GlyphBuffer::add_sprite"
+
+[[guess]]
+name = "spr"
+path = "shuyi_ui::frame::glyph_buffer::GlyphBuffer::add_sprite"
+
+[[guess]]
+name = "draw_text"
+path = "shuyi_ui::frame::glyph_buffer::GlyphBuffer::print"
+
+[[guess]]
+name = "is_key_down"
+path = "shuyi_ui::input::frame::FrameInput::held"
+
+[[guess]]
+name = "is_action_pressed"
+path = "shuyi_ui::input::frame::FrameInput::held"
+
+[[guess]]
+name = "keyboard_check"
+path = "shuyi_ui::input::frame::FrameInput::held"
+
+[[guess]]
+name = "btn"
+path = "shuyi_ui::input::frame::FrameInput::held"
+
+[[guess]]
+name = "just_pressed"
+path = "shuyi_ui::input::frame::FrameInput::presses"
+
+[[guess]]
+name = "is_key_pressed"
+path = "shuyi_ui::input::frame::FrameInput::presses"
+
+[[guess]]
+name = "is_action_just_pressed"
+path = "shuyi_ui::input::frame::FrameInput::presses"
+
+[[guess]]
+name = "btnp"
+path = "shuyi_ui::input::frame::FrameInput::presses"
+
+[[guess]]
+name = "just_released"
+path = "shuyi_ui::input::frame::FrameInput::released"
+
+[[guess]]
+name = "is_key_released"
+path = "shuyi_ui::input::frame::FrameInput::released"
+
+[[guess]]
+name = "TileMap"
+path = "shuyi_assets::grid_map::GridMap"
+
+[[guess]]
+name = "Vec2"
+path = "shuyi_core::grid::Pos"
+
+[[guess]]
+name = "Vector2"
+path = "shuyi_core::grid::Pos"
+
+[[guess]]
+name = "IVec2"
+path = "shuyi_core::grid::Pos"
+
+[[guess]]
+name = "Point"
+path = "shuyi_core::grid::Pos"
+
+[[guess]]
+name = "Timer"
+path = "shuyi_core::timer::Countdown"
+
+[[guess]]
+name = "Cooldown"
+path = "shuyi_core::timer::Countdown"
+
+[[guess]]
+name = "Texture"
+path = "shuyi_assets::image::Image"
+
+[[guess]]
+name = "Texture2D"
+path = "shuyi_assets::image::Image"
+
+[[guess]]
+name = "Camera2D"
+path = "shuyi_ui::grid::camera::Camera"

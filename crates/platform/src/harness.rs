@@ -103,8 +103,9 @@ impl FrameClock {
     }
 }
 
-/// Drives a [`Game`] with simulated key presses and time, as the platform
-/// would: in an [`App`], on the [`HeadlessPlatform`].
+/// The test runner: drives a [`Game`] with simulated key presses and time,
+/// as the platform would, in an [`App`], on the [`HeadlessPlatform`].
+#[doc(alias = "TestRunner")]
 pub struct Harness<G: GameData> {
     app: App<G>,
     platform: HeadlessPlatform,

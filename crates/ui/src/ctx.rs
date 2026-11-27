@@ -270,9 +270,11 @@ struct SessionState {
     save: bool,
 }
 
-/// Resources shared by every screen: the engine's, and the game's in
-/// [`game`](Self::game).
+/// The autoload, or singleton: resources shared by every screen, the
+/// engine's, and the game's in [`game`](Self::game).
 #[derive(Debug)]
+#[doc(alias = "autoload")]
+#[doc(alias = "Singleton")]
 pub struct Ctx<G: GameData> {
     /// The game's data and state, which its screens share.
     pub game: G,

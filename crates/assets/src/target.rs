@@ -54,11 +54,14 @@ impl Format for TargetRon {
     }
 }
 
-/// One export target: data read from a file (ADR-0039 kind 5). A field
+/// An export preset, or build profile: one export target, data read from a
+/// file (ADR-0039 kind 5). A field
 /// added later is `#[serde(default)]`, so every profile still loads.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
+#[doc(alias = "ExportPreset")]
+#[doc(alias = "BuildProfile")]
 pub struct TargetProfile {
     /// Its id, which `shuyi check --target` and a game's `shuyi.ron` name
     /// it by: the file's name without `.ron`.
