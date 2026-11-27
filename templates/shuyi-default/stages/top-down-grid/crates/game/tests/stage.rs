@@ -9,8 +9,7 @@ use game::stages::top_down_grid::{
     AREA, GLYPHS, MAP, Piece, StageRecord, StageScreen, Tools, crash_record, prove_stage,
 };
 use rules::{Command, Feature, Outcome, Stage};
-use shuyi::core::Limits;
-use shuyi::core::prelude::{Dir, Pos, TerrainId, TurnRules};
+use shuyi::core::prelude::{Dir, Limits, Pos, TerrainId, TurnRules};
 use shuyi::prelude::grid::{GRID, GridMap, GridSkin};
 use shuyi::prelude::test::Harness;
 use shuyi::prelude::text::TextRole;

@@ -13,8 +13,7 @@
 
 use rules::{Feature, Outcome, Player, Stage};
 use serde::Serialize;
-use shuyi::core::prelude::{Bot, Made, Pos, RandomBot, TerrainId, play};
-use shuyi::core::{Limits, Solve, solve};
+use shuyi::core::prelude::{Bot, Limits, Made, Pos, RandomBot, Solve, TerrainId, play, solve};
 use shuyi::prelude::grid::{GridMap, MapText};
 use shuyi::prelude::test::{Harness, Measures, PlayedTry, SessionRecord, Stamps, Tried, bot_seed};
 use shuyi::prelude::text::FontAtlasDef;

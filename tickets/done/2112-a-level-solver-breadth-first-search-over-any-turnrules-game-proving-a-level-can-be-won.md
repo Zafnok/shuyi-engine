@@ -276,7 +276,10 @@ What was done:
 - `shuyi_core::search` (`crates/core/src/search.rs`, tests in
   `search/tests.rs`): `Limits`, `Solve`, `SolveError`, `Solver` (`new`,
   `step`, `states`) and `solve`, re-exported at the crate's root, with the
-  rules in the module docs. The hash is a private `fn` field set to
+  rules in the module docs. After `main` brought the domain preludes and
+  the import check (3438), `Limits`, `Solve`, `SolveError`, `Solver`
+  and `solve` joined `shuyi_core::prelude` too, which the template's
+  tools and tests name them through. The hash is a private `fn` field set to
   `state_hash` by `new`; the tests set it to give every state one hash.
 - Tests: a counter (`+2`, `×3`) and a maze. Shortest lines, ties by
   `legal_commands` order both ways, a start already won, `Exhausted` with
@@ -315,7 +318,7 @@ Deviations:
   `Solver::states`, a `Display` and `Error` for `SolveError`, and a
   `Debug` for `Solver`.
 - `Limits::states` of 0 counts as 1: the start is always kept.
-- The solver and the template's proof came to 1,046 counted lines, so,
+- The solver and the template's proof came to 1,067 counted lines, so,
   as the ticket's size clause says, the parts from 2803, 1134
   and 2802 (the tutorial's lines from `solve`, the skill's section and
   the book's section) moved to 2150, blocked by this one.

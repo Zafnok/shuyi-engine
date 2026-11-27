@@ -97,8 +97,8 @@ pub use turn::TurnRules;
 /// writes `shuyi::core::prelude`): the RNG, the turn and step traits, the
 /// step's input, record and [`tick`] module (for [`tick::replay`]), the
 /// timers, the grid's positions and paths, the ease and tween types, a
-/// state's hash and a save's header, and the bots that play a turn game
-/// (the playtest runner and the autobalance search are in
+/// state's hash and a save's header, the bots that play a turn game and
+/// the level solver that proves a level winnable (the playtest runner and the autobalance search are in
 /// `shuyi::prelude::test`). A game's code names nothing deeper than a
 /// prelude but the paths `cargo xtask check-imports` allows
 /// (`tools/imports.ron`).
@@ -106,9 +106,9 @@ pub mod prelude {
     pub use crate::tick;
     pub use crate::{
         ActionId, Bag, Bot, ContentHash, Countdown, Determinize, Dir, Ease, Every, Family, Grid,
-        History, Horizon, Made, PlayError, Pos, RandomBot, RandomSource, Reach, Report, Rollout,
-        RolloutSettings, SaveFormat, SaveHeader, ScriptedRng, SeatInput, Sides, SimRng, StateHash,
-        TerrainId, TickInput, TickRecord, TickSim, TurnRules, Tween, Unordered, flow_field, play,
-        reachable, state_hash,
+        History, Horizon, Limits, Made, PlayError, Pos, RandomBot, RandomSource, Reach, Report,
+        Rollout, RolloutSettings, SaveFormat, SaveHeader, ScriptedRng, SeatInput, Sides, SimRng,
+        Solve, SolveError, Solver, StateHash, TerrainId, TickInput, TickRecord, TickSim, TurnRules,
+        Tween, Unordered, flow_field, play, reachable, solve, state_hash,
     };
 }
