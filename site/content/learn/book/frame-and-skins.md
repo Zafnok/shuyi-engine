@@ -223,22 +223,6 @@ game runs (a player's avatar) goes in with `atlas::insert`: it finds free
 space on a page, or starts a new one, and only that page is sent to the
 graphics card again.
 
-A game with many made-up people (a town's villagers, a dungeon's monsters
-in colour variants) can make each one's picture from **parts** instead of
-drawing each: heads, eyes, hair and hats drawn once in grey, where each
-grey that matters is a *key* (this grey is skin, that one hair). It's
-something a game turns on, the `parts` feature of `shuyi-ui`, and a
-**part set** file says the slots in drawing order, the keys, the colours
-each key may take, the parts and the *kinds* (a people, a species) that
-roll them; a kind with a `base` changes only what it names. The rules
-keep a person's seed and kind, never their picture. The skin works the
-look out from them, `set.appearance(kind, seed, worn)`, and paints it
-into a `Painted` picture of the set's size with `frame::parts::paint`,
-again only when the person changes. The same seed always gives the same face, on every machine, and each slot
-rolls on its own, so a mod that adds earrings leaves every other face of
-a saved game as it was. The formats page has [the whole
-file](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#part-sets-the-parts-feature).
-
 ## Why tests read the view
 
 A test of what happened reads the view, or the state behind it:

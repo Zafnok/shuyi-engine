@@ -79,13 +79,13 @@ the image table or too big, at its line.
 
 Pictures for people nobody drew one by one (a town's villagers, a
 monster's colour variants) can be made from parts instead: with
-`shuyi-ui`'s `parts` feature on, a `parts` RON file names the slots in
+`shuyi-assets`' `parts` feature on, a `parts` RON file names the slots in
 draw order, the key greys (`200: "skin"`), the colours each group of
 keys may take, the parts (8 × 8 or up to 256 × 256, cut from PNGs) and
 the kinds that roll them. Draw the parts in exactly the key greys:
 `PartSet::check_pixels` reports a grey within 4 of a key but not on it.
-The rules keep a seed and a kind; the skin rolls the look with
-`PartSet::appearance` and paints it with `frame::parts::paint`. The
+The rules keep a seed and a kind; the skin rolls the look (a part per
+slot, a colour per key) with `PartSet::appearance`. The
 `parts` module's docs (`shuyi_assets::parts`) have a file.
 
 ## Steps

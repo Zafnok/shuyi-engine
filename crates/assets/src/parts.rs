@@ -69,9 +69,8 @@
 //!
 //! So adding a slot or a colour group to a set changes no other slot's
 //! roll: a mod that adds earrings leaves every face of a saved game as
-//! it was. The skin paints the [`Appearance`] it gives (`shuyi-ui`'s
-//! `parts` feature, `frame::parts::paint`), and repaints it when the
-//! person changes.
+//! it was. The skin paints the [`Appearance`] it gives into a painted
+//! picture (ADR-0078), and paints it again when the person changes.
 //!
 //! [`picture_set`]: crate::picture_set
 

@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-27
-- **Related tickets:** 2260 (this: part sets), 2246 (picture sets, the
+- **Related tickets:** 2260 (this: part sets, the file and the roll),
+  2284 (the painting, split off 2260), 2246 (picture sets, the
   hand-drawn way), 2327 (a palette swap on the GPU, parked), 2337
   (tints)
 - **Amends:** ADR-0160 §5 (when a module, and when a feature of a
@@ -43,7 +44,8 @@ such a part is a module.
      against an `ImageTable`), `PartSet::appearance`,
      `PartSet::check_pixels`, and `Appearance`, plain data;
    - `shuyi-ui`'s holds the painting, in `shuyi_ui::frame::parts`
-     (`paint`, beside `frame::painted`), and turns the first on. A game
+     (`paint`, beside `frame::painted`; ticket 2284), and turns the
+     first on. A game
      turns on `shuyi-ui`'s, or only `shuyi-assets`' for a build that
      rolls without painting. No dependency and no `std` in either; both
      build for `thumbv7em-none-eabihf` (the `no-std` gate).

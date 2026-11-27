@@ -1837,7 +1837,6 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "raster",
             "toy",
             "schema",
-            "parts",
         ],
     ),
     (
