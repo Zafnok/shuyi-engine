@@ -487,7 +487,8 @@ What each one reads:
   naming the look and layer (`look "winter": layer 1: image …`).
   A corner layer's 15 pictures may also be made, not drawn: a
   `<name>.corners.ron` recipe, a tool's input that no game loads, makes
-  them into a PNG from one tile (`shuyi_assets::corners`, behind its
+  them into a PNG from one tile, or from 5 drawn pieces turned
+  (`make: Rotated(…)`, a `pieces` list of exactly 5; `shuyi_assets::corners`, behind its
   `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0160).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
