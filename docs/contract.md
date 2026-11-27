@@ -593,6 +593,28 @@ game's folder from the session's folder (the session folder's own
 project if it is left out). `lint` runs in the server, not the game's
 tool program.
 
+**Two generations of the protocol**, chosen per request
+([ADR-0156](adr/0156-the-mcp-server-speaks-2026-07-28-beside-the-old-protocol.md)):
+
+- **The old protocol**, 2024-11-05 to 2025-11-25: a client that starts
+  with `initialize` (Codex, older Claude Code). `ping`, `tools/list` and
+  `tools/call`, as before.
+- **2026-07-28**: a request whose `params._meta` holds
+  `io.modelcontextprotocol/protocolVersion` `"2026-07-28"` (Claude Code
+  v2, which sends `server/discover` first to find out). No
+  `initialize`; `server/discover` answers `supportedVersions:
+  ["2026-07-28"]`, the capabilities (`tools: { listChanged: true }`),
+  the instructions, `ttlMs` (an hour) and `cacheScope: "public"`. Each
+  result carries `resultType` and `_meta["io.modelcontextprotocol/serverInfo"]`;
+  `tools/list` the same tools in the same order, with `ttlMs: 0` and
+  `cacheScope: "private"` where its list follows the session's folder
+  (an hour and `"public"` in a forwarded server). Another version in
+  `_meta` is `-32022`, its `data` saying `supported` and `requested`.
+  `ping` and `notifications/roots/list_changed` are gone.
+
+The session (`start` … `stop`) is the process's on both: one client has
+a server on stdio, so no tool takes a session handle.
+
 Every flag of an operation is a field of its input, the tool's too
 (`--any-stamp` is `any_stamp`; `--entrant` is `entrants`, a step such as
 `--keys` is one of `script`'s, a wizard's flag of `new` one of `set`'s),
@@ -613,7 +635,14 @@ server's working folder. When the client sends
 `notifications/roots/list_changed` the server asks again and takes the
 new first root as the folder, following that folder's server's tools (or
 its own, back in its own workspace); a session game keeps running where
-it runs.
+it runs. On 2026-07-28, where the server asks the client nothing itself,
+the first `tools/call` of a client whose `clientCapabilities` hold
+`roots` is answered `resultType: "input_required"`, `inputRequests: {
+"shuyi-roots": { "method": "roots/list" } }`; the client sends the call
+again with the roots in `inputResponses["shuyi-roots"]`, and it is
+answered from the first. That is asked once: a retry without the roots,
+and every later call, is answered from the folder the server has, and
+the roots are read again only if a request carries them.
 
 A **session** keeps one game running headless between calls:
 
@@ -718,7 +747,15 @@ ends.
 true }`. Once the session folder's forwarded server is ready, the server
 fetches its `tools/list`; if it differs from its own, it sends
 `notifications/tools/list_changed` and from then lists those tools, and
-hands a tool it doesn't know itself to that server.
+hands a tool it doesn't know itself to that server. On 2026-07-28 the
+client hears it on `subscriptions/listen`: the server acknowledges each
+(`notifications/subscriptions/acknowledged`, agreeing to
+`toolsListChanged` only) and answers none while it lasts; the
+notification carries `_meta["io.modelcontextprotocol/subscriptionId"]`,
+the listen request's id, and a `notifications/cancelled` naming it ends
+the subscription. A forwarded server is spoken to on the old protocol
+whatever the client speaks, and its answers reach a 2026-07-28 client
+with `resultType` and `serverInfo` as the server's own do.
 
 **A stale server restarts.** When the game's engine speaks another
 contract than the server (the checkout moved under a running server), a

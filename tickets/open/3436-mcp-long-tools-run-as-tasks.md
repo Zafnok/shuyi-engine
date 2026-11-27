@@ -29,6 +29,10 @@ read 2026-11-26) ask of a server:
   `_meta["io.modelcontextprotocol/clientCapabilities"].extensions` holds
   `io.modelcontextprotocol/tasks`: a task answered to a request without
   it is invalid. The server declares the extension in `server/discover`.
+  **From 3435 (done):** a 2026-07-28 request is answered by
+  `of_stateless` in `crates/cli/src/mcp/server.rs`, `server/discover`'s
+  capabilities are `discover()`'s, and `of_2026(message, result_type)`
+  sets `resultType` (`"task"` fits it) and `serverInfo` (ADR-0156).
 - The `tools/call` result is `resultType: "task"` with `taskId` (up to
   128 printable ASCII characters, no spaces), `status`, `createdAt`,
   `lastUpdatedAt`, `ttlMs` (may be `null`) and, optionally,
