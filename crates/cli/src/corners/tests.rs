@@ -82,15 +82,10 @@ fn a_stale_or_missing_sheet_fails_the_check_and_says_how_to_remake_it() {
     let (dir, file) = game("stale", RECIPE);
     assert_eq!(main("shuyi", std::slice::from_ref(&file)), 0);
     fs::write(&file, RECIPE.replace("seed: 7", "seed: 8")).unwrap();
+    let remake = format!("remake it: cargo shuyi corners {file}");
     let e = run_check(&file).unwrap_err();
-    assert!(
-        e.starts_with("tiles/water-corners.png is stale: its pixels differ"),
-        "{e}"
-    );
-    assert!(
-        e.ends_with(&format!("remake it: cargo shuyi corners {file}")),
-        "{e}"
-    );
+    let stale = "tiles/water-corners.png is stale: its pixels differ";
+    assert!(e.starts_with(stale) && e.ends_with(&remake), "{e}");
     assert_eq!(main("shuyi", &["--check".to_owned(), file.clone()]), 1);
     // Remade, it passes again.
     assert_eq!(main("shuyi", std::slice::from_ref(&file)), 0);
@@ -98,17 +93,12 @@ fn a_stale_or_missing_sheet_fails_the_check_and_says_how_to_remake_it() {
     // Another size.
     fs::write(&file, RECIPE.replace("size: (24, 24)", "size: (24, 12)")).unwrap();
     let e = run_check(&file).unwrap_err();
-    assert!(
-        e.contains("it is 192×48 pixels, and") && e.contains("makes 192×24"),
-        "{e}"
-    );
+    let sized = e.contains("it is 192×48 pixels, and") && e.contains("makes 192×24");
+    assert!(sized, "{e}");
     fs::remove_file(dir.join("art/tiles/water-corners.png")).unwrap();
     let e = run_check(&file).unwrap_err();
-    assert!(e.starts_with("tiles/water-corners.png: "), "{e}");
-    assert!(
-        e.ends_with(&format!("remake it: cargo shuyi corners {file}")),
-        "{e}"
-    );
+    let missing = e.starts_with("tiles/water-corners.png: ") && e.ends_with(&remake);
+    assert!(missing, "{e}");
     fs::remove_dir_all(dir).unwrap();
 }
 
@@ -116,10 +106,8 @@ fn a_stale_or_missing_sheet_fails_the_check_and_says_how_to_remake_it() {
 fn a_bad_recipe_fails_with_its_file_and_line() {
     let (dir, file) = game("bad", &RECIPE.replace("#E8F4FF", "white"));
     for e in [write(&file).unwrap_err(), run_check(&file).unwrap_err()] {
-        assert!(
-            e.starts_with(&format!("{file}:5:")) && e.contains("#RRGGBB"),
-            "{e}"
-        );
+        let colour = e.starts_with(&format!("{file}:5:")) && e.contains("#RRGGBB");
+        assert!(colour, "{e}");
     }
     assert_eq!(main("shuyi", std::slice::from_ref(&file)), 1);
     fs::write(&file, RECIPE.replace("at: (24, 0)", "at: (40, 0)")).unwrap();

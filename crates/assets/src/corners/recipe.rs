@@ -95,7 +95,7 @@ pub fn parse(file: &str, text: &str) -> Result<Recipe, ContentError> {
 }
 
 /// The line, from 1, of the first field `key` in `text`.
-fn line_of(text: &str, key: &str) -> Option<usize> {
+pub(super) fn line_of(text: &str, key: &str) -> Option<usize> {
     let is_word = |c: char| c.is_alphanumeric() || c == '_';
     text.lines()
         .position(|line| {

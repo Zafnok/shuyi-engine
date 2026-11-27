@@ -236,7 +236,9 @@ fn the_tile_and_the_wobble_must_be_in_range() {
     let made = |(w, h), wobble| generate(&tile(w, h), wobble, None).err();
     assert_eq!(made((0, 4), None), Some(CornersError::Empty((0, 4))));
     assert_eq!(made((257, 4), None), Some(CornersError::TooLarge((257, 4))));
+    assert_eq!(made((4, 257), None), Some(CornersError::TooLarge((4, 257))));
     assert_eq!(made((256, 1), None), None);
+    assert_eq!(made((1, 256), None), None);
     let wobble = Wobble::new(1);
     let cells = |cells| made((24, 24), Some(wobble.with_cells(cells)));
     assert_eq!(cells(0), Some(CornersError::Cells(0)));
@@ -307,6 +309,15 @@ fn a_recipe_is_read_and_makes_its_sheet() {
     let bare = recipe::parse("bare.corners.ron", bare).unwrap();
     let Make::Generated { wobble, rim, .. } = bare.make;
     assert_eq!((wobble, rim), (None, None));
+}
+
+#[test]
+fn a_fields_line_is_where_its_name_is_followed_by_a_colon() {
+    // Not inside a longer name, nor where the word isn't a field.
+    let line = |text: &str| recipe::line_of(text, "at");
+    assert_eq!(line("flat_at: 1\nformat: 2\nat: 3"), Some(3));
+    assert_eq!(line("// at the top\n  (at : 2)"), Some(2));
+    assert_eq!(line("size: (1, 1)"), None);
 }
 
 #[test]
