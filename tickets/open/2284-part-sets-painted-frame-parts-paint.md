@@ -22,7 +22,7 @@ roll: `shuyi_assets::parts` behind `shuyi-assets`' off-by-default
 `PartSet::check_pixels`, `Appearance`), its fixture
 (`crates/assets/tests/fixtures/parts/faces.ron` and `faces.png`, four
 slots of 8 × 8 parts and two kinds) and its golden table.
-[ADR-0162](../../docs/adr/0162-part-sets-grey-keyed-parts-rolled-per-slot-and-painted-by-the-skin.md)
+[ADR-0163](../../docs/adr/0163-part-sets-grey-keyed-parts-rolled-per-slot-and-painted-by-the-skin.md)
 decided where the painting goes: an off-by-default `parts` feature of
 `shuyi-ui`, which turns `shuyi-assets`' on, so a headless build rolls
 without painting.

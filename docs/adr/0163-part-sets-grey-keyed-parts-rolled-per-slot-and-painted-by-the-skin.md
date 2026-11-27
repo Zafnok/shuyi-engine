@@ -1,4 +1,4 @@
-# ADR-0162: Part sets: pictures of grey-keyed parts, a look rolled per slot from a hashed seed and painted by the skin, behind off-by-default features of `shuyi-assets` and `shuyi-ui`
+# ADR-0163: Part sets: pictures of grey-keyed parts, a look rolled per slot from a hashed seed and painted by the skin, behind off-by-default features of `shuyi-assets` and `shuyi-ui`
 
 - **Status:** Accepted
 - **Date:** 2026-11-27

@@ -52,7 +52,7 @@ sfx = []
 # too only if it builds the layer with `corners::layer` as it runs.
 corners = []
 # `parts`: part sets, pictures made of grey-keyed parts (faces, figures),
-# a look rolled from a seed per kind (ticket 2260, ADR-0162): `parts::PartSet`,
+# a look rolled from a seed per kind (ticket 2260, ADR-0163): `parts::PartSet`,
 # its format `PartsRon` and `PartSet::appearance`. No dependency and no
 # `std`. A game that makes its people's pictures from parts turns it on in
 # its own `Cargo.toml`.
