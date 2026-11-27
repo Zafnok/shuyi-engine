@@ -131,11 +131,13 @@ None.
   `tickets/README.md` says. The game's PR that moves the pin follows
   this one.
 
-**Either order with 3438:** if 3438 is done, put its domain preludes
-behind the features too (`shuyi::prelude::grid` behind `grid`, and
-every other prelude item from a kit behind that kit's feature); if
-not, nothing to do (3438 gates its preludes by the features this
-ticket adds).
+**From 3438 (done):** put its domain preludes behind the features too
+(`shuyi::prelude::grid` behind `grid`, and every other prelude item
+from a kit behind that kit's feature: the bots in `shuyi_core::prelude`
+and `shuyi::prelude::test`). The preludes are in `shuyi_core::prelude`
+(`crates/core/src/lib.rs`) and `shuyi_platform::prelude`'s `grid`,
+`text`, `audio` and `test` modules (`crates/platform/src/lib.rs`),
+ADR-0161.
 
 **Either order with 2842:** if 2842 is done, add the new features to
 each crate's `[package.metadata.docs.rs]` list with its `API_CRATES`

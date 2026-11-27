@@ -7,9 +7,9 @@
 use core::fmt;
 
 use serde::{Deserialize, Serialize};
-use shuyi::core::bots::Sides;
-use shuyi::core::tick::{ActionId, TickInput, TickSim};
-use shuyi::core::{Countdown, Every, SimRng, TurnRules, state_hash};
+use shuyi::core::prelude::{
+    ActionId, Countdown, Every, Sides, SimRng, TickInput, TickSim, TurnRules, state_hash,
+};
 
 use crate::assets::Plan;
 
@@ -298,7 +298,7 @@ impl fmt::Display for Refusal {
 
 #[cfg(test)]
 mod tests {
-    use shuyi::core::{History, state_hash};
+    use shuyi::core::prelude::History;
 
     use super::*;
 
@@ -378,7 +378,7 @@ mod tests {
     // ANCHOR: luck
     #[test]
     fn a_stream_per_purpose_keeps_a_new_draw_from_moving_the_others() {
-        use shuyi::core::{Bag, RandomSource};
+        use shuyi::core::prelude::{Bag, RandomSource};
 
         let mut weather = SimRng::stream(7, "weather");
         let mut pests = SimRng::stream(7, "pests");
@@ -400,10 +400,8 @@ mod tests {
     // ANCHOR: tick-test
     #[test]
     fn the_bee_flies_a_plot_every_ten_steps_and_its_record_replays() {
-        use shuyi::core::tick::{self, TickRecord};
-        use shuyi::core::{ContentHash, Made};
-        use shuyi::prelude::UiAction;
-        use shuyi::ui::FrameInput;
+        use shuyi::core::prelude::{ContentHash, Made, TickRecord, tick};
+        use shuyi::prelude::{FrameInput, UiAction};
         use shuyi::ui::tick::{ActionIds, TickDriver};
 
         // The rules' ids are the game's actions'.
@@ -428,7 +426,7 @@ mod tests {
 
     #[test]
     fn the_bee_lands_every_tenth_step_held_and_hovers_otherwise() {
-        use shuyi::core::tick::SeatInput;
+        use shuyi::core::prelude::SeatInput;
 
         let held = |ids: &[ActionId]| TickInput::one(SeatInput::new(vec![], ids.to_vec(), vec![]));
         let mut bee = Bee::new(6);

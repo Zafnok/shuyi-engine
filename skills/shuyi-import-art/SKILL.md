@@ -62,8 +62,10 @@ A corner layer's 15 pictures need not be drawn: with `shuyi-cli`'s
 `corners` feature on in the game's tools, a `<name>.corners.ron` recipe
 makes them from the terrain's one tile, rounded and seamless, with an
 optional wobble and rim. `cargo shuyi corners <recipe>` writes the PNG
-sheet (8 × 2 pictures, mix `m` at column `m % 8`, row `m / 8`), and a
-test keeps it equal to its recipe with `shuyi_cli::corners::check`. The
+sheet (8 × 2 pictures, mix `m` at column `m % 8`, row `m / 8`); the
+`terrain-tiles` file's corner layer names it as its own `image:
+"tiles/water-corners.png"`, its cells counted in the sheet, rather than
+pasting it into the tileset's PNG. A test keeps it equal to its recipe with `shuyi_cli::corners::check`. The
 `corners` module's docs (`shuyi_assets::corners::recipe`) have a recipe.
 
 Named pictures for one id (a person's faces, a card's front and back)

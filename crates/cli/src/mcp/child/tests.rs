@@ -76,3 +76,49 @@ fn the_tail_keeps_the_last_bytes_and_copies_them_all() {
     assert_eq!(kept.len(), TAIL);
     assert!(kept.ends_with(b"aend"));
 }
+
+#[test]
+fn a_reply_sent_without_waiting_comes_when_the_program_stops() {
+    let project = project("waits", r#"(game: (package: "no-such-game"))"#);
+    let mut host = Cargo
+        .launch(&project)
+        .unwrap_or_else(|(_, e)| panic!("{e}"));
+    let request = Request {
+        op: Op::Start,
+        input: json!({}),
+    };
+    assert_eq!(host.send(&request), Ok(true));
+    let error = loop {
+        if let Some(reply) = host.reply() {
+            break reply.unwrap_err();
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert!(
+        error.starts_with("the game's tool program stopped before it answered (exit code "),
+        "{error}"
+    );
+    // Stopped, it can't be sent another.
+    assert!(host.send(&request).is_err());
+    drop(host);
+    fs::remove_dir_all(&project.root).unwrap();
+}
+
+#[test]
+fn only_the_marked_lines_are_replies() {
+    let output = format!("the game prints\n{REPLY}{{\"answer\":{{\"ok\":true}}}}\n{REPLY}broken\n");
+    let (sent, replies) = channel();
+    read_replies(output.as_bytes(), &sent);
+    drop(sent);
+    let read: Vec<String> = replies.iter().collect();
+    assert_eq!(read, [r#"{"answer":{"ok":true}}"#, "broken"]);
+    assert_eq!(
+        reply_of(&read[0]).unwrap().answer,
+        Some(json!({ "ok": true }))
+    );
+    assert!(
+        reply_of(&read[1])
+            .unwrap_err()
+            .starts_with("the game's tool program sent a broken reply")
+    );
+}

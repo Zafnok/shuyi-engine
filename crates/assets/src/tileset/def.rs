@@ -17,7 +17,7 @@ use super::{
 use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::grid_map::DEFAULT_TILES;
-use crate::image::{ImageInfo, ImageRect, ImageTable};
+use crate::image::{ImageId, ImageInfo, ImageRect, ImageTable};
 use crate::ron::parse_ron;
 
 /// Cells by name: a look's tile of each terrain.
@@ -136,6 +136,16 @@ pub enum LayerDef {
         /// [`CornerLayer::skip`], by name. Left out, none.
         #[serde(default)]
         skip: Vec<String>,
+        /// [`CornerLayer::image`]: the image its pictures are in, by its
+        /// path in the bundle (a made corner sheet, `"tiles/water-corners.png"`),
+        /// its cells `size` (or `tile_px`) each. Left out, the tileset's.
+        #[serde(
+            default,
+            deserialize_with = "written",
+            serialize_with = "unwritten",
+            skip_serializing_if = "Option::is_none"
+        )]
+        image: Option<String>,
     },
     /// A [`TileLayer`].
     Tiles {
@@ -281,9 +291,9 @@ impl TerrainTilesDef {
 
     /// The tiles as a skin paints them, with `file` (as shown) in each
     /// error: the image looked up in `images`, each terrain named looked up
-    /// in `terrains`. Every problem: the image not in the table; a picture
-    /// outside it (a corner layer's and a picture to place's at its
-    /// `size`); a terrain name (in
+    /// in `terrains`. Every problem: the image, or a corner layer's own
+    /// `image`, not in the table; a picture outside its image (a corner
+    /// layer's and a picture to place's at its `size`); a terrain name (in
     /// `terrain`, `of`, `beside`, `skip`) not in `terrains`; a terrain of
     /// `terrains` with no tile in a look. Run on a file
     /// [`problems`](Self::problems) passed: a mix it reported is left out.
@@ -304,6 +314,7 @@ impl TerrainTilesDef {
         }
         let mut resolving = Resolving {
             file,
+            images,
             image: image.and_then(|id| images.info(id)),
             tile_px: self.tile_px,
             terrains,
@@ -450,6 +461,7 @@ fn mix_problems<'w>(
 /// A [`TerrainTilesDef`] being resolved.
 struct Resolving<'a> {
     file: &'a str,
+    images: &'a ImageTable,
     /// The image's size, if the table has it.
     image: Option<ImageInfo>,
     tile_px: (u32, u32),
@@ -459,14 +471,26 @@ struct Resolving<'a> {
 
 impl Resolving<'_> {
     /// The `size` pixels from the top-left of cell `at`, reported (as
-    /// `what`) if they lie outside the image.
-    fn rect(&mut self, what: &str, at: (u32, u32), (w, h): (u32, u32)) -> ImageRect {
+    /// `what`) if they lie outside the tileset's image.
+    fn rect(&mut self, what: &str, at: (u32, u32), size: (u32, u32)) -> ImageRect {
+        self.rect_in(self.image, what, at, size)
+    }
+
+    /// The `size` pixels from the top-left of cell `at`, reported (as
+    /// `what`) if they lie outside the image of size `image`, if known.
+    fn rect_in(
+        &mut self,
+        image: Option<ImageInfo>,
+        what: &str,
+        at: (u32, u32),
+        (w, h): (u32, u32),
+    ) -> ImageRect {
         let rect = ImageRect {
             w,
             h,
             ..ImageRect::cell(at, self.tile_px, (0, 0))
         };
-        if let Some(info) = self.image
+        if let Some(info) = image
             && !info.holds(rect)
         {
             let ImageRect { x, y, .. } = rect;
@@ -477,6 +501,18 @@ impl Resolving<'_> {
             self.errors.push(error);
         }
         rect
+    }
+
+    /// The image at `path` of a layer called `what`, reported if the table
+    /// lacks it.
+    fn layer_image(&mut self, what: &str, path: &str) -> Option<ImageId> {
+        let id = self.images.id(path);
+        if id.is_none() {
+            let message = format!("{what}: image \"{path}\" is not in the bundle's image table");
+            let error = ContentError::new(self.file, message).with_code(codes::MISSING_FILE);
+            self.errors.push(error);
+        }
+        id
     }
 
     /// The terrain called `name`, reported (as `what`) if the game has
@@ -502,9 +538,11 @@ impl Resolving<'_> {
     }
 
     /// The pictures of the mixes `entries` (each a mix as written, called
-    /// a `kind`, and its cell), each `size` pixels, by mix.
+    /// a `kind`, and its cell), each `size` pixels of the image of size
+    /// `image`, by mix.
     fn mixes<'e>(
         &mut self,
+        image: Option<ImageInfo>,
         what: &str,
         kind: &str,
         size: (u32, u32),
@@ -513,7 +551,7 @@ impl Resolving<'_> {
         let mut tiles = [None; MIXES];
         for (text, at) in entries {
             if let Some(m) = parse_mix(text) {
-                let rect = self.rect(&format!("{what}, {kind} \"{text}\""), at, size);
+                let rect = self.rect_in(image, &format!("{what}, {kind} \"{text}\""), at, size);
                 tiles[usize::from(m)] = Some(rect);
             }
         }
@@ -529,14 +567,21 @@ impl Resolving<'_> {
                 size,
                 offset,
                 skip,
+                image,
             } => {
                 let of = self.terrains(what, of);
                 let entries = tiles.iter().map(|t| (t.corners.as_str(), t.at));
                 let size = size.unwrap_or(self.tile_px);
-                let tiles = self.mixes(what, "corners", size, entries);
+                let own = image.as_deref().map(|path| self.layer_image(what, path));
+                let info = match own {
+                    Some(id) => id.and_then(|id| self.images.info(id)),
+                    None => self.image,
+                };
+                let tiles = self.mixes(info, what, "corners", size, entries);
                 let mut layer = CornerLayer::new(of, tiles);
                 layer.skip = self.terrains(&format!("{what}: skip"), skip);
                 layer.offset = *offset;
+                layer.image = own.flatten();
                 Layer::Corners(layer)
             }
             LayerDef::Tiles {
@@ -548,7 +593,7 @@ impl Resolving<'_> {
                 let of = self.terrains(what, of);
                 let tile = self.rect(what, *at, self.tile_px);
                 let entries = sides.iter().map(|s| (s.sides.as_str(), s.at));
-                let sides = self.mixes(what, "sides", self.tile_px, entries);
+                let sides = self.mixes(self.image, what, "sides", self.tile_px, entries);
                 let beside = self.terrains(what, beside);
                 Layer::Tiles(TileLayer {
                     of,

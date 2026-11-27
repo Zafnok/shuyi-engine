@@ -5,14 +5,13 @@
 //! and the saves packed in a bundle and read back with a verdict each.
 
 use serde::{Deserialize, Serialize};
-use shuyi::core::made::Made;
-use shuyi::core::{SaveFormat, SaveHeader};
-use shuyi::platform::{ChosenFile, SystemEvent};
+use shuyi::core::prelude::{Made, SaveFormat, SaveHeader};
+use shuyi::platform::ChosenFile;
+use shuyi::prelude::{Ctx, GameData, SystemEvent};
 use shuyi::ui::storage::bundle::{
     Applied, BundleError, FormatCheck, ImportPlan, apply, plan_import, write_bundle,
 };
 use shuyi::ui::storage::{Storage, StorageError};
-use shuyi::ui::{Ctx, GameData};
 
 use crate::rules::Garden;
 
@@ -126,8 +125,8 @@ pub fn import_saves(plan: &ImportPlan, storage: &mut dyn Storage) -> Result<Appl
 
 #[cfg(test)]
 mod tests {
-    use shuyi::platform::harness::{FRAME_DT, Harness};
-    use shuyi::ui::audio::groups::MUSIC;
+    use shuyi::prelude::audio::groups::MUSIC;
+    use shuyi::prelude::test::{FRAME_DT, Harness};
     use shuyi::ui::settings::SETTINGS_KEY;
     use shuyi::ui::storage::bundle::Verdict;
 

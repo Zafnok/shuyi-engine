@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3435"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3436 — The MCP server's long tools run as tasks
@@ -97,11 +97,12 @@ None.
   starts again (decide in the ADR, with the reason).
 - **`tasks/cancel`**: stops the work: the child's `cargo` process is
   killed (the `Process` the forwarding and the host already hold), and
-  the task is `cancelled`. A cancel of a finished or unknown task is an
-  empty result, as the spec says.
-- **`failed`** carries the tool's error as `tools/call` would have
-  answered it, its `code` (`SH0001`) kept, so an agent still branches on
-  it.
+  the task is `cancelled`. A cancel of a finished task is an empty
+  result; of an unknown one `-32602`, as the spec says.
+- **A failed tool** is `completed` with the error result `tools/call`
+  would have answered, its `code` (`SH0001`) kept, so an agent still
+  branches on it: the spec keeps `failed` for a JSON-RPC error (an
+  internal one, `-32603`), which carries it as `error`.
 - **An ADR** (the `write-adr` skill): tasks in the server, which tools,
   the thread per task, the session's rule while `start` runs. It amends
   ADR-0031 §1 (the loop is no longer the only thread that works).
@@ -143,21 +144,21 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `server/discover` declares `io.modelcontextprotocol/tasks`.
-- [ ] `playtest` on a 2026-07-28 request with the extension answers
+- [x] `server/discover` declares `io.modelcontextprotocol/tasks`.
+- [x] `playtest` on a 2026-07-28 request with the extension answers
       `resultType: "task"` with every field Claude Code requires, then
       `tasks/get` answers `working`, then `completed` with the same
       `result` the call answers without tasks.
-- [ ] The same call without the extension, or on 2025-11-25, answers
+- [x] The same call without the extension, or on 2025-11-25, answers
       the result directly, as today.
-- [ ] A tool not in the list (`scene`, `docs`) never answers a task.
-- [ ] `tasks/cancel` of a working `start` kills its build and makes it
+- [x] A tool not in the list (`scene`, `docs`) never answers a task.
+- [x] `tasks/cancel` of a working `start` kills its build and makes it
       `cancelled`; `step` then answers "no session".
-- [ ] A failing `start` (a game that doesn't build) is `failed` with the
-      `SH` code `start` answers today.
-- [ ] `tasks/get` of an unknown id is `-32602`.
-- [ ] Checked by hand in Claude Code (step 6).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A failing `start` (a game that doesn't build) is `completed` with
+      the error result and the `SH` code `start` answers today.
+- [x] `tasks/get` of an unknown id is `-32602`.
+- [x] ~~Checked by hand in Claude Code (step 6).~~ (not done: a worktree session's server is the main checkout's, which forwards to the worktree's, so Claude Code sees tasks only with 3440; checked over stdio with the same messages, see the notes)
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -168,5 +169,96 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** On a 2026-07-28 request whose client capabilities
+declare `io.modelcontextprotocol/tasks`, `start` (without `link`),
+`playtest`, `autobalance`, `bake` and `export` answer a task at once
+(`mcp::tasked`, with its reasons). `server/discover` declares the
+extension. `tasks/get` and `tasks/cancel` are new arms of
+`of_stateless` (`Server::of_task`). The task table is
+`crates/cli/src/mcp/tasks.rs` (ids `shuyi-<n>`, times as ISO 8601 UTC,
+`pollIntervalMs` 2,000 for `start` and 10,000 for the rest, `ttlMs` null
+while it works, then its run plus an hour, and forgotten an hour after it
+ends). A session tool while `start`'s task works answers `SH0002` naming
+the task, and a second `start` cancels the first (ADR-0159 §4). A cancel
+drops the host: `cargo` is killed. ADR-0159 records it and amends
+ADR-0031 §1; `docs/contract.md` (*The MCP server*, **Tasks**) and the
+book's *Tools for agents* say it.
+
+**Deviations.**
+
+- **No thread per task** (the ticket's *The task's run*). `Launch` and
+  `Link` aren't `Send` (`InProcess` borrows a game's `GameTools`), so a
+  thread running the call would need `Send + 'static` bounds, a break for
+  games' tests of the server. Every tasked tool's long work is a wait on
+  a host process already running, so `Link` gained `send` and `reply`
+  (defaults that keep today's behaviour), `child::Program` reads its
+  stdout on a thread of its own, and the loop polls (`Server::advance`,
+  from `tasks/get`, `tasks/cancel`, the session tools and each `poll`).
+  ADR-0159 §2, and *Alternatives considered*.
+- **A failing tool is `completed`, not `failed`.** The specification
+  (2026-07-28, and its `schema.json`) forbids `failed` for a tool's error
+  result: a game that doesn't build is `completed` with the error result
+  `start` answers today, `SH3005` kept. `failed` carries a JSON-RPC
+  error. The ticket's Scope and acceptance line were fixed before the
+  code.
+- **A cancel of an unknown task is `-32602`**, as the specification says
+  (the ticket said an empty result); of an ended task, an empty result.
+  `tasks/get` and `tasks/cancel` from a client without the extension are
+  `-32021`, as the specification says. Fixed in the Scope before the
+  code.
+- **Forwarded calls split off** at the size valve, into 3440: a call
+  another workspace's server answers answers as today (the PR was at
+  1,263 counted lines before its docs). The engine-moved restart still
+  waits on the fresh server, inside the task's completion: 3440 too.
+
+**Checked by hand**, at `503abbb5` (the tip of `main`; the branch has no
+merge of it since): the branch's `shuyi mcp`, driven over stdio by a
+script as a 2026-07-28 client with the extension, on
+`examples/hello-grid` with its sources touched so its tool program
+rebuilt:
+
+- `server/discover`'s capabilities held the extension;
+- `start` answered `resultType: "task"`, `shuyi-1`, `working`, in 0.09 s;
+  three seconds later the server had two `cargo` and seven `rustc`
+  processes under it; `step` answered `SH0002` naming `shuyi-1`;
+- `tasks/cancel` answered empty, and a second later no process was left
+  under the server (cargo's job object took the `rustc`s); `tasks/get`
+  answered `cancelled`, `step` the plain "no session";
+- a second `start` (`shuyi-2`) was polled every 2 s, `working` for
+  37 s, then `completed` with `start`'s ok result; `step` then played 5
+  frames;
+- `tasks/get` without the extension was `-32021`, of `shuyi-99`
+  `-32602`.
+
+**Not checked: in Claude Code** (acceptance line struck), and it can't
+be from a worktree session yet. The worktree session's `shuyi` server is
+the main checkout's (`D:\shuyi-engine\target\debug\shuyi.exe`, built
+from `main`), which forwards the worktree's calls to a server of the
+worktree (ADR-0035 §2): the server Claude Code talks to has no tasks
+until this merges, and a forwarded call answers without tasks until
+3440, which takes the check over. A reconnect restarts only the main
+checkout's server (and the client said it was connected). A headless
+`claude -p` couldn't sign in. The stdio run sends what Claude Code's
+*MCP tasks for server authors* says it sends (`tasks/get` at
+`pollIntervalMs`, `tasks/cancel` on a stop).
+
+**Size:** 1,482 counted lines (code 678, tests 614, docs 190), under
+1,500; the forwarded calls (3440) were where it split.
+
+Behaviour: shuyi-cli: on 2026-07-28, `server/discover`'s capabilities
+hold `extensions: { "io.modelcontextprotocol/tasks": {} }`, and a client
+that declares the extension gets a task (`resultType: "task"`) from
+`start`, `playtest`, `autobalance`, `bake` and `export`, then answers
+`tasks/get` and `tasks/cancel`.
+
+Behaviour: shuyi-cli: a session tool called while `start`'s task builds
+answers `SH0002` with an `error` that names the task; a `start` while
+another's task builds cancels it and adds a limit saying so.
+
+No break: `Link` gains two methods with defaults, `mcp::tasked` is new;
+`gh search code --repo Zafnok/visions-of-shuyi` for `impl Link for`,
+`server::Server`, `InProcess`, `server/discover` and `no game is running`
+found nothing (the game pins `96eb097c`).
+
+Game: nothing to adopt, the game implements none of the server's traits
+and its agents get tasks from the engine's server as it moves its pin.

@@ -614,6 +614,29 @@ tool program.
   `_meta` is `-32022`, its `data` saying `supported` and `requested`.
   `ping` and `notifications/roots/list_changed` are gone.
 
+**Tasks** ([ADR-0159](adr/0159-the-mcp-servers-long-tools-run-as-tasks.md)):
+on 2026-07-28, `server/discover`'s capabilities hold `extensions:
+{ "io.modelcontextprotocol/tasks": {} }`, and a call of `start` (without
+`link`), `playtest`, `autobalance`, `bake` or `export` from a client
+whose `clientCapabilities.extensions` hold the same answers a task at
+once, `resultType: "task"`: `taskId` (`shuyi-1`, `shuyi-2`, … in the
+process), `status`, `createdAt` and `lastUpdatedAt` (ISO 8601, UTC),
+`ttlMs` (`null` while it works; once it ends, the time it ran and an
+hour) and `pollIntervalMs` (2,000 for `start`, 10,000 for the others).
+`tasks/get` (`{ taskId }`) answers it as it stands: `working`;
+`completed` with `result`, the result the call answers without tasks (a
+failed tool's error result too, its `code` kept); `failed` with
+`error`, a JSON-RPC error; or `cancelled`. `tasks/cancel` stops a
+working task (the game's tool program and its build are killed) and
+answers an empty result, also for a task that ended. An unknown task,
+or one an hour past its end, is `-32602`; `tasks/get` and
+`tasks/cancel` from a client without the extension `-32021`. A session
+tool called while `start`'s task works answers `SH0002`, its `error`
+naming the task, and a second `start` cancels the first. A client
+without tasks, every other tool, a call on the old protocol and a call
+forwarded to another workspace's server answer as before: the client
+waits on the call.
+
 The session (`start` … `stop`) is the process's on both: one client has
 a server on stdio, so no tool takes a session handle.
 

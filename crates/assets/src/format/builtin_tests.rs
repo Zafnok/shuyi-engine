@@ -200,7 +200,13 @@ pub(crate) fn tile_terrains() -> BTreeMap<String, TerrainId> {
 
 /// The image of [`TERRAIN_TILES`]: 4 × 3 tiles of 16 px.
 pub(crate) fn terrain_tiles_images() -> ImageTable {
-    ImageTable::new([("tiles/farm.png", ImageInfo::new(64, 48))].into())
+    ImageTable::new(
+        [
+            ("tiles/farm.png", ImageInfo::new(64, 48)),
+            ("tiles/water-corners.png", ImageInfo::new(64, 32)),
+        ]
+        .into(),
+    )
 }
 
 /// The terrain tiles format of the tests' rules.

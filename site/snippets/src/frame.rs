@@ -5,7 +5,7 @@
 //! steps. And the garden's own channel of the debug view: where each plot
 //! is, drawn over the running game.
 
-use shuyi::core::{Ease, Family, TurnRules, Tween};
+use shuyi::core::prelude::{Ease, Family, TurnRules, Tween};
 use shuyi::prelude::*;
 use shuyi::ui::debug::gizmo::{Channel, Gizmo, GizmoRole, Gizmos};
 use shuyi::ui::frame::{Layer, Painted, PaintedId, PaintedSprite};

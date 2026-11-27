@@ -3,7 +3,7 @@
 //! than the board's floor, and a record replays to the same hashes twice.
 
 use proptest::prelude::*;
-use shuyi::core::tick::{ActionId, SeatInput, TickInput, TickRecord, TickSim, replay};
+use shuyi::core::prelude::{ActionId, SeatInput, TickInput, TickRecord, TickSim, tick::replay};
 use snake::Own;
 use snake::rules::Snake;
 

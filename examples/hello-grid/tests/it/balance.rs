@@ -9,9 +9,10 @@ use std::ops::RangeInclusive;
 use hello_grid::Hello;
 use hello_grid::rules::{Stage, Tuning};
 use hello_grid::tools::{ENTRANTS, knobs, playtest_checks};
-use shuyi::core::bots::balance::Change;
-use shuyi::core::bots::playtest::{Band, Check, Condition, Entrant, Found, PlaytestReport, Tries};
-use shuyi::core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
+use shuyi::prelude::test::{
+    BalanceSettings, Balanced, Band, Change, Check, Condition, Entrant, Found, Knob,
+    PlaytestReport, Stop, Tries, autobalance,
+};
 
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs.
 const SETTINGS: BalanceSettings = BalanceSettings::new(Tries::new(50)).with_evaluations(40);

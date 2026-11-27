@@ -1,6 +1,6 @@
 # ADR-0156: The MCP server speaks 2026-07-28 beside the old protocol: a version per request, the folder by `input_required`, and list changes by subscription
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0159 (tasks)
 - **Date:** 2026-11-26
 - **Related tickets:** 3435 (this); 3434 (skills), 3436 (tasks) and 3437
   (elicitation), which need it
