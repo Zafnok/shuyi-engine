@@ -169,6 +169,20 @@ fn a_leave_makes_the_seat_the_bots_at_the_next_step() {
 }
 
 #[test]
+fn a_leave_before_the_step_keeps_the_others_catch_ups() {
+    let mut room = Room::new(Dots, 22);
+    room.join(PeerId(1)).expect("a seat");
+    room.join(PeerId(2)).expect("a seat");
+    room.leave(PeerId(2));
+    let out = step(&mut room);
+    assert!(matches!(
+        to(&out, PeerId(1))[..],
+        [Frame::Joined { .. }, Frame::Step { .. }]
+    ));
+    assert_eq!(to(&out, PeerId(2)).len(), 0);
+}
+
+#[test]
 fn five_seconds_of_silence_make_the_seat_the_bots_and_drop_the_peer() {
     let (mut room, peers) = full_room(5);
     for n in 1..=SILENCE {

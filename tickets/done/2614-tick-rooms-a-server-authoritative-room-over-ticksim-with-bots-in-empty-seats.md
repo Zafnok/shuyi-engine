@@ -311,7 +311,7 @@ only, which no chapter teaches yet.
 Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
 play; this changes no schema, template, format or problem code.
 
-Size: 2,706 counted lines (2,331 before the tests CI's mutation testing
+Size: 2,720 counted lines (2,331 before the tests CI's mutation testing
 asked for), the ticket's own split point: `RoomClient` and
 the tests over `MemoryNetwork` went to 2621. What is left lands
 together: the wire's frames are what `Room::step` writes and nothing
