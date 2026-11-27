@@ -339,9 +339,10 @@ fn turn(picture: &Image) -> Image {
 
 /// Mix `m` turned a quarter clockwise: top-left (8) to top-right (4),
 /// top-right to bottom-right (1), bottom-right to bottom-left (2) and
-/// bottom-left to top-left.
+/// bottom-left to top-left. The four bits moved are apart, so they add up
+/// to the turned mix.
 const fn turn_mix(m: u8) -> u8 {
-    (m & 8) >> 1 | (m & 4) >> 2 | (m & 1) << 1 | (m & 2) << 2
+    ((m & 8) >> 1) + ((m & 4) >> 2) + ((m & 1) << 1) + ((m & 2) << 2)
 }
 
 /// The colour of the pixel at `(x, y)` of a picture whose field is `over`
