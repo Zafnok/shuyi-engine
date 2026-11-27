@@ -34,6 +34,11 @@
 //!   [`autobalance_by`], [`BalanceSettings`], [`Balanced`] and [`Stop`],
 //!   at the root.
 //!
+//! The level solver ([`search`]: [`solve`], a [`Solver`] stepped in
+//! slices, its [`Limits`], [`Solve`] and [`SolveError`], at the root): a
+//! breadth-first search over any [`TurnRules`] game's states, which proves
+//! a level can be won and gives its shortest line.
+//!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
 //! crate sits on it and keeps its own rules, turn loop and data.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -53,6 +58,7 @@ pub mod made;
 pub mod path;
 pub mod rng;
 pub mod save;
+pub mod search;
 pub mod text;
 pub mod threat;
 pub mod tick;
@@ -76,6 +82,7 @@ pub use made::{ContentHash, Made};
 pub use path::{Reach, flow_field, reachable};
 pub use rng::{Bag, RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};
+pub use search::{Limits, Solve, SolveError, Solver, solve};
 pub use text::{Part, split_tokens};
 pub use threat::{
     Danger, GoalDistance, OrderHooks, Ranges, Strike, TacticsOrder, Threat, Threats, strike_area,

@@ -145,8 +145,8 @@ None.
   Rollout<…>`). Give each an owned form: the bot moves into the search
   (for example `Rollout::into_search(self, &rules)`) and comes back with
   the decision (`into_bot`), its luck where one thread would leave it.
-  The borrowed form stays. Do the same for 2112's `Solver` if it borrows
-  what it searches.
+  The borrowed form stays. 2112's `Solver` needs none: it owns its
+  start, its goal and every state it keeps.
 - New public types follow ADR-0039: `JobTicket` is a plain `Copy`
   newtype; `Finished` is opaque; `Jobs` is a trait whose added default
   method is additive. `FrameRecord`'s new field is additive.
@@ -189,8 +189,8 @@ one then ships the pool with a test job of its own and 2112's `Solver`.
    results over at the recorded frame in playback.
 6. Add the pool in `shuyi-app` for native, with cancel and shutdown, and
    `None` on the web.
-7. Give the rollout bot and the turn planner (and 2112's `Solver` if it
-   needs it) their owned search forms.
+7. Give the rollout bot and the turn planner their owned search forms
+   (2112's `Solver` already owns what it searches).
 8. Write the equivalence tests, and the book's passage on bots (the one
    3009 wrote, or `site/content/learn/book/rules-as-commands.md`): when a
    job runs on the pool, when on the main thread, and why its result is

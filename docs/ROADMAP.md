@@ -441,7 +441,8 @@ is done.
 | 2114 | RNG helpers: ranges, chances, picks, shuffles, bags, named streams and forks |
 | 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
-| 2112 | A level solver: breadth-first search over any `TurnRules` game |
+| 2112 (done) | A level solver: breadth-first search over any `TurnRules` game |
+| 2150 | The level solver in the tutorial, the book and the test skill (after 2112) |
 | 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
 
 **Data, saves and versions:**
@@ -534,7 +535,7 @@ stays first):
 2. What keeps players' data safe, before the game ships on Steam
    (game#0903): 3045, 3042, 3093, 3043, 3041, 3046 and 2110.
 3. The rest, a group at a time, each in the order of its table. The
-   shipping group goes with 3004 (done), and 2112 comes before 3009.
+   shipping group goes with 3004 (done), and 2112 (done) came before 3009.
 
 ### The end goal
 

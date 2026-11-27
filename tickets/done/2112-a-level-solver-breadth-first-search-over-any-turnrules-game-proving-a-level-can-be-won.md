@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2112 — A level solver over TurnRules
@@ -34,7 +34,7 @@ Shuyi today:
   `RandomBot`. Nothing in the engine searches.
 - `crates/core/src/path.rs`: Dijkstra over grid tiles, not over game
   states.
-- `templates/grid/crates/game/src/tools.rs`: `check` returns the files'
+- `templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`: `check` returns the files'
   load errors only. Nothing proves the stage can be won.
 - `crates/cli/src/game.rs:103`: `GameTools::check` returns the
   `ContentError`s of any validator the game runs, so a game can report
@@ -139,7 +139,7 @@ None.
     whose pieces can walk forever never runs out of states. `Limits`
     bounds that, and the answer is then `LimitReached`.
 - **The grid template proves its stage can be won.** In
-  `templates/grid/crates/game/src/tools.rs`:
+  `templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`:
   - `pub fn prove_stage(map: &GridMap<TerrainId, Feature>, limits: Limits) -> Result<Vec<ContentError>, String>`
     solves `Stage::new(map, 0)` (seed 0, the seed `--seed` defaults to
     and the first stage's) with the goal `Outcome::Won { .. }`:
@@ -151,7 +151,7 @@ None.
     - a `SolveError` is a bug in the rules, not in the files, so it is
       an `Err`.
   - `check` returns the load errors as today when the files don't load.
-    When they do, it returns `prove_stage(&data.stage_map,
+    When they do, it returns `prove_stage(&self.map()?,
     Limits::default())`.
   - The template's `legal_commands` lists every open step, so
     `Exhausted` is a proof there. Its `Stage` keeps the turn, so a goal
@@ -208,9 +208,10 @@ None.
    line on the module in the crate docs.
 4. Write the tests below, with small fixture games in the tests file.
 5. Add `prove_stage` to the grid template's `tools.rs` and call it from
-   `check`, with its tests in `tests/it/main.rs` (maps built with
-   `rules::parse_map`). Add the proof to the module docs of `tools.rs`
-   and to the `cargo shuyi check` row of `templates/grid/AGENTS.md`.
+   `check`, with its tests in the stage's `crates/game/tests/stage.rs`
+   (maps built with `rules::parse_map`). Add the proof to the module docs
+   of `tools.rs` and a `cargo shuyi check` row to the stage's table in
+   `templates/shuyi-default/stages/top-down-grid/crates/rules/AGENTS.md`.
    `templates/` isn't in the workspace, so `cargo fmt --all` doesn't
    format it: run the template's gates by hand (`cargo run -p shuyi-cli
    -- new grid <dir> --engine-path <repo>`, then fmt, clippy, test and
@@ -228,29 +229,29 @@ nothing: that ticket's own clause does it.
 
 ## Acceptance criteria
 
-- [ ] `solve` returns a shortest line, and among shortest lines the
+- [x] `solve` returns a shortest line, and among shortest lines the
       first in `legal_commands` order (a fixture with two shortest
       lines).
-- [ ] `Exhausted` comes only when no limit cut anything (a fixture whose
+- [x] `Exhausted` comes only when no limit cut anything (a fixture whose
       goal lies past the depth limit gives `LimitReached`).
-- [ ] With every state given the same hash, every fixture gives the same
+- [x] With every state given the same hash, every fixture gives the same
       answer as with `state_hash`.
-- [ ] Stepping by 1, by random slice sizes and by `u32::MAX` gives the
+- [x] Stepping by 1, by random slice sizes and by `u32::MAX` gives the
       same answer, and a `step` after the answer gives it again
       (property test).
-- [ ] A listed command the game refuses gives `SolveError::Refused` with
+- [x] A listed command the game refuses gives `SolveError::Refused` with
       its line.
-- [ ] In a game made from the grid template, `cargo shuyi check` passes
+- [x] In a game made from the grid template, `cargo shuyi check` passes
       on the shipped stage.
-- [ ] The template's tests show `prove_stage` giving one `ContentError`
+- [x] The template's tests show `prove_stage` giving one `ContentError`
       on `stage.map` for a hero walled in alone (`Exhausted`) and for a
       goal walled off from a hero who can walk (`LimitReached`, with
       small limits).
-- [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
+- [x] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
       `no-std` job).
-- [ ] The book's chapter is updated (2802), or the completion notes say
+- [x] The book's chapter is updated (2802), or the completion notes say
       why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -270,5 +271,72 @@ nothing: that ticket's own clause does it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `shuyi_core::search` (`crates/core/src/search.rs`, tests in
+  `search/tests.rs`): `Limits`, `Solve`, `SolveError`, `Solver` (`new`,
+  `step`, `states`) and `solve`, re-exported at the crate's root, with the
+  rules in the module docs. The hash is a private `fn` field set to
+  `state_hash` by `new`; the tests set it to give every state one hash.
+- Tests: a counter (`+2`, `×3`) and a maze. Shortest lines, ties by
+  `legal_commands` order both ways, a start already won, `Exhausted` with
+  exact counts, the depth and state limits (a goal past the depth limit
+  is `LimitReached`), a refused listed command with its line, a failing
+  `Serialize`, one hash for every state (every fixture through `both`),
+  `step(0)` and `step` after the answer. Property tests on random mazes
+  up to 4 × 3: the line replays to a win, its length equals the
+  Dijkstra cost of `path::reachable`, a brute force finds no shorter
+  line, `Exhausted` counts exactly the reachable tiles, and slicing by 1,
+  by random sizes and by `u32::MAX` gives `solve`'s answer.
+- The grid template: `prove_stage` in the stage's `tools.rs`, called from
+  `check` when the files load, exported beside `Tools`; three tests in
+  `crates/game/tests/stage.rs` (the shipped stage proved, a piece walled
+  in alone: `Exhausted` at 1 state, a goal walled off: `LimitReached` at
+  200 states). The shipped stage is winnable on seed 0: no change to it.
+  Its gates run by hand in a game made with `shuyi new grid
+  --engine-path`: fmt, clippy `-D warnings`, `cargo test`, and `cargo
+  shuyi check` (OK).
+- `shuyi-core` builds for `thumbv7em-none-eabihf`.
+
+Deviations:
+
+- The ticket was 37 days old. The grid template had moved to
+  `templates/shuyi-default/stages/top-down-grid` (the template parts of
+  2502), its tools to `crates/game/src/stages/top_down_grid/tools.rs`,
+  its tests to `crates/game/tests/stage.rs`, and the stage's map is
+  read by `Tools::map`, not `data.stage_map`. The ticket's paths were
+  fixed before the code. The `cargo shuyi check` row went in the stage's
+  own table (`crates/rules/AGENTS.md`), since the base `AGENTS.md` is
+  every game's, the blank one's too.
+- `Limits` is `#[non_exhaustive]` with `Limits::DEFAULT`, `with_states`
+  and `with_depth` and no two-number constructor (ADR-0151). `SolveError`
+  is `#[non_exhaustive]`; `Solve` stays exhaustive, a closed set of three
+  answers (ADR-0039 §6). Added beyond the ticket: `Solve::states`,
+  `Solver::states`, a `Display` and `Error` for `SolveError`, and a
+  `Debug` for `Solver`.
+- `Limits::states` of 0 counts as 1: the start is always kept.
+- The solver and the template's proof came to 1,046 counted lines, so,
+  as the ticket's size clause says, the parts from 2803, 1134
+  and 2802 (the tutorial's lines from `solve`, the skill's section and
+  the book's section) moved to 2150, blocked by this one.
+- 3344 said "do the same for 2112's `Solver` if it borrows": it owns its
+  start, goal and states, so its two lines now say none is needed.
+
+Follow-up tickets: 2150 (the tutorial, the skill and the book).
+
+No break: the API only grows. Searched the game for a glob import of
+`shuyi_core` that the new names could clash with (`gh search code --repo
+Zafnok/visions-of-shuyi 'shuyi_core::*'`): none.
+
+Behaviour: none in the engine's crates. A game made from now on with
+`shuyi new --template grid` fails `cargo shuyi check` when its stage
+can't be proved winnable on seed 0; games already made are unchanged.
+
+Book: none, the book's section on `solve` is 2150's (moved there for
+size).
+
+Skills: none, the test skill's section on `solve` is 2150's (moved there
+for size).
+
+Game: nothing to adopt, the game names no level solver (3009 implements
+`Think` for `Solver`).
