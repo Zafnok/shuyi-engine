@@ -354,7 +354,14 @@ fn the_workflows_install_the_api_jobs_tools_and_run_api_text() {
 fn site_crates_pairs_each_crate_of_api_toml_with_its_check() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let crates = site_crates(&root).unwrap();
-    assert!(crates.len() >= 15, "{}", crates.len());
+    // Not a count: the `sound-give-up` job runs the tests with the sound
+    // crates removed from api.toml.
+    for (krate, entry) in &crates {
+        assert_eq!(entry.name.replace('-', "_"), krate.name);
+    }
+    for lib in ["shuyi", "shuyi_core", "shuyi_ui", "shuyi_platform"] {
+        assert!(crates.iter().any(|(krate, _)| krate.name == lib), "{lib}");
+    }
     let (ui, entry) = crates
         .iter()
         .find(|(krate, _)| krate.name == "shuyi_ui")
