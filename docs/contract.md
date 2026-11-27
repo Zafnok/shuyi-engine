@@ -632,10 +632,15 @@ answers an empty result, also for a task that ended. An unknown task,
 or one an hour past its end, is `-32602`; `tasks/get` and
 `tasks/cancel` from a client without the extension `-32021`. A session
 tool called while `start`'s task works answers `SH0002`, its `error`
-naming the task, and a second `start` cancels the first. A client
-without tasks, every other tool, a call on the old protocol and a call
-forwarded to another workspace's server answer as before: the client
-waits on the call.
+naming the task, and a second `start` cancels the first. A call
+forwarded to another workspace's server is a task the same way
+([ADR-0162](adr/0162-forwarded-mcp-calls-run-as-tasks.md)): `working`
+while that server builds, its call sent once it is ready, and
+`completed` with the result the call answers without tasks; a `start`
+there makes the session that server's once it completes, and
+`tasks/cancel` stops that server and its build (the next call starts it
+again). A client without tasks, every other tool and a call on the old
+protocol answer as before: the client waits on the call.
 
 The session (`start` … `stop`) is the process's on both: one client has
 a server on stdio, so no tool takes a session handle.
