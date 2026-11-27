@@ -50,6 +50,7 @@ pub mod forward;
 pub mod host;
 pub mod install;
 pub mod server;
+mod tasks;
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -518,6 +519,21 @@ fn description(op: Op, session: bool) -> &'static str {
         }
         (Op::Stop, _) => "Stop the session's game.",
     }
+}
+
+/// Whether a call of the tool of `op` may answer a task, on 2026-07-28 to a
+/// client that declared the extension (`mcp::tasks`): the tools that wait on
+/// a build of the game and then run it for minutes. `start` builds the
+/// game first (a cold build in a fresh worktree outlasts a client's
+/// timeout); `playtest` and `autobalance` play many runs; `bake` and
+/// `export` build a target. The others answer as they do today: `run`,
+/// `check` and `replay` build the game too but play it once, and the
+/// session's tools play the game `start` built.
+pub fn tasked(op: Op) -> bool {
+    matches!(
+        op,
+        Op::Start | Op::Playtest | Op::Autobalance | Op::Bake | Op::Export
+    )
 }
 
 /// Whether the tool of `op` takes `project`: the operations that run the

@@ -26,16 +26,23 @@
 //! is in another cargo workspace than the server's goes to that
 //! workspace's own server ([`super::forward`]), and the tools the server
 //! lists follow the session folder's.
+//!
+//! On 2026-07-28, a long tool's call from a client that declared MCP's
+//! tasks extension answers a task at once (`mcp::tasks`): the host's
+//! reply is awaited while the server answers `tasks/get`, and the session
+//! has no game until `start`'s task completes (ADR-0159).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use serde_json::{Value, json};
 
 use super::attached::Attached;
 use super::forward::{Forward, Forwarding, path_of_uri};
 use super::host::{Reply, Request, failed, no_session, one_off};
-use super::{StartInput, takes_project, tool, tools};
+use super::tasks::{EXTENSION, State, Tasks};
+use super::{StartInput, takes_project, tasked, tool, tools};
 use crate::contract::codes::{self, Code};
 use crate::contract::{Op, VERSION};
 use crate::project::Project;
@@ -84,6 +91,20 @@ pub trait Link {
     /// The host's reply to `request`, or why there is none: the host
     /// stopped (with its last output).
     fn call(&mut self, request: &Request) -> Result<Reply, String>;
+
+    /// Sends `request` without waiting for its reply, which [`Self::reply`]
+    /// then gives, so the server answers while the host works (a task); or
+    /// why it couldn't. False if the host only answers as [`Self::call`]
+    /// waits (the default): the server calls it when it next looks.
+    fn send(&mut self, _: &Request) -> Result<bool, String> {
+        Ok(false)
+    }
+
+    /// The reply to the request [`Self::send`] sent, once it has come, or
+    /// why there is none; none while the host works.
+    fn reply(&mut self) -> Option<Result<Reply, String>> {
+        None
+    }
 }
 
 /// Starts hosts of a game's tools.
@@ -132,6 +153,37 @@ pub struct Server<'a> {
     /// Whether its own workspace's calls go to a fresh server of it: the
     /// engine moved under it.
     restarted: bool,
+    /// The tasks of the process, and the calls that wait on their hosts.
+    tasks: Tasks<Pending<'a>>,
+    /// The time now, for a task's times.
+    now: fn() -> SystemTime,
+}
+
+/// A tool's call that waits on its host's reply: a task's work, or the
+/// call itself while it waits.
+struct Pending<'a> {
+    op: Op,
+    /// The host it waits on: dropping it stops the host (a cancel).
+    host: Box<dyn Link + 'a>,
+    request: Request,
+    /// Whether the request was sent without waiting ([`Link::send`]).
+    sent: bool,
+    /// The project's `command`, for what the answer says to run.
+    command: String,
+    /// `start`'s limits on what it did before: the game it stopped.
+    limits: Vec<String>,
+    /// The call's arguments, its `project` absolute, and the project's
+    /// root: a fresh server takes the call if the engine moved.
+    arguments: Value,
+    root: PathBuf,
+}
+
+/// How far a call got before its host's reply.
+enum Prepared<'a> {
+    /// It is answered: no host was needed, or none started.
+    Answered(Value, Option<String>),
+    /// It waits on its host.
+    Waits(Pending<'a>),
 }
 
 /// What the server knows of its client, from what it sent.
@@ -160,6 +212,9 @@ const INTERNAL_ERROR: i64 = -32603;
 /// The request's `_meta` names a protocol version the server doesn't
 /// speak (2026-07-28).
 const UNSUPPORTED_VERSION: i64 = -32022;
+/// The request needs a capability its client didn't declare: a task's,
+/// from a client without the tasks extension.
+const MISSING_CAPABILITY: i64 = -32021;
 
 /// A JSON-RPC response to `id` with `result`.
 fn response(id: &Value, result: &Value) -> Value {
@@ -244,6 +299,8 @@ impl<'a> Server<'a> {
             listing: None,
             tools: tools(),
             restarted: false,
+            tasks: Tasks::default(),
+            now: SystemTime::now,
         }
     }
 
@@ -374,9 +431,16 @@ impl<'a> Server<'a> {
                     let asked = json!({ "inputRequests": { ROOTS: { "method": "roots/list" } } });
                     return vec![of_2026(response(id, &asked), "input_required")];
                 }
+                if declares_tasks(params)
+                    && let Some(task) = self.task_call(id, params)
+                {
+                    out.push(of_2026(task, "task"));
+                    return out;
+                }
                 out.push(complete(self.tool_call(id, params)));
                 out
             }
+            "tasks/get" | "tasks/cancel" => vec![self.of_task(id, method, params)],
             "subscriptions/listen" => {
                 let wants = params["notifications"]["toolsListChanged"] == true;
                 if wants {
@@ -452,8 +516,10 @@ impl<'a> Server<'a> {
         self.polled().iter().map(Value::to_string).collect()
     }
 
-    /// [`Self::poll`]'s messages, as JSON.
+    /// [`Self::poll`]'s messages, as JSON. The tasks whose hosts replied
+    /// end first.
     fn polled(&mut self) -> Vec<Value> {
+        self.advance();
         let Some(workspace) = self.follow.clone() else {
             return Vec::new();
         };
@@ -489,6 +555,125 @@ impl<'a> Server<'a> {
             }
             None => Vec::new(),
         }
+    }
+
+    /// The response to `tasks/get` or `tasks/cancel` (`method`) with
+    /// `params`, under `id`: the task as it stands, or an empty result once
+    /// it is stopped. A client that didn't declare the extension is
+    /// `-32021`, and a task the server doesn't know (or forgot, an hour
+    /// after it ended) `-32602`.
+    fn of_task(&mut self, id: &Value, method: &str, params: &Value) -> Value {
+        if !declares_tasks(params) {
+            return json!({ "jsonrpc": "2.0", "id": id, "error": {
+                "code": MISSING_CAPABILITY,
+                "message": "Missing required client capability",
+                "data": { "requiredCapabilities": { "extensions": { EXTENSION: {} } } },
+            } });
+        }
+        let Some(task) = params["taskId"].as_str() else {
+            return error(id, INVALID_PARAMS, "taskId: a task's id");
+        };
+        self.advance();
+        if !self.tasks.has(task) {
+            return error(
+                id,
+                INVALID_PARAMS,
+                "Failed to retrieve task: Task not found",
+            );
+        }
+        let result = if method == "tasks/get" {
+            self.tasks.detailed(task).unwrap_or_default()
+        } else {
+            self.cancel(task);
+            json!({})
+        };
+        of_2026(response(id, &result), "complete")
+    }
+
+    /// The response to `tools/call` with `params`, under `id`, as a task:
+    /// none if its tool isn't one ([`tasked`], `start` with `link` not
+    /// either) or another server answers it (a forwarded call answers as it
+    /// is). The task exists before its answer is sent.
+    fn task_call(&mut self, id: &Value, params: &Value) -> Option<Value> {
+        let (op, session) = tool(params["name"].as_str()?)?;
+        let arguments = params.get("arguments").cloned().unwrap_or(Value::Null);
+        if !tasked(op) || (session && op != Op::Start) || !arguments["link"].is_null() {
+            return None;
+        }
+        let (arguments, root) = self.absolute(op, session, arguments);
+        if self.forward_to(&root).is_some() {
+            return None;
+        }
+        let prepared = if op == Op::Start {
+            self.end_session_elsewhere(None);
+            self.start_prepared(arguments.clone())
+        } else {
+            self.prepared(op, arguments.clone())
+        };
+        let state = match prepared {
+            Prepared::Answered(answer, png) => State::Completed(tool_result(&answer, png)),
+            Prepared::Waits(mut pending) => {
+                pending.arguments = arguments;
+                pending.root = root;
+                match pending.host.send(&pending.request) {
+                    Ok(sent) => {
+                        pending.sent = sent;
+                        State::Working(pending)
+                    }
+                    Err(why) => self.completed(pending, Err(why)),
+                }
+            }
+        };
+        let task = self.tasks.make(op, (self.now)(), state);
+        self.tasks.json(&task).map(|task| response(id, &task))
+    }
+
+    /// Ends each working task whose host has replied, with its result
+    /// (a host that answers only as it waits is called now), and forgets
+    /// the tasks that ended an hour ago.
+    fn advance(&mut self) {
+        for task in self.tasks.working(None) {
+            let Some(pending) = self.tasks.work(&task) else {
+                continue;
+            };
+            let reply = if pending.sent {
+                pending.host.reply()
+            } else {
+                pending.sent = true;
+                Some(pending.host.call(&pending.request))
+            };
+            let Some(reply) = reply else {
+                continue;
+            };
+            if let Some(pending) = self.tasks.end(&task, (self.now)(), State::Cancelled) {
+                let state = self.completed(pending, reply);
+                self.tasks.ended(&task, state);
+            }
+        }
+        self.tasks.expire((self.now)());
+    }
+
+    /// How the task of `pending` ended on its host's `reply`: completed
+    /// with the result `tools/call` would have answered, or failed with
+    /// its JSON-RPC error.
+    fn completed(
+        &mut self,
+        pending: Pending<'a>,
+        reply: Result<Reply, String>,
+    ) -> State<Pending<'a>> {
+        let (op, root, arguments) = (pending.op, pending.root.clone(), pending.arguments.clone());
+        let (answer, png) = self.finish(pending, reply);
+        let mut answered = self.answered(&Value::Null, op, &root, &arguments, answer, png);
+        match answered.get_mut("result") {
+            Some(result) => State::Completed(result.take()),
+            None => State::Failed(answered["error"].take()),
+        }
+    }
+
+    /// Stops task `id` if it works: its host is dropped, which ends it
+    /// (the game's tool program and its build are killed).
+    fn cancel(&mut self, id: &str) {
+        drop(self.tasks.end(id, (self.now)(), State::Cancelled));
     }
 
     /// The workspace of the project root `root`, looked up once.
@@ -598,11 +783,27 @@ impl<'a> Server<'a> {
             self.end_session_elsewhere(None);
         }
         let (answer, png) = self.call(op, session, arguments.clone());
+        self.answered(id, op, &root, &arguments, answer, png)
+    }
+
+    /// The response under `id` to the tool of `op` with `arguments`, on
+    /// the project at `root`, that this server answered `answer` and
+    /// `png`: if the engine moved under the server, a fresh server of its
+    /// own workspace answers it instead, and every later call.
+    fn answered(
+        &mut self,
+        id: &Value,
+        op: Op,
+        root: &Path,
+        arguments: &Value,
+        answer: Value,
+        png: Option<String>,
+    ) -> Value {
         if self.forwarding.is_some()
             && !self.restarted
             && stale(&answer, VERSION, "").is_some()
             && self
-                .workspace_of(&root)
+                .workspace_of(root)
                 .is_some_and(|ws| Some(ws) == self.workspace_of(&self.cwd.clone()))
         {
             // The engine moved under the server: a fresh server of its own
@@ -611,9 +812,9 @@ impl<'a> Server<'a> {
             if op == Op::Start {
                 self.game = None;
             }
-            if let Some(workspace) = self.forward_to(&root) {
+            if let Some(workspace) = self.forward_to(root) {
                 let name = op.name();
-                match self.forwarded_call(&workspace, id, name, &arguments) {
+                match self.forwarded_call(&workspace, id, name, arguments) {
                     Ok(answered) => {
                         if self.follow.is_none() && self.listing.is_none() {
                             self.follow = Some(workspace.clone());
@@ -680,6 +881,10 @@ impl<'a> Server<'a> {
         }
         if at.is_some() {
             self.attached = None;
+            // A `start` still building here would take the session back.
+            for task in self.tasks.working(Some(Op::Start)) {
+                self.cancel(&task);
+            }
         }
         if at.is_some()
             && let Some(mut game) = self.game.take()
@@ -734,6 +939,49 @@ impl<'a> Server<'a> {
         if session {
             return self.in_session(op, arguments);
         }
+        match self.prepared(op, arguments) {
+            Prepared::Answered(answer, png) => (answer, png),
+            Prepared::Waits(pending) => self.waited(pending),
+        }
+    }
+
+    /// The answer of `pending`'s host, waited for.
+    fn waited(&mut self, mut pending: Pending<'a>) -> (Value, Option<String>) {
+        let reply = pending.host.call(&pending.request);
+        self.finish(pending, reply)
+    }
+
+    /// The answer of `pending`'s call on its host's `reply`. `start` keeps
+    /// the host as the session's game, unless it answered nothing or
+    /// neither ran nor played.
+    fn finish(
+        &mut self,
+        pending: Pending<'a>,
+        reply: Result<Reply, String>,
+    ) -> (Value, Option<String>) {
+        let op = pending.op;
+        let (mut answer, png) = match reply {
+            Ok(reply) => answer_of(op, reply, &pending.command),
+            Err(e) => return (failed(op, codes::GAME_PROGRAM, e), None),
+        };
+        if op == Op::Start {
+            // A session record that played differently has `ok` false and
+            // a result: the game stands on that frame, to look at.
+            if answer["ok"] == true || !answer["result"].is_null() {
+                self.game = Some(pending.host);
+                self.command = pending.command;
+            }
+            if let Some(list) = answer["limits"].as_array_mut() {
+                list.extend(pending.limits.into_iter().map(Value::String));
+            }
+        }
+        (answer, png)
+    }
+
+    /// The operation `op` (one of [`Op::ALL`]) with `arguments` up to its
+    /// host's reply: answered here if it runs no game, or none started.
+    fn prepared(&self, op: Op, arguments: Value) -> Prepared<'a> {
+        let answered = |answer| Prepared::Answered(answer, None);
         let mut arguments = if arguments.is_null() {
             json!({})
         } else {
@@ -744,12 +992,12 @@ impl<'a> Server<'a> {
             Some(None | Some(Value::Null)) | None => None,
             Some(Some(other)) => {
                 let error = format!("project: a folder's path, not {other}");
-                return (failed(op, codes::WRONG_ARGUMENTS, error), None);
+                return answered(failed(op, codes::WRONG_ARGUMENTS, error));
             }
         };
         if folder.is_some() && !takes_project(op, false) {
             let error = format!("{} takes no project", op.name());
-            return (failed(op, codes::WRONG_ARGUMENTS, error), None);
+            return answered(failed(op, codes::WRONG_ARGUMENTS, error));
         }
         let project = self.project(folder.as_deref());
         let runs_in_game = crate::contract::cli::runs_the_game(op.name())
@@ -758,23 +1006,28 @@ impl<'a> Server<'a> {
                 .is_ok_and(|project| project.config.game.is_some());
         let cwd = self.folder().to_path_buf();
         if !runs_in_game {
-            return (one_off(op, arguments, &cwd, &project, None), None);
+            return answered(one_off(op, arguments, &cwd, &project, None));
         }
         let Ok(project) = project else {
-            return (one_off(op, arguments, &cwd, &project, None), None);
+            return answered(one_off(op, arguments, &cwd, &project, None));
         };
-        let mut host = match self.launch.launch(&project) {
+        let host = match self.launch.launch(&project) {
             Ok(host) => host,
-            Err((code, e)) => return (failed(op, code, e), None),
+            Err((code, e)) => return answered(failed(op, code, e)),
         };
-        let request = Request {
+        Prepared::Waits(Pending {
             op,
-            input: arguments,
-        };
-        match host.call(&request) {
-            Ok(reply) => answer_of(op, reply, project.config.command()),
-            Err(e) => (failed(op, codes::GAME_PROGRAM, e), None),
-        }
+            host,
+            request: Request {
+                op,
+                input: arguments,
+            },
+            sent: false,
+            command: project.config.command().to_owned(),
+            limits: Vec::new(),
+            arguments: Value::Null,
+            root: project.root,
+        })
     }
 
     /// The project of `folder` (from the session's folder), or the
@@ -787,16 +1040,34 @@ impl<'a> Server<'a> {
     /// `start`: a host of the project's game launched, the game started
     /// in it, and kept as the session's, in place of one running.
     fn start(&mut self, arguments: Value) -> Value {
+        match self.start_prepared(arguments) {
+            Prepared::Answered(answer, _) => answer,
+            Prepared::Waits(pending) => self.waited(pending).0,
+        }
+    }
+
+    /// `start` up to its host's reply: the game that runs stopped (and a
+    /// `start` still building cancelled), and a host of the project's game
+    /// launched; answered here if attached over the link, or if it can't
+    /// start.
+    fn start_prepared(&mut self, arguments: Value) -> Prepared<'a> {
         let op = Op::Start;
+        let answered = |answer| Prepared::Answered(answer, None);
         let input: StartInput = match serde_json::from_value(if arguments.is_null() {
             json!({})
         } else {
             arguments
         }) {
             Ok(input) => input,
-            Err(e) => return failed(op, codes::WRONG_ARGUMENTS, format!("input: {e}")),
+            Err(e) => return answered(failed(op, codes::WRONG_ARGUMENTS, format!("input: {e}"))),
         };
         let mut limits = Vec::new();
+        for task in self.tasks.working(Some(Op::Start)) {
+            self.cancel(&task);
+            limits.push(format!(
+                "the start that was building (task `{task}`) was cancelled"
+            ));
+        }
         if let Some(mut old) = self.game.take() {
             let stop = Request {
                 op: Op::Stop,
@@ -818,52 +1089,49 @@ impl<'a> Server<'a> {
         if let Some(to) = &input.link {
             if !input.start.is_empty() || input.session.is_some() {
                 let error = "start: a build attached over the link runs with its own options";
-                return failed(op, codes::WRONG_ARGUMENTS, error);
+                return answered(failed(op, codes::WRONG_ARGUMENTS, error));
             }
             let (attached, mut answer) = Attached::start(to);
             self.attached = attached;
             if let Some(list) = answer["limits"].as_array_mut() {
                 list.extend(limits.into_iter().map(Value::String));
             }
-            return answer;
+            return answered(answer);
         }
         let project = match self.project(input.project.as_deref()) {
             Ok(project) => project,
-            Err((code, e)) => return failed(op, code, e),
+            Err((code, e)) => return answered(failed(op, code, e)),
         };
         if project.config.game.is_none() {
             let error = format!(
                 "{} names no game tool program (`game`), and start runs the game",
                 crate::project::FILE
             );
-            return failed(op, codes::PROJECT_FILE, error);
+            return answered(failed(op, codes::PROJECT_FILE, error));
         }
-        let mut host = match self.launch.launch(&project) {
+        let host = match self.launch.launch(&project) {
             Ok(host) => host,
-            Err((code, e)) => return failed(op, code, e),
+            Err((code, e)) => return answered(failed(op, code, e)),
         };
-        let request = Request {
+        Prepared::Waits(Pending {
             op,
-            input: json!({ "start": input.start, "session": input.session }),
-        };
-        let (mut answer, _) = match host.call(&request) {
-            Ok(reply) => answer_of(op, reply, project.config.command()),
-            Err(e) => return failed(op, codes::GAME_PROGRAM, e),
-        };
-        // A session record that played differently has `ok` false and a
-        // result: the game stands on that frame, to look at.
-        if answer["ok"] == true || !answer["result"].is_null() {
-            self.game = Some(host);
-            project.config.command().clone_into(&mut self.command);
-        }
-        if let Some(list) = answer["limits"].as_array_mut() {
-            list.extend(limits.into_iter().map(Value::String));
-        }
-        answer
+            host,
+            request: Request {
+                op,
+                input: json!({ "start": input.start, "session": input.session }),
+            },
+            sent: false,
+            command: project.config.command().to_owned(),
+            limits,
+            arguments: Value::Null,
+            root: project.root,
+        })
     }
 
-    /// Session tool `op` with `arguments`, on the session's game.
+    /// Session tool `op` with `arguments`, on the session's game: none
+    /// while `start`'s task builds it, which the answer names.
     fn in_session(&mut self, op: Op, arguments: Value) -> (Value, Option<String>) {
+        self.advance();
         if let Some(attached) = self.attached.as_mut() {
             let answered = attached.call(op, arguments);
             if attached.ended() {
@@ -872,6 +1140,13 @@ impl<'a> Server<'a> {
             return answered;
         }
         let Some(game) = self.game.as_mut() else {
+            if let Some(task) = self.tasks.working(Some(Op::Start)).first() {
+                let why = format!(
+                    "no game is running yet: `start` is building it, as task `{task}`; call this \
+                     again once `tasks/get` says the task completed"
+                );
+                return (failed(op, codes::NO_SESSION, why), None);
+            }
             return (no_session(op), None);
         };
         let request = Request {
@@ -900,13 +1175,23 @@ fn is_ok(answered: &Value) -> bool {
     answered["result"]["isError"] == false
 }
 
+/// Whether the 2026-07-28 request of `params` declares the tasks
+/// extension in its client's capabilities: only then may it be answered a
+/// task.
+fn declares_tasks(params: &Value) -> bool {
+    params["_meta"][META_CAPABILITIES]["extensions"]
+        .get(EXTENSION)
+        .is_some()
+}
+
 /// `server/discover`'s result, before its `resultType` and `serverInfo`:
-/// the versions a request may name in `_meta`, the tools, what the server
-/// is for, and that it keeps for the process's life.
+/// the versions a request may name in `_meta`, the tools, the tasks
+/// extension, what the server is for, and that it keeps for the process's
+/// life.
 fn discover() -> Value {
     json!({
         "supportedVersions": [STATELESS],
-        "capabilities": { "tools": { "listChanged": true } },
+        "capabilities": { "tools": { "listChanged": true }, "extensions": { EXTENSION: {} } },
         "instructions": INSTRUCTIONS,
         "ttlMs": KEEP_MS,
         "cacheScope": "public",

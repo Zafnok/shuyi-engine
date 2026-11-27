@@ -132,6 +132,9 @@ Cursor's, VS Code's and Gemini CLI's where it finds them) and asks first; `--dry
 `--ready` builds the server and the game's tool program, so the first call doesn't wait for a build.
 The server speaks both generations of MCP: protocol 2026-07-28 to a client that asks for it (Claude
 Code v2), and the older one, started by `initialize`, to the others (Codex, older Claude Code).
+On 2026-07-28, to a client with MCP tasks, the long tools (`start`, `playtest`, `autobalance`,
+`bake`, `export`) answer a task the agent polls and can stop, so a cold build doesn't run past the
+client's timeout; a client without tasks waits on the call as before.
 
 The server keeps one game running headless between calls, a **session**, so an agent can press a key,
 look, and press another, as you would:
