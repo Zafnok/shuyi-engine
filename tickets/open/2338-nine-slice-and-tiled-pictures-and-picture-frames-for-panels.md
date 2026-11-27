@@ -104,7 +104,7 @@ corners wider than a cell), set with `with_frame`, drawn by
 `GlyphBuffer::panel_border`; `PanelLook::plate` (`TitlePlate`) draws a
 plate behind the title; the menu widget has `glyph::look` and
 `glyph::paint_with` (a caller's look, its frame included), so its frame
-argument below is `paint_with`'s look. ADR-0162 is the ADR this ticket planned. What is
+argument below is `paint_with`'s look. ADR-0163 is the ADR this ticket planned. What is
 left here: `tiled_sprites` and `GlyphBuffer::tiled`, `src_rect`'s move,
 `GameData::nine_slice` (giving a `PanelFrame`, so a game's outset comes
 with it) and `Ctx::panel_frame`, the toy's frames, every engine panel and

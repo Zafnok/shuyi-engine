@@ -70,7 +70,7 @@ None. (Nick agreed to this engine PR on 2026-11-27, game#1380's session.)
   its rows on `look.bg` and no `├` `┤` joins under a frame. `paint` is
   `paint_with` in `look`. (2338 makes every engine panel ask the game for
   its frame; a game that frames only its own menus needs no more.)
-- ADR-0162: only a panel's border becomes a picture (extends ADR-0003 §5).
+- ADR-0163: only a panel's border becomes a picture (extends ADR-0003 §5).
 - The book's chapter *The frame and skins*: a paragraph on panels and
   their frames.
 - Additive: no break. With no frame or plate, every panel draws as today.
@@ -80,7 +80,7 @@ None. (Nick agreed to this engine PR on 2026-11-27, game#1380's session.)
   `Ctx::panel_frame`, the toy's frames and every engine panel and text
   box wearing the game's frame: 2338.
 - A file format for frames: 2235.
-- A frame over the inside (ADR-0162 §1).
+- A frame over the inside (ADR-0163 §1).
 
 **Estimated size:** about 900 lines (code 400, tests 350, docs 150).
 
@@ -125,7 +125,7 @@ None. (Nick agreed to this engine PR on 2026-11-27, game#1380's session.)
   (ADR-0151); `PanelLook::frame` is an `Option<PanelFrame>`, not an
   `Option<NineSlice>`, to carry the outset. 2338 and 2235 say so in a
   "From 3249 (done)" note, with what is left to each.
-- ADR-0162 records that only a panel's border becomes a picture; it is the
+- ADR-0163 records that only a panel's border becomes a picture; it is the
   ADR 2338 planned.
 - Found by the game's pictures: a frame's outset never reaches past the
   buffer (a panel at the screen's edge had its corners cut), as the
