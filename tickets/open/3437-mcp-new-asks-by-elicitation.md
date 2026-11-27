@@ -35,11 +35,17 @@ client may decline at any time. Claude Code declares
 *Respond to MCP elicitation requests*).
 
 `shuyi new`'s wizard asks its person questions in a terminal (3423).
-3426 gives the MCP `new` tool a `questions` field that lists them
+**From 3426 (done):** the MCP `new` tool's `questions` field lists them
 instead (`questions::listed`, the `new.questions.json` shape: each
 `Question` has `id`, `text`, `takes` (`text`, `one` or `many`),
 `answers` (each `Offered` with `id`, `text`, `status`), `default`,
 `flag`, `agent` and `skipped`), and the agent asks its person itself.
+The host's `Op::New` arm (`crates/cli/src/mcp/host.rs`) calls
+`questions::listed(cwd, input, &Flags::default())` when `questions` is
+set, `new::new` refuses an input with it, and the tool's output schema
+(`mcp::output_schema`) offers `result` as `NewOutput` or `Questions`.
+`Server::absolute` makes `dir` and `answers` absolute from the session's
+folder.
 Elicitation lets the server ask the person directly, with the same
 questions and the same defaults, so the answers reach `new` as the
 person gave them, not as the agent retold them. That matters most for

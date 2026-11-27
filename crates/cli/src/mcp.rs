@@ -437,11 +437,17 @@ const LINT: &str = "Check the game's code: keys named in code or text (check-key
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
         (Op::New, _) => {
-            "Make a new game in `dir` (from the server's working folder) from the engine's \
-             template, its parts picked by the answers: `template`, a short name (`grid`, a \
-             title and a turn-based grid stage with a bot and records; `blank`, one screen), \
-             then `answers` (an answers file) and `set` (answers by question). `force` writes \
-             into a folder that isn't empty."
+            "Make a new game in `dir` (from the session's folder, the client's first root) from \
+             the engine's template, its parts picked by the answers: `template`, a short name \
+             (`grid`, a title and a turn-based grid stage with a bot and records; `blank`, one \
+             screen), then `answers` (an answers file, from the session's folder) and `set` \
+             (answers by question). It also takes `name`, `id`, `storage`, `engine` (`main`, a \
+             `rev` or a `path`), `private_url` and `force` (write into a folder that isn't \
+             empty). With `questions` it makes nothing and lists the questions to ask the \
+             person first, for the answers given so far: each with who asks it, its answers \
+             with their status, its default and why it is skipped. The game made comes with \
+             `command`, the one command that makes it again, and keeps its answers in its \
+             `shuyi.ron` (`created_with`)."
         }
         (Op::Check, _) => {
             "Load the game's content through every validator: each error with its file, line and \
@@ -594,8 +600,34 @@ fn tool_listing(op: Op, session: bool) -> Value {
         "inputSchema".to_owned(),
         schema_value(&input.text, takes_project(op, session)),
     );
-    tool.insert("outputSchema".to_owned(), schema_value(&output.text, false));
+    tool.insert("outputSchema".to_owned(), output_schema(op, &output.text));
     Value::Object(tool)
+}
+
+/// The output schema of `op`'s tool, from its answer's schema `text`; for
+/// `new`, whose answer with `questions` is `new.questions.json`'s, its
+/// `result` either the game made or the questions.
+fn output_schema(op: Op, text: &str) -> Value {
+    let mut schema = schema_value(text, false);
+    if op != Op::New {
+        return schema;
+    }
+    let questions = schema_value(&crate::contract::questions_schema().text, false);
+    if let (Some(defs), Some(theirs)) = (
+        schema.get_mut("$defs").and_then(Value::as_object_mut),
+        questions.get("$defs").and_then(Value::as_object),
+    ) {
+        for (name, def) in theirs {
+            defs.entry(name.clone()).or_insert_with(|| def.clone());
+        }
+    }
+    if let Some(any_of) = schema
+        .pointer_mut("/properties/result/anyOf")
+        .and_then(Value::as_array_mut)
+    {
+        any_of.insert(1, json!({ "$ref": "#/$defs/Questions" }));
+    }
+    schema
 }
 
 /// Every tool, as `tools/list` lists them: the operations ([`Op::ALL`],

@@ -907,7 +907,7 @@ checks that would have caught them.
 | 3352 | The web build ships a game's FLAC and MP3 music tracks, not only its OGG ones (a bug) |
 | 2850 | The book's project starts from the game `shuyi new` makes today, and a check keeps step 1 equal to it |
 | 2851 | The book says what scales the window, and the glossary gets its missing words |
-| 3426 | The MCP `new` tool lists the wizard's questions |
+| 3426 (done) | The MCP `new` tool lists the wizard's questions |
 | 3427 | The MCP server's docs and descriptions say what its tools take, and tests keep the docs' lists of operations in step |
 | 3428 | The skill pack catches up on the formats, the audio manifest, the log file, a target's scale and the bots' seed |
 | 3533 | Each crate's doc names every `pub mod`, checked by `cargo xtask check-docs` |

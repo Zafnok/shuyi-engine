@@ -73,6 +73,10 @@ game one part at a time.
    cargo shuyi new ../moon-garden --questions --json
    ```
 
+   Through MCP it is the `new` tool with `questions: true` (and the
+   answers so far in `set`), which answers the same list; `dir` and
+   `answers` are from the session's folder.
+
    Ask the perspectives first (`perspective`), then list again with
    `--perspective <ids>`: they change what else is asked. The saves'
    folder (`storage`) follows the id: offer the id the developer gave as

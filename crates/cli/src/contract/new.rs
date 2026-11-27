@@ -95,15 +95,17 @@ pub enum Engine {
 // fields assigned, it may grow (ADR-0039).
 #[non_exhaustive]
 pub struct NewInput {
-    /// The new game's folder, from the working folder: made if missing,
-    /// and refused unless empty (or `force`).
+    /// The new game's folder, from the working folder (through MCP, the
+    /// session's folder): made if missing, and refused unless empty (or
+    /// `force`).
     pub dir: String,
     /// A short name of the template's for a set of answers (`grid`,
     /// `blank`); none for none.
     #[serde(default)]
     pub template: Option<String>,
-    /// An answers file (`answers.ron`), from the working folder: its
-    /// answers in place of the short name's.
+    /// An answers file (`answers.ron`), from the working folder (through
+    /// MCP, the session's folder): its answers in place of the short
+    /// name's.
     #[serde(default)]
     pub answers: Option<String>,
     /// Answers by question, in place of the short name's and the file's
@@ -133,6 +135,12 @@ pub struct NewInput {
     /// `private-files` is `yes`, and refused otherwise.
     #[serde(default)]
     pub private_url: Option<String>,
+    /// Make nothing, and answer the wizard's questions instead, for the
+    /// answers given so far (`new --questions`; `new.questions.json` in
+    /// the schemas): each with who asks it, its answers, its default, its
+    /// flag and why it is skipped.
+    #[serde(default)]
+    pub questions: bool,
 }
 
 impl NewInput {
@@ -150,6 +158,7 @@ impl NewInput {
             engine: Engine::Main,
             force: false,
             private_url: None,
+            questions: false,
         }
     }
 
@@ -602,8 +611,17 @@ fn name_of(cwd: &Path, input: &NewInput) -> Result<(String, String), String> {
     Ok((name, krate))
 }
 
-/// `new`: the game `input` asks for, made under `cwd`.
+/// `new`: the game `input` asks for, made under `cwd`. An input with
+/// `questions` makes nothing and is refused here: its answer is
+/// what `new --questions` answers.
 pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
+    if input.questions {
+        return Answer::failed(
+            Op::New,
+            codes::WRONG_ARGUMENTS,
+            "`questions` makes nothing: its answer is the questions (`questions::listed`)",
+        );
+    }
     match make(cwd, input) {
         Ok((output, limits)) => Answer::new(Op::New, true, output, limits),
         Err((code, e)) => Answer::failed(Op::New, code, e),
@@ -736,6 +754,7 @@ pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
             "--engine-path" => input.engine = Engine::Path { path: value()? },
             "--private-url" => input.private_url = Some(value()?),
             "--force" => input.force = true,
+            "--questions" => input.questions = true,
             flag if flag.starts_with("--") => return Err(format!("unknown option: {flag}")),
             _ => positional.push(arg.clone()),
         }

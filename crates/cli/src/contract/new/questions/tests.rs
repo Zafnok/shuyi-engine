@@ -52,11 +52,12 @@ fn each_flag_parses_and_the_rest_go_to_new() {
             private: Some(vec!["text".to_owned(), "sprites".to_owned()]),
             folders: Some(vec!["levels".to_owned(), "maps".to_owned()]),
             no_input: false,
-            questions: false,
         }
     );
     assert!(self::flags(&["g", "--no-input"]).no_input);
-    assert!(self::flags(&["g", "--questions"]).questions);
+    let (input, flags) = parse(&args(&["g", "--questions"])).unwrap();
+    assert!(input.questions, "a field of the input, which MCP takes too");
+    assert_eq!(flags, Flags::default());
     assert_eq!(flags_of_none(), Flags::default());
     assert_eq!(self::flags(&["g", "--no-github"]).github, Some(false));
     assert_eq!(self::flags(&["g", "--examples"]).examples, Some(true));

@@ -2367,3 +2367,24 @@ fn the_questions_listed_make_nothing_and_follow_the_answers_given() {
     assert_eq!(refused.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn questions_is_a_field_of_the_input_that_round_trips_and_makes_nothing() {
+    let read = |text: &str| serde_json::from_str::<NewInput>(text).unwrap();
+    assert!(!read(r#"{ "dir": "g" }"#).questions, "off by default");
+    let mut input = NewInput::new("g");
+    input.questions = true;
+    let text = serde_json::to_string(&input).unwrap();
+    assert_eq!(read(&text), input);
+    assert_eq!(
+        parse_args(&["g".to_owned(), "--questions".to_owned()]).unwrap(),
+        input
+    );
+    // `new` itself refuses it, so a caller that sets it makes nothing.
+    let dir = scratch("questions-refused");
+    let answer = new(&dir, &input);
+    assert!(!answer.ok);
+    assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
+    assert!(!dir.join("g").exists());
+    fs::remove_dir_all(&dir).unwrap();
+}

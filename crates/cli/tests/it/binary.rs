@@ -394,6 +394,42 @@ fn new_lists_its_questions_as_its_schema_says_and_makes_nothing() {
 }
 
 #[test]
+fn the_mcp_new_tool_with_questions_answers_as_the_cli_does() {
+    let dir = scratch("new-questions-mcp");
+    let output = shuyi(
+        &dir,
+        &[
+            "new",
+            "demo",
+            "--questions",
+            "--set",
+            "perspective=top-down-grid",
+            "--json",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    let cli = json(&output);
+    let project = Err((
+        shuyi_cli::contract::codes::PROJECT_FILE,
+        "no project".to_owned(),
+    ));
+    let mcp = shuyi_cli::mcp::host::one_off(
+        shuyi_cli::contract::Op::New,
+        serde_json::json!({
+            "dir": "demo",
+            "set": { "perspective": ["top-down-grid"] },
+            "questions": true,
+        }),
+        &dir,
+        &project,
+        None,
+    );
+    assert_eq!(mcp, cli);
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 0, "nothing written");
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn new_doctor_explain_and_schema_need_no_project() {
     let dir = scratch("no-project-ops");
     let output = shuyi(&dir, &["schema"]);

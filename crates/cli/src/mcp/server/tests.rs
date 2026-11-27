@@ -770,6 +770,50 @@ fn a_relative_project_is_from_the_first_root() {
     fs::remove_dir_all(&root).unwrap();
 }
 
+#[test]
+fn new_with_questions_lists_them_from_the_roots_answers_and_writes_nothing() {
+    let cwd = scratch("questions-cwd", "()");
+    let root = scratch("questions-root", "()");
+    fs::write(
+        root.join("picked.ron"),
+        r#"{ "perspective": ["top-down-grid"] }"#,
+    )
+    .unwrap();
+    let game = Fake::default();
+    let mut server = Server::new(cwd.clone(), Box::new(InProcess::new(&game)));
+    initialized(&mut server, true);
+    rooted(&mut server, &root);
+    let before = |dir: &Path| fs::read_dir(dir).unwrap().count();
+    let (in_cwd, in_root) = (before(&cwd), before(&root));
+    let result = called(
+        &mut server,
+        "new",
+        &json!({ "dir": "moon", "answers": "picked.ron", "questions": true }),
+    );
+    assert_eq!(result["isError"], false, "{result}");
+    let questions = result["structuredContent"]["result"]["questions"]
+        .as_array()
+        .unwrap();
+    let perspective = questions.iter().find(|q| q["id"] == "perspective").unwrap();
+    // The answers file read from the root, not the server's folder.
+    assert_eq!(perspective["default"], json!(["top-down-grid"]));
+    // Through MCP, which makes no repository: `github` at no.
+    let github = questions.iter().find(|q| q["id"] == "github").unwrap();
+    assert_eq!(github["default"], json!(["no"]));
+    assert_eq!((before(&cwd), before(&root)), (in_cwd, in_root));
+    assert!(!root.join("moon").exists());
+    // Without `questions`, the same answers make the game there.
+    let result = called(
+        &mut server,
+        "new",
+        &json!({ "dir": "moon", "answers": "picked.ron", "template": "blank" }),
+    );
+    assert_eq!(result["isError"], false, "{result}");
+    assert!(root.join("moon/shuyi.ron").is_file());
+    fs::remove_dir_all(&cwd).unwrap();
+    fs::remove_dir_all(&root).unwrap();
+}
+
 /// A server in `own` whose client's root is `root`, forwarding with
 /// `workspaces`, and what it wrote at the roots' answer.
 fn forwarding<'a>(
@@ -830,11 +874,23 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     assert_eq!(Path::new(last().1["project"].as_str().unwrap()), theirs);
     called(&mut server, "explain", &json!({ "code": "SH0002" }));
     assert_eq!(last(), ("explain".to_owned(), json!({ "code": "SH0002" })));
-    called(&mut server, "new", &json!({ "dir": "fresh" }));
+    called(
+        &mut server,
+        "new",
+        &json!({ "dir": "fresh", "answers": "picked.ron", "questions": true }),
+    );
+    let (_, arguments) = last();
     assert_eq!(
-        Path::new(last().1["dir"].as_str().unwrap()),
+        Path::new(arguments["dir"].as_str().unwrap()),
         theirs.join("fresh")
     );
+    // Its answers file too, which the other server would read from its
+    // own folder.
+    assert_eq!(
+        Path::new(arguments["answers"].as_str().unwrap()),
+        theirs.join("picked.ron")
+    );
+    assert_eq!(arguments["questions"], true);
     // One server for the workspace.
     assert_eq!(asked.spawned.borrow().len(), 1);
 

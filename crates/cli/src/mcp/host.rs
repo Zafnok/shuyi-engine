@@ -141,7 +141,15 @@ pub fn one_off(
         (Some(game), Ok(project)) => f(game, project),
     };
     match op {
-        Op::New => answered(op, input, |i| new::new(cwd, &i)),
+        Op::New => match read::<new::NewInput>(input) {
+            Ok(i) if i.questions => to_json(&new::questions::listed(
+                cwd,
+                i,
+                &new::questions::Flags::default(),
+            )),
+            Ok(i) => to_json(&new::new(cwd, &i)),
+            Err(e) => failed(op, codes::WRONG_ARGUMENTS, e),
+        },
         Op::Doctor => answered(op, input, |i| doctor::doctor(&doctor::ThisMachine, &i)),
         Op::Sfx => answered(op, input, |i| sfx::sfx(&i, cwd)),
         Op::Explain => answered(op, input, |i| explain::explain(&i)),

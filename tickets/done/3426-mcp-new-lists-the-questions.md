@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3426 — The MCP `new` tool lists the wizard's questions, and its description says what it takes
@@ -115,16 +115,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The MCP `new` tool with `questions: true` answers the questions
+- [x] The MCP `new` tool with `questions: true` answers the questions
       and writes nothing, and its answer equals the CLI's `--questions
       --json` for the same answers.
-- [ ] A relative `answers` in an MCP `new` call is read from the
+- [x] A relative `answers` in an MCP `new` call is read from the
       session's folder, forwarded or not.
-- [ ] The `new` description says where `dir` is from and names
+- [x] The `new` description says where `dir` is from and names
       `questions`.
-- [ ] `docs/contract.md`, chapter 10 and the skill say it.
-- [ ] `cargo xtask check-skills` passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `docs/contract.md`, chapter 10 and the skill say it.
+- [x] `cargo xtask check-skills` passes.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -135,4 +135,54 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `NewInput` gains `questions` (`#[serde(default)]`). `parse_args` reads
+  `--questions` into it, and `Flags` loses its field. The CLI's dispatch
+  (`contract/cli.rs`) and the MCP host's `Op::New` arm both send an input
+  with `questions` to `questions::listed`, the host with
+  `Flags::default()`, so the GitHub questions come at their defaults
+  (`github` at `no`). `new::new` refuses an input with `questions`
+  (`SH0001`), so a library caller that sets it makes nothing.
+- The MCP `new` tool's output schema is `new.output.json` with `result`
+  either `NewOutput` or `Questions`, and `new.questions.json`'s `$defs`
+  merged in (`mcp::output_schema`): a client that checks
+  `structuredContent` against the tool's schema takes both answers.
+  `contract::questions_schema` gives that file to both `schemas()` and the
+  tool listing.
+- `Server::absolute` makes `answers` absolute from the session's folder,
+  as it does `dir`, so a forwarded call reads it there.
+- `--questions` is off `CLI_ONLY`, and off the CLI's own flags in
+  `docs/contract.md`. `NewInput`'s `dir` and `answers` docs say that
+  through MCP they are from the session's folder.
+- The `new` tool's description: `dir` and `answers` from the session's
+  folder, the fields it takes, `questions`, and `command` and
+  `created_with` in the answer.
+- Docs: `docs/contract.md`'s `new` row and *The MCP server*; the book's
+  chapter 10, a passage at the end of *The MCP server*; the
+  `shuyi-new-game` skill names the MCP route.
+- Schemas: `new.input.json` regenerated; `cargo xtask contract` found no
+  break, so `contract::VERSION` stays 62 and `versions.json` gets a line
+  for 62 with the new fingerprint.
+- Tests: `NewInput`'s `questions` round-trips and `new` refuses it
+  (`contract/new/tests.rs`); the server's `new` with `questions` lists
+  them from the root's answers file and writes nothing
+  (`mcp/server/tests.rs`); the forwarded call's `answers` is absolute
+  from the other workspace's folder; the tool listing's output schema
+  names both results; the integration test
+  `the_mcp_new_tool_with_questions_answers_as_the_cli_does` compares the
+  MCP host's answer with the CLI's `--questions --json` for the same
+  `set`.
+- Ticket 3437's context now says what holds after this ticket.
+
+Behaviour: shuyi-cli: `new::new` refuses an input with `questions`
+(`SH0001`); the MCP `new` tool reads a relative `answers` from the
+session's folder, not the server's; its output schema's `result` may be
+the questions.
+
+No break: `NewInput` gains an optional field (ADR-0039), and
+`questions::Flags` is `pub(crate)`'s module's, not public API.
+
+Book: the book's chapter 10 says it.
+
+Game: nothing to adopt, the game calls neither `new` nor its MCP tool.
+
+Nick input: none.
