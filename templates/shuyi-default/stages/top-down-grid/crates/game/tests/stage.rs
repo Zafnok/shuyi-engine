@@ -9,23 +9,18 @@ use game::stages::top_down_grid::{
     AREA, GLYPHS, MAP, Piece, StageRecord, StageScreen, Tools, crash_record, prove_stage,
 };
 use rules::{Command, Feature, Outcome, Stage};
-use shuyi::assets::grid_map::GridMap;
-use shuyi::core::{Dir, Limits, Pos, TerrainId, TurnRules};
-use shuyi::platform::harness::Harness;
+use shuyi::core::Limits;
+use shuyi::core::prelude::{Dir, Pos, TerrainId, TurnRules};
+use shuyi::prelude::grid::{GRID, GridMap, GridSkin};
+use shuyi::prelude::test::Harness;
+use shuyi::prelude::text::TextRole;
 use shuyi::prelude::{Cell, GlyphBuffer, Rgb, Screen};
 use shuyi::ui::frame::GizmoShape;
 use shuyi::ui::frame::color::KEY;
-use shuyi::ui::grid::GridSkin;
-use shuyi::ui::grid::debug::GRID;
-use shuyi::ui::text::TextRole;
-use shuyi_cli::GameTools;
-use shuyi_cli::contract::check::{CheckInput, check, targets};
-use shuyi_cli::contract::import::{ImportInput, import};
-use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
-use shuyi_cli::contract::replay::{ReplayInput, replay};
-use shuyi_cli::contract::run::{RunInput, keys, run, scene};
-use shuyi_cli::contract::target::engine_profiles;
-use shuyi_cli::project::Project;
+use shuyi_cli::prelude::{
+    CheckInput, GameTools, ImportInput, PlaytestInput, Project, ReplayInput, RunInput, check,
+    engine_profiles, import, keys, playtest, replay, run, scene, targets,
+};
 
 /// The game's tools.
 fn tools() -> Tools {

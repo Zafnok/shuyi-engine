@@ -2,9 +2,9 @@
 //! menu and the end of a run as text, the board's cells, each screen's
 //! actions, and what a frame's hash and a covered stage hold.
 
-use shuyi::core::{Pos, StateHash, TickSim};
+use shuyi::core::prelude::{Pos, StateHash, TickSim};
+use shuyi::prelude::grid::MapUnit;
 use shuyi::prelude::{EngineColor, UiAction};
-use shuyi::ui::grid::MapUnit;
 use snake::screens::{Over, Part, Pause, Piece, Stage};
 
 use crate::{at_title, playthrough, stage};
@@ -27,7 +27,7 @@ fn the_pause_menus_focus_is_a_bar_that_up_and_down_move() {
     h.act(UiAction::Cancel);
     let focus = h.ctx().palette.engine(EngineColor::Focus);
     // The row of each item, and whether its first letter sits on the bar.
-    let on_bar = |h: &shuyi::platform::harness::Harness<snake::Data>, word: &str| {
+    let on_bar = |h: &shuyi::prelude::test::Harness<snake::Data>, word: &str| {
         let buf = h.game().buffer();
         (0..i32::from(buf.height())).find_map(|y| {
             let row: String = (0..i32::from(buf.width()))
@@ -118,7 +118,7 @@ fn a_turn_pressed_before_a_step_ran_is_dropped_by_the_pause() {
     let run = stage(&h);
     assert_eq!(
         run.snake.heading(),
-        shuyi::core::Dir::Right,
+        shuyi::core::prelude::Dir::Right,
         "{:?}",
         run.events
     );

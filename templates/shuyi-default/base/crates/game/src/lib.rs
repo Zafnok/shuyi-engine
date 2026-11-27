@@ -17,7 +17,7 @@ pub mod title;
 
 use std::sync::OnceLock;
 
-use shuyi::core::Made;
+use shuyi::core::prelude::Made;
 use shuyi::prelude::*;
 
 /// The game's files, embedded: `files/`, or an edition's own folder when

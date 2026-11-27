@@ -5,7 +5,7 @@
 use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
 use hello_grid::{Hello, MapLook};
-use shuyi::platform::harness::Harness;
+use shuyi::prelude::test::Harness;
 use shuyi::ui::screens::options::{LeaveChoice, OptionsScreen};
 use shuyi::ui::settings::{SETTINGS_KEY, TextSpeed};
 use shuyi::ui::storage::Storage;

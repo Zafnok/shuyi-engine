@@ -11,7 +11,7 @@
 use hello_grid::app_info::APP;
 use hello_grid::{CONSOLE, FONT_PNG, TITLE, sound};
 use shuyi::app::{AppConfig, Window};
-use shuyi::assets::bundle::Layer;
+use shuyi::prelude::Layer;
 
 /// The window: the game's.
 const WINDOW: Window = Window::console(TITLE, CONSOLE, 2, 16).with_icon(APP.window_icon);

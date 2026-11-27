@@ -91,3 +91,24 @@ pub use threat::{
 pub use tick::{ActionId, SeatInput, TickInput, TickRecord, TickSim};
 pub use timer::{Countdown, Every, STEPS_PER_SECOND, ms_from_steps, steps_from_ms};
 pub use turn::TurnRules;
+
+/// What a game's rules crate names (ADR-0161), with `use
+/// shuyi_core::prelude::*;` (a game's own crate, which depends on `shuyi`,
+/// writes `shuyi::core::prelude`): the RNG, the turn and step traits, the
+/// step's input, record and [`tick`] module (for [`tick::replay`]), the
+/// timers, the grid's positions and paths, the ease and tween types, a
+/// state's hash and a save's header, and the bots that play a turn game
+/// (the playtest runner and the autobalance search are in
+/// `shuyi::prelude::test`). A game's code names nothing deeper than a
+/// prelude but the paths `cargo xtask check-imports` allows
+/// (`tools/imports.ron`).
+pub mod prelude {
+    pub use crate::tick;
+    pub use crate::{
+        ActionId, Bag, Bot, ContentHash, Countdown, Determinize, Dir, Ease, Every, Family, Grid,
+        History, Horizon, Made, PlayError, Pos, RandomBot, RandomSource, Reach, Report, Rollout,
+        RolloutSettings, SaveFormat, SaveHeader, ScriptedRng, SeatInput, Sides, SimRng, StateHash,
+        TerrainId, TickInput, TickRecord, TickSim, TurnRules, Tween, Unordered, flow_field, play,
+        reachable, state_hash,
+    };
+}

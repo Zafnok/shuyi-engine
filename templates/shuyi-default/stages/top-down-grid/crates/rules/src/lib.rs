@@ -11,7 +11,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi_core::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};
+use shuyi_core::prelude::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};
 
 /// Floor: anyone walks it.
 pub const FLOOR: TerrainId = TerrainId(0);

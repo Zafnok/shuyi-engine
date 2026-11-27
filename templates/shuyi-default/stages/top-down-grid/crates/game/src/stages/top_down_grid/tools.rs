@@ -13,20 +13,17 @@
 
 use rules::{Feature, Outcome, Player, Stage};
 use serde::Serialize;
-use shuyi::assets::font::FontAtlasDef;
-use shuyi::assets::grid_map::{GridMap, MapText};
-use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried, bot_seed};
-use shuyi::core::{Bot, Limits, Made, Pos, RandomBot, Solve, TerrainId, play, solve};
-use shuyi::platform::harness::Harness;
-use shuyi::platform::session::{SessionRecord, Stamps};
+use shuyi::core::prelude::{Bot, Made, Pos, RandomBot, TerrainId, play};
+use shuyi::core::{Limits, Solve, solve};
+use shuyi::prelude::grid::{GridMap, MapText};
+use shuyi::prelude::test::{Harness, Measures, PlayedTry, SessionRecord, Stamps, Tried, bot_seed};
+use shuyi::prelude::text::FontAtlasDef;
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
-use shuyi_cli::contract::import::Importers;
-use shuyi_cli::contract::playtest::PlaytestInput;
-use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
-use shuyi_cli::contract::session::{Headless, Scene, Session};
-use shuyi_cli::frame_png::{Script, Shot};
-use shuyi_cli::{BasicTools, GameArg, GameBake, GameLang, GameOption, GameTools, PlaytestPlan};
+use shuyi_cli::prelude::{
+    BasicTools, GameArg, GameBake, GameLang, GameOption, GameTools, Headless, Importers,
+    PlaytestInput, PlaytestPlan, Record, ReplayRun, Scene, Script, Session, Shot, turns,
+};
 
 use super::{MAP, Own, StageRecord, StageScreen, Terrain};
 use crate::Data;

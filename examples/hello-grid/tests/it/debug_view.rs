@@ -6,11 +6,10 @@
 use hello_grid::screens::StageScreen;
 use hello_grid::screens::stage::area;
 use hello_grid::{Hello, MapLook};
-use shuyi::platform::harness::Harness;
+use shuyi::prelude::grid::{GRID, GridSkin};
+use shuyi::prelude::test::Harness;
+use shuyi::prelude::{Game, GameHooks};
 use shuyi::ui::frame::{GizmoItem, GizmoShape, PxRect};
-use shuyi::ui::grid::GridSkin;
-use shuyi::ui::grid::debug::GRID;
-use shuyi::ui::{Game, GameHooks};
 
 /// The stage in `look`, its scene seen, with the `grid` channel on or off
 /// from the start.

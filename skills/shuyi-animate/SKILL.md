@@ -73,7 +73,7 @@ an `Ease`, drawn from the time since it started alone: it stores no
 progress, so nothing updates it.
 
 ```rust
-use shuyi_core::{Ease, Family, Tween};
+use shuyi_core::prelude::{Ease, Family, Tween};
 
 // A score that pops: 6 pixels up in 300 ms, a little past, and back.
 const POP: Tween<i32> = Tween::new(0, -6, 300).with_ease(Ease::Out(Family::Back));

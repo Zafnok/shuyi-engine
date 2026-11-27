@@ -4,14 +4,13 @@
 
 use core::any::Any;
 
-use shuyi::assets::audio::AudioManifest;
 use shuyi::assets::dialogue::LineId;
 use shuyi::assets::keymap::KeymapDef;
-use shuyi::assets::lang::Lang;
 use shuyi::assets::palette::PaletteDef;
-use shuyi::core::TurnRules;
+use shuyi::core::prelude::TurnRules;
+use shuyi::prelude::audio::{AudioManifest, Samples};
+use shuyi::prelude::text::Lang;
 use shuyi::prelude::*;
-use shuyi::ui::audio::Samples;
 use shuyi::ui::debug::Gizmos;
 
 use crate::Data;
@@ -305,7 +304,7 @@ impl GameData for OwnData {
 mod tests {
     use std::collections::BTreeMap;
 
-    use shuyi::assets::lang::English;
+    use shuyi::prelude::text::English;
     use shuyi::ui::input::help_keys::key_name;
 
     use super::*;
@@ -395,7 +394,7 @@ mod tests {
         let asked = h.ctx().audio.pending().to_vec();
         assert_eq!(
             asked,
-            [shuyi::ui::audio::AudioRequest::stop_music_with(3000)]
+            [shuyi::prelude::audio::AudioRequest::stop_music_with(3000)]
         );
     }
 
@@ -438,7 +437,7 @@ mod tests {
         let mut h = game().harness();
         let line = LineId::new("garden_0");
         let mut wait = super::VoiceWait::default();
-        let report = |h: &mut shuyi::platform::harness::Harness<Data>, line| {
+        let report = |h: &mut shuyi::prelude::test::Harness<Data>, line| {
             let game = h.app_mut().game_mut().unwrap();
             game.set_voice_playing(line);
         };
@@ -451,7 +450,7 @@ mod tests {
     // ANCHOR: as_target
     #[test]
     fn on_the_web_cancel_on_the_title_doesnt_quit() {
-        let profiles = shuyi_cli::contract::target::engine_profiles().unwrap();
+        let profiles = shuyi_cli::prelude::engine_profiles().unwrap();
         let mut h = game().harness().as_target(&profiles["web"].profile);
         h.keys("Backspace");
         assert!(!h.quit_requested());

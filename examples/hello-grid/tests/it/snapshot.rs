@@ -5,10 +5,8 @@
 
 use hello_grid::MapLook;
 use hello_grid::tools::{HelloTools, Start};
-use shuyi_cli::GameTools;
-use shuyi_cli::codec::encode_png;
-use shuyi_cli::frame_png::{Capture, Script, Step, sheet};
-use shuyi_cli::{GameArg, frame_png};
+use shuyi_cli::frame_png;
+use shuyi_cli::prelude::{Capture, GameArg, GameTools, Script, Step, encode_png, sheet};
 
 /// The stage in `look`, your piece picked up and steered up and right.
 fn picture(look: MapLook) -> Vec<u8> {

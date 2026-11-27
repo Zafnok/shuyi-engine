@@ -10,7 +10,6 @@ use shuyi::prelude::*;
 use shuyi::ui::dialogue::preview::{Play, PreviewGame, PreviewScreen, Showing};
 use shuyi::ui::dialogue::text_box::glyph::{self, BoxPlace};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView};
-use shuyi::ui::frame::glyph_buffer::Rect;
 
 use crate::{Data, game};
 
@@ -141,8 +140,8 @@ pub fn main() {
 mod tests {
     use std::collections::BTreeMap;
 
-    use shuyi::assets::bundle::Layer;
     use shuyi::assets::dialogue::{Present, parse_dlg};
+    use shuyi::prelude::Layer;
     use shuyi::ui::dialogue::preview::DialoguePreview;
 
     use super::*;

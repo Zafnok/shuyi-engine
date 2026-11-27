@@ -7,9 +7,9 @@
 use hello_grid::Hello;
 use hello_grid::action::Action;
 use shuyi::assets::keymap::{Chord, Key};
-use shuyi::core::Pos;
-use shuyi::platform::SystemEvent;
-use shuyi::platform::harness::{FRAME_DT, Harness};
+use shuyi::core::prelude::Pos;
+use shuyi::prelude::SystemEvent;
+use shuyi::prelude::test::{FRAME_DT, Harness};
 use shuyi::ui::RawInputEvent;
 
 use crate::{stage, title};
