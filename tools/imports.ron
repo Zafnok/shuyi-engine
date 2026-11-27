@@ -116,6 +116,11 @@
             why: "the sound effects' generator, behind the assets' `sfx` feature a game turns on itself",
         ),
         (
+            path: "shuyi_assets::grid_map",
+            in: ["templates/shuyi-default/stages/top-down-grid/crates/rules"],
+            why: "the map file a rules crate reads its board from: the rules crate depends on `shuyi-core` and `shuyi-assets`, not on `shuyi`, so the grid prelude is out of its reach and `shuyi-assets` has no prelude",
+        ),
+        (
             path: "shuyi_assets::golden",
             in: ["examples/hello-grid/tests/golden.rs", "examples/snake/tests/golden.rs"],
             why: "the golden table, behind the assets' `golden` feature a game's golden test turns on",

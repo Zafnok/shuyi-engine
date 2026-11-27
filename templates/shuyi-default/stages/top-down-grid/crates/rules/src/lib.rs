@@ -10,7 +10,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use shuyi::prelude::grid::{GridMap, MapFeature, MapFormat, grid_map};
+use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
 use shuyi_core::prelude::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};
 
 /// Floor: anyone walks it.

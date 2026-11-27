@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3438 — Domain preludes, an import check, and one spelling of identifiers: the US names beside deprecated UK ones
@@ -144,32 +144,33 @@ and the spelling check) into a new ticket.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-imports` passes on the templates, `hello-grid`,
+- [x] `cargo xtask check-imports` passes on the templates, `hello-grid`,
       `site/snippets/` and the skills' examples, and fails, naming the
       file and line, on a fixture that imports
       `shuyi::ui::frame::glyph_buffer::Sprite` with no allowed reason.
-- [ ] The template's code imports from preludes only: no `use` path
+- [x] The template's code imports from preludes only: no `use` path
       deeper than `shuyi::prelude::<domain>` or a prelude of
       `shuyi_core` or `shuyi_cli`, but the allowed ones.
-- [ ] `print_centered`, `print_centered_styled`, `center_x`, `center`
-      (both), `centered_on`, `NarrationAlign::Centered`,
-      `Scroll::Centered` and `Rule::SharedColor` exist; each old name is
-      `#[deprecated]`, gives what its new name gives (one
-      `#[expect(deprecated)]` test each), and still matches in a pattern
-      for the three variants.
-- [ ] No code in this repository calls an old name but those tests.
-      `shuyi check` reads a text sink by either name.
-- [ ] `cargo xtask api-text --check` fails on a public, non-deprecated
-      item named with a UK spelling, with its own message, and passes on
-      this branch.
-- [ ] The ADR for one spelling is in `docs/adr/` and its README.
-- [ ] Completion notes: a `Behaviour:` line per renamed item (the old
-      names warn), or, if the `api` job counts a deprecation as a semver
-      finding, a `Breaking:` line with a `migration` block whose `find`
-      lists the old names.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] **Split off to 3441:** `print_centered`, `print_centered_styled`,
+      `center_x`, `center` (both), `centered_on`,
+      `NarrationAlign::Centered`, `Scroll::Centered` and
+      `Rule::SharedColor` exist; each old name is `#[deprecated]`, gives
+      what its new name gives (one `#[expect(deprecated)]` test each),
+      and still matches in a pattern for the three variants.
+- [x] **Split off to 3441:** No code in this repository calls an old
+      name but those tests. `shuyi check` reads a text sink by either
+      name.
+- [x] **Split off to 3441:** `cargo xtask api-text --check` fails on a
+      public, non-deprecated item named with a UK spelling, with its own
+      message, and passes on this branch.
+- [x] **Split off to 3441:** The ADR for one spelling is in `docs/adr/`
+      and its README. This ticket's ADR, for the preludes and the check,
+      is ADR-0161.
+- [x] **Split off to 3441:** Completion notes: a `Behaviour:` line per
+      renamed item. This ticket renames nothing.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -182,5 +183,78 @@ and the spelling check) into a new ticket.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done (2026-11-27):** steps 1, 2 and the prelude half of step 6. Steps
+3–5 (the ADR for one spelling, the renames, the spelling check) and the
+*Games and screens* half of step 6 are split off to **3441**, at this
+ticket's size valve: the renames alone are about 500 counted lines (250
+call sites, each a line removed and a line added).
+
+- **Preludes** (ADR-0161, amending ADR-0036 §6): `shuyi_core::prelude`
+  (`crates/core/src/lib.rs`; a game's crate writes
+  `shuyi::core::prelude`), `shuyi_cli::prelude` (`crates/cli/src/lib.rs`)
+  and `shuyi_platform::prelude`'s `grid`, `text`, `audio` and `test`
+  modules (`crates/platform/src/lib.rs`), which `shuyi::prelude`'s glob
+  re-export makes `shuyi::prelude::grid` and so on. Re-exports only,
+  each holding what the four trees named on 2026-11-27.
+- **The check:** `cargo xtask check-imports`
+  (`crates/xtask/src/imports.rs`) reads every `use` leaf and every engine
+  path in the code of `templates/`, `examples/` (snake too), the book's
+  snippets and `skills/`, with `shuyi_cli::rust_lines`' lexer. The
+  allowed deeper paths are data, `tools/imports.ron`: 54 entries, each
+  with its `why` and the files or folders it is allowed in; an entry
+  nothing names fails. A gate row (`imports`, the fast set, so the
+  pre-push hook runs it) and a step of CI's `layers` job.
+- **The moves:** 85 files had their engine imports moved onto the
+  preludes by script and merged one line per prelude: 1,053 deep paths
+  before, 0 past the list after.
+- **Docs:** the book's *Tools for agents* has *Which prelude to import*;
+  the `shuyi` crate's docs, the template's `AGENTS.md` and the
+  `shuyi-new-game` and `shuyi-animate` skills name the preludes.
+
+**Deviations:**
+
+- The split above (3441).
+- The ticket's `shuyi::prelude::test` was to hold the playtest bots. The
+  bots that play a turn game (`Bot`, `RandomBot`, `Rollout`, `play`, …)
+  went to `shuyi_core::prelude` instead: `examples/hello-grid`'s stage
+  screen plays its enemy with `Bot` in shipped code, which a
+  test-only home would make read as a test. `test` keeps the Harness,
+  its session files, the playtest runner (`shuyi_core::bots::playtest`,
+  its module and its items) and the autobalance search. `test` exists
+  without the `harness` feature; only its Harness items need it.
+- The check reads `examples/snake` too (the ticket named
+  `examples/hello-grid`; its scope said `examples/`), and the paths in
+  code as well as in `use` (`shuyi::app::run_app(…)`): both name an
+  item. The ticket's "a rules crate depends on `shuyi-core` alone": the
+  template's rules crate also depends on `shuyi-assets` for its map, and
+  `shuyi-assets` has no prelude, so `shuyi_assets::grid_map` is an entry
+  of `tools/imports.ron`, allowed in that crate only (a game's crate
+  reaches the same module through `shuyi::prelude::grid`).
+- **Either order with 3520:** 3520 is not done, so nothing here; 3520's
+  clause now says what it does with these preludes (its *From 3438
+  (done)* line).
+
+**Follow-up tickets:** 3441 (the split). No ticket: a prelude for the
+modules `tools/imports.ron` allows (dialogue, cinematics, menus,
+settings) is written when games on that domain name them, ADR-0161 §3.
+
+No break: every item keeps its path, and the preludes only add
+re-exports. The four new names in `shuyi::prelude` (`grid`, `text`,
+`audio`, `test`) could meet a game's own glob of a module of that name:
+`gh search code --repo Zafnok/visions-of-shuyi 'use shuyi::prelude'` at
+the game's pin `96eb097c` finds only its copy of the skill pack
+(`.claude/skills/*/example/*.rs`, `shuyi-new-game/SKILL.md`), whose paths
+all still resolve; its own crates never glob the prelude.
+
+Game: nothing to adopt, the old paths stay and the game's crates don't
+glob `shuyi::prelude`; its skill pack's copy follows when the pin moves.
+
+Skills: the `shuyi-new-game` and `shuyi-animate` skills and every worked
+example's imports follow the preludes.
+
+Size: SIZE counted lines, not split further: the check's list is what the
+moves leave (each entry is a path no prelude took, allowed where it is
+named), and the moves are chosen by the check's failures, so a PR of the
+preludes and moves alone would have nothing holding them and one of the
+check alone fails on 1,053 paths. The ticket's own split (the spelling,
+3441) is taken.
