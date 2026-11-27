@@ -222,6 +222,26 @@ fn a_wide_glyph_is_painted_over_its_two_cells() {
 }
 
 #[test]
+fn it_holds_an_atlas_sprite_and_an_inserted_one() {
+    let card = build();
+    let pictures = card.buffer.pictures();
+    let page = pictures.get(PaintedId::new("card/atlas#0")).unwrap();
+    // Shown, then written again by the insert.
+    assert_eq!(page.revision(), 2);
+    let on_page: Vec<Rect> = items(&card)
+        .into_iter()
+        .filter_map(|item| match item {
+            Item::Painted(p) if p.picture.name() == "card/atlas#0" => Some(p.src),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(on_page, [Rect::new(1, 1, 8, 8), Rect::new(10, 1, 6, 8)]);
+    // The painter draws the inserted sprite's pixels: its ring's corner.
+    let picture = card.painter().render(&card.buffer, 1);
+    assert_eq!(picture.pixel(48 + 2, 158 + 15), Some([60, 200, 250, 255]));
+}
+
+#[test]
 fn the_card_is_the_same_every_time() {
     assert_eq!(build(), build());
     let card = build();
