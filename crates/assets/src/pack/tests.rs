@@ -236,6 +236,29 @@ fn a_pack_under_loose_files_gives_way_to_them() {
 }
 
 #[test]
+fn every_copy_of_a_table_reads_through_the_registry_the_packs_baked_one_too() {
+    static MOD: &[(&str, &[u8])] = &[("data/table.ron", b"(rows: [7])")];
+    let registry = pack_formats(&every_kind());
+    let pack = Pack::open(&baked().bytes, STAMP)
+        .unwrap()
+        .into_layer("pack");
+    let both = Bundle::new(vec![Layer::table("mod", MOD), pack]);
+    // The pack holds the table in its baked form, not as text.
+    let stored = both.versions("data/table.ron");
+    assert_ne!(stored[1].bytes.as_ref(), TABLE.as_bytes());
+    let copies = registry
+        .load_versions::<Table>(&both, "data/table")
+        .unwrap();
+    let shown: Vec<&str> = copies.iter().map(|(copy, _)| copy.shown.as_str()).collect();
+    assert_eq!(shown, ["mod/data/table.ron", "pack/data/table.ron"]);
+    assert_ne!(copies[0].1, copies[1].1);
+    assert_eq!(
+        copies[1].1,
+        formats().load::<Table>(sources(), "data/table").unwrap()
+    );
+}
+
+#[test]
 fn the_check_finds_every_way_a_pack_differs_from_its_sources() {
     let bake = every_kind();
     let formats = pack_formats(&bake);

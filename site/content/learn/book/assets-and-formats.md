@@ -304,6 +304,13 @@ A layer can also be private (files that may not be handed out, such as bought ar
 tools say which files come from one), or hold only the tests' files, which a build that
 ships leaves out.
 
+A mod that adds crops to the game's `data/crops.ron`, instead of replacing the whole
+file, needs every layer's copy of it: `formats.load_versions::<Crops>(&bundle,
+"data/crops")` decodes each one (`bundle.versions(path)` gives their bytes). They come in
+the order layers are read, the mod's first and the game's last, so start from the
+game's and walk the list backwards (`.iter().rev()`), adding each mod's rows. How rows
+are matched, and what two mods changing one row do, is your game's to decide.
+
 ## A format of your own
 
 A file format the engine lacks is a **plugin**, something you add without changing the

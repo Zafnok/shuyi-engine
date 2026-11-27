@@ -64,8 +64,8 @@ and `font/atlas_1bit.bin` (`examples/hello-grid/files/font/`), and
 What is planned:
 
 - 2220's `Hot<T>` records the files each decode read;
-- 2228's `Bundle::versions` reads every layer's copy of a file through a
-  helper shared with `Bundle::bytes`;
+- 2228's `Bundle::versions` (done) reads every layer's copy of a file
+  through a helper shared with `Bundle::bytes`;
 - 2229 adds `.meta` settings files beside files;
 - 2515 lists each format's schema;
   2517 adds `CheckOutput::warnings`; 2230 adds JSON and CSV tables;
@@ -215,11 +215,9 @@ None.
 - **From 2220 (done):** `bundle::recording` is in `bundle.rs` as described
   above, its log per thread: reuse it. `Hot<T>` reads the same log
   (`reads_of`), and also keeps the paths asked for and not found.
-- **Either order with 2228:** if 2228 is done, `Bundle::bytes` and
-  `Bundle::versions` tell of a read through one private helper: record
-  there, so `versions`' reads are recorded too. If not, record in
-  `Bundle::bytes`, and 2228 moves it into its helper (its clause says
-  so).
+- **From 2228 (done):** `Bundle::bytes` and `Bundle::versions` tell of a
+  read through one private helper (`bundle::tell_read`, which calls
+  `note_read`): record there, so `versions`' reads are recorded too.
 - **From 2229 (done):** a `<file>.meta` counts as read when its file
   was read, and a `_folder.meta` when any file in its folder or below
   was read: the ADR states that rule, and a test proves it
