@@ -1,4 +1,4 @@
-//! The render card (ADR-0052 §6, ticket 2392): one fixed frame with every
+//! The render card (ADR-0052 §6): one fixed frame with every
 //! kind of thing a frame draws, so a backend's window is held to the
 //! raster for all of them, with no game behind it. `shuyi-app`'s
 //! `render_card` example draws it in a window and compares the window
@@ -20,9 +20,9 @@
 //!   the frame's table lacks;
 //! - a sprite atlas's pages among them (ADR-0157): a sprite packed into
 //!   a page, and one inserted after the page was shown;
-//! - two key caps (ticket 3215): a box under each, the name's glyph moved
-//!   off the grid and bold, one drawn from the atlas's bold face (ticket
-//!   3216) and one, which the face lacks, struck twice;
+//! - two key caps: a box under each, the name's glyph moved
+//!   off the grid and bold, one drawn from the atlas's bold face
+//!   and one, which the face lacks, struck twice;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
 //!   a painted picture of its own;
 //! - the debug view's gizmos (ADR-0085) over everything: lines into all
@@ -169,7 +169,7 @@ pub fn build() -> RenderCard {
 /// A 72 × 16 atlas of nine 8 × 16 cells: the space, a box (`#`), a box's
 /// outline (`o`), a bar across (`-`), a bar down (`|`), the fallback
 /// glyph, a checkerboard, the wide glyph over the next two, and the bold
-/// face's `o`, its outline 2 px thick and a column wider (ticket 3216).
+/// face's `o`, its outline 2 px thick and a column wider.
 /// Glyph pixels are white, the rest see-through. Its capitals' ink is the
 /// box's, and the bar down's columns its own; the bold face's capitals
 /// reach a column further, and its bar down, which it lacks and strikes

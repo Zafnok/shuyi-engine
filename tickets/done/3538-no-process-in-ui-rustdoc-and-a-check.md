@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 3538 — No process in `shuyi-ui`'s rustdoc, and a check that keeps it so
@@ -92,12 +92,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-links` reports `game ticket` in a `///` line of
+- [x] `cargo xtask check-links` reports `game ticket` in a `///` line of
       a crate's source, with its file and line (a unit test over a
       temporary tree), and passes on the repository.
-- [ ] The same words in a `//` comment, in a `tests.rs` file or under
+- [x] The same words in a `//` comment, in a `tests.rs` file or under
       `crates/xtask/` are not reported (unit test).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -108,5 +108,36 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/xtask/src/links.rs`: `process_words` reads each `//!` and
+  `///` line (not `//` or `////`) for `ticket NNNN`, `tickets NNNN`,
+  `game ticket`, `game#`, `engine#`, `game ADR`, the word `Nick` and
+  `AGENTS.md`, each at the start of a word; a match inside an earlier one
+  (the `ticket 0923` of `game ticket 0923`) is one match. `run` reads
+  every crate's `src/` with it, but `crates/xtask/`'s, `tests.rs`,
+  `*_tests.rs` and `tests/` folders. Three unit tests: each word found,
+  the near misses and plain comments skipped, and `run` over a temporary
+  tree.
+- The check found 161 words on 145 doc lines: 144 in `crates/ui` and
+  one in `crates/cli/src/contract/docs/corpus.rs` (`ticket 2808`), fixed
+  the same way. A parenthetical of only process went; one with an engine
+  ADR kept the ADR (`(ticket 3215, ADR-0124)` → `(ADR-0124)`). The
+  sentences that leaned on one were rewritten from the code: Nick's
+  choices as what was chosen and why (`DIM_DARK`, `MARK_ABOVE`; the
+  cursor marks' size lost its aside), "before ticket NNNN" as what the
+  look or code was before. No game ADR had an engine ADR holding its rule, so each one
+  went.
+- Docs: the module's docs, the `run-gates` skill's line on
+  `check-links`, and rule 4 of the docs map say the check reads rustdoc.
+- 2842's **Out** line now says 3538 did `shuyi-ui` and the check.
+- The check reads one line at a time, so a reference broken across two
+  lines (`ticket` ending one, the number starting the next) isn't found.
+  The six of those in `shuyi-ui` were rewritten by hand; about twelve
+  remain in `shuyi-app`, `shuyi-assets`, `shuyi-cli`, `shuyi-platform`
+  and `shuyi-sound-out`.
+
+No break. Doc comments and an xtask check only.
+
+Book: none, no public API changed.
+
+Game: nothing to adopt, the change is doc comments and a check of this
+repository.

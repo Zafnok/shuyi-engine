@@ -1,8 +1,7 @@
-//! Plays a cinematic (`shuyi_assets::cinematic`, ticket 1113; the game's
-//! game ADR-0060): a [`Timeline`] says which shot a time falls in and how far
-//! through it, and a [`CinematicPlayer`] has the shot draw itself there.
-//! What a shot shows is the game's: its shot kinds implement
-//! [`ShotPainter`].
+//! Plays a cinematic (`shuyi_assets::cinematic`): a [`Timeline`] says
+//! which shot a time falls in and how far through it, and a
+//! [`CinematicPlayer`] has the shot draw itself there. What a shot shows
+//! is the game's: its shot kinds implement [`ShotPainter`].
 //!
 //! **Every frame is drawn from the time alone**: nothing is carried from
 //! one frame to the next, and no shot may keep state that an update
@@ -13,8 +12,8 @@
 //! The engine also gives what most shots move by: an [`ease_in_out`] (and
 //! every curve of `shuyi_core::ease`, through
 //! [`ease_f32`]), and
-//! a [`Pan`] over a picture shown as the frame's backdrop (game ADR-0048,
-//! [`cinema::view`]), its frame ([`PanFrame`]) and its paint
+//! a [`Pan`] over a picture shown as the frame's backdrop
+//! ([`cinema::view`]), its frame ([`PanFrame`]) and its paint
 //! ([`paint_pan`]).
 
 use crate::prelude::*;
@@ -172,7 +171,7 @@ pub fn ease_in_out(p: f32) -> f32 {
     p * p * (3.0 - 2.0 * p)
 }
 
-/// A pan over a picture shown as the frame's backdrop (game ADR-0048): the
+/// A pan over a picture shown as the frame's backdrop: the
 /// picture's pixel `from` in the middle of the screen when the shot
 /// starts, `to` when it ends, eased in and out ([`Ease::Smooth`], through
 /// [`ease_f32`]), at one whole zoom for the whole shot.

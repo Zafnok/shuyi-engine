@@ -1,8 +1,8 @@
 //! Where a scene's tiles go on the console, in pixels: what every grid
 //! skin works out from its own tile size, and the shared drawing (the path,
 //! the threat arrows) works from. The tiles are laid out by a
-//! [`Projection`]: today top-down squares only (ADR-0003 §6; the
-//! isometric one is ticket 1126).
+//! [`Projection`]: today top-down squares only (ADR-0003 §6; an
+//! isometric one is to come).
 
 use shuyi_core::Pos;
 

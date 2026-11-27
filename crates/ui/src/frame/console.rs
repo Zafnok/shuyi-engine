@@ -1,5 +1,5 @@
 //! The console's size, which the game picks ([`ConsoleSpec`]), and how it
-//! fits the window (game ADR-0012): by a whole scale, or filling it
+//! fits the window: by a whole scale, or filling it
 //! ([`place`], ADR-0140).
 
 mod place;
@@ -8,7 +8,7 @@ pub use place::{Factor, MAX_DRAW_PX, Placement, SNAP, ScaleMode, place, scale};
 
 /// A console's size: `cols × rows` cells of `cell_w × cell_h` logical
 /// pixels. The frame ([`GlyphBuffer`](super::GlyphBuffer)) keeps the spec
-/// it was made with; the game picks one when it starts (game ADR-0070 §6).
+/// it was made with; the game picks one when it starts.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ConsoleSpec {
     /// Width in cells.

@@ -1,4 +1,4 @@
-//! The power-cut suite (ticket 3045): what "a save survives a power cut"
+//! The power-cut suite: what "a save survives a power cut"
 //! means, for every backend's [`Storage`]. A backend fakes its medium (a
 //! folder of files, a flash chip) in a [`PowerCutRig`] that can lose the
 //! power after any operation, and runs [`power_cut_suite`] over it.

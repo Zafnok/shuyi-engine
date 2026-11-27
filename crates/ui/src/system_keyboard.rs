@@ -1,4 +1,4 @@
-//! The system's own keyboard for a text box (ticket 3003): a console's, or
+//! The system's own keyboard for a text box: a console's, or
 //! Steam's on-screen one on the Steam Deck. A screen asks for it through
 //! [`Ctx::system_keyboard`](crate::Ctx::system_keyboard), the platform's
 //! `App` opens it (`shuyi_platform::TextInput`), and the player's answer

@@ -1,4 +1,4 @@
-//! Text dump of a [`GlyphBuffer`] for snapshot tests (game ADR-0007):
+//! Text dump of a [`GlyphBuffer`] for snapshot tests:
 //!
 //! ```text
 //! <glyph rows, a char a cell, trailing spaces kept>
@@ -25,14 +25,14 @@
 //!
 //! The overlays section lists the buffer's items in drawing order, in
 //! console pixels; it is left out when there are none. A rectangle
-//! (game ADR-0018) is `layer  x,y wxh  colour`. A sprite (game ADR-0038) is
+//! is `layer  x,y wxh  colour`. A sprite is
 //! `layer  sprite x,y wxh  image x,y wxh`: where it is drawn (`dest`), the
 //! image's path in the asset bundle, and the part of the image shown
 //! (`src`). After that come, only when they aren't the default, ` flip`,
-//! ` opacity=N` (below 255), ` bright=N` (below 255: darkened, game ADR-0075),
+//! ` opacity=N` (below 255), ` bright=N` (below 255: darkened),
 //! ` solid=colour`, ` dimmed` or
-//! ` shade=grey:red,green,blue` (how its pixels are coloured, game ADR-0049; a
-//! shade is a light's numbers in thousandths, game ADR-0058) and
+//! ` shade=grey:red,green,blue` (how its pixels are coloured; a
+//! shade is a light's numbers in thousandths) and
 //! ` clip=x,y wxh` (not all of `dest` is drawn). A painted picture
 //! (ADR-0078) is `layer  painted x,y wxh  id WxH kind rN hash`: where it is
 //! drawn (`dest`), the picture's id, its size, `rgba`, `indexed` or
@@ -56,7 +56,7 @@
 //! ```
 //!
 //! The glyph styles section lists the cells whose glyph is drawn moved or
-//! bold (a key cap's name, ticket 3215), row by row, as `x,y  dx,dy`
+//! bold (a key cap's name), row by row, as `x,y  dx,dy`
 //! (signed pixels) and ` bold`; it is left out when there are none:
 //!
 //! ```text
@@ -64,7 +64,7 @@
 //! 2,0  +3,+1 bold
 //! ```
 //!
-//! A see-through cell (game ADR-0048) gets a key of its own, whose legend line
+//! A see-through cell gets a key of its own, whose legend line
 //! says `bg:see-through`: in the colour rows a hole can't be taken for a
 //! blank cell. When the buffer has a backdrop, a line
 //! `--- backdrop: clip x,y wxh  origin x,y  zoom N ---` follows (the window

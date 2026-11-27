@@ -2,7 +2,7 @@
 //! labels and which one is focused, and its widget key, no cells or
 //! positions. A screen puts
 //! the [`MenuView`] in its own view and its skin paints it
-//! ([`super::glyph::paint`] today; game ADR-0054).
+//! ([`super::glyph::paint`] today).
 
 use crate::frame::hit::WidgetKey;
 use crate::prelude::*;

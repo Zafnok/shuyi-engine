@@ -1,5 +1,5 @@
 //! [`HurryClock`]: the time of something timed that the player can hurry by
-//! holding a key and finish with a press (ticket 2312): a text box typing
+//! holding a key and finish with a press: a text box typing
 //! out, a tally counting up, a fight played back.
 
 use crate::input::frame_seconds;

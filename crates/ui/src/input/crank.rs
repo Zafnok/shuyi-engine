@@ -1,7 +1,7 @@
-//! A crank (the Playdate's, ticket 1035) as two controller buttons: each
+//! A crank (the Playdate's) as two controller buttons: each
 //! notch wound backwards is a press and release of [`Button::CrankBack`],
 //! each notch forwards one of [`Button::CrankForward`], so the crank reaches
-//! a game through the player's bindings like any button (game ADR-0034). How
+//! a game through the player's bindings like any button. How
 //! far a notch is comes from the keymap file's `crank` ([`CrankDef`]).
 //!
 //! [`Crank`] is pure: the platform hands it how far the crank turned since

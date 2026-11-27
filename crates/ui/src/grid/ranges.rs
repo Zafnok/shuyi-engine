@@ -1,5 +1,5 @@
-//! How a grid skin shows its ranges' tiles beyond a flat tint (ticket
-//! 3224, game ticket 0923): spreading out from where they were opened,
+//! How a grid skin shows its ranges' tiles beyond a flat tint:
+//! spreading out from where they were opened,
 //! a wave of light across them, one outline around them all, and relief
 //! (each tile raised, or the whole range a raised slab). Drawn from the
 //! scene and its clock alone: [`MapScene::ranges_shown`] says where and
@@ -107,7 +107,7 @@ pub struct RangeShow {
     pub relief: Relief,
     /// How strongly they tint, in percent of the look's own strength
     /// ([`strength`](Self::strength)): 100 as the look is, more for tints
-    /// that must read over bright pictures (ticket 3243). A tint is never
+    /// that must read over bright pictures. A tint is never
     /// stronger than the range's color itself.
     pub strength_percent: u16,
 }
@@ -120,7 +120,7 @@ impl Default for RangeShow {
 
 impl RangeShow {
     /// Every range tints its tiles at [`OVERLAY_BLEND`], still: the look
-    /// before ticket 3224.
+    /// before the others were added.
     pub const TINT: Self = Self {
         spread: false,
         wave: Wave::None,

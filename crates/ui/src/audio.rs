@@ -492,8 +492,7 @@ pub struct MusicClock {
     /// Seconds into the track: from 0 up to, never reaching, `length`. A
     /// looped track is back at 0 each time it starts again, and one that
     /// goes round a loop region back at the region's start each time it
-    /// comes round: the platform says where it is, as it plays it
-    /// (ticket 2397).
+    /// comes round: the platform says where it is, as it plays it.
     pub position: f32,
     /// The track's length in seconds (the manifest's `length_ms`).
     pub length: f32,
@@ -521,8 +520,8 @@ impl MusicClock {
     /// time counts as 0), wrapped at its length if it is looped. A track
     /// going round a loop region comes as the platform reports it, already
     /// back by the region's length each time round, and so inside the track:
-    /// the region is the backend's to play, and whether it can is its own
-    /// (ticket 2397). `None` if the cue is unknown, or isn't looped and has
+    /// the region is the backend's to play, and whether it can is its own.
+    /// `None` if the cue is unknown, or isn't looped and has
     /// ended (or `elapsed` isn't a number).
     pub fn from_elapsed(manifest: &AudioManifest, cue: &str, elapsed: f64) -> Option<Self> {
         let track = manifest.music.get(cue)?;
@@ -1214,16 +1213,16 @@ mod tests {
         assert_eq!(m.current(), None);
     }
 
-    /// A whole fade-out's gain as it was written by hand before ticket
-    /// 2136, `elapsed` seconds into a fade of `secs`.
+    /// A whole fade-out's gain as it was first written by hand, a
+    /// straight line, `elapsed` seconds into a fade of `secs`.
     fn gain_before(elapsed: f32, secs: f32) -> f32 {
         (1.0 - elapsed / secs).clamp(0.0, 1.0)
     }
 
     /// A whole fade-out of `ms` at frames of `dt`, frame by frame: the
-    /// same commands as before ticket 2136, the gains within half a
-    /// millisecond of the fade plus 1/65536, and the stop on the same
-    /// frame.
+    /// same commands as [`gain_before`]'s straight line gave, the gains
+    /// within half a millisecond of the fade plus 1/65536, and the stop on
+    /// the same frame.
     fn fades_out_as_before(ms: u32, dt: f32) {
         let mut m = MusicState::with_switch(MusicSwitch::after_fade(ms));
         frame(&mut m, &[play("title")], 0.0);

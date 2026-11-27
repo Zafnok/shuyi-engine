@@ -1,4 +1,4 @@
-//! The pointer per frame (ticket 2405, ADR-0134): a [`Pointer`] folds a
+//! The pointer per frame (ADR-0134): a [`Pointer`] folds a
 //! frame's pointer events ([`RawInputEvent::PointerMoved`] and the rest)
 //! into one [`PointerInput`], which a screen reads beside its actions
 //! ([`FrameInput::pointer`](super::FrameInput::pointer)).

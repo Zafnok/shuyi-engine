@@ -4,7 +4,7 @@
 //! text this `shuyi` embeds (`build.rs`), at the engine's revision it was
 //! built from.
 //!
-//! A Learn page is read as its twin is (`cargo xtask llms`, ticket 2808):
+//! A Learn page is read as its twin is (`cargo xtask llms`):
 //! its front matter dropped, a `snippet` shortcode replaced by the code it
 //! shows, a `shot` by its picture's alt text and caption, the bodies of
 //! `newcomer`, `check` and `exercise` kept without their markers, and

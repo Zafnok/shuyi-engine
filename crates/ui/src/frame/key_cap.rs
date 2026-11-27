@@ -1,4 +1,4 @@
-//! Key caps (ticket 3215, ADR-0124): a key's name in styled text drawn as
+//! Key caps (ADR-0124): a key's name in styled text drawn as
 //! a key, in a small rounded box, bold, with an even margin round its
 //! letters, and the room the box needs beside it.
 //!
@@ -10,7 +10,7 @@
 //! ([`GlyphBuffer::print_styled`](crate::frame::GlyphBuffer::print_styled)).
 //!
 //! A style may also name a picture of the arrow cluster
-//! ([`KeyCapStyle::arrows`], ticket 3217, ADR-0129): a
+//! ([`KeyCapStyle::arrows`], ADR-0129): a
 //! [`TextRole::Arrows`](crate::text::TextRole::Arrows) span is then drawn
 //! as that picture, a [`Sprite`] in the cells it takes.
 
@@ -42,7 +42,7 @@ use crate::frame::glyph_buffer::{GlyphStyle, Layer, PxRect, Rect, Sprite};
 #[non_exhaustive]
 pub struct KeyCapStyle {
     /// The name's glyphs in bold: from the font atlas's bold face, else
-    /// each drawn twice, 1 px apart (ticket 3216).
+    /// each drawn twice, 1 px apart.
     pub bold: bool,
     /// A name of one letter drawn as its capital (`f` as `F`); longer
     /// names as the keymap writes them. The text itself is unchanged.

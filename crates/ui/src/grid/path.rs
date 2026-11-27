@@ -1,4 +1,4 @@
-//! The movement path arrow, as every grid skin draws it (game ADR-0018): a
+//! The movement path arrow, as every grid skin draws it: a
 //! 3-px line through tile centres, under the glyphs, from the edge of the
 //! unit's tile, ending in a single arrowhead over the destination tile.
 //! Worked out from the skin's tile size: on the glyph skin's 16 px tiles

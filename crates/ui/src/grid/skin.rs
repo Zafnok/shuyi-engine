@@ -1,4 +1,4 @@
-//! A grid skin: how a [`MapScene`] looks (game ADR-0038). The skin paints
+//! A grid skin: how a [`MapScene`] looks. The skin paints
 //! the ground, the ranges, the path, the cursor and the threat arrows; the
 //! game's [`UnitPainter`] paints its units, between the skin's layers.
 //! What the skin paints with besides the scene (the palette, the game's
@@ -278,7 +278,7 @@ impl WalkSpeeds {
 }
 
 /// Paints a game's units on a grid skin's tiles: its letters, bars,
-/// marks or pictures (game ADR-0038). A skin calls it between its own
+/// marks or pictures. A skin calls it between its own
 /// layers.
 pub trait UnitPainter<U> {
     /// What lies on the ground under the units (a light square under a

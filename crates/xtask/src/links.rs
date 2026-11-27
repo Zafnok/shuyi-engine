@@ -3,6 +3,11 @@
 //! path under `docs/` a Rust comment under `crates/` or `examples/` names in
 //! backticks. Links to the web are not fetched (no network); a link's
 //! `#anchor` is not checked.
+//!
+//! It also reads the rustdoc (`//!` and `///`) of every crate's source but
+//! `xtask`'s and the tests', for the words that name this repository's
+//! process ([`process_words`]): the docs map's rule 4 keeps them out of
+//! what people making games read.
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -44,7 +49,114 @@ pub fn run(repo_root: &Path) -> Vec<String> {
         }
     }
     errors.extend(comment_errors(repo_root));
+    errors.extend(process_errors(repo_root));
     errors
+}
+
+/// Every word of [`process_words`] in the rustdoc of a crate's source
+/// (`crates/*/src`), but `crates/xtask/`'s (its docs are about tickets by
+/// design) and tests' (`tests.rs`, `*_tests.rs` and `tests/` folders).
+fn process_errors(repo_root: &Path) -> Vec<String> {
+    let mut files = Vec::new();
+    let mut errors = Vec::new();
+    let Ok(crates) = fs::read_dir(repo_root.join("crates")) else {
+        return errors;
+    };
+    for entry in crates.filter_map(Result::ok) {
+        let src = entry.path().join("src");
+        if entry.file_name() == "xtask" || !src.is_dir() {
+            continue;
+        }
+        if let Err(e) = files_with_extension(repo_root, &src, "rs", &mut files) {
+            errors.push(format!("{}: {e}", src.display()));
+        }
+    }
+    files.sort();
+    for file in files {
+        let display = display_path(repo_root, &file);
+        let is_test = display.split('/').any(|part| part == "tests")
+            || file
+                .file_name()
+                .is_some_and(|n| n == "tests.rs" || n.to_string_lossy().ends_with("_tests.rs"));
+        if is_test {
+            continue;
+        }
+        match fs::read_to_string(&file) {
+            Ok(text) => {
+                for (line, word) in process_words(&text) {
+                    errors.push(format!(
+                        "{display}:{line}: rustdoc names this repository's process (`{word}`): docs/README.md rule 4"
+                    ));
+                }
+            }
+            Err(e) => errors.push(format!("{display}: {e}")),
+        }
+    }
+    errors
+}
+
+/// The words of a Rust text's doc lines (`//!` and `///`, not `//` or
+/// `////`) that name this repository's process, with their lines: `ticket
+/// NNNN` and `tickets NNNN` (four digits), `game ticket`, `game#`,
+/// `engine#`, `game ADR`, the word `Nick` and `AGENTS.md`. Each starts a
+/// word; a match inside an earlier one (the `ticket 0923` of `game ticket
+/// 0923`) isn't counted again.
+pub(crate) fn process_words(text: &str) -> Vec<(usize, String)> {
+    const PLAIN: &[&str] = &["game ticket", "game#", "engine#", "game ADR", "AGENTS.md"];
+    let mut words = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let trimmed = line.trim_start();
+        let doc = trimmed
+            .strip_prefix("//!")
+            .or_else(|| trimmed.strip_prefix("///").filter(|d| !d.starts_with('/')));
+        let Some(doc) = doc else {
+            continue;
+        };
+        let mut at = 0;
+        while at < doc.len() {
+            let rest = &doc[at..];
+            let starts_word = !doc[..at]
+                .chars()
+                .next_back()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_');
+            let found = if starts_word {
+                PLAIN
+                    .iter()
+                    .find(|w| rest.starts_with(**w))
+                    .map(|w| w.len())
+                    .or_else(|| ticket_number_len(rest))
+                    .or_else(|| {
+                        let after = rest.strip_prefix("Nick")?;
+                        (!after
+                            .chars()
+                            .next()
+                            .is_some_and(|c| c.is_alphanumeric() || c == '_'))
+                        .then_some(4)
+                    })
+            } else {
+                None
+            };
+            if let Some(len) = found {
+                words.push((i + 1, rest[..len].to_string()));
+                at += len;
+            } else {
+                at += rest.chars().next().map_or(1, char::len_utf8);
+            }
+        }
+    }
+    words
+}
+
+/// The length of `ticket NNNN` or `tickets NNNN` at the start of `text`.
+fn ticket_number_len(text: &str) -> Option<usize> {
+    let after = text
+        .strip_prefix("tickets ")
+        .or_else(|| text.strip_prefix("ticket "))?;
+    let digits = after.get(..4)?;
+    digits
+        .bytes()
+        .all(|b| b.is_ascii_digit())
+        .then_some(text.len() - after.len() + 4)
 }
 
 /// The folders whose Rust files' comments are read for path under `docs/`s.
@@ -390,6 +502,69 @@ mod tests {
             vec![
                 "crates/c/src/lib.rs:3: no such file `docs/design/controls.md`".to_string(),
                 "examples/e/main.rs:1: no such file `docs/gone.md`".to_string(),
+            ]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_words_finds_each_word_in_doc_lines() {
+        let text = "//! See ticket 2397 and tickets 1034 and 1035.\n\
+                    /// A game ticket 0923, game#12, engine#3, game ADR-0048.\n\
+                    /// Nick chose it; Nick's too. Read AGENTS.md.\n";
+        let words: Vec<(usize, String)> = process_words(text);
+        assert_eq!(
+            words,
+            vec![
+                (1, "ticket 2397".to_string()),
+                (1, "tickets 1034".to_string()),
+                (2, "game ticket".to_string()),
+                (2, "game#".to_string()),
+                (2, "engine#".to_string()),
+                (2, "game ADR".to_string()),
+                (3, "Nick".to_string()),
+                (3, "Nick".to_string()),
+                (3, "AGENTS.md".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn process_words_skips_plain_comments_code_and_near_misses() {
+        let text = "// ticket 2397, game ADR-0048, Nick\n\
+                    //// ticket 2397\n\
+                    let s = \"ticket 2397, Nick\";\n\
+                    f(); /// ticket 2397\n\
+                    /// Nicked, Nicky, aNick, a ticket, ticket 12, subticket 1234, the game's ADR.\n";
+        assert!(process_words(text).is_empty(), "{:?}", process_words(text));
+    }
+
+    #[test]
+    fn run_reports_process_in_rustdoc_and_skips_tests_and_xtask() {
+        let root = temp_repo("process");
+        let doc = "/// From the game ticket that wrote it.\npub fn f() {}\n";
+        for file in [
+            "crates/c/src/lib.rs",
+            "crates/c/src/tests.rs",
+            "crates/c/src/a_tests.rs",
+            "crates/c/src/tests/x.rs",
+            "crates/c/tests/it.rs",
+            "crates/xtask/src/main.rs",
+        ] {
+            let path = root.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, doc).unwrap();
+        }
+        fs::write(
+            root.join("crates/c/src/plain.rs"),
+            "// From the game ticket that wrote it.\npub fn f() {}\n",
+        )
+        .unwrap();
+        assert_eq!(
+            run(&root),
+            vec![
+                "crates/c/src/lib.rs:1: rustdoc names this repository's process (`game ticket`): docs/README.md rule 4"
+                    .to_string()
             ]
         );
         let _ = fs::remove_dir_all(&root);

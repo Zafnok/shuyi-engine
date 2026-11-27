@@ -1,4 +1,4 @@
-//! The toy game's grid map (ticket 1115): four terrains, pieces that are a
+//! The toy game's grid map: four terrains, pieces that are a
 //! letter each, the map's colors in the toy's palette, terrain tiles for
 //! the sprite skin, both skins, a painter of the pieces for each, and a
 //! stage: a 10 × 8 [`Field`] with two pieces, yours to move and one in the

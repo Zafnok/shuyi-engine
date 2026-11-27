@@ -1,4 +1,4 @@
-//! How fast the fast renderer draws (ticket 3056): timed by the clock,
+//! How fast the fast renderer draws: timed by the clock,
 //! so only with `std`.
 #![cfg(feature = "std")]
 
@@ -11,14 +11,13 @@ const PAIRS: usize = 51;
 
 /// The least speed-up that passes, in hundredths. A debug build, which
 /// every CI job runs, measures 4.0 to 5.6 times on CI's runners and 4.4
-/// to 5.6 on a PC, and a fast renderer that lost its byte path 1 or less
-/// (ticket 2396's notes); an optimised build measures 13, against 3056's
-/// 4.
+/// to 5.6 on a PC, and a fast renderer that lost its byte path 1 or
+/// less; an optimised build measures 13, against 4 before the byte path.
 const LEAST: u128 = if cfg!(debug_assertions) { 300 } else { 400 };
 
 /// How long the fight's frame takes to draw, fast and plain, and how many
 /// times faster the fast renderer is, in hundredths: the medians of
-/// [`PAIRS`] pairs of renders (ticket 2396). A pair is one render of
+/// [`PAIRS`] pairs of renders. A pair is one render of
 /// each, back to back, the fast one first in every other pair, so a
 /// runner slowed for a while (other tests on its cores, its clock's
 /// frequency) slows both, and the median drops the pairs a pause hit.
@@ -58,9 +57,9 @@ fn time_fight() -> (Duration, Duration, u128) {
     (fast[PAIRS / 2], slow[PAIRS / 2], speed_ups[PAIRS / 2])
 }
 
-/// The fight's frame draws much faster than the plain renderer draws it
-/// (ticket 3056). It checks the code as it ships, so not under `cargo
-/// llvm-cov` (ticket 3070).
+/// The fight's frame draws much faster than the plain renderer draws it.
+/// It checks the code as it ships, so not under `cargo
+/// llvm-cov`.
 #[test]
 #[cfg_attr(
     coverage,

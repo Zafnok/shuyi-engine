@@ -174,9 +174,9 @@ pub struct LayoutBindings<A: ActionSet> {
     /// The chords of the actions that can't be rebound (Debug), as in the
     /// keymap file.
     fixed: Vec<(Chord, A)>,
-    /// Whether those chords are reserved (builds with debug tools,
-    /// game ADR-0023). Without debug tools a player may bind them, and their
-    /// slot wins over Debug.
+    /// Whether those chords are reserved (builds with debug tools).
+    /// Without debug tools a player may bind them, and their slot wins
+    /// over Debug.
     fixed_reserved: bool,
 }
 
@@ -366,7 +366,7 @@ impl<A: ActionSet> PadBindings<A> {
 /// Version written in, and required of, the saved config.
 pub const PLAYER_KEYS_VERSION: u32 = 2;
 
-/// The oldest saved version still read: version 1 (ticket 0217) had keys
+/// The oldest saved version still read: version 1 had keys
 /// only, and loads with the default buttons.
 const OLDEST_READABLE_VERSION: u32 = 1;
 
@@ -479,7 +479,7 @@ impl<A: ActionSet> PlayerKeys<A> {
     /// slots, e.g. `"Confirm": [Some("f"), Some("Enter"), None]`, and the
     /// buttons the same way under `pad` if changed, e.g. `"Confirm":
     /// [Some("South"), None, None]`, a button chord as `"South+East"`
-    /// (ticket 1034: saved bindings without chords read as before).
+    /// (saved bindings without chords read as before).
     pub fn to_ron(&self) -> String {
         let layouts = self
             .layouts

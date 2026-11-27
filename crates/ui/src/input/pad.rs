@@ -32,12 +32,11 @@ const SONY: u16 = 0x054c;
 const NINTENDO: u16 = 0x057e;
 
 /// USB product ids of Sony's PS4 pad (the `DualShock` 4): its two models
-/// and its wireless adaptor. Every other Sony pad counts as a PS5 one
-/// (ticket 0229).
+/// and its wireless adaptor. Every other Sony pad counts as a PS5 one.
 const DUALSHOCK_4: [u16; 3] = [0x05c4, 0x09cc, 0x0ba0];
 
 /// Who made a pad, which decides the Confirm / Cancel swap here and the
-/// button names shown on screen (ticket 0220).
+/// button names shown on screen.
 ///
 /// A set that grows (ADR-0039, kind 6): a `match` on it has a `_` arm.
 #[derive(
@@ -64,7 +63,7 @@ pub enum PadKind {
     PlayStation4,
     /// A Nintendo pad (Switch Pro controller, Joy-Cons).
     Nintendo,
-    /// The Playdate's own buttons (game ADR-0070): the D-pad, A and B. Its
+    /// The Playdate's own buttons: the D-pad, A and B. Its
     /// backend reports A at the binding position `East` and B at `West`
     /// (`targets/playdate.ron`, ADR-0008 §1), with no swap, so a game binds
     /// them in its keymap's `targets."playdate"` table.
@@ -117,8 +116,7 @@ impl PadKind {
     /// printed on it; every other name is the Xbox one, its D-pad's and its
     /// crank's among them, but `South`'s, which is the `X` that leaves free:
     /// `A` would name a button its A doesn't press. It has none of the other
-    /// buttons (their actions move to chords and menus in tickets 1034 and
-    /// 1035). The only place buttons get their names.
+    /// buttons (their actions move to chords and menus). The only place buttons get their names.
     // check-text: not player text (a button's name is what is printed on the pad)
     pub fn button_name(self, button: Button) -> &'static str {
         let [xbox, playstation, nintendo] = names(button);
@@ -146,7 +144,7 @@ impl PadKind {
 }
 
 /// A Sony pad's face buttons' shapes: glyphs of our own in the font
-/// (`assets-src/fonts/pad-shapes.bdf`, ticket 0220).
+/// (`assets-src/fonts/pad-shapes.bdf`).
 const CROSS: &str = "\u{2715}";
 const CIRCLE: &str = "\u{25ef}";
 const SQUARE: &str = "\u{25a1}";

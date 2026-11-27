@@ -3,7 +3,7 @@
 //! through the format registry ([`BasicData::formats`]): the English
 //! screen text, the keymap, the palette with the engine's colours, the
 //! font atlas, every picture, and the audio manifest when the bundle has
-//! one ([`AUDIO_RON`]: the sounds its menus play, ticket 2225). A part of
+//! one ([`AUDIO_RON`]: the sounds its menus play). A part of
 //! the game's own rides along in [`BasicData::own`]. It has no voices
 //! (`()`), no settings of the game's own (`()`) and one palette. A game
 //! that needs more writes its own `GameData`, as before.

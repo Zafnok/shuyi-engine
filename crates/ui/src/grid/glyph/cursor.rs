@@ -1,4 +1,4 @@
-//! How the glyph skin draws the cursor (game ADR-0024): thin corner marks
+//! How the glyph skin draws the cursor: thin corner marks
 //! around the tile, or a glow on it.
 
 use super::{CELL_PX, Layout, TILE_W_CELLS};
@@ -34,8 +34,8 @@ pub struct CursorInk {
 /// Draws `cursor` in its style on the tile whose left cell is `(x, y)`,
 /// clipped to the tiles of `layout`.
 ///
-/// Corner marks are 1 px `Over` overlays that stay clear of every letter
-/// (game ADR-0024): their vertical arms sit in the pixel column just left
+/// Corner marks are 1 px `Over` overlays that stay clear of every letter:
+/// their vertical arms sit in the pixel column just left
 /// of the tile and in the tile's last pixel column, which the font never
 /// inks; their horizontal arms sit on the tile's top row and on the row
 /// just above the tile's foot ([`CursorInk::foot_px`]), outside the

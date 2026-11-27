@@ -6,7 +6,7 @@
 //! about the look lives here; nothing here decides what the menu shows.
 //! It records where it painted as hit areas, the box and each row shown,
 //! for the pointer ([`crate::frame::hit`]).
-//! Another look is another `paint` of the same view (game ADR-0054).
+//! Another look is another `paint` of the same view.
 
 use super::view::{MenuItemView, MenuView, SuffixKind};
 use crate::ctx::{Ctx, GameData};

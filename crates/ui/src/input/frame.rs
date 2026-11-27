@@ -1,5 +1,5 @@
 //! [`FrameInput`]: one frame's input as a screen sees it. Generic over the
-//! game's [`ActionSet`] (ticket 1106), and [`frame_seconds`], which makes
+//! game's [`ActionSet`], and [`frame_seconds`], which makes
 //! a frame time a platform reports safe to add up.
 //!
 //! In tests, a screen sees only the actions it declares

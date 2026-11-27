@@ -1,4 +1,4 @@
-//! A key cap printed into a [`GlyphBuffer`] (ticket 3215, ADR-0124): its
+//! A key cap printed into a [`GlyphBuffer`] (ADR-0124): its
 //! cells, its glyphs' style and its box.
 
 use crate::prelude::*;

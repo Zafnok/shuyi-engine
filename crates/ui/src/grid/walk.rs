@@ -1,9 +1,9 @@
-//! How units move on a grid map (game ticket 0440): a unit that can still
+//! How units move on a grid map: a unit that can still
 //! act steps on the spot, and a moving unit glides from tile to tile along
 //! its path, its legs going, turned the way it walks. Every timing is
 //! here.
 //!
-//! All of it is a look (game ADR-0038): the rules, the camera and the
+//! All of it is a look: the rules, the camera and the
 //! sounds go by the tile a walk is on, which changes at each tile's edge.
 //! How fast a walk goes is the look's too: each skin's setting
 //! ([`GridSkin::walk`](super::GridSkin::walk)).

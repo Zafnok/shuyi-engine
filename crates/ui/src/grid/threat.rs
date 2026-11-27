@@ -1,4 +1,4 @@
-//! The threat arrows, as every grid skin draws them (game ticket 0448): a
+//! The threat arrows, as every grid skin draws them: a
 //! slim straight arrow from each enemy that could attack a tile to that
 //! tile, and a `!` above each of those enemies. Over units and terrain, so
 //! never hidden. Worked out from the skin's tile size, in the art's own
@@ -11,7 +11,7 @@
 //! rectangles, one per step across it. An enemy outside the view has its
 //! arrow cut at the view's edge and no mark.
 //!
-//! A skin may draw the arrows in another [`Shape`] (ticket 3223): as arcs
+//! A skin may draw the arrows in another [`Shape`]: as arcs
 //! that bow up the screen over what lies between, 2 pixels thick under a
 //! filled head, and with a frame on the threatened tile as well.
 
@@ -34,12 +34,12 @@ pub const BARB_LEN: f32 = 4.0;
 /// (about 35°). *Tunable.*
 const BARB_TURN: (f32, f32) = (0.82, 0.57);
 
-/// How a threat's arrows are drawn (ticket 3223). Kind 6 of ADR-0039:
+/// How a threat's arrows are drawn. Kind 6 of ADR-0039:
 /// more shapes may come, so a `match` on it has a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[non_exhaustive]
 pub enum Shape {
-    /// A 1-pixel straight line ending in two barbs (game ticket 0448).
+    /// A 1-pixel straight line ending in two barbs.
     #[default]
     Straight,
     /// A 2-pixel arc bowing up the screen over what lies between, ending
@@ -79,8 +79,8 @@ const MARK_GAP_H: i32 = 1;
 const MARK_DOT_H: i32 = 2;
 
 /// Pixels between the mark's lowest pixel and the tile's top edge, so that
-/// it clears the head of the unit standing there (Nick: lower, "it covers
-/// the enemy's head and looks weird"). *Tunable.*
+/// it clears the head of the unit standing there: any lower, and the mark
+/// covers the head. *Tunable.*
 pub const MARK_ABOVE: i32 = 3;
 
 /// The mark's height, bar to dot.
@@ -960,7 +960,7 @@ mod tests {
         (rects.len(), sum(|r| r.0), sum(|r| r.1), sum(|r| r.2 * r.3))
     }
 
-    /// Pinned by hand from the first run (ticket 3223): a change to where
+    /// Pinned by hand from the first run: a change to where
     /// an arc's pixels are is a change to the look, and should be meant.
     #[test]
     fn arcs_are_where_they_were() {
