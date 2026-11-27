@@ -8,7 +8,8 @@
 //! [`mix`](crate::tileset::mix) of the four tiles round a point) at column
 //! `m % 8`, row `m / 8` ([`sheet_rect`]), mix 0's place clear. It is an
 //! ordinary picture, so every painter draws it as it draws a hand-drawn
-//! one, and [`layer`] names its 15 pictures. A tool writes it to a PNG from
+//! one, and [`layer`] names its 15 pictures: pasted into the tileset's
+//! picture, or as an image of its own ([`sheet_layer`]). A tool writes it to a PNG from
 //! a [`recipe`], and keeps it equal to what the recipe makes
 //! (`shuyi-cli`'s `corners` feature).
 //!
@@ -37,7 +38,7 @@ use alloc::collections::BTreeSet;
 
 use serde::Deserialize;
 
-use crate::image::{Image, ImageRect};
+use crate::image::{Image, ImageId, ImageRect};
 use shuyi_core::TerrainId;
 
 use crate::tileset::{CornerLayer, MIXES};
@@ -193,6 +194,14 @@ pub fn layer(of: BTreeSet<TerrainId>, origin: (u32, u32), tile_px: (u32, u32)) -
         *tile = Some(sheet_rect(origin, tile_px, m));
     }
     CornerLayer::new(of, tiles)
+}
+
+/// The corner layer of the terrains `of` drawn from the sheet `image` as
+/// it was made, an image of its own: [`layer`] at `(0, 0)`, its pictures
+/// in `image` rather than the tileset's ([`CornerLayer::image`]).
+#[must_use]
+pub fn sheet_layer(of: BTreeSet<TerrainId>, image: ImageId, tile_px: (u32, u32)) -> CornerLayer {
+    layer(of, (0, 0), tile_px).with_image(image)
 }
 
 /// The size of `tile`, if it can be a tile.

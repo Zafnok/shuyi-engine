@@ -138,13 +138,15 @@ impl<U> Ground<'_, U> {
     /// for the mix of those four being in the layer, at its own size,
     /// its top-left half a tile up and left of the point and moved by the
     /// layer's offset; drawn inside the tiles it covers that are drawn,
-    /// on the map and not skipped.
+    /// on the map and not skipped. Its pictures are in its own image, if
+    /// it has one, else in the tileset's.
     fn paint_corners(&self, layer: &CornerLayer, buf: &mut GlyphBuffer) {
         let (w, h) = self.grid.tile;
         let (left, top) = self.grid.corner;
         let (across, down) = self.grid.tiles;
         let zoom = self.grid.zoom();
         let (ox, oy) = layer.offset;
+        let image = layer.image.unwrap_or(self.image);
         for (i, j) in (0..=down).flat_map(|j| (0..=across).map(move |i| (i, j))) {
             let mix = mix_of(self.shown.corners(i, j), &layer.of);
             let Some(rect) = layer.tiles.get(usize::from(mix)).copied().flatten() else {
@@ -156,7 +158,7 @@ impl<U> Ground<'_, U> {
                 side(rect.w).saturating_mul(zoom),
                 side(rect.h).saturating_mul(zoom),
             );
-            let sprite = self.sprite(self.picture(rect), dest);
+            let sprite = self.sprite(Picture { image, rect }, dest);
             let (parts, whole) = self.parts(dest, &layer.skip);
             if whole {
                 buf.add_sprite(sprite);
@@ -475,6 +477,29 @@ mod tests {
         // No layer, no pictures between tiles.
         let plain = sprite(Some(tiles(kit.tiles_image())));
         assert_eq!(painted(&kit, &plain, &lake).items().len(), 9);
+    }
+
+    #[test]
+    fn a_layer_with_an_image_of_its_own_draws_its_pictures_from_it() {
+        let kit = Kit::new();
+        let lake = view(["...", ".~.", "..."]);
+        let mut terrain = layered(kit.tiles_image());
+        let plain = sprite(Some(terrain.clone()));
+        let shared = painted(&kit, &plain, &lake);
+        for layer in &mut terrain.look.layers {
+            if let Layer::Corners(corners) = layer {
+                corners.image = Some(kit.card());
+            }
+        }
+        let sheet = sprite(Some(terrain));
+        let own = painted(&kit, &sheet, &lake);
+        let sprites = own.sprites();
+        let (tiles, shore) = sprites.split_at(9);
+        assert!(tiles.iter().all(|s| s.image == kit.tiles_image()));
+        assert!(shore.iter().all(|s| s.image == kit.card()));
+        // The same pictures in the same places: only the image differs.
+        assert_eq!(drawn(&own, 0), drawn(&shared, 0));
+        assert_eq!(own.items().len(), shared.items().len());
     }
 
     #[test]

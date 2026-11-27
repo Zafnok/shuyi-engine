@@ -442,6 +442,7 @@ fn the_fields_left_out_are_their_defaults() {
             size: None,
             offset: (0, 0),
             skip: Vec::new(),
+            image: None,
         }
     );
     let tiles: LayerDef = parse_ron("l.ron", r#"Tiles(of: ["fort"], at: (0, 4))"#).unwrap();
@@ -464,10 +465,65 @@ fn the_fields_left_out_are_their_defaults() {
 }
 
 #[test]
+fn a_corner_layers_own_image_holds_its_pictures() {
+    let source = file(
+        "(16, 16)",
+        r#"Corners(of: ["water"], tiles: [(corners: "...#", at: (3, 1))],
+                   image: "tiles/water-corners.png"),
+           Corners(of: ["water"], tiles: [(corners: "...#", at: (3, 1))])"#,
+        "",
+    );
+    assert_eq!(problems(&source), Vec::<String>::new());
+    let tiles = resolved(&source).unwrap();
+    let [Layer::Corners(own), Layer::Corners(shared)] = tiles.look.layers.as_slice() else {
+        panic!("{:?}", tiles.look.layers);
+    };
+    let sheet = images().id("tiles/water-corners.png").unwrap();
+    let pictures = mixes([(1, cell((3, 1)))]);
+    assert_eq!(own, &CornerLayer::new(ids([2]), pictures).with_image(sheet));
+    // Left out, the tileset's image.
+    assert_eq!(shared, &CornerLayer::new(ids([2]), pictures));
+    assert_eq!(tiles.image, image());
+}
+
+#[test]
+fn a_corner_layers_own_image_is_in_the_table_and_holds_each_picture() {
+    let gone = file(
+        "(16, 16)",
+        r#"Corners(of: ["water"], tiles: [(corners: "...#", at: (9, 9))], image: "tiles/gone.png")"#,
+        "",
+    );
+    // Not in the table: that alone, no picture checked against it.
+    assert_eq!(
+        errors(&gone),
+        ["farm.ron: layer 1: image \"tiles/gone.png\" is not in the bundle's image table"]
+    );
+    assert_eq!(codes_of(&gone), [Some(codes::MISSING_FILE)]);
+    // The sheet is 64 × 32: row 2 lies outside it, though the farm's
+    // 64 × 48 picture would hold it.
+    let in_winter = |image: &str| {
+        let layer = format!(
+            r##", layers: [Corners(of: ["water"], tiles: [(corners: "#...", at: (0, 2))]{image})]"##
+        );
+        file("(16, 16)", "", &winter(&layer))
+    };
+    let outside = in_winter(r#", image: "tiles/water-corners.png""#);
+    assert_eq!(
+        errors(&outside),
+        [
+            "farm.ron: look \"winter\": layer 1, corners \"#...\": its 16×16 px at (0, 32) lies \
+          outside the 64×32 px image"
+        ]
+    );
+    assert_eq!(codes_of(&outside), [Some(codes::OUT_OF_RANGE)]);
+    assert!(resolved(&in_winter("")).is_ok());
+}
+
+#[test]
 fn a_file_written_back_reads_as_itself() {
     let sized = file(
         "(16, 16)",
-        r#"Corners(of: ["water"], tiles: [(corners: ".##.", at: (0, 1))], size: (16, 32), offset: (1, -3), skip: ["soil"])"#,
+        r#"Corners(of: ["water"], tiles: [(corners: ".##.", at: (0, 1))], size: (16, 32), offset: (1, -3), skip: ["soil"], image: "tiles/water-corners.png")"#,
         "",
     );
     for source in [FARM, &sized] {

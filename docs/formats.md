@@ -468,7 +468,9 @@ What each one reads:
   `layers` painted over them and other `looks` by the name a map's look
   gives, each picture a `(column, row)` cell of `tile_px` cells. A corner
   layer may give its pictures a `size` (left out, `tile_px`), an
-  `offset` and terrains to `skip`. Each look may name the pictures a map
+  `offset`, terrains to `skip` and an `image` of its own, its cells
+  counted from that image's top-left (`image: "tiles/water-corners.png"`,
+  a made sheet as it was written; left out, the tileset's; ticket 2282). Each look may name the pictures a map
   places on its tiles (`props`, ticket 2281): a cell and a `size` in
   pixels (left out, `tile_px`), `props: { "lamp": (at: (4, 0), size:
   (16, 32)) }`; a look's `props` are its own. The module docs of
@@ -480,8 +482,9 @@ What each one reads:
   none; a picture to place with an empty name, or a side of its `size` 0
   or outside `side_px`. Each problem names its look and layer or picture
   (`look "winter": layer 2: …`, `look "winter": prop "lamp": …`).
-  `TerrainTilesDef::resolve` reports a picture outside the image, a
-  picture to place too.
+  `TerrainTilesDef::resolve` reports a picture outside its image, a
+  picture to place too, and a corner layer's `image` not in the table,
+  naming the look and layer (`look "winter": layer 1: image …`).
   A corner layer's 15 pictures may also be made, not drawn: a
   `<name>.corners.ron` recipe, a tool's input that no game loads, makes
   them into a PNG from one tile (`shuyi_assets::corners`, behind its
@@ -764,8 +767,8 @@ assets loaded, with the functions that were there before the registry:
 - terrain tiles against the image table and the game's terrains, by
   name: `TerrainTilesDef::resolve(file, &images, &terrains)` makes the
   `TerrainTiles` a sprite skin paints, or reports every problem: the
-  image not in the table, a picture outside it (a corner layer's at its
-  `size`), a terrain named (`terrain`, `of`, `beside`, `skip`) that the
+  image, or a corner layer's own `image`, not in the table, a picture
+  outside its image (a corner layer's at its `size`), a terrain named (`terrain`, `of`, `beside`, `skip`) that the
   game lacks, a terrain of the game with no tile in a look. The terrains
   are a map of name to `TerrainId`, not a function as `MapText` takes,
   since "every terrain has a tile" needs them all;

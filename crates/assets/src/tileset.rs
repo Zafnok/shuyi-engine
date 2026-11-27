@@ -43,7 +43,9 @@
 //!             (corners: "..##", at: (1, 1)),
 //!         ]),
 //!         // Optional: `size: (16, 24)` (left out, `tile_px`),
-//!         // `offset: (1, 3)` and `skip: ["soil"]` (none).
+//!         // `offset: (1, 3)`, `skip: ["soil"]` (none) and
+//!         // `image: "tiles/water-corners.png"`, an image of the layer's
+//!         // own that its cells are in (left out, the tileset's).
 //!         Tiles(of: ["tilled"], at: (3, 0)),
 //!     ],
 //!     // Pictures a map places on its tiles by name, over the layers.
@@ -208,7 +210,9 @@ pub enum Layer {
 ///
 /// Its pictures are drawn by hand, or made from the terrain's one tile at
 /// tool time: the module `corners`, behind this crate's `corners`
-/// feature, off by default.
+/// feature, off by default. They are cells of the tileset's image, or of
+/// an image of the layer's own ([`image`](Self::image)): a made sheet as
+/// it was written.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CornerLayer {
@@ -224,6 +228,9 @@ pub struct CornerLayer {
     /// Pixels across and down, at the art's size, added to where each
     /// picture's top-left goes. `(0, 0)` in [`new`](Self::new).
     pub offset: (i32, i32),
+    /// The image the pictures are in: `None` (in [`new`](Self::new)),
+    /// the tileset's ([`TerrainTiles::image`]).
+    pub image: Option<ImageId>,
 }
 
 impl CornerLayer {
@@ -236,6 +243,16 @@ impl CornerLayer {
             tiles,
             skip: BTreeSet::new(),
             offset: (0, 0),
+            image: None,
+        }
+    }
+
+    /// This layer, its pictures in `image` rather than the tileset's.
+    #[must_use]
+    pub fn with_image(self, image: ImageId) -> Self {
+        Self {
+            image: Some(image),
+            ..self
         }
     }
 }
@@ -333,8 +350,14 @@ mod tests {
                 tiles,
                 skip: BTreeSet::new(),
                 offset: (0, 0),
+                image: None,
             }
         );
+        let images = ImageTable::new([("sheet.png", crate::image::ImageInfo::new(96, 48))].into());
+        let sheet = images.id("sheet.png").unwrap();
+        let own = CornerLayer::new(BTreeSet::new(), tiles).with_image(sheet);
+        assert_eq!(own.image, Some(sheet));
+        assert_eq!(own.tiles, tiles);
     }
 
     #[test]
