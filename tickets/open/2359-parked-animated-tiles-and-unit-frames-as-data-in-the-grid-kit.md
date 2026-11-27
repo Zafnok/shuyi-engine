@@ -39,6 +39,11 @@ Shuyi today:
 - `crates/ui/src/grid/sprite/ground.rs` paints those rectangles as
   sprite items: `paint_tiles` (through `Ground::own`), `paint_corners`,
   `paint_singles`, and the tint wash in `paint_tints`.
+- **From 3247 (done):** a look also has `Look::props`, an `ImageRect`
+  for each name a map places on a tile (`MapLook::props`, a lamp at a
+  gate), painted by `paint_props` after the layers. This ticket's frames
+  apply to those rectangles as to the others: a placed lamp's flame is
+  a clip like a torch tile's.
 - `MapScene::clock_ms` (`crates/ui/src/grid/scene.rs`) is the screen's
   animation clock, "what a skin or a unit painter moves its marks by".
   No skin reads it yet.
