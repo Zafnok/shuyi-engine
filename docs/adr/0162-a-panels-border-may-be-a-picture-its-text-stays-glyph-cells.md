@@ -1,4 +1,4 @@
-# ADR-0161: A panel's border may be a picture in nine slices; its text stays glyph cells
+# ADR-0162: A panel's border may be a picture in nine slices; its text stays glyph cells
 
 - **Status:** Accepted
 - **Date:** 2026-11-27
