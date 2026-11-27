@@ -14,17 +14,16 @@ use hello_grid::screens::StageScreen;
 use hello_grid::tools::{FONT_1BIT, HelloTools, one_bit_skin};
 use hello_grid::{Hello, LAYOUT, MapLook, PACK_STAMP};
 use shuyi::assets::bitmap::Bitmap;
-use shuyi::assets::bundle::Bundle;
 use shuyi::assets::onebit::Pattern;
 use shuyi::assets::pack::Pack;
-use shuyi::platform::harness::Harness;
-use shuyi::ui::frame::onebit::{Font, Images, PatternMap, to_one_bit};
-use shuyi::ui::{Ctx, Game, GameHooks};
-use shuyi_cli::contract::bake::{BakeInput, bake};
-use shuyi_cli::contract::target::{Level, engine_profiles, one_bit};
-use shuyi_cli::frame_png::{self, Script};
-use shuyi_cli::project::Config;
-use shuyi_cli::{GameTools, Project};
+use shuyi::prelude::test::Harness;
+use shuyi::prelude::text::Font;
+use shuyi::prelude::{Bundle, Ctx, Game, GameHooks};
+use shuyi::ui::frame::onebit::{Images, PatternMap, to_one_bit};
+use shuyi_cli::frame_png;
+use shuyi_cli::prelude::{
+    BakeInput, Config, GameTools, Level, Project, Script, bake, engine_profiles, one_bit,
+};
 
 #[test]
 fn every_role_has_patterns_and_the_pieces_and_the_ground_stay_apart() {

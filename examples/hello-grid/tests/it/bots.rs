@@ -6,7 +6,7 @@
 
 use hello_grid::Hello;
 use hello_grid::rules::{Chase, Outcome, Side, Stage, hero_order, playout, score};
-use shuyi::core::{
+use shuyi::core::prelude::{
     Bot, Determinize, Horizon, RandomBot, Report, Rollout, RolloutSettings, Sides, TurnRules, play,
 };
 

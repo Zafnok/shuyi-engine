@@ -4,10 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use shuyi_cli::BasicTools;
-    use shuyi_cli::contract::check::{CheckInput, check};
-    use shuyi_cli::contract::run::{RunInput, keys, run};
-    use shuyi_cli::contract::session::Event;
+    use shuyi_cli::prelude::{BasicTools, CheckInput, Event, RunInput, check, keys, run};
 
     use crate::game;
 

@@ -5,9 +5,8 @@
 
 use crate::prelude::*;
 
-use shuyi::assets::ContentError;
-use shuyi::platform::{Card, Look, Progress, Setup, Start};
-use shuyi::ui::{Ctx, Game};
+use shuyi::platform::Progress;
+use shuyi::prelude::{Card, ContentError, Ctx, Game, Look, Setup, Start};
 
 use crate::app_info::APP;
 use crate::{Hello, game, loading};

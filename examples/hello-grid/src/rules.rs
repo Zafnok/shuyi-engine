@@ -19,9 +19,11 @@ use core::fmt;
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi::core::{Bot, Determinize, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules};
-use shuyi::core::{flow_field, reachable};
+use shuyi::core::prelude::{
+    Bot, Determinize, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules, flow_field,
+    reachable,
+};
+use shuyi::prelude::grid::{GridMap, MapFeature, MapFormat, grid_map};
 
 /// Floor: anyone walks it.
 pub const FLOOR: TerrainId = TerrainId(0);

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use hello_grid::tools::HelloTools;
 
 fn main() -> ExitCode {
-    ExitCode::from(shuyi_cli::main_with(
+    ExitCode::from(shuyi_cli::prelude::main_with(
         std::env::args().skip(1),
         Some(&HelloTools),
     ))

@@ -8,15 +8,14 @@
 use crate::prelude::*;
 
 use shuyi::assets::image::{ImageId, ImageRect};
-use shuyi::assets::tileset::{Look as TileLook, TerrainTiles};
-use shuyi::core::{Pos, TerrainId};
-use shuyi::ui::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
-use shuyi::ui::frame::{EngineColor, Palette};
-use shuyi::ui::grid::glyph;
-use shuyi::ui::grid::{
-    GlyphSkin, Grid, MapColors, MapScene, MapUnit, RangeName, SpriteSkin, TerrainGlyphs, Terrains,
-    UnitPainter, WalkSpeeds,
+use shuyi::core::prelude::{Pos, TerrainId};
+use shuyi::prelude::grid::{
+    GlyphSkin, Grid, MapColors, MapScene, MapUnit, RangeName, SpriteSkin, TerrainGlyphs,
+    TerrainTiles, Terrains, TileLook, UnitPainter, WalkSpeeds, glyph,
 };
+use shuyi::prelude::{Cell, EngineColor, GlyphBuffer, Rect};
+use shuyi::ui::frame::Palette;
+use shuyi::ui::frame::glyph_buffer::{Layer, Sprite};
 
 use crate::rules::{Side, TERRAIN_NAMES};
 

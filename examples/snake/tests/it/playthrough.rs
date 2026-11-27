@@ -69,7 +69,7 @@ fn write_the_golden_record() {
 fn the_golden_record_is_the_playthroughs() {
     let (_, record) = playthrough();
     let text = include_str!("../records/seed-1.ron");
-    let checked_in: shuyi::core::tick::TickRecord =
+    let checked_in: shuyi::core::prelude::TickRecord =
         ron::from_str(text).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(
         checked_in.runs(),
@@ -107,7 +107,7 @@ fn cancel_pauses_the_run_and_the_menu_resumes_it_or_goes_back_to_the_title() {
 
 #[test]
 fn a_run_back_from_a_suspend_waits_in_the_pause_menu() {
-    use shuyi::platform::SystemEvent;
+    use shuyi::prelude::SystemEvent;
 
     let mut h = crate::at_title(1);
     h.act(UiAction::Confirm);
