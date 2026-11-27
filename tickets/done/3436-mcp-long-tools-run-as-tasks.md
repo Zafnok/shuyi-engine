@@ -237,7 +237,7 @@ reconnecting a project's MCP server is the user's (`/mcp`); a headless
 *MCP tasks for server authors* says it sends (`tasks/get` at
 `pollIntervalMs`, `tasks/cancel` on a stop).
 
-**Size:** 1,452 counted lines (code 674, tests 589, docs 189), under
+**Size:** 1,482 counted lines (code 678, tests 614, docs 190), under
 1,500; the forwarded calls (3440) were where it split.
 
 Behaviour: shuyi-cli: on 2026-07-28, `server/discover`'s capabilities
