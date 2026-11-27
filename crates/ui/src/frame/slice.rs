@@ -55,16 +55,15 @@ fn fill(
     within: PxRect,
 ) {
     let (x, y, w, h) = area;
-    if w <= 0 || h <= 0 || base.src.is_empty() {
-        return;
-    }
     let Some(area_px) = rect64(x, y, w, h) else {
         return;
     };
     let Some(seen) = area_px.intersect(&within) else {
         return;
     };
-    let Some((tw, th)) = tile.filter(|&(tw, th)| tw > 0 && th > 0) else {
+    // A tile is a part of the picture that isn't empty, times the zoom: never
+    // 0 wide or tall.
+    let Some((tw, th)) = tile else {
         out.push(Sprite {
             dest: area_px,
             clip: seen,
@@ -82,17 +81,16 @@ fn fill(
         i64::from(seen.x) + i64::from(seen.w),
         i64::from(seen.y) + i64::from(seen.h),
     );
-    let mut ty = y + r0 * th;
-    while ty < sy1 {
-        let mut tx = x + c0 * tw;
-        while tx < sx1 {
+    let (Ok(down), Ok(across)) = (usize::try_from(th), usize::try_from(tw)) else {
+        return;
+    };
+    for ty in (y + r0 * th..sy1).step_by(down) {
+        for tx in (x + c0 * tw..sx1).step_by(across) {
             let clip = rect64(tx, ty, tw, th).and_then(|d| d.intersect(&seen).map(|c| (d, c)));
             if let Some((dest, clip)) = clip {
                 out.push(Sprite { dest, clip, ..base });
             }
-            tx += tw;
         }
-        ty += th;
     }
 }
 
@@ -139,9 +137,6 @@ pub fn nine_slice_sprites(
     layer: Layer,
 ) -> Vec<Sprite> {
     let mut out = Vec::new();
-    if dest.is_empty() || within.is_empty() {
-        return out;
-    }
     let Some(pic) = src_of(slice.picture.rect) else {
         return out;
     };

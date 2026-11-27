@@ -311,3 +311,51 @@ fn a_frame_at_the_buffers_edge_keeps_its_corners_inside_it() {
         "the bottom-right corner whole"
     );
 }
+
+#[test]
+fn a_frames_border_blanks_only_the_border_cells() {
+    let (frame, _) = pictures();
+    let look =
+        PanelLook::new(BoxStyle::Single, WHITE, BLUE).with_frame(Some(PanelFrame::new(frame)));
+    let mut buf = GlyphBuffer::new(8, 6, BLANK);
+    // Only the border: the inside keeps what was there.
+    buf.panel_border(Rect::new(1, 1, 5, 4), &look);
+    assert_eq!(row(&buf, 0), "........");
+    assert_eq!(row(&buf, 1), ".     ..");
+    assert_eq!(row(&buf, 2), ". ... ..");
+    assert_eq!(row(&buf, 4), ".     ..");
+    assert_eq!(row(&buf, 5), "........");
+    // The frame shows over every border cell: the bottom-right one too.
+    let corner = Rect::new(5 * 8, 4 * 16, 8, 16);
+    let sprites = buf.sprites();
+    assert!(sprites.iter().any(|s| s.clip.intersect(&corner).is_some()));
+}
+
+#[test]
+fn a_panel_off_the_buffer_keeps_its_frame_where_it_is() {
+    let (frame, _) = pictures();
+    let look = PanelLook::new(BoxStyle::Single, WHITE, BLUE)
+        .with_frame(Some(PanelFrame::new(frame).with_outset(5)));
+    let mut buf = GlyphBuffer::new(8, 6, BLANK);
+    // Wholly left of the buffer: only its outset reaches in, and the frame
+    // isn't moved onto the buffer.
+    buf.panel_border(Rect::new(-2, 1, 2, 3), &look);
+    let sprites = buf.sprites();
+    assert_ne!(sprites.len(), 0);
+    assert!(sprites.iter().all(|s| s.dest.x < 0), "{sprites:?}");
+}
+
+#[test]
+fn a_plate_at_a_zoom_scales_its_caps_height_and_text_row() {
+    let (_, plate) = pictures();
+    let plate = TitlePlate::new(plate.with_zoom(2))
+        .with_pad(3)
+        .with_text_top(4);
+    let mut buf = GlyphBuffer::new(20, 8, BLANK);
+    buf.title_plate(&plate, Rect::new(8, 4, 2, 1));
+    let body = buf.sprites().into_iter().find(|s| s.src.w == 1).unwrap();
+    // The text at (64, 64), 16 wide: the caps 32 each, 8 rows of text_top.
+    assert_eq!(body.dest, Rect::new(64 - 3, 64 - 8, 16 + 6, 64));
+    let left = buf.sprites().into_iter().find(|s| s.src.x == 0).unwrap();
+    assert_eq!(left.dest, Rect::new(64 - 3 - 32, 64 - 8, 32, 64));
+}

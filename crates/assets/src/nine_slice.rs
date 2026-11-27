@@ -71,19 +71,11 @@ impl Borders {
     /// (`right` first, then `left`), and `top` and `bottom` likewise to
     /// `h`: borders that fit a picture of `w × h`.
     #[must_use]
-    pub const fn fitted(self, w: u32, h: u32) -> Self {
-        let right = if self.right < w { self.right } else { w };
-        let left = if self.left < w - right {
-            self.left
-        } else {
-            w - right
-        };
-        let bottom = if self.bottom < h { self.bottom } else { h };
-        let top = if self.top < h - bottom {
-            self.top
-        } else {
-            h - bottom
-        };
+    pub fn fitted(self, w: u32, h: u32) -> Self {
+        let right = self.right.min(w);
+        let left = self.left.min(w - right);
+        let bottom = self.bottom.min(h);
+        let top = self.top.min(h - bottom);
         Self {
             left,
             top,
