@@ -93,6 +93,25 @@ Two choices, checked against the code:
 style. Their text still does: only the border becomes a picture, under
 the glyphs. A short ADR records that as an extension of §5.
 
+**From 3249 (done):** 3249 built this ticket's first part for the game
+(game#1380): `shuyi_assets::nine_slice` (`NineSlice` with its borders in
+a `Borders` value, `NineSlice::new(picture, borders)` and `with_edges`,
+`with_centre`, `with_zoom`, as ADR-0151 asks), `frame::slice`'s
+`nine_slice_sprites` and `GlyphBuffer::nine_slice` by the rule below,
+and the panel's frame: `PanelLook::frame` is an `Option<PanelFrame>` (a
+`NineSlice` and an `outset` in console pixels past the panel, for
+corners wider than a cell), set with `with_frame`, drawn by
+`GlyphBuffer::panel_border`; `PanelLook::plate` (`TitlePlate`) draws a
+plate behind the title; the menu widget has `glyph::look` and
+`glyph::paint_with` (a caller's look, its frame included), so its frame
+argument below is `paint_with`'s look. ADR-0161 is the ADR this ticket planned. What is
+left here: `tiled_sprites` and `GlyphBuffer::tiled`, `src_rect`'s move,
+`GameData::nine_slice` (giving a `PanelFrame`, so a game's outset comes
+with it) and `Ctx::panel_frame`, the toy's frames, every engine panel and
+text box asking for it, and the menu's note rule. Where this ticket's text
+says `PanelLook::framed(Option<NineSlice>)` or flat `left`, `top`,
+`right`, `bottom` fields, read 3249's names.
+
 ## Nick input
 
 None.

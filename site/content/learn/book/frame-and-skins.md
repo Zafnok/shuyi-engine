@@ -69,6 +69,16 @@ roles, and `ctx.palette.lookup(name)` for one of the game's, from `files/palette
 
 {{ snippet(file="files/palette.ron", anchor="own", language="ron") }}
 
+A box with a title in its top border is a **panel**: `buf.panel(rect, &look, Some("Shop"))`
+clears the cells, draws the border and sets the title. Its `PanelLook` says how it
+looks. By default the border is box-drawing lines; `with_frame` draws it from a
+picture instead, cut in **nine slices** (its four corners kept, its edges and middle
+stretched or repeated, as every 2D engine's nine-patch does), and `with_plate` puts a
+picture behind the title. The frame may reach a few pixels past the panel
+(`PanelFrame::with_outset`), so a picture with wide corners keeps off the text: the
+text stays on its cells and the frame moves out. `buf.nine_slice` lays the same
+slices over any rectangle of pixels.
+
 {% newcomer(to="programming", topic="a hex color") %}
 A color like `#7ad07a` is three pairs of digits in base 16, for how much red, green and
 blue it has, from `00` to `ff`.
