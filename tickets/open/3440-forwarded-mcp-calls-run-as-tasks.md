@@ -101,6 +101,13 @@ None.
       next call starts it again.
 - [ ] Without the extension, or on the old protocol, a forwarded call
       answers as today.
+- [ ] Checked by hand in Claude Code, in a worktree session (whose
+      server is the main checkout's, forwarding to the worktree's: 3436
+      couldn't check it there): `start` on a game in the worktree answers
+      a task, Claude Code polls it, the session plays once it completes,
+      and a stop in the client cancels the build. The session's own
+      server must be this branch's: `claude --mcp-config` naming the
+      branch's built `shuyi mcp`, started in the main checkout.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

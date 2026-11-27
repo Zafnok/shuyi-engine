@@ -157,7 +157,7 @@ None.
 - [x] A failing `start` (a game that doesn't build) is `completed` with
       the error result and the `SH` code `start` answers today.
 - [x] `tasks/get` of an unknown id is `-32602`.
-- [x] ~~Checked by hand in Claude Code (step 6).~~ (not done: the session's server predates the change and reconnecting it is the user's; checked over stdio with the same messages, see the notes)
+- [x] ~~Checked by hand in Claude Code (step 6).~~ (not done: a worktree session's server is the main checkout's, which forwards to the worktree's, so Claude Code sees tasks only with 3440; checked over stdio with the same messages, see the notes)
 - [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -230,9 +230,14 @@ rebuilt:
 - `tasks/get` without the extension was `-32021`, of `shuyi-99`
   `-32602`.
 
-**Not checked: in Claude Code** (acceptance line left unticked). The
-session's own `shuyi` server was built before this change, and
-reconnecting a project's MCP server is the user's (`/mcp`); a headless
+**Not checked: in Claude Code** (acceptance line struck), and it can't
+be from a worktree session yet. The worktree session's `shuyi` server is
+the main checkout's (`D:\shuyi-engine\target\debug\shuyi.exe`, built
+from `main`), which forwards the worktree's calls to a server of the
+worktree (ADR-0035 §2): the server Claude Code talks to has no tasks
+until this merges, and a forwarded call answers without tasks until
+3440, which takes the check over. A reconnect restarts only the main
+checkout's server (and the client said it was connected). A headless
 `claude -p` couldn't sign in. The stdio run sends what Claude Code's
 *MCP tasks for server authors* says it sends (`tasks/get` at
 `pollIntervalMs`, `tasks/cancel` on a stop).
