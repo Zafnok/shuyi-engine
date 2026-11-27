@@ -131,10 +131,10 @@ None.
   `tickets/README.md` says. The game's PR that moves the pin follows
   this one.
 
-**Either order with 3413:** if 3413 is done, put its domain preludes
+**Either order with 3438:** if 3438 is done, put its domain preludes
 behind the features too (`shuyi::prelude::grid` behind `grid`, and
 every other prelude item from a kit behind that kit's feature); if
-not, nothing to do (3413 gates its preludes by the features this
+not, nothing to do (3438 gates its preludes by the features this
 ticket adds).
 
 **Either order with 2842:** if 2842 is done, add the new features to

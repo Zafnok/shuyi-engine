@@ -454,8 +454,9 @@ impl Repeat {
     }
 }
 
-/// A value going from `from` to `to` over `duration`, along a curve, after
-/// `delay`: drawn from the time since it started alone
+/// A tween, or an animation curve: a value going from `from` to `to` over
+/// `duration`, along a curve, after `delay`, drawn from the time since it
+/// started alone
 /// ([`value_at`](Self::value_at)). The [module docs](self) say how a
 /// simulation and a view keep one.
 ///
@@ -474,6 +475,7 @@ impl Repeat {
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
+#[doc(alias = "AnimationCurve")]
 pub struct Tween<T, E = Ease> {
     /// The value at the start.
     pub from: T,

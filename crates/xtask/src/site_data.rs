@@ -194,7 +194,7 @@ fn quoted(text: &str) -> String {
 }
 
 /// The ids of the tickets in `dir`, from their file names (`NNNN-slug.md`).
-fn ticket_ids(dir: &Path) -> Result<HashSet<String>, String> {
+pub fn ticket_ids(dir: &Path) -> Result<HashSet<String>, String> {
     let files = read_ticket_files(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     Ok(files
         .into_iter()

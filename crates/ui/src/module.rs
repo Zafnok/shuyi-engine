@@ -27,9 +27,11 @@ use crate::ctx::{Ctx, GameData};
 use crate::debug::DebugEntry;
 use crate::frame::glyph_buffer::GlyphBuffer;
 
-/// A piece that joins a running game: the game installs it with
-/// [`Game::with_module`](crate::Game::with_module), and calls only the
-/// hooks its [`install`](Self::install) declares, in install order.
+/// A plugin, or addon: a piece that joins a running game. The game
+/// installs it with [`Game::with_module`](crate::Game::with_module), and
+/// calls only the hooks its [`install`](Self::install) declares, in install order.
+#[doc(alias = "Plugin")]
+#[doc(alias = "Addon")]
 pub trait Module<G: GameData>: 'static {
     /// Its name: `snake_case` ASCII, unique in a game.
     fn name(&self) -> &'static str;

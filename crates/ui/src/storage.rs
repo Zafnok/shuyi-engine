@@ -18,12 +18,16 @@ pub use power_cut::{PowerCutRig, power_cut_suite};
 /// Longest key [`Storage`] accepts, in bytes.
 pub const MAX_KEY_LEN: usize = 64;
 
-/// A place to persist small named blobs of text (RON documents, typically):
-/// files on native, `localStorage` on web.
+/// Saved data, like player prefs: a place to persist small named blobs of
+/// text (RON documents, typically), files on native, `localStorage` on web.
 ///
 /// Keys must match `^[a-z0-9_-]{1,64}$` ([`is_valid_key`]); implementations
 /// turn a key straight into a file name, so anything else is rejected rather
 /// than sanitised.
+#[doc(alias = "PlayerPrefs")]
+#[doc(alias = "ConfigFile")]
+#[doc(alias = "cartdata")]
+#[doc(alias = "SaveFile")]
 pub trait Storage: fmt::Debug {
     /// The value stored at `key`, or `None` if nothing has been written
     /// there (or it was deleted).

@@ -19,6 +19,7 @@
 //! - `cargo xtask book-pad [--out <dir>] [--no-build]`
 //! - `cargo xtask contract [--base <rev>]`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--pr-title <title>] [--summary <file>] [--verdict <file>]`
+//! - `cargo xtask api-text (--out <dir> | --check)`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
 //! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
@@ -43,6 +44,7 @@
 //! - `cargo xtask sound-parity give-up [--apply]`
 
 mod api;
+mod api_text;
 mod book;
 mod book_pad;
 mod changelog;
@@ -69,6 +71,7 @@ mod paths;
 mod pins;
 mod pr_size;
 mod publish;
+mod rustdoc_index;
 mod script;
 mod site_data;
 mod skills;
@@ -193,6 +196,14 @@ usage:
       (origin/main), and check that contract::VERSION rose by one for a
       break and stayed for anything else (ADR-0150): the api job's rule,
       without its tools.
+  cargo xtask api-text (--out <dir> | --check)
+      Write <dir>/<crate>.txt for each crate of site/data/api.toml: its
+      public items, a line each (cargo-public-api's), with the first doc
+      sentence, the doc aliases and the deprecation from rustdoc's JSON, on
+      the api check's nightly (ticket 3413). --check writes nothing, and
+      fails on a path of site/data/engine-terms.toml that names no public
+      item, an alias of it an item lacks, a doc(alias) it lacks, or a
+      \"none yet\" row whose ticket is done.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
@@ -394,6 +405,7 @@ fn main() -> ExitCode {
         }
         Some("book-pad") => book_pad(&root, &args[1..]),
         Some("api") => api(&root, &args[1..]),
+        Some("api-text") => api_text(&root, &args[1..]),
         Some("contract") => contract_check(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("eval-grade") => ExitCode::from(eval::grade::command(
@@ -626,6 +638,17 @@ fn api(root: &Path, args: &[String]) -> ExitCode {
         options.verdict.as_deref(),
     ));
     report("api", &errors, &outcome.warnings)
+}
+
+fn api_text(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = api_text::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let errors = api_text::run(root, &options, &api::System)
+        .err()
+        .unwrap_or_default();
+    report("api-text", &errors, &[])
 }
 
 fn bless(root: &Path) -> ExitCode {
