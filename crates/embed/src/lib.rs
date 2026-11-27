@@ -20,6 +20,12 @@
 //! - **Rebuilds:** [`Table::write`] prints `cargo::rerun-if-changed` for the
 //!   folder and every file and folder in it, so adding, changing or removing
 //!   a file rebuilds the crate on the next `cargo build`.
+//! - **Skipped folders:** a folder a skip pattern matches whole
+//!   (`**/target/**`) isn't entered, listed or watched, so a build writing
+//!   in it, even one running beside this one, neither fails the walk nor
+//!   reruns the build script.
+//! - **Vanished files:** a file or folder deleted between its folder's
+//!   listing and its reading is left out, not an error.
 //! - **Refused**, failing the build with the path: a name that isn't UTF-8,
 //!   and two paths that differ only by case, which are one file on Windows
 //!   and macOS.
@@ -48,9 +54,11 @@ pub struct Entry {
 pub struct Walk {
     /// The files to embed, sorted by path.
     pub files: Vec<Entry>,
-    /// The paths a skip pattern left out, sorted.
+    /// The paths of the files a skip pattern left out, sorted; not those
+    /// in a folder a pattern skips whole, which [`walk`] doesn't enter.
     pub skipped: Vec<String>,
-    /// The folder and every folder in it, which a build watches.
+    /// The folder and every folder in it, which a build watches; not a
+    /// folder a pattern skips whole.
     pub folders: Vec<PathBuf>,
 }
 
@@ -108,6 +116,13 @@ impl std::error::Error for Error {
 
 /// Walks folder `root`: every file in it at any depth, but those a pattern
 /// of `skip` matches ([`matches()`]), sorted by path.
+///
+/// A folder a pattern skips whole (`**/target/**` skips `target/` and
+/// every folder of that name) isn't entered: its files are neither in
+/// [`Walk::skipped`] nor in [`Walk::folders`], so a build writing there
+/// is never read. A file or folder deleted between its folder's listing
+/// and its reading is left out, as if the listing hadn't held it; any
+/// other failure to read is an [`Error::Read`].
 pub fn walk(root: &Path, skip: &[String]) -> Result<Walk, Error> {
     let read = |path: &Path, error| Error::Read {
         path: path.to_path_buf(),
@@ -122,8 +137,12 @@ pub fn walk(root: &Path, skip: &[String]) -> Result<Walk, Error> {
     let mut walk = Walk::default();
     let mut pending = vec![(root.to_path_buf(), String::new())];
     while let Some((dir, prefix)) = pending.pop() {
+        let Some(entries) = gone_is_none(fs::read_dir(&dir)).map_err(|e| read(&dir, e))? else {
+            // Deleted since it was listed: as if it never was.
+            continue;
+        };
         walk.folders.push(dir.clone());
-        for entry in fs::read_dir(&dir).map_err(|e| read(&dir, e))? {
+        for entry in entries {
             let entry = entry.map_err(|e| read(&dir, e))?;
             let file = entry.path();
             let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
@@ -134,10 +153,16 @@ pub fn walk(root: &Path, skip: &[String]) -> Result<Walk, Error> {
             } else {
                 format!("{prefix}/{name}")
             };
-            // Follows a link, as `include_bytes!` will.
-            let kind = fs::metadata(&file).map_err(|e| read(&file, e))?;
+            let Some(kind) = kind_of(&file)? else {
+                continue;
+            };
             if kind.is_dir() {
-                pending.push((file, path));
+                // A folder a pattern skips whole isn't entered: neither
+                // listed nor watched, so a build inside it (a `target/`)
+                // can't fail the walk or rerun the build script.
+                if !skip.iter().any(|pattern| skips_folder(pattern, &path)) {
+                    pending.push((file, path));
+                }
             } else if !kind.is_file() {
                 // Neither: nothing `include_bytes!` reads.
             } else if skip.iter().any(|pattern| matches(pattern, &path)) {
@@ -152,6 +177,38 @@ pub fn walk(root: &Path, skip: &[String]) -> Result<Walk, Error> {
     walk.folders.sort();
     same_but_case(walk.files.iter().map(|entry| entry.path.as_str()))?;
     Ok(walk)
+}
+
+/// What is at `file`, following a link as `include_bytes!` will; `None`
+/// when it is gone, deleted since its folder was listed (a build running
+/// beside the walk). Any other failure is an error.
+fn kind_of(file: &Path) -> Result<Option<fs::Metadata>, Error> {
+    gone_is_none(fs::metadata(file)).map_err(|error| Error::Read {
+        path: file.to_path_buf(),
+        error,
+    })
+}
+
+/// `result`, with "not found" read as `None`.
+fn gone_is_none<T>(result: io::Result<T>) -> io::Result<Option<T>> {
+    match result {
+        Ok(found) => Ok(Some(found)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// Whether skip pattern `pattern` matches every path below folder `folder`:
+/// it is `**`, or ends `/**` after parts that match the folder whole
+/// (`**/target/**` and `target`, `game/target`). A pattern that matches
+/// only some of a folder's files leaves it entered.
+fn skips_folder(pattern: &str, folder: &str) -> bool {
+    let pattern: Vec<&str> = pattern.split('/').collect();
+    let folder: Vec<&str> = folder.split('/').collect();
+    match pattern.split_last() {
+        Some((&"**", before)) => before.is_empty() || parts_match(before, &folder),
+        _ => false,
+    }
 }
 
 /// The first two of `paths` that differ only by case, as an error.
@@ -253,7 +310,8 @@ pub struct Written {
     pub table: PathBuf,
     /// The skipped paths, which [`skipped!`] includes.
     pub skipped: PathBuf,
-    /// The folder and every file and folder in it, skipped files too.
+    /// The folder and every file and folder in it, skipped files too, but
+    /// not a folder a pattern skips whole, nor anything in it.
     pub watched: Vec<PathBuf>,
 }
 
@@ -278,7 +336,9 @@ impl Table {
     }
 
     /// Leaves out the files `pattern` matches ([`matches()`]), and lists
-    /// them for [`skipped!`], for `Layer::leaving_out`.
+    /// them for [`skipped!`], for `Layer::leaving_out`. A folder it
+    /// matches whole (`**/target/**`) isn't entered, and its files aren't
+    /// listed ([`walk`]).
     #[must_use]
     pub fn skip(mut self, pattern: impl Into<String>) -> Self {
         self.skip.push(pattern.into());
@@ -365,7 +425,8 @@ macro_rules! files {
 }
 
 /// The paths [`Table::skip`] left out of the table named `$name`: a
-/// `&'static [&'static str]`, for `Layer::leaving_out`.
+/// `&'static [&'static str]` of files, for `Layer::leaving_out`; not those
+/// of a folder a pattern skips whole, which the walk doesn't enter.
 #[macro_export]
 macro_rules! skipped {
     ($name:literal) => {
