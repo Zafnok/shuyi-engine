@@ -479,7 +479,8 @@ is done.
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
-| 2520 | `shuyi crash` and `replay --crash`, with the debug file kept for each release |
+| 2520 (done) | `shuyi crash` and `replay --crash`: a crash report read, and its record replayed to the panic |
+| 3438 | `shuyi crash --symbols`: a crash report's frames named from the debug file kept for its release (after 2520) |
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN (2521, the link itself, moved into the MVP on 2026-10-24) |

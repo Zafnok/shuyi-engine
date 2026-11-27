@@ -71,6 +71,23 @@ line of them too. A player who reports a crash sends the newest `crash-*.ron`
 and the logs folder: once the game has started again, the crashed run's log is
 `previous-1.log`.
 
+## Reading a report
+
+`shuyi crash` reads a report, in `shuyi` itself, with no game and no project
+([contract.md](contract.md#the-operations)):
+
+```text
+cargo shuyi crash crash-1700000000123.ron --json
+```
+
+It answers the panic's `message` and `location`, `fatal`, the `thread`, `when`,
+the `engine`, `game` and `target` versions, the `frame`, the `top_screen`, the
+`log`, std's `backtrace`, and `has_record`: whether the report holds the game's
+record, which `replay --crash` replays. A file that can't be read is `SH3004`,
+one that isn't a crash report `SH3018`. Its frames, named from the build's debug
+file, are still to come (ticket 3438); until then they are read by hand, as
+below.
+
 ## Reading the frames
 
 A release build is stripped, so its `backtrace` names nothing. Its `frames` say
@@ -145,6 +162,33 @@ It returns `None` when there is nothing to record (no stage open). A turn game
 that keeps the command its rules are applying until they return (hello-grid's
 and the grid template's `StageScreen::pending`) has it in the record, so a panic inside its rules is
 replayed to the panic. Keep what the player typed (a name) out of the record.
+
+### Replaying it
+
+`shuyi replay --crash` runs the record a report holds, once, by the game's
+rules, in the game's tool program as `replay` does:
+
+```text
+cargo shuyi replay --crash crash-1700000000123.ron --json
+```
+
+A panic in the rules (`replay::turns` catches it) stops the run at its step,
+whose `panic` holds the message and place. The answer's `crash` sets the
+report's panic (`reported`) beside the replay's (`replayed`, at `step`), and
+`same_place` says whether they are at the same line and column of the same
+file, its path compared by its last three parts with `\` read as `/`: a report
+from a player's Windows build, or one whose paths `shuyi export --release`
+remapped, matches a replay on Linux.
+
+It is `ok: false` while the record panics, and `ok: true` once it plays to its
+end: fix the rules, replay, until it passes. Only the rules are replayed: a
+panic in a screen, a skin or the platform doesn't run there, and the limits say
+so when the record plays through. A record stamped by another build or with
+other content is refused (`SH3007`) unless `--any-stamp`, as `replay`'s are. A
+report with no record (a web report, a panic before a stage was open, a game
+that gives no `crash_record`) is `SH3019`. Without `--crash`, `replay` answers a
+record that panics the same way: not ok, the step's `panic`, and a limit naming
+the step.
 
 ### In a release build
 

@@ -459,7 +459,16 @@ fn description(op: Op, session: bool) -> &'static str {
         }
         (Op::Replay, _) => {
             "Re-run a record (a file in the game's folder) by the game's rules: a state hash per \
-             step; with `other`, the first step where two runs differ."
+             step; with `other`, the first step where two runs differ. A panic in the rules \
+             stops the run at its step (not ok). With `crash`, `record` is a crash report: the \
+             game's record it holds runs once, ok when it plays to its end without a panic, and \
+             `crash` says where the replay panicked beside the report's panic."
+        }
+        (Op::Crash, _) => {
+            "Read a crash report (`crash-<when>.ron`, from the server's working folder), with no \
+             game: the panic's message and place, the versions, the frame, the top screen, the \
+             log, std's backtrace, whether it holds a record for `replay` with `crash`, and its \
+             frames as offsets into the program."
         }
         (Op::Playtest, _) => {
             "Each of the game's named bots (its `entrants`, or the game's choice) plays `tries` \

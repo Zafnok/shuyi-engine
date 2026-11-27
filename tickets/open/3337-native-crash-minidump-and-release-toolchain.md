@@ -45,9 +45,10 @@ What there is (read 2026-11-23):
   (`FileStorage::path`, `storage/native.rs`). A minidump is binary, so it
   can't be a storage key; it goes in a folder beside the keys, as the
   logs do.
-- **2520** (open): `shuyi crash` reads a report and names its frames
-  from the build's debug file with `addr2line`, which reads DWARF only.
-  Its *Out* leaves Windows PDB files out "until one asks".
+- **2520** (done): `shuyi crash` reads a report
+  (`crates/cli/src/contract/crash.rs`). **3438** (open) names its
+  frames from the build's debug file with `addr2line`, which reads
+  DWARF only. Its *Out* leaves Windows PDB files out "until one asks".
 - **The Windows toolchain.** Nick's machine builds with GNU and has no
   MSVC (`AGENTS.md`, *Environment*). `shuyi export windows` builds
   `x86_64-pc-windows-gnu` only (`crates/cli/src/export/desktop.rs`,
@@ -79,7 +80,7 @@ Steam's own crash collection all work from minidumps. Godot writes a
 backtrace for a native fault in release builds. On desktop the crashes
 players hit most are native: GPU drivers, audio devices, the window
 system. Without this, a store release's worst bugs are invisible to
-the game and to 2520.
+the game and to `shuyi crash`.
 
 **The game:** it turns reports on with
 `CrashReports::new(APP.version).with_record_in_release()`
@@ -186,7 +187,7 @@ MSVC.
   Windows stays `x86_64-pc-windows-gnu`, or may be built
   `x86_64-pc-windows-msvc` on CI's runners, or either at the game's
   choice. It weighs, with what this ticket found:
-  - what reads each one's crash: 2520's `addr2line` reads DWARF only
+  - what reads each one's crash: 3438's `addr2line` reads DWARF only
     (a PDB would need another reader, such as the `pdb` crate), and a
     minidump of a GNU build has no symbols WinDbg or Visual Studio
     reads;
@@ -204,12 +205,11 @@ MSVC.
   with what a native fault writes, what still writes nothing, and
   `with_minidumps`, with what a dump can hold. `docs/adr/README.md`
   gains both ADRs' rows.
-- **Either order with 2520:** if 2520 is done, `CrashOutput` also
-  carries the report's `fault` and `dump`, `crash::text` shows them,
-  and the `crash` schemas are regenerated with their line in
-  `versions.json` (`docs/contract.md`, *The schemas*); added answer
-  fields keep `VERSION` (ADR-0150). If not, nothing to do (2520 adds
-  them).
+- **From 2520 (done):** `CrashOutput` (`crates/cli/src/contract/crash.rs`,
+  `#[non_exhaustive]`) also carries the report's `fault` and `dump`,
+  `crash::text` shows them, and the `crash` schemas are regenerated
+  with their line in `versions.json` (`docs/contract.md`, *The
+  schemas*); added answer fields keep `VERSION` (ADR-0150).
 
 **Out (do not do):**
 - Sending a report or a minidump anywhere: 3047 (parked).

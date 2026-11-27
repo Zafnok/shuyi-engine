@@ -6,7 +6,7 @@
 //! to fix before running it again (`SH1nnn`: no project, a project file
 //! that lacks what it needs, the toolchain).
 //!
-//! `new`, `doctor`, `sfx`, `explain`, `docs`, `attach` and `schema` need no project. `lint`,
+//! `new`, `doctor`, `sfx`, `explain`, `docs`, `attach`, `crash` and `schema` need no project. `lint`,
 //! `modules` and `add` run on the project, not its game. The others run on
 //! the project's game, in its tool program; `import` without one reads
 //! only the engine's standard kinds.
@@ -18,8 +18,8 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, add, attach, autobalance, bake, check, docs, doctor, explain, export, import, lint,
-    modules, new, playtest, replay, run, schemas, sfx,
+    Answer, Op, add, attach, autobalance, bake, check, crash, docs, doctor, explain, export,
+    import, lint, modules, new, playtest, replay, run, schemas, sfx,
 };
 use crate::game::GameTools;
 use crate::project::Project;
@@ -100,7 +100,7 @@ pub fn no_game(name: &str, args: &[String]) -> u8 {
 }
 
 /// Runs `name` with `args` if it is an op that needs no project (`new`,
-/// `doctor`, `sfx`, `explain`, `docs`, `attach`, `schema`, and `mcp`, which finds a project per
+/// `doctor`, `sfx`, `explain`, `docs`, `attach`, `crash`, `schema`, and `mcp`, which finds a project per
 /// call), in the working folder `cwd`; `None` if it isn't.
 pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -> Option<u8> {
     if name == "mcp" {
@@ -158,6 +158,10 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
         "attach" => match attach::parse_args(&args) {
             Ok(input) => print(json, &attach::attach(&input, cwd), attach::text),
             Err(e) => wrong(json, Op::Attach, &e, &attach::usage(command)),
+        },
+        "crash" => match crash::parse_args(&args) {
+            Ok(input) => print(json, &crash::crash(&input, cwd), crash::text),
+            Err(e) => wrong(json, Op::Crash, &e, &crash::usage(command)),
         },
         "schema" => schema(&args, cwd, command),
         _ => return None,
@@ -292,13 +296,17 @@ pub fn modules_or_add(project: &Project, name: &str, args: &[String]) -> u8 {
 }
 
 /// `replay`'s input from `args` (without `--json`): one or two records,
-/// and `--any-stamp` anywhere; `None` for anything else.
+/// or `--crash` and one report, and `--any-stamp` anywhere; `None` for
+/// anything else.
 pub(super) fn replay_args(args: &[String]) -> Option<replay::ReplayInput> {
-    let any_stamp = args.iter().any(|a| a == "--any-stamp");
-    let records: Vec<&String> = args.iter().filter(|a| *a != "--any-stamp").collect();
+    let flag = |name: &str| args.iter().any(|a| a == name);
+    let (any_stamp, crash) = (flag("--any-stamp"), flag("--crash"));
+    let records: Vec<&String> = (args.iter())
+        .filter(|a| *a != "--any-stamp" && *a != "--crash")
+        .collect();
     let (record, other) = match records.as_slice() {
         [record] => (record, None),
-        [record, other] => (record, Some((*other).clone())),
+        [record, other] if !crash => (record, Some((*other).clone())),
         _ => return None,
     };
     if records.iter().any(|a| a.starts_with("--")) {
@@ -307,6 +315,7 @@ pub(super) fn replay_args(args: &[String]) -> Option<replay::ReplayInput> {
     let mut input = replay::ReplayInput::new((*record).clone());
     input.other = other;
     input.any_stamp = any_stamp;
+    input.crash = crash;
     Some(input)
 }
 
@@ -375,7 +384,8 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         "replay" => {
             let Some(input) = replay_args(&args) else {
                 let usage = replay::usage(command);
-                return wrong(json, Op::Replay, "one or two records", &usage);
+                let error = "one or two records, or --crash and one crash report";
+                return wrong(json, Op::Replay, error, &usage);
             };
             print(
                 json,
@@ -467,11 +477,19 @@ mod tests {
         );
         let after = replay_args(&args(&["a.ron", "--any-stamp"])).unwrap();
         assert!(after.any_stamp && after.other.is_none(), "{after:?}");
+        let crash = replay_args(&args(&["--crash", "c.ron", "--any-stamp"])).unwrap();
+        assert!(
+            crash.crash && crash.any_stamp && crash.other.is_none(),
+            "{crash:?}"
+        );
+        assert!(!one.crash);
         for wrong in [
             &[][..],
             &["--any-stamp"],
             &["a", "b", "c"],
             &["a.ron", "--bogus"],
+            &["--crash"],
+            &["--crash", "c.ron", "b.ron"],
         ] {
             assert_eq!(replay_args(&args(wrong)), None, "{wrong:?}");
         }
@@ -536,6 +554,22 @@ mod tests {
         assert_eq!(code(&["replay"]), 2);
         assert_eq!(code(&["replay", "a", "b", "c"]), 2);
         assert_eq!(code(&["replay", "missing.ron"]), 1);
+        // A record whose rules panic answers, not ok; so does a crash
+        // report's, until the rules are fixed.
+        fs::write(dir.join("p.ron"), "turns 1,9").unwrap();
+        assert_eq!(code(&["replay", "p.ron", "--json"]), 1);
+        let mut report = shuyi_platform::crash::CrashReport::new(1, "nine is too many");
+        report.set_record(Some("turns 1,9".to_owned()));
+        fs::write(dir.join("c.ron"), report.to_text()).unwrap();
+        assert_eq!(code(&["replay", "--crash", "c.ron"]), 1);
+        let fixed = Fake {
+            fixed: true,
+            ..Fake::default()
+        };
+        let crash = |items: &[&str]| with_game(&p, "replay", &args(items), &fixed);
+        assert_eq!(crash(&["--crash", "c.ron", "--json"]), 0);
+        assert_eq!(crash(&["--crash", "c.ron", "a.ron"]), 2);
+        assert_eq!(crash(&["--crash", "a.ron"]), 1);
         assert_eq!(code(&["playtest", "--tries", "3"]), 0);
         assert_eq!(code(&["playtest", "3"]), 2);
         assert_eq!(code(&["playtest", "--tries", "3", "--report", "r.json"]), 0);
@@ -688,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn the_ops_without_a_project_are_new_doctor_sfx_explain_docs_attach_and_schema() {
+    fn the_ops_without_a_project_are_new_doctor_sfx_explain_docs_attach_crash_and_schema() {
         let dir = std::env::temp_dir().join(format!("shuyi-cli-free-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
@@ -706,7 +740,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 54);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 56);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(
@@ -745,6 +779,20 @@ mod tests {
         );
         assert_eq!(without_project("sfx", &[], &dir, "shuyi"), Some(2));
         assert_eq!(without_project("explain", &[], &dir, "shuyi"), Some(0));
+        // `crash` reads a report from the folder it is given.
+        let report = shuyi_platform::crash::CrashReport::new(1, "boom");
+        fs::write(dir.join("crash-1.ron"), report.to_text()).unwrap();
+        for (items, exit) in [
+            (&["crash-1.ron"][..], 0),
+            (&["crash-1.ron", "--json"], 0),
+            (&["nope.ron"], 1),
+            (&["f"], 1),
+            (&[], 2),
+            (&["a", "b", "--json"], 2),
+        ] {
+            let got = without_project("crash", &args(items), &dir, "shuyi");
+            assert_eq!(got, Some(exit), "{items:?}");
+        }
         assert_eq!(without_project("attach", &[], &dir, "shuyi"), Some(2));
         assert_eq!(
             without_project("attach", &args(&["127.0.0.1:1", "--json"]), &dir, "shuyi"),

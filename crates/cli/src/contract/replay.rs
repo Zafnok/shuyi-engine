@@ -14,10 +14,20 @@
 //! compared: one made by another engine, another build of the game or
 //! other content is refused, since its runs may differ with no desync,
 //! unless the input says [`any_stamp`](ReplayInput::any_stamp).
+//!
+//! A panic in the rules ends the run at its step ([`ReplayStep::panic`])
+//! instead of the program. With [`crash`](ReplayInput::crash), the record
+//! is a crash report's ([`shuyi_platform::crash::CrashReport::record`]),
+//! run once, and the answer says whether the replay panics where the
+//! report did ([`CrashReplay`]).
 
+use std::any::Any;
+use std::cell::{Cell, RefCell};
 use std::fmt::{Debug, Display, Write as _};
 use std::fs;
+use std::panic::{AssertUnwindSafe, PanicHookInfo, catch_unwind};
 use std::path::Path;
+use std::sync::Once;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -48,6 +58,11 @@ pub struct ReplayInput {
     /// differ for that reason alone.
     #[serde(default)]
     pub any_stamp: bool,
+    /// `record` names a crash report (`--crash`): the game's record it
+    /// holds is run once, and passes if it plays to its end without a
+    /// panic. Takes no [`other`](Self::other).
+    #[serde(default)]
+    pub crash: bool,
 }
 
 impl ReplayInput {
@@ -58,6 +73,63 @@ impl ReplayInput {
             record: record.into(),
             other: None,
             any_stamp: false,
+            crash: false,
+        }
+    }
+}
+
+/// A panic: its message and where it happened.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): it may gain fields.
+#[non_exhaustive]
+pub struct PanicAt {
+    /// The panic's message: its payload when that is text.
+    pub message: String,
+    /// Where it panicked: `file:line:column`, if known.
+    pub location: Option<String>,
+}
+
+impl PanicAt {
+    /// A panic with `message` at `location`.
+    pub fn new(message: impl Into<String>, location: Option<String>) -> Self {
+        Self {
+            message: message.into(),
+            location,
+        }
+    }
+}
+
+/// What `replay --crash` found of a crash report's panic.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// `#[non_exhaustive]` (ADR-0039, kind 3): an answer gains fields.
+#[non_exhaustive]
+pub struct CrashReplay {
+    /// The panic the report holds.
+    pub reported: PanicAt,
+    /// The panic the replay ran into, if it did.
+    pub replayed: Option<PanicAt>,
+    /// The step it panicked at, if it did.
+    pub step: Option<u32>,
+    /// Whether the two panics are at the same place ([`same_place`]).
+    pub same_place: bool,
+}
+
+impl CrashReplay {
+    /// The report's panic `reported`, and the replay's `replayed` at
+    /// `step`; [`same_place`](Self::same_place) is worked out.
+    pub fn new(reported: PanicAt, replayed: Option<PanicAt>, step: Option<u32>) -> Self {
+        let place = |panic: Option<&PanicAt>| panic.and_then(|p| p.location.clone());
+        let same = match (place(Some(&reported)), place(replayed.as_ref())) {
+            (Some(a), Some(b)) => same_place(&a, &b),
+            _ => false,
+        };
+        Self {
+            reported,
+            replayed,
+            step,
+            same_place: same,
         }
     }
 }
@@ -105,6 +177,25 @@ pub struct ReplayStep {
     pub events: Vec<String>,
     /// Why the rules refused it, if they did (the state didn't change).
     pub refused: Option<String>,
+    /// The rules' panic while applying it, if they panicked: the run
+    /// stops here, its hash the state as the panic left it.
+    #[serde(default)]
+    pub panic: Option<PanicAt>,
+}
+
+impl ReplayStep {
+    /// Step `step`, after `command`, with the state's `hash`: nothing
+    /// happened, nothing refused, no panic.
+    pub fn new(step: u32, command: Option<String>, hash: impl Into<String>) -> Self {
+        Self {
+            step,
+            command,
+            hash: hash.into(),
+            events: Vec::new(),
+            refused: None,
+            panic: None,
+        }
+    }
 }
 
 /// Where two runs part.
@@ -130,11 +221,94 @@ pub struct ReplayOutput {
     pub runs: Vec<ReplayRun>,
     /// The first step where they differ, if they do.
     pub first_difference: Option<Difference>,
+    /// With `--crash`: the report's panic and the replay's.
+    #[serde(default)]
+    pub crash: Option<CrashReplay>,
+}
+
+thread_local! {
+    /// Whether a step of [`turns`] runs on this thread: its panic is
+    /// caught, so the hook prints nothing.
+    static QUIET: Cell<bool> = const { Cell::new(false) };
+    /// Where the last quiet panic on this thread happened.
+    static LAST_PLACE: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// A panic hook.
+type Hook = Box<dyn Fn(&PanicHookInfo<'_>) + Sync + Send + 'static>;
+
+/// The hook that keeps a quiet panic's place ([`QUIET`]) and passes
+/// every other panic to `before`.
+fn quiet(before: Hook) -> Hook {
+    Box::new(move |info| {
+        if QUIET.try_with(Cell::get).unwrap_or(false) {
+            let place =
+                (info.location()).map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
+            let _ = LAST_PLACE.try_with(|last| *last.borrow_mut() = place);
+        } else {
+            before(info);
+        }
+    })
+}
+
+/// Installs [`quiet`] over the hook that was there, once.
+fn quiet_hook() {
+    static HOOK: Once = Once::new();
+    HOOK.call_once(|| std::panic::set_hook(quiet(std::panic::take_hook())));
+}
+
+/// `f`'s value, or the panic it ended in, caught quietly.
+fn caught<T>(f: impl FnOnce() -> T) -> Result<T, PanicAt> {
+    quiet_hook();
+    LAST_PLACE.with(|last| last.borrow_mut().take());
+    let was = QUIET.replace(true);
+    let result = catch_unwind(AssertUnwindSafe(f));
+    QUIET.set(was);
+    result.map_err(|payload| {
+        PanicAt::new(
+            payload_text(payload.as_ref()),
+            LAST_PLACE.with(|last| last.borrow_mut().take()),
+        )
+    })
+}
+
+/// A panic's payload as text: a `&str` or a `String`, else a word for it.
+fn payload_text(payload: &(dyn Any + Send)) -> String {
+    payload
+        .downcast_ref::<&str>()
+        .map(|s| (*s).to_owned())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "a panic with no text".to_owned())
+}
+
+/// Whether two places, `file:line:column`, are the same: the same line and
+/// column, and files that agree in the last three parts of their paths
+/// (all of the shorter's when it has fewer), `\` read as `/`. So a place
+/// from a Windows build, or from one whose paths were remapped, matches
+/// one from Linux.
+pub fn same_place(a: &str, b: &str) -> bool {
+    let split = |place: &str| {
+        let mut parts = place.rsplitn(3, ':');
+        let (column, line) = (parts.next()?.to_owned(), parts.next()?.to_owned());
+        let file = parts.next()?.replace('\\', "/");
+        let path: Vec<String> = file
+            .split('/')
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned)
+            .collect();
+        Some((path, line, column))
+    };
+    let (Some((a, line_a, column_a)), Some((b, line_b, column_b))) = (split(a), split(b)) else {
+        return false;
+    };
+    let n = a.len().min(b.len()).min(3);
+    n > 0 && line_a == line_b && column_a == column_b && a[a.len() - n..] == b[b.len() - n..]
 }
 
 /// Re-runs `commands` from `initial` by the rules, hashing the state
 /// before them and after each: the run of a turn game's record `file`. A
-/// refused command changes nothing and says why.
+/// refused command changes nothing and says why. A panic in the rules
+/// stops the run at its step ([`ReplayStep::panic`]), with no outcome.
 pub fn turns<R>(file: &str, initial: R, commands: &[R::Command]) -> Result<ReplayRun, String>
 where
     R: TurnRules + Serialize,
@@ -149,30 +323,27 @@ where
             .map(|h| h.to_string())
             .map_err(|e| e.to_string())
     };
-    let mut steps = vec![ReplayStep {
-        step: 0,
-        command: None,
-        hash: hash(&state)?,
-        events: Vec::new(),
-        refused: None,
-    }];
+    let mut steps = vec![ReplayStep::new(0, None, hash(&state)?)];
+    let mut panicked = false;
     for (step, command) in (1..).zip(commands) {
-        let (events, refused) = match state.apply(command) {
-            Ok(events) => (events.iter().map(|e| format!("{e:?}")).collect(), None),
-            Err(e) => (Vec::new(), Some(e.to_string())),
-        };
-        steps.push(ReplayStep {
-            step,
-            command: Some(format!("{command:?}")),
-            hash: hash(&state)?,
-            events,
-            refused,
-        });
+        let mut done = ReplayStep::new(step, Some(format!("{command:?}")), String::new());
+        match caught(|| state.apply(command)) {
+            Ok(Ok(events)) => done.events = events.iter().map(|e| format!("{e:?}")).collect(),
+            Ok(Err(e)) => done.refused = Some(e.to_string()),
+            Err(panic) => done.panic = Some(panic),
+        }
+        done.hash = hash(&state)?;
+        panicked = done.panic.is_some();
+        steps.push(done);
+        if panicked {
+            break;
+        }
     }
+    let outcome = if panicked { None } else { state.outcome() };
     Ok(ReplayRun {
         record: file.to_owned(),
         steps,
-        outcome: state.outcome().map(|o| format!("{o:?}")),
+        outcome: outcome.map(|o| format!("{o:?}")),
         made: None,
     })
 }
@@ -238,22 +409,12 @@ where
 {
     let mut sim = initial;
     let hash = |sim: &S| StateHash(sim.hash()).to_string();
-    let mut steps = vec![ReplayStep {
-        step: 0,
-        command: None,
-        hash: hash(&sim),
-        events: Vec::new(),
-        refused: None,
-    }];
+    let mut steps = vec![ReplayStep::new(0, None, hash(&sim))];
     for (step, input) in (1..).zip(record.inputs()) {
         let events = sim.step(input);
-        steps.push(ReplayStep {
-            step,
-            command: input_in_words::<A>(input),
-            hash: hash(&sim),
-            events: events.iter().map(|e| format!("{e:?}")).collect(),
-            refused: None,
-        });
+        let mut done = ReplayStep::new(step, input_in_words::<A>(input), hash(&sim));
+        done.events = events.iter().map(|e| format!("{e:?}")).collect();
+        steps.push(done);
     }
     ReplayRun {
         record: file.to_owned(),
@@ -284,8 +445,85 @@ fn read(root: &Path, path: &str) -> Result<Record, String> {
     })
 }
 
+/// The step of `run` the rules panicked at, if they did.
+fn panicked(run: &ReplayRun) -> Option<(u32, &PanicAt)> {
+    (run.steps.iter()).find_map(|s| s.panic.as_ref().map(|p| (s.step, p)))
+}
+
+/// The limit of a run whose rules refused commands, if they did.
+fn refusals(run: &ReplayRun) -> Option<String> {
+    let refused = run.steps.iter().filter(|s| s.refused.is_some()).count();
+    (refused > 0).then(|| {
+        format!(
+            "the rules refused {refused} command(s) of {}: the record doesn't play as it was made",
+            run.record
+        )
+    })
+}
+
+/// `replay --crash`: the record in the crash report `input.record`, under
+/// `root`, run once by `game`, and its panic set beside the report's.
+fn crash(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<ReplayOutput> {
+    let failed = |code, e: String| Answer::failed(Op::Replay, code, e);
+    if input.other.is_some() {
+        let e = "--crash replays one crash report, with no second record";
+        return failed(codes::WRONG_ARGUMENTS, e.to_owned());
+    }
+    let report = match super::crash::read_report(root, &input.record) {
+        Ok(report) => report,
+        Err((code, e)) => return failed(code, e),
+    };
+    let Some(text) = report.record else {
+        return failed(
+            codes::NO_CRASH_RECORD,
+            format!(
+                "{} holds no record of the game's play: a web report, a panic before a stage \
+                 was open, or a game whose tools give no crash_record",
+                input.record
+            ),
+        );
+    };
+    let record = Record {
+        file: input.record.clone(),
+        text,
+    };
+    let run = match game.replay(&record) {
+        Ok(run) => run,
+        Err(e) => return failed(code_of(&e), e),
+    };
+    let made = game.made();
+    let mut limits = match stamps(made.as_ref(), std::slice::from_ref(&run), input.any_stamp) {
+        Ok(limits) => limits,
+        Err(e) => return failed(codes::OTHER_STAMP, e),
+    };
+    limits.extend(refusals(&run));
+    let replayed = panicked(&run);
+    let crash = CrashReplay::new(
+        PanicAt::new(report.message, report.location),
+        replayed.map(|(_, panic)| panic.clone()),
+        replayed.map(|(step, _)| step),
+    );
+    let ok = crash.replayed.is_none();
+    if ok {
+        limits.push(
+            "only the rules were replayed: a panic in a screen, a skin or the platform does not \
+             run here"
+                .to_owned(),
+        );
+    }
+    let output = ReplayOutput {
+        runs: vec![run],
+        first_difference: None,
+        crash: Some(crash),
+    };
+    Answer::new(Op::Replay, ok, output, limits)
+}
+
 /// `replay`: `input`'s records, under `root`, re-run by `game`.
 pub fn replay(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<ReplayOutput> {
+    if input.crash {
+        return crash(game, root, input);
+    }
     let runs = (|| {
         let read = |path| read(root, path).map_err(|e| (codes::FILE, e));
         let first = read(&input.record)?;
@@ -318,23 +556,21 @@ pub fn replay(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<
                 .to_owned(),
         );
     }
-    let refused = runs[0].steps.iter().filter(|s| s.refused.is_some()).count();
-    if refused > 0 {
+    limits.extend(refusals(&runs[0]));
+    let panic = panicked(&runs[0]);
+    if let Some((step, panic)) = panic {
         limits.push(format!(
-            "the rules refused {refused} command(s) of {}: the record doesn't play as it was made",
-            runs[0].record
+            "the rules panicked at step {step} of {}: {}",
+            runs[0].record, panic.message
         ));
     }
+    let ok = difference.is_none() && panic.is_none();
     let output = ReplayOutput {
         runs: runs.to_vec(),
         first_difference: difference,
+        crash: None,
     };
-    Answer::new(
-        Op::Replay,
-        output.first_difference.is_none(),
-        output,
-        limits,
-    )
+    Answer::new(Op::Replay, ok, output, limits)
 }
 
 /// The limits the stamps of `runs` put on what they show, checked against
@@ -372,7 +608,18 @@ fn stamps(now: Option<&Made>, runs: &[ReplayRun], any_stamp: bool) -> Result<Vec
 
 /// `replay`'s usage, with `command` as the tool's name.
 pub fn usage(command: &str) -> String {
-    format!("usage: {command} replay <record> [<other>] [--any-stamp] [--json]")
+    format!(
+        "usage: {command} replay <record> [<other>] [--any-stamp] [--json]\n       {command} \
+         replay --crash <report> [--any-stamp] [--json]"
+    )
+}
+
+/// A panic for people: its message, then where.
+fn panic_text(panic: &PanicAt) -> String {
+    match &panic.location {
+        Some(place) => format!("{} at {place}", panic.message),
+        None => panic.message.clone(),
+    }
 }
 
 /// What `replay` found, for people.
@@ -404,16 +651,36 @@ pub fn text(output: &ReplayOutput) -> String {
     for step in &first.steps {
         let command = step.command.as_deref().unwrap_or("start");
         let _ = write!(out, "  {:>4} {} {command}", step.step, step.hash);
-        if let Some(refused) = &step.refused {
+        if let Some(panic) = &step.panic {
+            let _ = write!(out, " (panicked: {})", panic_text(panic));
+        } else if let Some(refused) = &step.refused {
             let _ = write!(out, " (refused: {refused})");
         } else if !step.events.is_empty() {
             let _ = write!(out, " → {}", step.events.join(", "));
         }
         out.push('\n');
     }
-    match &output.first_difference {
-        None => out.push_str("the two runs agree at every step\n"),
-        Some(d) => {
+    match (&output.crash, &output.first_difference) {
+        (Some(crash), _) => {
+            let _ = writeln!(out, "the report: {}", panic_text(&crash.reported));
+            match (&crash.replayed, crash.step) {
+                (Some(panic), Some(step)) => {
+                    let place = if crash.same_place {
+                        "the same place"
+                    } else {
+                        "another place"
+                    };
+                    let _ = writeln!(
+                        out,
+                        "the replay panicked at step {step}, at {place}: {}",
+                        panic_text(panic)
+                    );
+                }
+                _ => out.push_str("the replay played to its end without a panic\n"),
+            }
+        }
+        (None, None) => out.push_str("the two runs agree at every step\n"),
+        (None, Some(d)) => {
             let shown: Vec<&str> = d
                 .hashes
                 .iter()
@@ -438,7 +705,7 @@ mod tests {
     use shuyi_core::TurnRules;
 
     use super::*;
-    use crate::contract::fake::{Fake, stamp};
+    use crate::contract::fake::{BRITTLE_LINE, Brittle, Fake, stamp};
     use shuyi_core::ContentHash;
 
     /// A counter that ends at 3; an `Add` of more than 1 is refused.
@@ -583,13 +850,7 @@ mod tests {
             record: "r".into(),
             steps: (0..)
                 .zip(hashes)
-                .map(|(step, hash)| ReplayStep {
-                    step,
-                    command: None,
-                    hash: (*hash).to_owned(),
-                    events: Vec::new(),
-                    refused: None,
-                })
+                .map(|(step, hash)| ReplayStep::new(step, None, *hash))
                 .collect(),
             outcome: None,
             made: None,
@@ -758,6 +1019,7 @@ mod tests {
         let agreed = ReplayOutput {
             runs: vec![run.clone(), run.clone()],
             first_difference: None,
+            crash: None,
         };
         assert_eq!(
             text(&agreed),
@@ -772,6 +1034,7 @@ mod tests {
         let two = ReplayOutput {
             runs: vec![stamped, other],
             first_difference: None,
+            crash: None,
         };
         assert_eq!(
             text(&two),
@@ -785,6 +1048,7 @@ mod tests {
                 step: 1,
                 hashes: vec![Some("b".into()), None],
             }),
+            crash: None,
         };
         assert_eq!(
             text(&parted),
@@ -794,6 +1058,7 @@ mod tests {
         let none = ReplayOutput {
             runs: Vec::new(),
             first_difference: None,
+            crash: None,
         };
         assert_eq!(text(&none), "");
     }
@@ -804,7 +1069,229 @@ mod tests {
             record: "a.ron".to_owned(),
             other: None,
             any_stamp: false,
+            crash: false,
         };
         assert_eq!(ReplayInput::new("a.ron"), literal);
+    }
+
+    /// Where [`Brittle`]'s panic is, as this build compiled it.
+    fn brittle_place(location: Option<&str>) -> bool {
+        let tail = format!("fake.rs:{BRITTLE_LINE}:13");
+        location.is_some_and(|place| place.ends_with(&tail))
+    }
+
+    #[test]
+    fn turns_stops_at_a_panic_with_its_message_and_place() {
+        let run = turns("r.ron", Brittle(0, false), &[1, 1, 9, 1]).unwrap();
+        // Steps 0 to 3: the fourth command never runs.
+        assert_eq!(run.steps.len(), 4);
+        let panic = run.steps[3].panic.as_ref().unwrap();
+        assert_eq!(panic.message, "nine is too many");
+        assert!(brittle_place(panic.location.as_deref()), "{panic:?}");
+        // The hash is the state as the panic left it, with no outcome.
+        let left = state_hash(&Brittle(3, false)).unwrap().to_string();
+        assert_eq!(run.steps[3].hash, left);
+        assert_eq!(run.steps[3].command.as_deref(), Some("9"));
+        assert!(run.steps[3].events.is_empty() && run.steps[3].refused.is_none());
+        assert_eq!(run.outcome, None);
+        assert!(run.steps[..3].iter().all(|s| s.panic.is_none()));
+        // Fixed, it plays on to its outcome.
+        let fixed = turns("r.ron", Brittle(0, true), &[1, 1, 9, 1]).unwrap();
+        assert_eq!(fixed.steps.len(), 5);
+        assert_eq!(fixed.outcome.as_deref(), Some("12"));
+        // A payload that is a `String`, or isn't text.
+        let owned = caught(|| std::panic::panic_any(String::from("owned")));
+        assert_eq!(owned.unwrap_err().message, "owned");
+        let number = caught(|| std::panic::panic_any(7_u8)).unwrap_err();
+        assert_eq!(number.message, "a panic with no text");
+        assert!(number.location.unwrap().contains("replay.rs:"));
+    }
+
+    #[test]
+    fn the_quiet_hook_passes_other_threads_panics_on() {
+        use std::sync::{Arc, Mutex};
+
+        quiet_hook();
+        let passed: Arc<Mutex<Vec<String>>> = Arc::default();
+        let seen = Arc::clone(&passed);
+        let installed = std::panic::take_hook();
+        std::panic::set_hook(quiet(Box::new(move |info| {
+            let name = std::thread::current().name().map(str::to_owned);
+            seen.lock().unwrap().push(name.unwrap_or_default());
+            let _ = info;
+        })));
+        let elsewhere = std::thread::Builder::new()
+            .name("elsewhere".into())
+            .spawn(|| panic!("not a step"))
+            .unwrap();
+        assert!(elsewhere.join().is_err());
+        let here = caught(|| panic!("a step"));
+        std::panic::set_hook(installed);
+        assert_eq!(here.unwrap_err().message, "a step");
+        let passed = passed.lock().unwrap();
+        assert!(passed.iter().any(|n| n == "elsewhere"), "{passed:?}");
+        let this = std::thread::current().name().unwrap_or_default().to_owned();
+        assert!(!passed.contains(&this), "{passed:?}");
+    }
+
+    #[test]
+    fn same_place_reads_paths_by_their_last_three_parts() {
+        let remapped = "/cargo/git/checkouts/x/1/src/rules.rs:9:5";
+        assert!(same_place(r"src\rules.rs:9:5", remapped));
+        assert!(same_place(remapped, r"src\rules.rs:9:5"));
+        assert!(!same_place("src/rules.rs:10:5", remapped));
+        assert!(!same_place("src/rules.rs:9:6", remapped));
+        assert!(same_place(
+            r"C:\Users\me\game\crates\rules\src\lib.rs:3:1",
+            "/home/ci/game/crates/rules/src/lib.rs:3:1"
+        ));
+        // Three parts are compared, not just the file's name.
+        assert!(!same_place("a/src/rules.rs:9:5", "b/lib/rules.rs:9:5"));
+        assert!(same_place("x/a/src/rules.rs:9:5", "y/a/src/rules.rs:9:5"));
+        assert!(!same_place("rules.rs", "rules.rs"));
+        assert!(!same_place(":9:5", ":9:5"));
+    }
+
+    #[test]
+    fn replay_answers_a_panic_with_its_step_instead_of_ending() {
+        let dir = scratch("panics");
+        fs::write(dir.join("p.ron"), "turns 1,1,9,1").unwrap();
+        let answer = replay(&Fake::default(), &dir, &ReplayInput::new("p.ron"));
+        assert!(!answer.ok);
+        assert_eq!(answer.code, None);
+        assert_eq!(
+            answer.limits.last().map(String::as_str),
+            Some("the rules panicked at step 3 of p.ron: nine is too many")
+        );
+        let out = answer.result.unwrap();
+        assert_eq!(out.first_difference, None);
+        assert!(out.crash.is_none());
+        let shown = text(&out);
+        assert!(
+            shown.contains("     3 ") && shown.contains(" 9 (panicked: nine is too many at "),
+            "{shown}"
+        );
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A crash report of `message` at `location`, holding `record`.
+    fn report(location: &str, record: Option<&str>) -> String {
+        let mut report = shuyi_platform::crash::CrashReport::new(1, "nine is too many");
+        report.location = Some(location.to_owned());
+        report.set_record(record.map(str::to_owned));
+        report.to_text()
+    }
+
+    #[test]
+    fn replay_crash_replays_a_reports_record_to_its_panic() {
+        let dir = scratch("crash");
+        let crash_of = |file: &str| {
+            let mut input = ReplayInput::new(file);
+            input.crash = true;
+            input
+        };
+        // The place the replay gives, as the report would have it.
+        let place = turns("r", Brittle(0, false), &[1, 1, 9]).unwrap().steps[3]
+            .panic
+            .clone()
+            .unwrap()
+            .location
+            .unwrap();
+        fs::write(dir.join("c.ron"), report(&place, Some("turns 1,1,9,1"))).unwrap();
+        let answer = replay(&Fake::default(), &dir, &crash_of("c.ron"));
+        assert!(!answer.ok, "{answer:?}");
+        assert_eq!(answer.code, None);
+        let out = answer.result.unwrap();
+        assert_eq!((out.runs.len(), out.first_difference.as_ref()), (1, None));
+        assert_eq!(out.runs[0].record, "c.ron");
+        let crash = out.crash.clone().unwrap();
+        assert_eq!((crash.step, crash.same_place), (Some(3), true));
+        assert_eq!(
+            crash.reported,
+            PanicAt::new("nine is too many", Some(place.clone()))
+        );
+        assert_eq!(crash.replayed.as_ref().unwrap().message, "nine is too many");
+        // Run once: no "ran twice" line, and no rules-only line either.
+        assert!(
+            answer
+                .limits
+                .iter()
+                .all(|l| !l.contains("ran twice") && !l.contains("only the rules")),
+            "{:?}",
+            answer.limits
+        );
+        let shown = text(&out);
+        assert!(
+            shown.contains(&format!("the report: nine is too many at {place}\n"))
+                && shown.contains("the replay panicked at step 3, at the same place: "),
+            "{shown}"
+        );
+        // Another line in the report: not the same place.
+        let line = format!(":{BRITTLE_LINE}:");
+        let elsewhere = place.replace(&line, &format!(":{}:", BRITTLE_LINE + 1));
+        fs::write(dir.join("d.ron"), report(&elsewhere, Some("turns 1,1,9"))).unwrap();
+        let answer = replay(&Fake::default(), &dir, &crash_of("d.ron"));
+        let crash = answer.result.unwrap().crash.unwrap();
+        assert_eq!((crash.step, crash.same_place), (Some(3), false));
+        // The rules fixed: it plays to its end, and says what it didn't run.
+        let fixed = Fake {
+            fixed: true,
+            ..Fake::default()
+        };
+        let answer = replay(&fixed, &dir, &crash_of("c.ron"));
+        assert!(answer.ok, "{answer:?}");
+        assert_eq!(
+            answer.limits.last().map(String::as_str),
+            Some(
+                "only the rules were replayed: a panic in a screen, a skin or the platform does \
+                 not run here"
+            )
+        );
+        let out = answer.result.unwrap();
+        let crash = out.crash.clone().unwrap();
+        assert_eq!(
+            (crash.replayed, crash.step, crash.same_place),
+            (None, None, false)
+        );
+        assert!(text(&out).ends_with("the replay played to its end without a panic\n"));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn replay_crash_refuses_what_it_cant_replay() {
+        let dir = scratch("crash-refused");
+        let crash_of = |file: &str, other: Option<&str>| {
+            let mut input = ReplayInput::new(file);
+            input.crash = true;
+            input.other = other.map(str::to_owned);
+            replay(&Fake::default(), &dir, &input)
+        };
+        fs::write(dir.join("bare.ron"), report("src/a.rs:1:1", None)).unwrap();
+        let bare = crash_of("bare.ron", None);
+        assert_eq!(bare.code.as_deref(), Some("SH3019"));
+        assert!(
+            (bare.error.unwrap()).starts_with("bare.ron holds no record of the game's play: a web")
+        );
+        let two = crash_of("bare.ron", Some("bare.ron"));
+        assert_eq!((two.code.as_deref(), two.exit_code()), (Some("SH0001"), 2));
+        fs::write(dir.join("r.ron"), "h0\nh1").unwrap();
+        let record = crash_of("r.ron", None);
+        assert_eq!(record.code.as_deref(), Some("SH3018"));
+        assert_eq!(crash_of("nope.ron", None).code.as_deref(), Some("SH3004"));
+        // The game's own error, and a stamp of other content, as `replay`.
+        fs::write(dir.join("bad.ron"), report("src/a.rs:1:1", Some("turns x"))).unwrap();
+        assert_eq!(crash_of("bad.ron", None).code.as_deref(), Some("SH3002"));
+        let stamped = "made 0.2.0 demo 0000000000000001\nh0";
+        fs::write(dir.join("old.ron"), report("src/a.rs:1:1", Some(stamped))).unwrap();
+        let game = Fake {
+            made: Some(stamp("0.2.0", "demo", ContentHash(2))),
+            ..Fake::default()
+        };
+        let mut input = ReplayInput::new("old.ron");
+        input.crash = true;
+        assert_eq!(replay(&game, &dir, &input).code.as_deref(), Some("SH3007"));
+        input.any_stamp = true;
+        assert!(replay(&game, &dir, &input).ok);
+        fs::remove_dir_all(&dir).unwrap();
     }
 }
