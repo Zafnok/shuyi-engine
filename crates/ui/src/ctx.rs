@@ -1,6 +1,6 @@
 //! [`Ctx`]: what every screen shares, passed `&mut` to
-//! [`Screen::update`](crate::Screen::update) and `&` to
-//! [`Screen::draw`](crate::Screen::draw). The engine's services (text by
+//! [`Screen::update`] and `&` to
+//! [`Screen::draw`]. The engine's services (text by
 //! key in the player's language, the keys and the names help text gives
 //! them, the player's settings and profiles, sounds, music and voices,
 //! storage) and the game's own part, [`Ctx::game`], whose type says what
