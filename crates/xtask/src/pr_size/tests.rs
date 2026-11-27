@@ -137,6 +137,7 @@ fn verdicts_follow_the_warning_the_limit_and_the_kind() {
         PrKind::Bot,
         PrKind::Sonar,
         PrKind::TicketsOnly(vec!["2053".to_owned()]),
+        PrKind::Post,
     ] {
         assert_eq!(Verdict::of(9_000, Some(&exempt)), Verdict::Exempt);
     }

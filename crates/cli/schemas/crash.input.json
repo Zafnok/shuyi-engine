@@ -7,6 +7,14 @@
     "report": {
       "description": "The report's file (`crash-<when>.ron`), from the folder `shuyi`\nruns in.",
       "type": "string"
+    },
+    "symbols": {
+      "description": "The debug file of the report's build (`<package>.debug`, kept by\n`shuyi export --release`), from the same folder: its frames are\nnamed from it. Without it they are offsets.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
     }
   },
   "additionalProperties": false,

@@ -97,6 +97,38 @@ fn it_initializes_then_sends_each_request_and_reads_until_its_answer() {
 }
 
 #[test]
+fn a_request_sent_without_waiting_is_picked_up_later_even_past_another() {
+    let (mut process, written, server) = scripted("");
+    server
+        .send(r#"{"jsonrpc":"2.0","id":0,"result":{}}"#.to_owned())
+        .unwrap();
+    let id = process
+        .send("tools/call", &json!({ "name": "playtest" }))
+        .unwrap()
+        .unwrap();
+    assert_eq!(written.messages()[2]["id"].as_u64(), Some(id));
+    // While it works, nothing.
+    assert_eq!(process.response(id), None);
+    // A call that waits reads the task's response first: it is kept.
+    let later = id + 1;
+    for line in [
+        format!(r#"{{"jsonrpc":"2.0","id":{id},"result":{{"done":true}}}}"#),
+        format!(r#"{{"jsonrpc":"2.0","id":{later},"result":{{"tools":[]}}}}"#),
+    ] {
+        server.send(line).unwrap();
+    }
+    let listed = process.request("tools/list", &json!({})).unwrap();
+    assert_eq!(listed["result"]["tools"], json!([]));
+    let answered = process.response(id).unwrap().unwrap();
+    assert_eq!(answered["result"]["done"], true);
+    // Once it stops, the response says why.
+    let next = process.send("tools/call", &json!({})).unwrap().unwrap();
+    drop(server);
+    let why = process.response(next).unwrap().unwrap_err();
+    assert!(why.ends_with("stopped before it answered"), "{why}");
+}
+
+#[test]
 fn a_server_that_exits_before_answering_says_why_with_its_last_output() {
     let (mut process, _, server) = scripted("error[E0425]: cannot find value `hero`\n");
     drop(server);

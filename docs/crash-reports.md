@@ -83,10 +83,9 @@ cargo shuyi crash crash-1700000000123.ron --json
 It answers the panic's `message` and `location`, `fatal`, the `thread`, `when`,
 the `engine`, `game` and `target` versions, the `frame`, the `top_screen`, the
 `log`, std's `backtrace`, and `has_record`: whether the report holds the game's
-record, which `replay --crash` replays. A file that can't be read is `SH3004`,
-one that isn't a crash report `SH3018`. Its frames, named from the build's debug
-file, are still to come (ticket 3441); until then they are read by hand, as
-below.
+record, which `replay --crash` replays, and `frames`, the stack: offsets, or
+named from the build's debug file with `--symbols` ([below](#reading-the-frames)).
+A file that can't be read is `SH3004`, one that isn't a crash report `SH3018`.
 
 ## Reading the frames
 
@@ -103,6 +102,54 @@ nothing publishes
 ```bash
 gh release download v1.2.0-debug --repo <owner>/<game> --pattern '*-windows.debug'
 ```
+
+Keep each release's debug file as long as players may run that release: a
+report's offsets only mean something in its own build's file. Put it beside
+the report and give it to `shuyi crash`:
+
+```text
+cargo shuyi crash crash-1700000000123.ron --symbols my-game-1.2.0-windows.debug
+```
+
+Each of the answer's `frames` then has its `function`, `file` and `line`,
+innermost first:
+
+```text
+frames:
+  0000000000208b2e frame_or_crash<my_game::Game> at /cargo/git/checkouts/shuyi-engine-.../crates/app/src/lib.rs:705
+  00000000001b9e4d run_app<my_game::Game> at /cargo/git/checkouts/shuyi-engine-.../crates/app/src/lib.rs:570
+  000000000020da26 main at my-game/src/main.rs:57
+  0000000000001157 __tmainCRTStartup
+  in another module
+```
+
+A function inlined into another is a frame of its own, at the same offset,
+before the function it was inlined into. A name comes from the debug
+information, or from the symbol table where it has none (the C runtime's
+start, above, has no file or line). Files are named as the release build
+named them: `shuyi export --release` remaps its paths, so the engine's and
+the crates' are under `/cargo/registry/...` or `/cargo/git/...`, the
+standard library's under `/rustc/<commit>/library/...`, and the game's own
+under its package's name. A frame with no offset is in a system library. If
+the answer's `limits` says frames fall outside every function, the debug
+file is likely from another build. A debug file that isn't a program (a
+zip, a PDB file, a macOS program) is `SH3020`.
+
+Without `shuyi export --release`, a debug file is made by hand. Build the
+release with its symbols and line tables, keep that program as the debug
+file, and ship a copy stripped of both: stripping after the link moves no
+code, so the offsets agree. This build keeps the machine's own paths in its
+file names, which `export --release` remaps.
+
+```bash
+# Windows; on Linux the program has no `.exe`.
+CARGO_PROFILE_RELEASE_STRIP=false CARGO_PROFILE_RELEASE_DEBUG=line-tables-only \
+  cargo build --release -p my-game
+cp target/release/my-game.exe my-game.debug
+objcopy --strip-all target/release/my-game.exe my-game.exe   # the one to ship
+```
+
+By hand, with binutils instead of `shuyi crash`:
 
 ```bash
 # The image base the debug file was linked at: Windows has one, Linux 0.

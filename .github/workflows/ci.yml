@@ -1202,6 +1202,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: cargo xtask check-layers
+      # The template's, the examples', the snippets' and the skills' imports
+      # through the preludes (ticket 3438, ADR-0161).
+      - run: cargo xtask check-imports
       # No two packages build a binary or an example of one name: on
       # Windows their links collide (ticket 2056).
       - run: cargo xtask check-targets
@@ -1573,9 +1576,14 @@ jobs:
       # each chapter that shows one has its picture.
       - name: Copy the examples' shots
         run: bash site/copy-shots.sh
+      # With `--drafts` too, so News's draft posts (ticket 2805), the example
+      # post and its tag page among them, have their links checked before
+      # they go live.
       - name: Check the site's links
         working-directory: site
-        run: zola check --skip-external-links
+        run: |
+          zola check --skip-external-links
+          zola check --skip-external-links --drafts
       # Who each passage of the book is for (ticket 2825, ADR-0090 §5).
       - name: Check the book's marks
         run: cargo xtask check-book

@@ -122,7 +122,9 @@ part), its first screen (the title) and every screen it can show in a
 on (`shuyi::enabled_modules`); `src/main.rs` runs it with the prelude's
 `run_game`; `examples/tools.rs` gives its tools, `game::stages::tools()`
 (the engine's `BasicTools`, or a stage's own on top of them). A screen
-names what it needs from `shuyi::prelude`.
+names what it needs from `shuyi::prelude` and its domains
+(`shuyi::prelude::grid`, `text`, `audio`, and `test` for the tests); the
+rules crate names `shuyi_core::prelude`, the tools `shuyi_cli::prelude`.
 
 Who the game is, its name, id and version, is `shuyi.ron`'s `app`.
 `cargo shuyi app-info` writes it into `crates/game/src/app_info.rs`,

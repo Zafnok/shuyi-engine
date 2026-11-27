@@ -68,12 +68,12 @@ None.
   - `export-report.json` gains `loads` (what each program loads) and,
     on Linux, `glibc` (the newest version it asks for). The contract's
     version goes up by one.
-  - `object` 0.37 is Apache-2.0 OR MIT, both on `deny.toml`'s allow
+  - `object` is Apache-2.0 OR MIT, both on `deny.toml`'s allow
     list. Use it with `default-features = false` and only the features
     `std`, `read_core`, `elf`, `macho` and `pe` (no `compression`).
-    **Either order with 3441:** if 3441 is done, use the `object` version
-    it brought, so `Cargo.lock` holds one; if not, nothing to do (3441
-    uses this one).
+    **From 3441 (done):** `shuyi-cli`'s `addr2line` 0.27 brought
+    `object` 0.40 into `Cargo.lock` (and as a dev-dependency of
+    `shuyi-cli`); use 0.40, so `Cargo.lock` holds one.
   - **Either order with 3032:** if 3032 is done, audit the actual CPAL
     graph and its packaged imports on x86-64 and Arm Linux; keep
     `libasound.so.2` in the allowed lists when linked. Do not assume

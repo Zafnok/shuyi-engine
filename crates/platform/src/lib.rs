@@ -127,4 +127,67 @@ pub mod prelude {
     };
 
     pub use crate::{AppInfo, BasicGame, Card, Look, Setup, Start, SystemEvent};
+
+    /// The grid kit, by one path (ADR-0161): `use
+    /// shuyi::prelude::grid::*;` in a screen that shows a map. Its camera,
+    /// cursor, skins, scene and painters (`shuyi-ui`'s `grid`), the map
+    /// file (`GridMap`, `MapText`) and its lights. Its `Grid` is the
+    /// screen's layout, not the rules' `shuyi_core::Grid`: a file that
+    /// names both names one by its path.
+    pub mod grid {
+        pub use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat, MapText};
+        pub use shuyi_assets::lighting::Lighting;
+        pub use shuyi_assets::tileset::{Look as TileLook, TerrainTiles};
+        pub use shuyi_ui::grid::debug::{GRID, layout_gizmos};
+        pub use shuyi_ui::grid::{
+            Camera, Cursor, CursorStyle, CursorView, GlyphSkin, Grid, GridSkin, Looks, MapColors,
+            MapScene, MapUnit, RangeName, SpriteSkin, TerrainGlyphs, Terrains, UnitPainter,
+            WalkSpeeds, glyph, steer, walk,
+        };
+    }
+
+    /// Styled text and the font, by one path (ADR-0161): `use
+    /// shuyi::prelude::text::*;` in a screen that writes words. The styled
+    /// text and its roles, a message's parse, the font's atlas and widths,
+    /// and the languages.
+    pub mod text {
+        pub use shuyi_assets::font::{CellWidths, FontAtlasDef, FontAtlasRon};
+        pub use shuyi_assets::lang::{English, Lang, LangCode, SourceLang, SourceText, text_width};
+        pub use shuyi_assets::message::Message;
+        pub use shuyi_ui::frame::onebit::Font;
+        pub use shuyi_ui::screens::print_centred_styled;
+        pub use shuyi_ui::text::{StyledText, TextRole, check_key_placeholders};
+    }
+
+    /// Sound, by one path (ADR-0161): `use shuyi::prelude::audio::*;`. The
+    /// game's audio manifest and its cues, a screen's requests and the
+    /// sound groups, and a voice clip's variant.
+    pub mod audio {
+        pub use shuyi_assets::audio::{
+            AudioManifest, Bytes, CreditRef, CueRules, Files, SoundCue, format_problem, playable,
+        };
+        pub use shuyi_assets::voice::ClipVariant;
+        pub use shuyi_ui::audio::{AudioConfig, AudioRequest, MenuSound, Samples, groups};
+    }
+
+    /// A game's tests, by one path (ADR-0161): `use
+    /// shuyi::prelude::test::*;`. The Harness, with the `harness` feature
+    /// (a game's tests get it through `shuyi-cli`), its session files, the
+    /// playtest runner's checks and the autobalance search. The bots that
+    /// play a turn game are in `shuyi_core::prelude`.
+    pub mod test {
+        #[cfg(all(feature = "harness", feature = "std"))]
+        pub use crate::harness::assert_session;
+        #[cfg(feature = "harness")]
+        pub use crate::harness::{FRAME_DT, Harness, check_session};
+        pub use crate::session::{SessionRecord, Stamps};
+        pub use shuyi_core::bots::balance::Change;
+        pub use shuyi_core::bots::playtest;
+        pub use shuyi_core::bots::playtest::{
+            Band, Check, Condition, Entrant, Found, Measure, Measures, MedianVerdict, PlayedTry,
+            PlaytestError, PlaytestReport, RateVerdict, Tried, Tries, UnknownEntrant, bot_seed,
+            judge, play_tries, play_try,
+        };
+        pub use shuyi_core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
+    }
 }

@@ -3,7 +3,8 @@ title = "News"
 description = "What changed in Shuyi Engine, and posts from its makers."
 sort_by = "date"
 template = "news.html"
-page_template = "page.html"
+page_template = "post.html"
+paginate_by = 10
 generate_feeds = true
 +++
 

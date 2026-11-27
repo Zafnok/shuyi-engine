@@ -46,7 +46,7 @@ What there is (read 2026-11-23):
   can't be a storage key; it goes in a folder beside the keys, as the
   logs do.
 - **2520** (done): `shuyi crash` reads a report
-  (`crates/cli/src/contract/crash.rs`). **3441** (open) names its
+  (`crates/cli/src/contract/crash.rs`). **3441** (done) names its
   frames from the build's debug file with `addr2line`, which reads
   DWARF only. Its *Out* leaves Windows PDB files out "until one asks".
 - **The Windows toolchain.** Nick's machine builds with GNU and has no

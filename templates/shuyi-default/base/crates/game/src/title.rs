@@ -7,9 +7,8 @@
 //! It builds a [`TitleView`] (plain data) and paints it with glyphs:
 //! tests of what it shows read the view.
 
+use shuyi::prelude::text::{StyledText, print_centred_styled};
 use shuyi::prelude::*;
-use shuyi::ui::screens::print_centred_styled;
-use shuyi::ui::text::StyledText;
 
 use crate::{Data, stages};
 

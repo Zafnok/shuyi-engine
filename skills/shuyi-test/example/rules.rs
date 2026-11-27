@@ -4,7 +4,7 @@
 
 use proptest::prelude::*;
 use rules::{Command, Event, Outcome, Stage, parse_map};
-use shuyi_core::{Dir, Pos, TurnRules};
+use shuyi_core::prelude::{Dir, Pos, TurnRules};
 
 /// A corridor to the goal; the wanderer is walled in, so it never moves.
 const CORRIDOR: &str = "########\n#...>#.#\n########\n";

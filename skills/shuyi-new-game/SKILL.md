@@ -163,7 +163,10 @@ A new game names only what the engine can't read from its files:
 - `examples/tools.rs`: the game's tools, `game::stages::tools()`, the
   engine's `BasicTools` or a stage's own on top of them.
 
-A screen names what it needs from `shuyi::prelude`.
+A screen names what it needs from `shuyi::prelude`, and from its
+domains: `shuyi::prelude::grid` (a map), `text`, `audio` and `test` (the
+Harness). The rules crate imports `shuyi_core::prelude`, the tool program
+`shuyi_cli::prelude`.
 
 ## Sounds
 
