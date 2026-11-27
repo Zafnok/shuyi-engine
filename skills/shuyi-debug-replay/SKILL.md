@@ -128,10 +128,16 @@ the game asks (`CrashReports::with_record_in_release`, or
 `BasicGame::crash_record_in_release`). The record ends with the command
 the rules were applying when they panicked.
 
-1. **Read it:** `cargo shuyi crash crash-<when>.ron --json`, which needs
-   no game. `result` has the panic's `message` and `location`, the
-   versions, the `frame`, the `top_screen`, the `log`, and `has_record`:
-   whether the next step can replay it.
+1. **Read it:** `cargo shuyi crash crash-<when>.ron --symbols
+   <package>.debug --json`, which needs no game. `result` has the
+   panic's `message` and `location`, the versions, the `frame`, the
+   `top_screen`, the `log`, `has_record` (whether the next step can
+   replay it), and `frames`, the stack innermost first: each frame's
+   `function`, `file` and `line` from the debug file of the report's
+   build (`<package>.debug`, kept by `shuyi export --release`; for a
+   release from a tag, `gh release download <tag>-debug`). Without
+   `--symbols` the frames are offsets. A `limits` line counting frames
+   outside every function means the debug file is from another build.
 2. **Reproduce it:** `cargo shuyi replay --crash crash-<when>.ron
    --json` runs that record once by this build's rules. While it panics,
    `ok` is false: `result.crash.step` is the step it panicked at, its
@@ -186,6 +192,9 @@ Branch on the `code`, and read its page with `cargo shuyi explain
   report.
 - `SH3019`: the crash report holds no record of play: `crash` still
   reads it, and the game needs a `crash_record` for the next one.
+- `SH3020`: the file given to `--symbols` isn't a program with its
+  debug information: give the `<package>.debug` of the report's build,
+  not its package.
 - `SH3007`: the record was made by another build or with other files;
   the error names each part that differs. Make the record again, or
   pass `--any-stamp` to see how it plays now.

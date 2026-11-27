@@ -152,6 +152,7 @@ CI reads the ticket a PR is for from its **title** first, then its branch
 | `[NNNN] …` | ticket NNNN's work | NNNN is in `done/`; its `Breaking:` and `Book:` lines |
 | `Ticket NNNN: …`, `Tickets NNNN, MMMM and KKKK: …` (a range `NNNN-MMMM` too) | writes or edits tickets only | it changes only `tickets/`, `docs/ROADMAP.md` and `docs/decisions.md`, and each named ticket is in `open/` |
 | `Game NNNN: …` | a game ticket's small change (the `write-ticket` skill) | it neither breaks nor adds to the public API |
+| `Post: …` | a post for the website's News, by hand or with the `write-post` skill (ticket 2805) | it changes only `site/content/news/` and `THIRD_PARTY_ASSETS.md` |
 | `sonar(…)`, `[advisory #N] …`, `engine-pin…`, a `dependabot/` branch | the bots' and the Sonar batches' | as before: a break fails |
 
 The branch may be anything: a desktop worktree's `claude/<slug>-<hex>`

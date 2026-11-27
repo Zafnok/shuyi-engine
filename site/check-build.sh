@@ -124,6 +124,27 @@ for page in index.html learn/index.html news/index.html news/atom.xml examples/i
   learn/book/index.html learn/errors/index.html learn/errors/sh0001/index.html; do
   [ -f "$out/one/$page" ] || fail "the build has no $page"
 done
+# News's drafts (ticket 2805): the example post, `draft = true`, is left out
+# of the build, its tag page and every feed; built with `--drafts`, as
+# `zola serve --drafts` shows it, it is on News, in the feed, on its tag's
+# page and in its tag's feed, as a post with `draft = false` would be. The
+# file a post is copied from is never a page.
+example="an-example-post"
+[ -f "$site_dir/content/news/2026-11-27-$example/index.md" ] || fail "site/content/news/ has no draft example post"
+if grep -rlF "/news/$example/" "$out/one"; then
+  fail "the build names the draft post news/$example/: drafts must stay off the live site"
+fi
+[ -e "$out/one/news/$example" ] && fail "the build has the draft post news/$example/"
+[ -e "$out/one/news/template" ] && fail "the build has news/template/: _template.md must never be a page"
+(cd "$site_dir" && zola build --drafts --base-url "$one" --output-dir "$out/drafts" --force) >/dev/null
+for page in news/index.html news/atom.xml tags/devlog/index.html tags/devlog/atom.xml; do
+  grep -qF "${one}news/$example/" "$out/drafts/$page" 2>/dev/null ||
+    fail "built with --drafts, $page doesn't list news/$example/"
+done
+grep -qF "<name>Nick</name>" "$out/drafts/news/atom.xml" || fail "the feed doesn't name the example post's author"
+[ -f "$out/drafts/news/$example/cover.png" ] || fail "built with --drafts, news/$example/ has no cover.png"
+[ -e "$out/drafts/news/template" ] && fail "built with --drafts, the build has news/template/"
+
 for chapter in "$book"/*.md; do
   name="$(basename "$chapter" .md)"
   [ "$name" = _index ] && continue

@@ -14,6 +14,7 @@
 //! [`Forwarding`] is the seam the server starts them and looks up
 //! workspaces through ([`Processes`] for real), so its tests run no cargo.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
@@ -45,6 +46,21 @@ pub trait Forward {
     /// Its response to the request `method` with `params`, once it is
     /// ready, or why there is none: it stopped, with its last output.
     fn request(&mut self, method: &str, params: &Value) -> Result<Value, String>;
+
+    /// Sends the request `method` with `params`, once it is ready, without
+    /// waiting for its response, which [`Self::response`] then gives: its
+    /// id, or why it couldn't. None if it only answers as
+    /// [`Self::request`] waits (the default): nothing is sent, and the
+    /// server asks that when it may wait.
+    fn send(&mut self, _: &str, _: &Value) -> Result<Option<u64>, String> {
+        Ok(None)
+    }
+
+    /// The response to the request [`Self::send`] sent under `id`, once it
+    /// has come, or why there is none: it stopped. None while it works.
+    fn response(&mut self, _: u64) -> Option<Result<Value, String>> {
+        None
+    }
 }
 
 /// Looks up workspaces and starts forwarded servers.
@@ -210,6 +226,9 @@ pub struct Process {
     state: Option<Result<(), String>>,
     /// The id of its next request.
     next: u64,
+    /// The responses read while waiting for another, by id: a task's,
+    /// read while a call waited.
+    kept: BTreeMap<u64, Value>,
 }
 
 impl Process {
@@ -230,8 +249,9 @@ impl Process {
             copied: None,
             state: None,
             next: INITIALIZE + 1,
+            kept: BTreeMap::new(),
         };
-        process.send(&json!({
+        process.write(&json!({
             "jsonrpc": "2.0",
             "id": INITIALIZE,
             "method": "initialize",
@@ -299,7 +319,7 @@ impl Process {
     }
 
     /// Writes `message` on a line of its stdin; false if it is closed.
-    fn send(&mut self, message: &Value) -> bool {
+    fn write(&mut self, message: &Value) -> bool {
         let sent = self
             .stdin
             .as_mut()
@@ -341,8 +361,12 @@ impl Process {
 
     /// Reads its lines until the response to `id`, waiting for each with
     /// `wait`: `Err` if it stops first, none if `wait` is false and it
-    /// hasn't come yet.
-    fn response(&mut self, id: u64, wait: bool) -> Result<Option<Value>, String> {
+    /// hasn't come yet. A response to another request is kept for when
+    /// that one is asked for.
+    fn read_to(&mut self, id: u64, wait: bool) -> Result<Option<Value>, String> {
+        if let Some(message) = self.kept.remove(&id) {
+            return Ok(Some(message));
+        }
         loop {
             let next = if wait {
                 self.lines.recv().ok()
@@ -361,21 +385,40 @@ impl Process {
             let Ok(message) = serde_json::from_str::<Value>(&line) else {
                 continue;
             };
-            if message.get("id") == Some(&json!(id)) {
-                return Ok(Some(message));
+            match message.get("id").and_then(Value::as_u64) {
+                Some(of) if of == id => return Ok(Some(message)),
+                Some(of) => {
+                    self.kept.insert(of, message);
+                }
+                None => {}
             }
         }
+    }
+
+    /// Writes the request `method` with `params` under a new id: the id,
+    /// or why it couldn't.
+    fn sent(&mut self, method: &str, params: &Value) -> Result<u64, String> {
+        if let Some(Err(why)) = self.ready(true) {
+            return Err(why);
+        }
+        let id = self.next;
+        self.next += 1;
+        let request = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
+        if !self.write(&request) {
+            return Err(self.stopped());
+        }
+        Ok(id)
     }
 }
 
 impl Forward for Process {
     fn ready(&mut self, wait: bool) -> Option<Result<(), String>> {
         if self.state.is_none() {
-            let state = match self.response(INITIALIZE, wait) {
+            let state = match self.read_to(INITIALIZE, wait) {
                 Ok(None) => return None,
                 Err(why) => Err(why),
                 Ok(Some(answer)) if answer.get("result").is_some() => {
-                    self.send(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }));
+                    self.write(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }));
                     Ok(())
                 }
                 Ok(Some(answer)) => Err(format!(
@@ -389,17 +432,17 @@ impl Forward for Process {
     }
 
     fn request(&mut self, method: &str, params: &Value) -> Result<Value, String> {
-        if let Some(Err(why)) = self.ready(true) {
-            return Err(why);
-        }
-        let id = self.next;
-        self.next += 1;
-        let request = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
-        if !self.send(&request) {
-            return Err(self.stopped());
-        }
-        self.response(id, true)?
+        let id = self.sent(method, params)?;
+        self.read_to(id, true)?
             .ok_or_else(|| format!("{} answered nothing", self.named))
+    }
+
+    fn send(&mut self, method: &str, params: &Value) -> Result<Option<u64>, String> {
+        self.sent(method, params).map(Some)
+    }
+
+    fn response(&mut self, id: u64) -> Option<Result<Value, String>> {
+        self.read_to(id, false).transpose()
     }
 }
 

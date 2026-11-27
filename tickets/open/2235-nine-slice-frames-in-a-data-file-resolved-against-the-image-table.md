@@ -44,6 +44,13 @@ A format reads one file (ADR-0019 §5). An `ImageId` exists only in an
 other checks across assets do (`docs/formats.md`, *Checks after
 loading*).
 
+**From 3249 (done):** the plain types are in `shuyi_assets::nine_slice`
+already, with the borders in a `Borders` value (`NineSlice { picture,
+borders, edges, centre, zoom }`), and a panel's frame is a `PanelFrame`
+(a `NineSlice` and an `outset`). A `NineSliceDef` reads into those: give
+it an optional `outset` too, so a frame with wide corners keeps off a
+panel's text from its file.
+
 ## Nick input
 
 None.

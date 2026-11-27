@@ -13,3 +13,4 @@ welcome.
 - **[Contributing](https://github.com/Zafnok/shuyi-engine/blob/main/CONTRIBUTING.md)**:
   what is welcome while the engine is early.
 - **[News](@/news/_index.md)**, and its feed, for what changed.
+  [How to post](@/community/how-to-post.md) there.

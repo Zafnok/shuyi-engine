@@ -70,6 +70,7 @@ pub mod lang;
 pub mod lighting;
 pub mod message;
 pub mod names;
+pub mod nine_slice;
 pub mod onebit;
 pub mod pack;
 pub mod palette;

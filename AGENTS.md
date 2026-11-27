@@ -67,6 +67,8 @@ that changes more than resolving its parents needs (ticket 2065).
    - a Dependabot PR, or a GitHub issue labelled `advisory` from the
      weekly advisory check, worked with the `dependency-upkeep` skill
      ([ADR-0037](docs/adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)).
+   A post for the website's News is Nick's content, not engine work: a
+   `Post: …` PR with no ticket (the `write-post` skill, ticket 2805).
 2. **No unticketed work.** Found something else to do? Write a ticket
    (`write-ticket` skill).
 3. **Parked tickets stay parked.** A ticket whose title starts with

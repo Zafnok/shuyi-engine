@@ -71,8 +71,8 @@ a rebuild and a reconnect.
 
 Related: 3436 (done: on 2026-07-28, to a client with MCP tasks, the
 long tools, `start`'s build among them, answer a task the client polls,
-so a `tools/call` no longer waits on a cold build; a forwarded call does
-with 3440; the server's own first contact stays this ticket's), 2905 (research: code hot reload by patching, or a rebuild that
+so a `tools/call` no longer waits on a cold build; 3440, done, made a
+forwarded call one too; the server's own first contact stays this ticket's), 2905 (research: code hot reload by patching, or a rebuild that
 replays to the same moment), 2269 (BasicGame reloads its own files under
 `run --watch`), 2270 (a `disk-files` development build that embeds
 nothing), 3415 (build failures as structured diagnostics). From the
