@@ -279,10 +279,10 @@ recipe into a new ticket.
 - [x] The same tile, wobble and rim give the same sheet every run; two
   seeds give different sheets; `strength: 0` gives the sheet with no
   wobble.
-- [ ] `rotated`: mix 4's picture is mix 8's piece turned a quarter
+- [x] ~~`rotated`: mix 4's picture is mix 8's piece turned a quarter
   clockwise, and mix 6's is mix 9's turned once; all 15 mixes are
-  filled; pieces of two sizes, or not square, are an error. Split off
-  to 2283.
+  filled; pieces of two sizes, or not square, are an error.~~ (not
+  done: split off to 2283, at the ticket's `Split:` line)
 - [x] `layer(of, (0, 96), (24, 24))` equals the toy's hand-built shore
   layer's mixes 1 to 15 (`crates/ui/src/toy/grid.rs`, `layered`): the
   same layout.
