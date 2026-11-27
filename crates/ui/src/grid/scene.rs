@@ -1,5 +1,5 @@
-//! What is on the visible part of a grid map, as plain data (game
-//! game ADR-0038): terrain (flashing where it just changed, or marked with what
+//! What is on the visible part of a grid map, as plain data:
+//! terrain (flashing where it just changed, or marked with what
 //! it would turn into), ranges, units, the cursor, the path and those that
 //! threaten a tile. No colors, glyphs, cells or pixels: a
 //! [`GridSkin`](super::GridSkin) turns a scene into those. The units are
@@ -62,14 +62,14 @@ pub struct MapScene<U> {
     pub clock_ms: u64,
     /// Where and when the ranges were opened (a unit selected), for a
     /// skin whose ranges spread out from there
-    /// ([`RangeShow`](super::ranges::RangeShow), ticket 3224); `None` =
+    /// ([`RangeShow`](super::ranges::RangeShow)); `None` =
     /// they show at once.
     pub ranges_shown: Option<RangesShown>,
 }
 
 /// Where and when a scene's ranges were opened: a skin whose ranges spread
 /// shows them ring by ring from `from`, starting at `at_ms` of the scene's
-/// clock (ticket 3224).
+/// clock.
 ///
 /// Kind 3 of ADR-0039: build it with [`RangesShown::new`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

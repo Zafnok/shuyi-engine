@@ -1,4 +1,4 @@
-//! The sprite skin (game ADR-0038, game ADR-0049, game ADR-0052): a grid map's
+//! The sprite skin: a grid map's
 //! ground painted from a tileset's terrain tiles ([`TerrainTiles`]).
 //!
 //! - **With terrain tiles** it paints the whole ground: a tile is the
@@ -6,7 +6,7 @@
 //!   [`SpriteSkin::tile_size`]. The ground is each tile's own picture and
 //!   the layers over them, in the look the map asks for and in its light
 //!   (see `ground`). The cursor is corner marks with a dark edge, inside
-//!   its tile (game ticket 0444).
+//!   its tile.
 //! - **Without** them the ground, the ranges and the cursor are the glyph
 //!   skin's, on its tiles: for a game whose units are pictures on glyph
 //!   ground (its unit painter takes the terrain's glyphs off a unit's
@@ -155,7 +155,7 @@ impl SpriteSkin {
 
     /// The cursor: corner marks in the cursor's color with a dark edge
     /// round them, inside its tile, in every style (pictures have no tile
-    /// glow: game ticket 0444). The color pulses; the edge doesn't.
+    /// glow, which would hide the art). The color pulses; the edge doesn't.
     fn paint_own_cursor<U>(
         &self,
         looks: &Looks,
@@ -183,7 +183,7 @@ impl SpriteSkin {
 }
 
 /// The size of the cursor's corner marks on picture tiles, in pixels of
-/// the art (Nick, 2026-10-13, game ticket 0444).
+/// the art.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct CursorMarks {
     /// How long each arm of a corner is.

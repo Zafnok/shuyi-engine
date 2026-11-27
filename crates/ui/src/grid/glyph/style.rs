@@ -19,7 +19,7 @@ use crate::grid::threat;
 use shuyi_core::Pos;
 
 /// How far a range's outline and a raised tile's lit edges go from its
-/// color toward white on the glyph skin's dark ground (ticket 3224).
+/// color toward white on the glyph skin's dark ground.
 /// *Tunable.*
 pub const LIT: f32 = 0.25;
 

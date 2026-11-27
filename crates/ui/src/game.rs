@@ -874,7 +874,7 @@ impl<G: GameData> Game<G> {
     /// Hands the top screen `action` alone, in an update of its own with no
     /// time passing, as if a key bound to it had just been pressed: an
     /// action from outside the keys and buttons, such as an entry of the
-    /// platform's own menu (the Playdate's system menu, ticket 1035). The
+    /// platform's own menu (the Playdate's system menu). The
     /// screen does with it what it does with the key, or nothing. Its
     /// sounds come out with the next frame. No step is due in it: a tick
     /// stage keeps it as a tap (pressed, and let go unless a key holds it)

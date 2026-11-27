@@ -1,6 +1,6 @@
 //! The raster: a frame painted in software, the reference picture of a
 //! [`GlyphBuffer`] that every backend must match. `shuyi-app`'s GPU
-//! renderer is held to it (ticket 2018), and [`compare`] is the one
+//! renderer is held to it, and [`compare`] is the one
 //! comparison every backend's pixels go through. `frame-png`, the tool
 //! contract and a game's PNG snapshots paint with it; a game may too, at
 //! run time (a save's thumbnail, a photo mode). It takes decoded pictures:
@@ -167,7 +167,7 @@ impl Painter {
     }
 
     /// Draws `buf` with each console pixel `scale` × `scale` pixels big.
-    /// With a backdrop (game ADR-0048): the clear colour, the scene inside its
+    /// With a backdrop: the clear colour, the scene inside its
     /// window, then the console over it, as in `app`.
     pub fn render(&self, buf: &GlyphBuffer, scale: u32) -> Image {
         let s = i64::from(scale);

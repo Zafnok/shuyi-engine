@@ -1,5 +1,5 @@
-//! 1032's renderer, as it was before ticket 1055 made [`render`](super::render)
-//! fast: plain and slow (64-bit coordinates, a pattern byte worked out for
+//! The first one-bit renderer, as it was before [`render`](super::render)
+//! was made fast: plain and slow (64-bit coordinates, a pattern byte worked out for
 //! every byte written, every cell visited whatever the clip). Kept as the
 //! reference the fast one must equal pixel for pixel: the tests compare
 //! the two, and the Playdate's bench build (`cargo xtask playdate --bench`)

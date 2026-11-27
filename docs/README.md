@@ -114,7 +114,7 @@ A ticket from `1119`–`1150` reads the row of its area.
    files. Nothing of this repository's process (tickets, Nick, the
    game's pin) goes in what people making games read: rustdoc, the
    templates, `contract.md`, the error pages, the skill pack and the
-   book.
+   book. `cargo xtask check-links` holds rustdoc to it.
 5. **A new home gets a row.** A change that makes a new home for docs (a
    new file under `docs/`, a new folder of pages) adds its row here in
    the same PR.

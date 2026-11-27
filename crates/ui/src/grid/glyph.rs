@@ -1,7 +1,7 @@
-//! The glyph skin: a grid map drawn with colored glyphs (game ADR-0018,
-//! game ADR-0024, game ADR-0029). A tile is two 8 × 16 cells: a 16 × 16 pixel
-//! square. That size is known only here. A [`GlyphStyle`] changes how
-//! ranges, flashes, the cursor and the threat marks show on those tiles.
+//! The glyph skin: a grid map drawn with colored glyphs. A tile is two
+//! 8 × 16 cells: a 16 × 16 pixel square. That size is known only here. A
+//! [`GlyphStyle`] changes how ranges, flashes, the cursor and the threat
+//! marks show on those tiles.
 
 pub mod cursor;
 pub mod style;
@@ -19,11 +19,11 @@ use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 
 pub use style::{CursorLook, FlashLook, GlyphStyle, RangeLook, ThreatLook};
 
-/// Cells per map tile, across (a tile is two glyphs wide, game ADR-0018).
+/// Cells per map tile, across (a tile is two glyphs wide).
 pub const TILE_W_CELLS: i32 = 2;
 
 /// A map tile in console pixels, across × down: for a skin that paints
-/// its units over this skin's ground (game ADR-0049).
+/// its units over this skin's ground.
 pub const fn tile_px() -> (i32, i32) {
     (TILE_W_CELLS * CELL_PX.0, CELL_PX.1)
 }
@@ -125,7 +125,7 @@ impl GlyphSkin {
         }
     }
 
-    /// The same skin, showing its ranges as `show` (ticket 3224). The
+    /// The same skin, showing its ranges as `show`. The
     /// sprite skin built on it shows them so too.
     #[must_use]
     pub const fn with_range_show(mut self, show: RangeShow) -> Self {
@@ -133,7 +133,7 @@ impl GlyphSkin {
         self
     }
 
-    /// The same skin, drawing the threat arrows in `shape` (ticket 3223).
+    /// The same skin, drawing the threat arrows in `shape`.
     /// The sprite skin built on it draws them so too.
     #[must_use]
     pub const fn with_threat_shape(mut self, shape: threat::Shape) -> Self {
@@ -224,8 +224,7 @@ impl Layout {
 }
 
 /// The console cell of the left glyph of `tile`, or `None` if the tile is
-/// outside the layout. The only place the "two cells per tile" rule lives
-/// (game ADR-0018).
+/// outside the layout. The only place the "two cells per tile" rule lives.
 pub fn tile_to_cell(tile: Pos, layout: &Layout) -> Option<(i32, i32)> {
     let dx = tile.x.checked_sub(layout.origin.x)?;
     let dy = tile.y.checked_sub(layout.origin.y)?;

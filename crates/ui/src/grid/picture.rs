@@ -1,5 +1,5 @@
 //! A whole grid map painted once into a buffer just big enough, to pan
-//! over (ticket 1154): a cinematic's backdrop ([`Pan`](crate::cinematic::Pan))
+//! over: a cinematic's backdrop ([`Pan`](crate::cinematic::Pan))
 //! or the scene camera's ([`debug::camera`](crate::debug::camera)).
 
 use alloc::rc::Rc;

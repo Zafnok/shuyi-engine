@@ -215,7 +215,7 @@ pub(crate) fn value_of<'v>(values: &Args<'v>, name: &str) -> Option<&'v dyn ToAr
 /// it loaded (ADR-0131), adding the built-in `device` and `target` after
 /// a screen's values without copying them into a new list each time.
 ///
-/// Each value is lent ([`ToArg::with_arg_ref`], ticket 2268): a select
+/// Each value is lent ([`ToArg::with_arg_ref`]): a select
 /// and a value written copy nothing, and only the [`StyledText`] it fills
 /// allocates.
 pub(crate) fn fill_form<'v>(

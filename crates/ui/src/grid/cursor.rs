@@ -175,7 +175,7 @@ mod tests {
         assert!((pulse(2.0, 2.0) - 1.0).abs() < 1e-6);
     }
 
-    /// The pulse as it was written by hand before ticket 2136: a cosine.
+    /// The pulse as it was first written by hand: a cosine.
     fn pulse_before(t: f32, period: f32) -> f32 {
         let wave = (core::f32::consts::TAU * t / period).cos();
         BLINK_MIN + (1.0 - BLINK_MIN) * (1.0 + wave) / 2.0

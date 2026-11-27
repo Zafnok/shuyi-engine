@@ -1,4 +1,4 @@
-//! Shuyi Engine's UI, independent of any window or platform (game ADR-0004).
+//! Shuyi Engine's UI, independent of any window or platform.
 //! So far:
 //!
 //! - the [`frame`] every screen draws into (a console of glyph cells the

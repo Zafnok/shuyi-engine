@@ -1,4 +1,4 @@
-//! The one-bit renderer (game ADR-0074): draws a [`GlyphBuffer`] the size of
+//! The one-bit renderer: draws a [`GlyphBuffer`] the size of
 //! the Playdate's screen (50 × 15 cells of 8 × 16 pixels,
 //! [`ConsoleSpec::text`](crate::frame::ConsoleSpec::text)) into a 400 × 240
 //! one-bit [`Frame`] laid out as the Playdate's own frame buffer, so its
@@ -13,8 +13,8 @@
 //! is dithered by its [`luminance`]; a glyph's is solid, white or black,
 //! as text is never dithered. [`to_one_bit`] draws with them.
 //!
-//! The order: the white ground; a backdrop's scene in its window
-//! (game ADR-0048), drawn the same way; then the cell backgrounds, `Under`
+//! The order: the white ground; a backdrop's scene in its window,
+//! drawn the same way; then the cell backgrounds, `Under`
 //! items, the white edges of [edged](Shade::edged) glyphs, the glyphs (each
 //! half of a wide one in its own cell: the font's one-bit atlas keeps the
 //! halves as two cells),
@@ -24,9 +24,9 @@
 //! indexed one dithered as it is drawn ([`dither_row`]). Nothing here
 //! allocates.
 //!
-//! Made for the device's speed (ticket 1055, game ADR-0077): 32-bit
+//! Made for the device's speed: 32-bit
 //! coordinates, a pattern's byte looked up, whole bytes written whole
-//! (a sprite's too, ticket 3056), only the cells near the part being
+//! (a sprite's too), only the cells near the part being
 //! drawn visited, and
 //! [`render_changed`] redraws only where a frame differs from the last.
 //! [`reference`] is the plain renderer this one must equal.
@@ -1355,7 +1355,7 @@ impl Columns {
 /// ([`Image::sample`]), coloured as its paint says. Without an image it is
 /// a grey rectangle.
 ///
-/// A byte of the frame at a time (ticket 3056): which picture column each
+/// A byte of the frame at a time: which picture column each
 /// screen column takes is worked out once for the sprite ([`Columns`]),
 /// and the opacity's, brightness's and paint's pixels are patterns, a
 /// byte a row. A sprite shown pixel for pixel takes a row's eight pixels

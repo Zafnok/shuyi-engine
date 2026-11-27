@@ -1,4 +1,4 @@
-//! Several pads as one (ticket 2412, game ADR-0034): each pad's events
+//! Several pads as one: each pad's events
 //! come with its pad ([`Pads::update`]), and [`Game`] merges them here
 //! before its [`InputState`] hears them, so a game sees one controller
 //! however many are plugged in.

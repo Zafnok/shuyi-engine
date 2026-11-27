@@ -1,5 +1,5 @@
 //! The tile camera: which map tiles the viewport shows. How many tiles
-//! that is (the view's size) comes from the grid skin (game ADR-0038).
+//! that is (the view's size) comes from the grid skin.
 
 use shuyi_core::Pos;
 

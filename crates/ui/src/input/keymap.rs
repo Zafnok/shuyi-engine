@@ -1,6 +1,6 @@
 //! [`Keymap`]: the lookup from key chords and controller buttons to a
-//! game's actions, plus the key-repeat timings (game ADR-0015, game ADR-0031,
-//! game ADR-0034). Generic over the game's [`ActionSet`] (ticket 1106).
+//! game's actions, plus the key-repeat timings.
+//! Generic over the game's [`ActionSet`].
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -15,7 +15,7 @@ use super::state::Device;
 /// Lookup from chord, and from controller button or
 /// [button chord](ButtonChord), to actions, plus repeat and chord timings.
 /// A chord or button is on at most one action of each
-/// [group](ActionSet::Group) (game ADR-0068), so one press can give an action of
+/// [group](ActionSet::Group), so one press can give an action of
 /// each group: the screen on top reacts to the ones it uses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keymap<A: ActionSet> {
@@ -35,7 +35,7 @@ pub struct Keymap<A: ActionSet> {
 
 /// How long a controller button that is in a [button chord](ButtonChord)
 /// holds back its own actions, so that pressing its partner can fire the
-/// chord instead (ticket 1034). See [`Keymap::chord_wait`].
+/// chord instead. See [`Keymap::chord_wait`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChordWait {
     /// Not at all: it acts on press, like any button. A button in no chord,

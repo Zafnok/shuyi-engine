@@ -1,4 +1,4 @@
-//! The toy game's tick stage (ticket 2137): core's toy [`Dot`], stepped by
+//! The toy game's tick stage: core's toy [`Dot`], stepped by
 //! a [`TickDriver`] that records every step, drawn as an `@` (a pixel a
 //! cell, from the console's middle), each stop played as the sound
 //! [`STOP`]. Cancel opens the toy's [`Menu`] over it.

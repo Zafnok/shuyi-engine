@@ -24,8 +24,8 @@ const LABEL_DX: i32 = 4;
 /// longer label moves it right ([`value_dx`]).
 const VALUE_DX: i32 = 30;
 /// The highest the panel's top border rises when its rows need the room
-/// ([`panel`]): the screen's top row (game ticket 0923: a game's rows
-/// filled it to row 1).
+/// ([`panel`]): the screen's top row (a game's rows
+/// may fill it to row 1).
 const TOP_MIN: i32 = 0;
 /// Rows under the panel at the least: a blank one, the message's and the
 /// help line's.
@@ -106,7 +106,7 @@ fn first_shown(lines: &[Option<&RowView>], room: usize) -> usize {
 /// The values' column, from the panel's left edge: [`VALUE_DX`], or
 /// further right when the longest of `view`'s labels needs it, so a
 /// focused value's `◄` (two cells left of it) comes after the label and
-/// never covers it (game ticket 1302). All rows, not only those shown, so
+/// never covers it. All rows, not only those shown, so
 /// the column doesn't move as the list scrolls.
 fn value_dx(view: &OptionsView, buf: &GlyphBuffer) -> i32 {
     let longest = view
@@ -327,7 +327,7 @@ mod tests {
 
     /// A label longer than the values' usual column moves every value
     /// right, so the focused one's `◄` comes after the label, which shows
-    /// whole (game ticket 1302).
+    /// whole.
     #[test]
     fn the_longest_label_focused_is_painted_whole() {
         let c = ctx();

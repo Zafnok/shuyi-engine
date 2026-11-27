@@ -192,7 +192,7 @@ pub trait GameData: Debug + Sized + 'static {
     ) {
     }
 
-    /// How a key's name in styled text is drawn (ticket 3215, ADR-0124):
+    /// How a key's name in styled text is drawn (ADR-0124):
     /// as a key cap in this style, in the palette's
     /// [`KEY`](crate::frame::color::KEY),
     /// [`KEY_BG`](crate::frame::color::KEY_BG) and

@@ -1,4 +1,4 @@
-//! The corner rule (game ADR-0052): which tiles a picture drawn *between*
+//! The corner rule: which tiles a picture drawn *between*
 //! tiles joins.
 //!
 //! A sprite skin's layers draw one picture at every point where four tiles

@@ -1,4 +1,4 @@
-//! Colors: [`Rgb`] values and the [`Palette`] of named colors (game ADR-0012).
+//! Colors: [`Rgb`] values and the [`Palette`] of named colors.
 //!
 //! Code refers to colors by name, never raw RGB. The colors a game's code
 //! needs are its [`ColorSet`], an enum whose every name the palette must
@@ -114,8 +114,8 @@ impl From<Rgb> for [u8; 4] {
 pub const DIM_GREY: f32 = 0.75;
 
 /// How bright a [dimmed](Rgb::dimmed) colour is left (`1` = as bright as it
-/// was). *Tunable*: the first renders used 0.6; Nick, seeing it in the game
-/// on 2026-10-03, chose to lighten it a bit (ticket 0436).
+/// was). *Tunable*: the first renders used 0.6, which
+/// looked too dark in play, so it was lightened a bit.
 pub const DIM_DARK: f32 = 0.75;
 
 /// Rounds and saturates a channel value to `0..=255`.
@@ -228,8 +228,8 @@ pub const KEY: &str = "key";
 /// background.
 pub const KEY_BG: &str = "key_bg";
 
-/// The palette's name for the 1 px edge of a key cap's box (ticket 3215,
-/// [`KeyCapStyle`](crate::frame::key_cap::KeyCapStyle)). Optional:
+/// The palette's name for the 1 px edge of a key cap's box
+/// ([`KeyCapStyle`](crate::frame::key_cap::KeyCapStyle)). Optional:
 /// without it, the edge is the box's fill, [`KEY_BG`].
 pub const KEY_EDGE: &str = "key_edge";
 

@@ -6,7 +6,7 @@
 use alloc::format;
 use alloc::string::{String, ToString};
 
-/// How a frame is scaled to a window or a display (game ADR-0012, ADR-0140).
+/// How a frame is scaled to a window or a display (ADR-0140).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
 )]

@@ -1,11 +1,11 @@
-//! The ground a sprite skin paints from its terrain tiles (game
-//! game ADR-0052): each tile's own picture, then the look's layers over them
+//! The ground a sprite skin paints from its terrain tiles:
+//! each tile's own picture, then the look's layers over them
 //! (pictures between tiles by the [corner rule](crate::grid::corners),
 //! and pictures on tiles), then the pictures the map places by hand on
 //! chosen tiles (a lamp, a signpost: standing on their tile, and as tall
 //! as their art, so they may reach up over the tiles above), then what
 //! tints a tile. The pictures are
-//! shaded by the light the scene's map is in (game ADR-0058); the tints
+//! shaded by the light the scene's map is in; the tints
 //! are not.
 //!
 //! A tile off the map gets no picture, and no part of one: a picture
@@ -32,7 +32,7 @@ use crate::grid::ranges::RangeShow;
 
 /// How far a range's outline and a raised tile's lit edges go from its
 /// color toward white over the pictures, brighter than on the glyph
-/// skin's dark ground (ticket 3224). *Tunable.*
+/// skin's dark ground. *Tunable.*
 pub(super) const LIT: f32 = 0.55;
 use crate::grid::scene::{MapScene, RangeName, TileView, Tints};
 use crate::grid::skin::Looks;
@@ -300,8 +300,7 @@ impl<U> Ground<'_, U> {
 /// What tints `tile`, in `ranges`, in order, as colors and strengths: its
 /// flashes (towards its terrain's glyph color, as on the glyph skin), then
 /// its ranges. A tile that would change is drawn as what it would become,
-/// so nothing tints it. (The cursor never tints a picture: game ticket
-/// 0444.)
+/// so nothing tints it. (The cursor never tints a picture.)
 fn tints(looks: &Looks, tile: &TileView, ranges: &[RangeName], strength: f32) -> Vec<(Rgb, f32)> {
     let mut out = Vec::new();
     if tile.becomes.is_none() {

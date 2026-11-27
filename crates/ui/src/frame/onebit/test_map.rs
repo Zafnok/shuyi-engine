@@ -1,8 +1,8 @@
 //! The one-bit tests' colours and their pattern map: eight swatches, one
 //! for each kind of thing a role can be drawn as (white, black, black with
 //! a white edge, four patterns, and black that flips), each a role of the
-//! map [`TEST_ROLES`] (ticket 2389; ticket 2388 proved this map draws as
-//! the game's inks did).
+//! map [`TEST_ROLES`] (it draws as the original
+//! inks did).
 
 use super::{PatternMap, PatternMapDef};
 use crate::frame::color::Rgb;
