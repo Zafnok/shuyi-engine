@@ -165,8 +165,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   replay --crash <report> [--any-stamp]
                                      a crash report's record of play, run once: ok while
                                      it plays to its end, and where it panics if it does
-  crash <report>                     read a crash report: the panic, the versions, the
-                                     frames and the log (no project needed)
+  crash <report> [--symbols <file>]  read a crash report: the panic, the versions, the
+                                     frames (named from its build's debug file with
+                                     --symbols) and the log (no project needed)
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the
                                      game's bands (or none), and what they were the last

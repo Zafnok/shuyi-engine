@@ -1,15 +1,26 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
 
+{#- News: every post, newest first, ten to a page (ticket 2805). #}
 {% block content %}
 <article class="prose">
   <h1>{{ section.title }}</h1>
+  {%- if paginator.current_index == 1 %}
   {{ section.content | safe }}
-  {%- if section.pages %}
-  {{ macros::post_list(pages=section.pages) }}
+  {%- endif %}
+  {%- if paginator.pages %}
+  {{ macros::post_list(pages=paginator.pages) }}
   {%- else %}
   <p>No posts yet.</p>
   {%- endif %}
-  <p><a href="{{ get_url(path='changelog/') }}">The changelog</a>, every ticket done · <a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The feed (Atom)</a></p>
+  {%- if paginator.previous or paginator.next %}
+  <nav class="post-pager" aria-label="Pages of News">
+    {%- if paginator.previous %}<a rel="prev" href="{{ paginator.previous | safe }}">← Newer posts</a>{% endif %}
+    {%- if paginator.next %}<a rel="next" href="{{ paginator.next | safe }}">Older posts →</a>{% endif %}
+  </nav>
+  {%- endif %}
+  <p><a href="{{ get_url(path='changelog/') }}">The changelog</a>, every ticket done · <a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The feed (Atom)</a>
+  {%- set tags = get_taxonomy(kind="tags", required=false) %}
+  {%- if tags and tags.items %} · <a href="{{ tags.permalink | safe }}">Posts by tag</a>{% endif %}</p>
 </article>
 {% endblock content %}

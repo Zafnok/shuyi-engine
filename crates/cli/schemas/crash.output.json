@@ -89,6 +89,13 @@
           "format": "uint32",
           "minimum": 0
         },
+        "frames": {
+          "description": "The frames of the panicking thread's stack, the innermost first:\nnamed with `--symbols`, offsets without. Empty for a report from\nmacOS or the web, or one older than its frames.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NamedFrame"
+          }
+        },
         "game": {
           "description": "The game's version, empty if the game gave none.",
           "type": "string"
@@ -151,8 +158,46 @@
         "frame",
         "log",
         "backtrace",
-        "has_record"
+        "has_record",
+        "frames"
       ]
+    },
+    "NamedFrame": {
+      "description": "A frame of a crash report's stack, the innermost first: where in the\nprogram it was, and, from the debug file, the function, its file and\nthe line. An inlined function is a frame of its own, at the same\noffset as the function it was inlined into.",
+      "type": "object",
+      "properties": {
+        "file": {
+          "description": "The function's source file, by the name the build gave it (a\nrelease's paths remapped: `/cargo/registry/...`, the package's\nname for the game's own).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "function": {
+          "description": "The function, as the debug file names it (its debug information,\nor else its symbol table); `None` without `--symbols`, or where it\nnames none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "description": "The line in `file`: of the call, for a frame that called another.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "offset": {
+          "description": "The return address minus the program's load address, as sixteen\nhex digits; `None` for a frame in another module, such as a system\nlibrary.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

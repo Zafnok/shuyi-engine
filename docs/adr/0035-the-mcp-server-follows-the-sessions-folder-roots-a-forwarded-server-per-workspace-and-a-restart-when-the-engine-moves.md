@@ -1,6 +1,6 @@
 # ADR-0035: The MCP server follows the session's folder: roots, a forwarded server per workspace, and a restart when the engine moves
 
-- **Status:** Accepted; §1 and §4 amended by ADR-0156 (on protocol 2026-07-28: the folder by `input_required`, list changes by subscription)
+- **Status:** Accepted; §1 and §4 amended by ADR-0156 (on protocol 2026-07-28: the folder by `input_required`, list changes by subscription); §2 extended by ADR-0162 (a forwarded call as a task)
 - **Date:** 2026-10-22
 - **Related tickets:** 2546 (this), 2535 (`--ready` and the stale
   limit), 2545 (the program moved aside), 2542 (the stale limit's two
