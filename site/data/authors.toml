@@ -1,0 +1,14 @@
+# The people who write News's posts (ticket 2805). A post names its author
+# by the key of a table here, in its front matter's `[extra] author`. The
+# list and the post's page show the author's `name`, linked to `link` if
+# there is one, else to their GitHub profile. A post with no author (the
+# release posts `cargo xtask changelog` writes) shows none.
+#
+# [Key]
+# name = "The name a post shows"
+# github = "their GitHub user, without the at sign"
+# link = "https://… (optional: their own site, in place of GitHub)"
+
+[Nick]
+name = "Nick"
+github = "Zafnok"

@@ -227,7 +227,7 @@ pub fn run(repo_root: &Path, pr: Option<Pr>, base: Option<&str>, game: &GameSour
                     }
                 }
                 let changed = match &kind {
-                    PrKind::TicketsOnly(_) => changed_files(repo_root, base),
+                    PrKind::TicketsOnly(_) | PrKind::Post => changed_files(repo_root, base),
                     _ => Ok(Vec::new()),
                 };
                 match changed {
