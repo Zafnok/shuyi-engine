@@ -12,9 +12,9 @@ use std::any::Any;
 
 use serde::Deserialize;
 use shuyi::assets::Formats;
-use shuyi::assets::audio::AudioManifest;
 use shuyi::assets::cinematic::{self, CinematicDef, CinematicFile, CinematicRon, ShotCheck};
-use shuyi::assets::lang::English;
+use shuyi::prelude::audio::AudioManifest;
+use shuyi::prelude::text::English;
 use shuyi::prelude::*;
 use shuyi::ui::cinematic::{CinematicPlayer, Moment, ShotPainter, millis};
 

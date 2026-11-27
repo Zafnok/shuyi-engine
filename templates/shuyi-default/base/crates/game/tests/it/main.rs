@@ -5,20 +5,15 @@
 use std::path::Path;
 
 use game::title::Title;
-use shuyi::assets::audio::{format_problem, playable};
-use shuyi::platform::harness::Harness;
-use shuyi::platform::session::Stamps;
+use shuyi::prelude::audio::{AudioConfig, format_problem, playable};
+use shuyi::prelude::test::{Harness, Stamps};
+use shuyi::prelude::text::{StyledText, TextRole};
 use shuyi::prelude::{Cell, GameData, GlyphBuffer, Rgb, Screen, UiAction};
-use shuyi::ui::audio::AudioConfig;
 use shuyi::ui::frame::color::KEY;
-use shuyi::ui::text::{StyledText, TextRole};
-use shuyi_cli::contract::check::{CheckInput, check, targets};
-use shuyi_cli::contract::playtest::PlaytestInput;
-use shuyi_cli::contract::run::{RunInput, keys, run};
-use shuyi_cli::contract::session::Event;
-use shuyi_cli::contract::target::engine_profiles;
-use shuyi_cli::project::Project;
-use shuyi_cli::{BasicTools, GameTools};
+use shuyi_cli::prelude::{
+    BasicTools, CheckInput, Event, GameTools, PlaytestInput, Project, RunInput, check,
+    engine_profiles, keys, run, targets,
+};
 
 /// The engine's tools for the game: `game::stages::tools` gives its
 /// stages' own on top of them.

@@ -7,15 +7,13 @@
 //! broken scene in the folder is listed as a problem, and never stops the
 //! program.
 
-use shuyi::assets::bundle::Layer;
 use shuyi::assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
-use shuyi::platform::{Card, Start};
+use shuyi::prelude::{Card, Ctx, Game, GameHooks, Layer, Start};
 use shuyi::ui::dialogue::Plain;
 use shuyi::ui::dialogue::preview::{
     DialogueFolder, DialoguePreview, Play, PreviewGame, PreviewScreen, Showing,
 };
 use shuyi::ui::module::ModuleError;
-use shuyi::ui::{Ctx, Game, GameHooks};
 
 use crate::prelude::*;
 use crate::screens::{HelloCtx, Talk};

@@ -2,8 +2,8 @@
 //! its `shuyi.ron` part, so an edit that forgets to make it again fails
 //! here, and its web build is its binary.
 
-use shuyi_cli::Project;
 use shuyi_cli::frame_png;
+use shuyi_cli::prelude::Project;
 
 use crate::{root, tools};
 

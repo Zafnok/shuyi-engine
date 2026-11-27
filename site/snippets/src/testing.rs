@@ -2,8 +2,7 @@
 //! that holds for any seed, a record replayed step by step with the hash of
 //! each step, and a whole session recorded and played to any frame.
 
-use shuyi::core::bots::{Bot, Report, play};
-use shuyi::core::{RandomBot, TurnRules};
+use shuyi::core::prelude::{Bot, RandomBot, Report, TurnRules, play};
 
 use crate::assets::Plan;
 use crate::rules::{Command, Garden};
@@ -42,10 +41,9 @@ pub fn play_randomly(seed: u64) -> Report<Garden> {
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
-    use shuyi::core::state_hash;
-    use shuyi::platform::harness::{Harness, check_session};
-    use shuyi::platform::session::Stamps;
-    use shuyi_cli::contract::replay::turns;
+    use shuyi::core::prelude::state_hash;
+    use shuyi::prelude::test::{Harness, Stamps, check_session};
+    use shuyi_cli::prelude::turns;
 
     use super::*;
     use crate::game;

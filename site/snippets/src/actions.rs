@@ -108,7 +108,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use shuyi::assets::keymap::KeymapDef;
-    use shuyi::assets::{Bundle, Layer};
+    use shuyi::prelude::{Bundle, Layer};
 
     use super::*;
     use crate::assets::Plan;

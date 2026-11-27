@@ -4,9 +4,9 @@
 //! keys), input to a test, not game code.
 
 use game::stages::top_down_grid::StageScreen;
-use shuyi::core::{Pos, Sides, TurnRules};
-use shuyi::platform::harness::Harness;
+use shuyi::core::prelude::{Pos, Sides, TurnRules};
 use shuyi::prelude::UiAction;
+use shuyi::prelude::test::Harness;
 
 /// The stage on top of `h`.
 fn stage(h: &Harness<game::Data>) -> &StageScreen {

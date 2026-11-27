@@ -10,6 +10,7 @@
 //! - `cargo xtask next-id ticket <block>` | `cargo xtask next-id adr`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-imports`
 //! - `cargo xtask check-targets`
 //! - `cargo xtask check-publish [--order | --index]`
 //! - `cargo xtask check-modules`
@@ -61,6 +62,7 @@ mod gates;
 mod golden;
 mod guides;
 mod ids;
+mod imports;
 mod layers;
 mod links;
 mod llms;
@@ -135,6 +137,10 @@ usage:
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
       no device crate below them and the float ban in the simulations.
+  cargo xtask check-imports
+      Check that the template, the examples, the book's snippets and the
+      skills' worked examples name an engine item only through a prelude, or
+      through a deeper path tools/imports.ron allows with why (ADR-0161).
   cargo xtask check-targets
       Check that no two workspace packages build a binary, or an example, of
       the same name: their outputs are one file (ticket 2056).
@@ -383,6 +389,9 @@ fn main() -> ExitCode {
         Some("next-id") => next_id(&root, &args[1..]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-imports") if args.len() == 1 => {
+            report("check-imports", &imports::run(&root), &[])
+        }
         Some("check-targets") if args.len() == 1 => {
             report("check-targets", &targets::run(&root), &[])
         }

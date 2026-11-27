@@ -7,5 +7,8 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let tools = game::stages::tools();
-    ExitCode::from(shuyi_cli::main_with(std::env::args().skip(1), Some(&tools)))
+    ExitCode::from(shuyi_cli::prelude::main_with(
+        std::env::args().skip(1),
+        Some(&tools),
+    ))
 }

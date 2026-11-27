@@ -10,8 +10,7 @@
 //! write_the_golden_record` writes it again. It and the table are read
 //! with `include_str!`.
 
-use shuyi_cli::GameTools;
-use shuyi_cli::contract::replay::Record;
+use shuyi_cli::prelude::{GameTools, Record};
 use snake::tools::Tools;
 
 /// The checked-in record.
