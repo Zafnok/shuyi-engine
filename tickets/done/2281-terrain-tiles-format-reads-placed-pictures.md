@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2281 — The terrain-tiles format reads the pictures a map may place on its tiles
@@ -107,20 +107,20 @@ completed:
 
 ## Acceptance criteria
 
-- [ ] A `terrain-tiles` file with `props: { "lamp": (at: (4, 0), size:
+- [x] A `terrain-tiles` file with `props: { "lamp": (at: (4, 0), size:
       (16, 32)) }` resolves to a look whose `props` has "lamp" as the
       16 × 32 rectangle at pixel (4 × tile_px.0, 0).
-- [ ] A prop with no `size` is `tile_px`. A file without `props` reads
+- [x] A prop with no `size` is `tile_px`. A file without `props` reads
       and resolves exactly as before.
-- [ ] An empty name, a side of 0, and a size outside `side_px` are each
+- [x] An empty name, a side of 0, and a size outside `side_px` are each
       reported, naming the look and the prop. A picture outside the image
       is reported by `resolve`.
-- [ ] Another look's `props` are its own: a look without any places
+- [x] Another look's `props` are its own: a look without any places
       nothing, even when the own look has some.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -131,5 +131,56 @@ completed:
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `tileset::PropAt` (`at`, `size`; `PropAt::new(at)`, `with_size`), and a
+  `props` field on `TerrainTilesDef` (the own look) and on `LookDef`, each
+  `#[serde(default)]`. `PropAt` is written as a corner layer's `size` is:
+  bare, left out when `None`.
+- `problems` reports an empty name, a side of 0 (as its own message, so it
+  is reported even when the rules' `side_px` allows 0) and a side outside
+  `side_px`, after each look's layers, in the file's order:
+  `look "winter": prop "lamp": size is (0, 32); a side of 0 px draws
+  nothing`.
+- `resolve` fills each look's `Look::props` from its own `props` only,
+  each `ImageRect::cell` at its size (`tile_px` if left out), checked
+  against the image as a layer's picture is (`codes::OUT_OF_RANGE`).
+- The golden fixture's own look has a lamp (16 × 32) and a sign (a tile);
+  its winter look has none. `formats.ron`'s `terrain tiles:
+  terrain-tiles` row is blessed again.
+- Tests: reading and resolving (none, some, with and without `size`, a
+  look's own and another's, a tile not square), each problem and its
+  order, a picture outside the image, an unknown field, and a property
+  test that a file with props round-trips through RON.
+- Docs: `docs/formats.md`'s *Terrain tiles* paragraph, the `tileset`
+  module's example file, the book's paragraph on placed pictures in
+  *Frame and skins*, and the `shuyi-import-art` skill.
+- Deviations: none. The ticket was written today, so no re-check against
+  `main` was needed beyond reading the code it names.
+
+Searched the game (`gh search code --repo Zafnok/visions-of-shuyi
+'TerrainTilesDef'` and `'LookDef'`): only game#1219's ticket names them;
+no code builds them yet.
+
+Breaking: shuyi-assets: `formats.ron` "terrain tiles: terrain-tiles": a decoded `TerrainTilesDef` holds `props` (and each `LookDef` its own), so its state hash moves; a game's own golden row of a decoded terrain tiles file is blessed again.
+
+```migration
+since: 0.1.0
+what: A decoded terrain tiles file holds each look's props, so a golden row of one moves.
+old: "TerrainTilesDef without props"
+new: "TerrainTilesDef with props"
+before: |
+  cargo xtask golden   # a row of a decoded terrain-tiles file, blessed before 2281
+after: |
+  cargo xtask golden --bless   # or the game's own way, for that row
+find: ["terrain-tiles file"]
+```
+
+Book: `site/content/learn/book/frame-and-skins.md` says how a
+`terrain-tiles` file writes a look's pictures.
+
+Skills: `skills/shuyi-import-art/SKILL.md` shows `props` in the file.
+
+Guides: none, it adds no direction, module or move (a field of an
+existing format).
+
+Game: game#1219 moves the game's tileset onto this format, and game#1378
+then writes its lamp's picture with `props`.

@@ -5,6 +5,7 @@ use crate::format::builtin_tests::{
     terrain_tiles_images as images, tile_terrains as terrains,
 };
 use crate::image::ImageId;
+use proptest::prelude::*;
 
 fn read(source: &str) -> TerrainTilesDef {
     parse_ron("farm.ron", source).unwrap_or_else(|e| panic!("{e}"))
@@ -106,6 +107,21 @@ fn the_farm_resolves_to_the_tiles_built_by_hand() {
             mixes([(8, cell((3, 2)))]),
         ))],
     );
+    let mut own = own;
+    own.props = [
+        (
+            "lamp".to_owned(),
+            ImageRect {
+                x: 48,
+                y: 16,
+                w: 16,
+                h: 32,
+            },
+        ),
+        ("sign".to_owned(), cell((0, 2))),
+    ]
+    .into();
+    // The own look's pictures are not winter's: it places none.
     let mut tiles = TerrainTiles::new(image(), (16, 16), own);
     tiles.looks = [("winter".to_owned(), winter)].into();
     assert_eq!(resolved(FARM), Ok(tiles));
@@ -476,6 +492,21 @@ fn the_constructors_give_the_literals() {
         LookDef {
             terrain: terrain.clone(),
             layers: Vec::new(),
+            props: BTreeMap::new(),
+        }
+    );
+    assert_eq!(
+        PropAt::new((4, 0)),
+        PropAt {
+            at: (4, 0),
+            size: None,
+        }
+    );
+    assert_eq!(
+        PropAt::new((4, 0)).with_size((16, 32)),
+        PropAt {
+            at: (4, 0),
+            size: Some((16, 32)),
         }
     );
     assert_eq!(
@@ -485,9 +516,232 @@ fn the_constructors_give_the_literals() {
             tile_px: (16, 24),
             terrain,
             layers: Vec::new(),
+            props: BTreeMap::new(),
             looks: BTreeMap::new(),
         }
     );
+}
+
+/// A file of the farm's own tiles with the pictures to place `props` and
+/// `looks`.
+fn with_props(props: &str, looks: &str) -> String {
+    format!(
+        "(image: \"tiles/farm.png\", tile_px: (16, 16), terrain: {{\"soil\": (0, 0), \
+         \"tilled\": (1, 0), \"water\": (2, 0)}}, props: {{{props}}}, looks: {{{looks}}})"
+    )
+}
+
+/// The farm's tiles' own look, a winter look with `winter` written in it.
+fn winter(winter: &str) -> String {
+    format!(
+        "\"winter\": (terrain: {{\"soil\": (0, 2), \"tilled\": (1, 2), \"water\": (2, 2)}}{winter})"
+    )
+}
+
+#[test]
+fn a_picture_to_place_is_its_cell_at_its_size() {
+    // A wider image than the farm's, for a picture at column 4.
+    let images = ImageTable::new([("tiles/farm.png", ImageInfo::new(96, 48))].into());
+    let source = with_props(r#""lamp": (at: (4, 0), size: (16, 32))"#, "");
+    assert_eq!(problems(&source), Vec::<String>::new());
+    let tiles = read(&source)
+        .resolve("farm.ron", &images, &terrains())
+        .unwrap();
+    let lamp = ImageRect {
+        x: 4 * 16,
+        y: 0,
+        w: 16,
+        h: 32,
+    };
+    assert_eq!(tiles.look.props, [("lamp".to_owned(), lamp)].into());
+}
+
+#[test]
+fn a_picture_to_place_with_no_size_is_a_tile() {
+    let source = with_props(r#""sign": (at: (1, 2))"#, "");
+    assert_eq!(read(&source).props["sign"], PropAt::new((1, 2)));
+    let tiles = resolved(&source).unwrap();
+    assert_eq!(tiles.look.props, [("sign".to_owned(), cell((1, 2)))].into());
+    // Left out, the size is `tile_px`, a tile not square too.
+    let tall = with_props(r#""sign": (at: (1, 0))"#, "").replace("(16, 16)", "(16, 24)");
+    let look = resolved(&tall).unwrap().look;
+    assert_eq!(
+        look.props["sign"],
+        ImageRect {
+            x: 16,
+            y: 0,
+            w: 16,
+            h: 24,
+        }
+    );
+}
+
+#[test]
+fn a_file_without_pictures_to_place_places_none() {
+    let source = file("(16, 16)", "", "");
+    let def = read(&source);
+    assert_eq!(def.props, BTreeMap::new());
+    assert_eq!(resolved(&source).unwrap().look.props, BTreeMap::new());
+}
+
+#[test]
+fn another_looks_pictures_to_place_are_its_own() {
+    let source = with_props(
+        r#""lamp": (at: (3, 1), size: (16, 32))"#,
+        &[
+            winter(r#", props: {"lamp": (at: (0, 1)), "well": (at: (1, 1))}"#),
+            r#""cave": (terrain: {"soil": (0, 0), "tilled": (1, 0), "water": (2, 0)})"#.to_owned(),
+        ]
+        .join(", "),
+    );
+    assert_eq!(problems(&source), Vec::<String>::new());
+    let tiles = resolved(&source).unwrap();
+    assert_eq!(
+        tiles.looks["winter"].props,
+        [
+            ("lamp".to_owned(), cell((0, 1))),
+            ("well".to_owned(), cell((1, 1))),
+        ]
+        .into()
+    );
+    // A look without any places nothing, though the own look has some.
+    assert_eq!(tiles.looks["cave"].props, BTreeMap::new());
+    assert_eq!(tiles.look.props.keys().collect::<Vec<_>>(), ["lamp"]);
+}
+
+#[test]
+fn a_picture_to_place_has_a_name_and_a_size_inside_the_rules() {
+    assert_eq!(
+        problems(&with_props(r#""": (at: (0, 0))"#, "")),
+        ["prop \"\": its name is empty"]
+    );
+    for (size, problem) in [
+        (
+            "(0, 32)",
+            "prop \"lamp\": size is (0, 32); a side of 0 px draws nothing",
+        ),
+        (
+            "(16, 0)",
+            "prop \"lamp\": size is (16, 0); a side of 0 px draws nothing",
+        ),
+        (
+            "(16, 65)",
+            "prop \"lamp\": size is (16, 65); each side must be 8 to 64 px",
+        ),
+        (
+            "(7, 16)",
+            "prop \"lamp\": size is (7, 16); each side must be 8 to 64 px",
+        ),
+    ] {
+        let source = with_props(&format!("\"lamp\": (at: (0, 0), size: {size})"), "");
+        assert_eq!(problems(&source), [problem], "{size}");
+    }
+    for edge in ["(8, 8)", "(64, 64)"] {
+        let source = with_props(&format!("\"lamp\": (at: (0, 0), size: {edge})"), "");
+        assert_eq!(problems(&source), Vec::<String>::new(), "{edge}");
+    }
+}
+
+#[test]
+fn a_side_of_0_is_reported_when_the_rules_allow_0() {
+    let rules = TileRules::new(LOOKS, 0..=64);
+    let source = with_props(r#""lamp": (at: (0, 0), size: (0, 8))"#, "");
+    assert_eq!(
+        read(&source).problems(&rules),
+        ["prop \"lamp\": size is (0, 8); a side of 0 px draws nothing"]
+    );
+}
+
+#[test]
+fn a_problem_of_a_picture_to_place_names_its_look_in_the_files_order() {
+    let source = with_props(
+        r#""": (at: (0, 0))"#,
+        &winter(
+            r#", layers: [Tiles(of: [], at: (0, 0))], props: {"lamp": (at: (0, 0), size: (0, 0))}"#,
+        ),
+    );
+    assert_eq!(
+        problems(&source),
+        [
+            "prop \"\": its name is empty",
+            "look \"winter\": layer 1: `of` names no terrain",
+            "look \"winter\": prop \"lamp\": size is (0, 0); a side of 0 px draws nothing",
+        ]
+    );
+}
+
+#[test]
+fn a_picture_to_place_lies_inside_the_image() {
+    let outside = |what: &str, size: &str, at: &str| {
+        format!("farm.ron: {what}: its {size} px at {at} lies outside the 64×48 px image")
+    };
+    let own = with_props(r#""lamp": (at: (3, 2), size: (16, 32))"#, "");
+    assert_eq!(
+        errors(&own),
+        [outside("prop \"lamp\"", "16×32", "(48, 32)")]
+    );
+    assert_eq!(codes_of(&own), [Some(codes::OUT_OF_RANGE)]);
+    let other = with_props("", &winter(r#", props: {"well": (at: (4, 0))}"#));
+    assert_eq!(
+        errors(&other),
+        [outside(
+            "look \"winter\": prop \"well\"",
+            "16×16",
+            "(64, 0)"
+        )]
+    );
+    // At its size, a picture may reach the image's edge.
+    let edge = with_props(r#""lamp": (at: (3, 1), size: (16, 32))"#, "");
+    assert!(resolved(&edge).is_ok());
+}
+
+#[test]
+fn a_picture_to_place_refuses_an_unknown_field() {
+    let own = with_props(r#""lamp": (at: (0, 0), offset: (1, 1))"#, "");
+    let other = with_props(
+        "",
+        &winter(r#", props: {"well": (at: (1, 1), name: "well")}"#),
+    );
+    for source in [own, other] {
+        let bad = &source;
+        assert!(
+            parse_ron::<TerrainTilesDef>("t.ron", &source).is_err(),
+            "{bad}"
+        );
+    }
+}
+
+/// A picture to place, with a size or without.
+fn prop_at() -> impl Strategy<Value = PropAt> {
+    (
+        (0..8_u32, 0..8_u32),
+        proptest::option::of((1..65_u32, 1..65_u32)),
+    )
+        .prop_map(|(at, size)| {
+            let prop = PropAt::new(at);
+            size.map_or(prop, |size| prop.with_size(size))
+        })
+}
+
+/// Pictures to place, by name.
+fn props() -> impl Strategy<Value = BTreeMap<String, PropAt>> {
+    proptest::collection::btree_map("[a-z ]{0,6}", prop_at(), 0..4)
+}
+
+proptest! {
+    #[test]
+    fn a_file_with_pictures_to_place_written_back_reads_as_itself(
+        own in props(),
+        other in props(),
+    ) {
+        let mut def = read(FARM);
+        def.props = own;
+        if let Some(winter) = def.looks.get_mut("winter") {
+            winter.props = other;
+        }
+        let text = ::ron::to_string(&def).unwrap();
+        prop_assert_eq!(read(&text), def, "{}", text);
+    }
 }
 
 #[test]

@@ -23,6 +23,9 @@ use crate::ron::parse_ron;
 /// Cells by name: a look's tile of each terrain.
 type Cells = BTreeMap<String, (u32, u32)>;
 
+/// Pictures a map may place, by name.
+type Props = BTreeMap<String, PropAt>;
+
 impl AssetKind for TerrainTilesDef {
     const NAME: &'static str = "terrain tiles";
 }
@@ -44,6 +47,10 @@ pub struct TerrainTilesDef {
     /// The own look's layers, the first undermost. None if left out.
     #[serde(default)]
     pub layers: Vec<LayerDef>,
+    /// The own look's pictures a map may place on its tiles, by the name
+    /// the map gives ([`Look::props`]). None if left out.
+    #[serde(default)]
+    pub props: BTreeMap<String, PropAt>,
     /// The other looks, by the name a map's look gives. None if left out.
     #[serde(default)]
     pub looks: BTreeMap<String, LookDef>,
@@ -60,6 +67,47 @@ pub struct LookDef {
     /// The layers painted over the tiles. None if left out.
     #[serde(default)]
     pub layers: Vec<LayerDef>,
+    /// The pictures a map may place on its tiles, by name
+    /// ([`Look::props`]): the own look's are not this look's. None if left
+    /// out.
+    #[serde(default)]
+    pub props: BTreeMap<String, PropAt>,
+}
+
+/// A picture a map may place, as written: a cell of the image and a size.
+/// Build it with [`PropAt::new`] (ADR-0039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct PropAt {
+    /// The picture's cell.
+    pub at: (u32, u32),
+    /// The picture's size in pixels, from its cell's top-left. Left out,
+    /// `tile_px`.
+    #[serde(
+        default,
+        deserialize_with = "written",
+        serialize_with = "unwritten",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub size: Option<(u32, u32)>,
+}
+
+impl PropAt {
+    /// The picture at cell `at`, a tile big.
+    #[must_use]
+    pub const fn new(at: (u32, u32)) -> Self {
+        Self { at, size: None }
+    }
+
+    /// This picture, `size` pixels from its cell's top-left.
+    #[must_use]
+    pub const fn with_size(self, size: (u32, u32)) -> Self {
+        Self {
+            size: Some(size),
+            ..self
+        }
+    }
 }
 
 /// A layer as written: a [`Layer`] with its terrains by name and its
@@ -160,19 +208,21 @@ impl<'a> TileRules<'a> {
 }
 
 impl LookDef {
-    /// The look of the tiles `terrain`, with no layer.
+    /// The look of the tiles `terrain`, with no layer and no picture to
+    /// place.
     #[must_use]
     pub const fn new(terrain: BTreeMap<String, (u32, u32)>) -> Self {
         Self {
             terrain,
             layers: Vec::new(),
+            props: BTreeMap::new(),
         }
     }
 }
 
 impl TerrainTilesDef {
-    /// The tiles `terrain` of `image`, `tile_px` each, with no layer and
-    /// no other look.
+    /// The tiles `terrain` of `image`, `tile_px` each, with no layer, no
+    /// picture to place and no other look.
     #[must_use]
     pub const fn new(
         image: String,
@@ -184,17 +234,20 @@ impl TerrainTilesDef {
             tile_px,
             terrain,
             layers: Vec::new(),
+            props: BTreeMap::new(),
             looks: BTreeMap::new(),
         }
     }
 
-    /// Every look: its name (`None` for the own one), its tiles and its
-    /// layers.
-    fn all_looks(&self) -> impl Iterator<Item = (Option<&str>, &Cells, &[LayerDef])> {
-        let own = (None, &self.terrain, self.layers.as_slice());
-        let looks = self.looks.iter();
-        core::iter::once(own)
-            .chain(looks.map(|(name, look)| (Some(name.as_str()), &look.terrain, &*look.layers)))
+    /// Every look: its name (`None` for the own one), its tiles, its
+    /// layers and its pictures to place.
+    fn all_looks(&self) -> impl Iterator<Item = (Option<&str>, &Cells, &[LayerDef], &Props)> {
+        let own = (None, &self.terrain, self.layers.as_slice(), &self.props);
+        let looks = self.looks.iter().map(|(name, look)| {
+            let name = Some(name.as_str());
+            (name, &look.terrain, &*look.layers, &look.props)
+        });
+        core::iter::once(own).chain(looks)
     }
 
     /// What is wrong with the file alone, under `rules`: a side of
@@ -203,18 +256,24 @@ impl TerrainTilesDef {
     /// [`looks`](TileRules::looks), or [`DEFAULT_TILES`] (the own look,
     /// written at the top); a layer whose `of` is empty; a mix not four of
     /// [`MIX_IN`] and [`MIX_OUT`], or listed twice; a corner layer with a
-    /// picture for mix 0, or with none. Each names its look and layer
-    /// (`look "indoor": layer 2: …`).
+    /// picture for mix 0, or with none; a picture to place with an empty
+    /// name, or a side of its `size` 0 or outside `side_px`. Each names its
+    /// look and layer or picture (`look "indoor": layer 2: …`,
+    /// `look "winter": prop "lamp": …`).
     pub fn problems(&self, rules: &TileRules<'_>) -> Vec<String> {
         let mut problems = Vec::new();
         problems.extend(side_problem("tile_px", self.tile_px, &rules.side_px));
         for name in self.looks.keys() {
             problems.extend(name_problem(name, rules.looks));
         }
-        for (name, _, layers) in self.all_looks() {
+        for (name, _, layers, props) in self.all_looks() {
             for (number, layer) in (1..).zip(layers) {
                 let what = format!("{}layer {number}", prefix(name));
                 layer_problems(&what, layer, &rules.side_px, &mut problems);
+            }
+            for (prop, at) in props {
+                let what = format!("{}prop \"{prop}\"", prefix(name));
+                prop_problems(&what, prop, at, &rules.side_px, &mut problems);
             }
         }
         problems
@@ -223,7 +282,8 @@ impl TerrainTilesDef {
     /// The tiles as a skin paints them, with `file` (as shown) in each
     /// error: the image looked up in `images`, each terrain named looked up
     /// in `terrains`. Every problem: the image not in the table; a picture
-    /// outside it (a corner layer's at its `size`); a terrain name (in
+    /// outside it (a corner layer's and a picture to place's at its
+    /// `size`); a terrain name (in
     /// `terrain`, `of`, `beside`, `skip`) not in `terrains`; a terrain of
     /// `terrains` with no tile in a look. Run on a file
     /// [`problems`](Self::problems) passed: a mix it reported is left out.
@@ -249,16 +309,16 @@ impl TerrainTilesDef {
             terrains,
             errors,
         };
-        let look = resolving.look(None, &self.terrain, &self.layers);
+        let look = resolving.look(None, &self.terrain, &self.layers, &self.props);
         let looks: BTreeMap<String, Look> = self
             .looks
             .iter()
             .map(|(name, look)| {
-                let resolved = resolving.look(Some(name), &look.terrain, &look.layers);
+                let resolved = resolving.look(Some(name), &look.terrain, &look.layers, &look.props);
                 (name.clone(), resolved)
             })
             .collect();
-        for (name, tiles, _) in self.all_looks() {
+        for (name, tiles, _, _) in self.all_looks() {
             let own = prefix(name);
             for terrain in terrains.keys().filter(|t| !tiles.contains_key(*t)) {
                 let message = format!("{own}terrain \"{terrain}\" has no tile");
@@ -340,6 +400,27 @@ fn layer_problems(
             let written = sides.iter().map(|s| s.sides.as_str());
             mix_problems(what, "sides", written, problems);
         }
+    }
+}
+
+/// The problems of the picture to place `at`, called `name` and as a whole
+/// `what`, pushed onto `problems`.
+fn prop_problems(
+    what: &str,
+    name: &str,
+    at: &PropAt,
+    side_px: &RangeInclusive<u32>,
+    problems: &mut Vec<String>,
+) {
+    if name.is_empty() {
+        problems.push(format!("{what}: its name is empty"));
+    }
+    match at.size {
+        Some((w, h)) if w == 0 || h == 0 => problems.push(format!(
+            "{what}: size is ({w}, {h}); a side of 0 px draws nothing"
+        )),
+        Some(size) => problems.extend(side_problem(&format!("{what}: size"), size, side_px)),
+        None => {}
     }
 }
 
@@ -479,9 +560,15 @@ impl Resolving<'_> {
         }
     }
 
-    /// The look called `name` (`None`: the own one) of the tiles `terrain`
-    /// and the layers `layers`.
-    fn look(&mut self, name: Option<&str>, terrain: &Cells, layers: &[LayerDef]) -> Look {
+    /// The look called `name` (`None`: the own one) of the tiles `terrain`,
+    /// the layers `layers` and the pictures to place `props`.
+    fn look(
+        &mut self,
+        name: Option<&str>,
+        terrain: &Cells,
+        layers: &[LayerDef],
+        props: &Props,
+    ) -> Look {
         let own = prefix(name);
         let mut tiles = BTreeMap::new();
         for (terrain, &at) in terrain {
@@ -494,7 +581,13 @@ impl Resolving<'_> {
             .zip(layers)
             .map(|(number, layer)| self.layer(&format!("{own}layer {number}"), layer))
             .collect();
-        Look::new(tiles, layers)
+        let mut look = Look::new(tiles, layers);
+        for (prop, at) in props {
+            let size = at.size.unwrap_or(self.tile_px);
+            let rect = self.rect(&format!("{own}prop \"{prop}\""), at.at, size);
+            look.props.insert(prop.clone(), rect);
+        }
+        look
     }
 }
 
