@@ -1,0 +1,186 @@
+---
+id: "3438"
+title: "Domain preludes, an import check, and one spelling of identifiers: the US names beside deprecated UK ones"
+type: feature
+milestone: After MVP
+model: opus-5.5 / gpt-6.1-sol
+effort: high
+status: todo
+blocked_by: []
+nick_input: none
+completed:
+---
+
+# 3438 — Domain preludes, an import check, and one spelling of identifiers: the US names beside deprecated UK ones
+
+## Context
+
+Split off 3413 (done) at its size valve: its steps 8–11. 3413 gave the
+API doc aliases, a plain-text listing per crate (`cargo xtask api-text`,
+`crates/xtask/src/api_text.rs`) and its `--check`. This ticket does the
+rest of what the blind-spot audit of 2026-11-23 found (its *Agent
+experience* section, candidates 63 and 68): an agent writes a game from
+memory, guesses deep paths and US spellings, and each miss costs a Rust
+compile round.
+
+**What is true today** (checked 2026-11-26):
+
+- `shuyi::prelude` (`crates/shuyi/src/lib.rs:45`) re-exports
+  `shuyi_platform::prelude` (`crates/platform/src/lib.rs:108`, about 30
+  names, ADR-0036 §6) and `run_game`. Past it, the templates and
+  `examples/hello-grid` import from about 74 distinct module paths
+  (`grep -rhoE "use shuyi[a-z_]*(::[a-z_0-9]+)+::(\{|[A-Z*])" examples
+  templates --include=*.rs`), such as `shuyi::ui::frame::glyph_buffer`,
+  `shuyi::core::bots::playtest` and `shuyi_cli::contract::playtest`. A
+  rules crate depends on `shuyi-core` alone, which has no prelude.
+- The public names mix spellings. `Color`, `EngineColor`, `ColorSet`
+  and `Colors` are US. Eight names are UK: `print_centred`
+  (`crates/ui/src/screens.rs:44`, `frame/draw.rs:205`),
+  `print_centred_styled` (`screens.rs:53`), `centre_x` (`screens.rs:37`),
+  `centre` (`crates/ui/src/cinematic.rs:192`, `debug/camera.rs:125`),
+  `centred_on` (`crates/ui/src/grid/camera.rs:21`), and the variants
+  `NarrationAlign::Centred` (`dialogue/text_box/glyph.rs:26`),
+  `Scroll::Centred` (`widgets/list.rs:20`) and `Rule::SharedColour`
+  (`crates/assets/src/onebit.rs:523`). The `centre` family is used about
+  246 times in 64 files outside `tickets/`.
+- The precedent for a rename: 2226 kept `Lang::english` one release as a
+  `#[deprecated]` alias of `source_text`, with one `#[expect(deprecated)]`
+  test per alias, and needed no `Breaking:` line.
+
+**The game** (pin `50472bbc`, `gh search code --repo
+Zafnok/visions-of-shuyi`): `print_centred` in 8 files
+(`crates/ui/src/screens/*/glyph.rs`), `centre_x` in 8, `centred_on` in 6
+(`map_view/place.rs`, `screens/battle/mod.rs`), `NarrationAlign` in
+`screens/dialogue/glyph.rs`. The old names stay as deprecated aliases, so
+the game builds; its PR that moves the pin renames its calls, as each
+deprecation warning points at one.
+
+## Nick input
+
+None. The spelling of identifiers is a technical choice, recorded in an
+ADR.
+
+## Scope
+
+**In:**
+
+- **Domain preludes.** Beside `shuyi::prelude`, which stays as it is:
+  - `shuyi_core::prelude`, for a rules crate: the RNG, `TurnRules`,
+    `TickSim`, the step and time types, `Pos`, the ease and tween types;
+  - `shuyi::prelude::grid` (the grid kit, the camera, `GridMap`),
+    `shuyi::prelude::text` (styled text, the font), `shuyi::prelude::audio`
+    and `shuyi::prelude::test` (the `Harness`, the playtest bots);
+  - `shuyi_cli::prelude`, for a game's tool program and its tests: the
+    contract types the templates import today.
+  Each re-exports what the templates, `examples/hello-grid`,
+  `site/snippets` and the shipped skills' worked examples import today,
+  and no more. ADR-0036 §6 is amended by a line pointing at the new ADR.
+- **An import check.** `cargo xtask check-imports`
+  (`crates/xtask/src/imports.rs`), a row in the gates table
+  (`crates/xtask/src/gates.rs`, the fast set): code under `templates/`,
+  `examples/` and `site/snippets/` names an engine item only through a
+  prelude, or through a path in its list of allowed deeper paths, each
+  with its reason.
+- **One spelling.** US spelling for identifiers, matching `Color` and
+  Rust's own crates; prose keeps the house spelling. A new ADR records
+  it (the `write-adr` skill). Each of the eight UK names gets its US name
+  (`print_centered`, `print_centered_styled`, `center_x`, `center`,
+  `centered_on`, `NarrationAlign::Centered`, `Scroll::Centered`,
+  `Rule::SharedColor`); the old name stays one release as a
+  `#[deprecated(note = "renamed …")]` alias, as 2226 did. A variant's
+  alias is an associated `const` (the three enums derive `PartialEq` and
+  `Eq`, so it still matches in a pattern). Nothing in `crates/`,
+  `templates/`, `examples/`, `site/` or `skills/` calls an old name but
+  one `#[expect(deprecated)]` test per alias. `shuyi_platform::prelude`
+  exports `print_centered` beside the deprecated `print_centred`, and
+  `check_text.rs`'s list of text sinks keeps both names
+  (`crates/cli/src/check_text.rs:842`).
+- **The spelling check** in `cargo xtask api-text --check`: no public
+  item's name holds a UK spelling of `api_text::UK_SPELLINGS` (`centre`,
+  `centred`, `colour`, `behaviour`, `normalise`, `initialise`, `favour`,
+  `licence`), unless it is `#[deprecated]` (the index, `rustdoc_index`,
+  reads the deprecation).
+- **Public types** (ADR-0039): no new type. The renamed variants keep
+  `NarrationAlign`'s `#[non_exhaustive]`; `Scroll` and `Rule` stay as
+  they are. `grey` (`lighting.rs:78`) is not renamed: it is a US
+  spelling too, and the list leaves it out. The preludes are re-exports
+  only.
+
+**Either order with 3520:** if 3520 is done, put `shuyi::prelude::grid`
+behind the grid kit's feature, and the other preludes' items behind
+theirs; if not, nothing to do (3520 gates the preludes with the rest).
+
+**Out (do not do):**
+
+- Removing an old name: a later release, by its own ticket.
+- Renaming anything for taste beyond the UK spellings, or changing the
+  house prose style.
+- The doc aliases and the plain-text API: 3413 (done).
+
+**Estimated size:** about 1,400 lines (code 500, tests 400, docs 500),
+counted from the steps and doubled. The renames are about 250 call
+sites.
+
+**Split:** past 1,000 lines, split off steps 3–5 (the ADR, the renames
+and the spelling check) into a new ticket.
+
+## Implementation steps
+
+1. **`shuyi_core::prelude`** and `shuyi::prelude::{grid, text, audio,
+   test}`, `shuyi_cli::prelude`, each with module docs saying who
+   imports it.
+2. **`cargo xtask check-imports`** and its row in the gates table, then
+   the templates, `hello-grid`, `site/snippets/` and the skills' worked
+   examples moved onto the preludes until it passes.
+3. **The ADR** for one spelling of identifiers.
+4. **The renames**: the US names, the deprecated aliases with their
+   tests, every call site in this repository, and `check_text.rs`'s
+   list of text sinks.
+5. **The spelling check** in `api_text.rs`'s `--check`, with
+   `UK_SPELLINGS`.
+6. **Docs** (the `document` skill): the book's *Tools for agents*
+   chapter says which prelude to import; *Games and screens* uses the
+   new names; the shipped skills' text follows.
+
+## Acceptance criteria
+
+- [ ] `cargo xtask check-imports` passes on the templates, `hello-grid`,
+      `site/snippets/` and the skills' examples, and fails, naming the
+      file and line, on a fixture that imports
+      `shuyi::ui::frame::glyph_buffer::Sprite` with no allowed reason.
+- [ ] The template's code imports from preludes only: no `use` path
+      deeper than `shuyi::prelude::<domain>` or a prelude of
+      `shuyi_core` or `shuyi_cli`, but the allowed ones.
+- [ ] `print_centered`, `print_centered_styled`, `center_x`, `center`
+      (both), `centered_on`, `NarrationAlign::Centered`,
+      `Scroll::Centered` and `Rule::SharedColor` exist; each old name is
+      `#[deprecated]`, gives what its new name gives (one
+      `#[expect(deprecated)]` test each), and still matches in a pattern
+      for the three variants.
+- [ ] No code in this repository calls an old name but those tests.
+      `shuyi check` reads a text sink by either name.
+- [ ] `cargo xtask api-text --check` fails on a public, non-deprecated
+      item named with a UK spelling, with its own message, and passes on
+      this branch.
+- [ ] The ADR for one spelling is in `docs/adr/` and its README.
+- [ ] Completion notes: a `Behaviour:` line per renamed item (the old
+      names warn), or, if the `api` job counts a deprecation as a semver
+      finding, a `Breaking:` line with a `migration` block whose `find`
+      lists the old names.
+- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [ ] All gates in the `run-gates` skill pass.
+
+## Tests required
+
+- Unit: the import check's allowed list and a failing fixture; the
+  spelling check on a fixture index.
+- Unit: one `#[expect(deprecated)]` test per alias, comparing it with
+  its new name (so mutation testing of the diff kills each alias's
+  mutants).
+- Integration: the gates' fast set runs `check-imports`.
+
+## Completion notes
+
+*(Filled in by the session that completes the ticket: what was done,
+deviations, follow-up tickets created, notes for Nick.)*

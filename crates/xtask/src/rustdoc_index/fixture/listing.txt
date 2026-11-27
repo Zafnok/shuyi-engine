@@ -1,0 +1,74 @@
+pub mod fixture
+pub mod fixture::timer
+pub enum fixture::timer::Align
+pub fixture::timer::Align::Centered
+impl core::marker::Freeze for fixture::Align
+impl core::marker::Send for fixture::Align
+impl core::marker::Sync for fixture::Align
+impl core::marker::Unpin for fixture::Align
+impl core::marker::UnsafeUnpin for fixture::Align
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Align
+impl core::panic::unwind_safe::UnwindSafe for fixture::Align
+pub struct fixture::timer::Countdown
+pub fixture::timer::Countdown::length: u32
+impl fixture::Countdown
+pub fn fixture::Countdown::reset(&mut self)
+pub fn fixture::Countdown::restart(&mut self)
+impl core::clone::Clone for fixture::Countdown
+pub fn fixture::Countdown::clone(&self) -> Self
+impl core::marker::Freeze for fixture::Countdown
+impl core::marker::Send for fixture::Countdown
+impl core::marker::Sync for fixture::Countdown
+impl core::marker::Unpin for fixture::Countdown
+impl core::marker::UnsafeUnpin for fixture::Countdown
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Countdown
+impl core::panic::unwind_safe::UnwindSafe for fixture::Countdown
+pub trait fixture::timer::Tick
+pub fn fixture::timer::Tick::tick(&mut self)
+pub enum fixture::Align
+pub fixture::Align::Centered
+impl core::marker::Freeze for fixture::Align
+impl core::marker::Send for fixture::Align
+impl core::marker::Sync for fixture::Align
+impl core::marker::Unpin for fixture::Align
+impl core::marker::UnsafeUnpin for fixture::Align
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Align
+impl core::panic::unwind_safe::UnwindSafe for fixture::Align
+pub struct fixture::Countdown
+pub struct fixture::Countdown
+pub fixture::Countdown::length: u32
+pub fixture::Countdown::length: u32
+impl fixture::Countdown
+impl fixture::Countdown
+pub fn fixture::Countdown::reset(&mut self)
+pub fn fixture::Countdown::reset(&mut self)
+pub fn fixture::Countdown::restart(&mut self)
+pub fn fixture::Countdown::restart(&mut self)
+impl core::clone::Clone for fixture::Countdown
+impl core::clone::Clone for fixture::Countdown
+pub fn fixture::Countdown::clone(&self) -> Self
+pub fn fixture::Countdown::clone(&self) -> Self
+impl core::marker::Freeze for fixture::Countdown
+impl core::marker::Freeze for fixture::Countdown
+impl core::marker::Send for fixture::Countdown
+impl core::marker::Send for fixture::Countdown
+impl core::marker::Sync for fixture::Countdown
+impl core::marker::Sync for fixture::Countdown
+impl core::marker::Unpin for fixture::Countdown
+impl core::marker::Unpin for fixture::Countdown
+impl core::marker::UnsafeUnpin for fixture::Countdown
+impl core::marker::UnsafeUnpin for fixture::Countdown
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Countdown
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Countdown
+impl core::panic::unwind_safe::UnwindSafe for fixture::Countdown
+impl core::panic::unwind_safe::UnwindSafe for fixture::Countdown
+pub struct fixture::Inner
+impl core::marker::Freeze for fixture::Inner
+impl core::marker::Send for fixture::Inner
+impl core::marker::Sync for fixture::Inner
+impl core::marker::Unpin for fixture::Inner
+impl core::marker::UnsafeUnpin for fixture::Inner
+impl core::panic::unwind_safe::RefUnwindSafe for fixture::Inner
+impl core::panic::unwind_safe::UnwindSafe for fixture::Inner
+pub trait fixture::Tick
+pub fn fixture::Tick::tick(&mut self)

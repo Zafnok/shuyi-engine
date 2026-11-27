@@ -66,11 +66,9 @@ None.
   add an entity of `shuyi-ecs` to the row of appendix A's table
   (`from-another-engine.md`, *Coming from another engine*) that maps a
   node, a GameObject and a Bevy entity, linked to the new chapter.
-  **Either order with 3413:** if 3413 is done, write the entity words
-  of that row in `site/data/engine-terms.toml` (the page's table is
-  drawn from it, and `cargo xtask api-text --check` checks its paths);
-  if not, add them to the page's table, and 3413 moves them into the
-  data file.
+  The page's table is drawn from `site/data/engine-terms.toml` (3413,
+  done): write the entity words of that row there, with the paths they
+  name; `cargo xtask api-text --check` checks the paths.
 - **The catalog:** with the example passing CI, set `shuyi-ecs`'s
   answer in `docs/modules.ron` and its row in `docs/modules.md` to
   `ready` (2107 adds both as `planned`).

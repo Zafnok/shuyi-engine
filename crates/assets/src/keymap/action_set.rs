@@ -53,10 +53,14 @@ impl UiAction {
     }
 }
 
-/// Everything a player can ask for in one game: the game's action enum.
+/// The input map: everything a player can ask for in one game, the game's
+/// action enum.
 /// The keymap file, the keymap, held keys and repeat, the player's saved
 /// bindings and help text are all built on it, never on one game's
 /// actions.
+#[doc(alias = "InputMap")]
+#[doc(alias = "ButtonInput")]
+#[doc(alias = "InputAction")]
 pub trait ActionSet: Copy + Ord + Eq + Hash + Debug + 'static {
     /// Which actions may share a key or button: a key is on at most one
     /// action of each group. `()` for a game where no two

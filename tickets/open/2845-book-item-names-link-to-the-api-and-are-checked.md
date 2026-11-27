@@ -26,8 +26,9 @@ for it.
 Nothing checks those names either. 2815 (done) made `cargo xtask api`
 ask for a change to the book, or a `Book:` line, when the public API
 changes. It doesn't check that what the prose names exists. The drift
-is already there. Appendix A's table
-(`site/content/learn/book/from-another-engine.md:45`) has the row
+was already there. Appendix A's table
+(`site/content/learn/book/from-another-engine.md`) had the row, until
+3413 drew the table from data and fixed it,
 `| none yet | a tween | a coroutine | — | an animation curve | — |`,
 but `shuyi_core::Tween` is public (`crates/core/src/ease.rs`,
 re-exported at `crates/core/src/lib.rs:72`, ticket 2109). Chapter 2
@@ -44,9 +45,9 @@ codes (`SH2001`). So the check can't fail every name that isn't in the
 API. It needs a list of the names that aren't the engine's, and that
 list is checked too.
 
-3413 builds an index of the public items from rustdoc's JSON, for its
-`engine-terms.toml`. This ticket needs the same index, so one of the two
-builds it (the clause below). The `api` job already installs the nightly
+3413 (done) built an index of the public items from rustdoc's JSON,
+`crates/xtask/src/rustdoc_index.rs`, for its `engine-terms.toml`. This
+ticket reads the same index (below). The `api` job already installs the nightly
 that rustdoc's JSON needs (`api::NIGHTLY`, `nightly-2026-08-16`). It
 only runs when the crates change, though (`changes.yml`'s `crates`), and
 a PR that only edits the book must be checked as well. So the check gets
@@ -133,16 +134,12 @@ None.
 - **Public types** (ADR-0039): none. All of this is in `xtask`, which
   isn't published.
 
-**Either order with 3413:** if 3413 is done, read the index from its
-`crates/xtask/src/rustdoc_index.rs`, with the features `/api/` is built
-with as a parameter, and leave the tween row to its `engine-terms.toml`
-(fixed there); if not, build that index here in
-`crates/xtask/src/rustdoc_index.rs` (rustdoc's JSON on `api::NIGHTLY`,
-read with `serde_json`), so 3413 checks `site/data/engine-terms.toml`'s
-paths and reads docs and aliases from it, and change the tween row of
-`from-another-engine.md` by hand to name `Tween` and chapter 2
-(`frame-and-skins.md#things-that-move`), with the other "none yet" rows
-checked against the index.
+**From 3413 (done):** read the index with `rustdoc_index::build`
+(`crates/xtask/src/rustdoc_index.rs`), giving it the features `/api/` is
+built with (pages.yml's `cargo doc`, the default features: no feature
+argument); `Index::get` finds an item at any public path. The tween row
+is fixed in `site/data/engine-terms.toml`, and `cargo xtask api-text
+--check` checks the "none yet" rows' tickets.
 
 **Out (do not do):**
 - Links in the Markdown twins and `llms.txt` (2808). Agents read the
@@ -154,13 +151,13 @@ checked against the index.
   `site/tutorial/`). They are listed by hand, with their pages.
 - Checking what the prose says about an item. This only checks that the
   item exists and links it.
-- Moving the table of appendix A into data, and doc aliases: 3413.
+- Moving the table of appendix A into data, and doc aliases: 3413 (done).
 - Search over the site, and the docs and API search in the MCP server:
   not this ticket.
 
 **Estimated size:** about 1,400 lines (code 600, tests 450, data 250,
-docs 100), counted from the steps and doubled. If 3413 is done first,
-the index is about 250 lines fewer.
+docs 100), counted from the steps and doubled. 3413 built the index,
+so about 250 of them are written.
 
 **Split:** past 1,000 lines, split off step 5 (the links in the built
 pages and pages.yml) into a new ticket, and keep the check here.

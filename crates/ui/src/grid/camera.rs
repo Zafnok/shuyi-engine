@@ -3,10 +3,12 @@
 
 use shuyi_core::Pos;
 
-/// The map tile shown in the viewport's top-left corner. It can be negative
-/// (or run past the map) when the map is smaller than the viewport: the map
-/// is then centred and the cells around it are left blank.
+/// A 2D camera: the map tile shown in the viewport's top-left corner. It
+/// can be negative (or run past the map) when the map is smaller than the
+/// viewport: the map is then centred and the cells around it are left
+/// blank.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[doc(alias = "Camera2D")]
 pub struct Camera {
     /// Top-left tile of the viewport.
     pub origin: Pos,

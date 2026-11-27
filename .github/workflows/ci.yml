@@ -1302,6 +1302,12 @@ jobs:
         run: |
           title=$(bash scripts/pr-title.sh)
           cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --pr-title "$title" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
+      # Appendix A's table and the doc aliases held to the crates' rustdoc
+      # (ticket 3413), on the nightly this job has.
+      - name: Check the other engines' words against the API
+        env:
+          RUSTFLAGS: ""
+        run: cargo xtask api-text --check
       - name: Hand the verdict to api-label
         id: verdict
         run: echo "label=$(cat "$RUNNER_TEMP/api-verdict")" >> "$GITHUB_OUTPUT"

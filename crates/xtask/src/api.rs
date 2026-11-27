@@ -74,7 +74,7 @@ pub enum Features {
 impl Features {
     /// What `cargo-public-api` is given, in a workspace whose manifest of the
     /// crate has the features `declared`.
-    fn listing_args(self, declared: &HashSet<String>) -> Vec<&'static str> {
+    pub fn listing_args(self, declared: &HashSet<String>) -> Vec<&'static str> {
         self.args("--no-default-features", |name| declared.contains(name))
     }
 
@@ -974,9 +974,21 @@ pub fn reached_outside(metadata: &serde_json::Value) -> HashMap<String, Vec<Stri
         .collect()
 }
 
+/// The features each package's manifest in the workspace in `dir` has, by
+/// name (`cargo xtask api-text`, ticket 3413).
+pub fn declared_features(
+    dir: &Path,
+    runner: &dyn Runner,
+) -> Result<HashMap<String, HashSet<String>>, String> {
+    Ok(packages(dir, runner)?
+        .into_iter()
+        .map(|(name, package)| (name, package.features))
+        .collect())
+}
+
 /// `krate`'s public items in the workspace in `dir`, whose manifest of it has
 /// the features `declared`, one per line.
-fn listing(
+pub fn listing(
     dir: &Path,
     krate: &ApiCrate,
     declared: &HashSet<String>,

@@ -203,8 +203,9 @@ impl<T: Copy + PartialEq> Legend<T> {
     }
 }
 
-/// A map read from a `.map` file: its tiles and features, the legend it
-/// was written with (for printing it back) and its look.
+/// A tile map: a map read from a `.map` file, its tiles and features, the
+/// legend it was written with (for printing it back) and its look.
+#[doc(alias = "TileMap")]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GridMap<T, F> {
     /// The map's display name.

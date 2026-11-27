@@ -152,6 +152,22 @@ build running in its window instead, and `frame_png` then gives the real window'
 
 The server tells the agent to call `docs` before it guesses a name.
 
+## The API as text
+
+Beside each crate's API docs is its API as plain text, a file an agent reads or searches whole:
+`api/shuyi_ui.txt` beside `api/shuyi_ui/`, and so for every crate, each linked from `llms.txt`. Each
+line is one public item, its signature, then its first doc sentence and the names other engines use
+for it:
+
+```text
+pub fn shuyi_ui::frame::glyph_buffer::GlyphBuffer::add_sprite(&mut self, shuyi_ui::frame::glyph_buffer::Sprite) // Draws a sprite, part of an image, at a pixel rectangle: … // aliases: draw_sprite, draw_texture, draw_image, spr
+```
+
+Those names are the items' doc aliases, so the API docs' search finds them too: search for
+`draw_sprite`, `is_key_down`, `just_pressed`, `TileMap`, `Vec2` or `Timer`, and it shows the item Shuyi
+has for it. Appendix A, [*Coming from another engine*](@/learn/book/from-another-engine.md), is the same
+words as a table.
+
 ## The skills
 
 An agent that knows the tools still has to know what to do with them. The engine's **skill pack** teaches

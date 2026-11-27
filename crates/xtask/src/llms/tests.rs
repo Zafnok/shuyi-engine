@@ -319,6 +319,46 @@ fn a_snippet_is_the_same_text_as_its_anchored_lines() {
 }
 
 #[test]
+fn engine_terms_is_appendix_as_table_drawn_from_its_data() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let snippets = root.join(SNIPPETS);
+    let (text, errors) = expand(
+        "from-another-engine.md",
+        "Before\n\n{{ engine_terms() }}\n\nAfter\n",
+        1,
+        &snippets,
+    );
+    assert!(errors.is_empty(), "{errors:?}");
+    insta::assert_snapshot!("twin-engine-terms", text);
+    // The docs search reads the page with the same table (ticket 3413).
+    let page =
+        shuyi_cli::contract::docs::corpus::learn_page("book/from-another-engine.md").unwrap();
+    assert!(page.unknown.is_empty(), "{:?}", page.unknown);
+    let table = text
+        .strip_prefix("Before\n\n")
+        .and_then(|t| t.strip_suffix("\n\nAfter\n"))
+        .unwrap();
+    assert!(page.text.contains(table), "{}", page.text);
+    let (_, errors) = expand("a.md", "{{ engine_terms(x=1) }}", 3, &snippets);
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(
+        errors[0].starts_with("a.md:3: engine_terms: it takes no argument"),
+        "{errors:?}"
+    );
+    let elsewhere = std::env::temp_dir().join(format!("llms-terms-{}", std::process::id()));
+    let (_, errors) = expand(
+        "a.md",
+        "{{ engine_terms() }}",
+        1,
+        &elsewhere.join("snippets"),
+    );
+    assert!(
+        errors[0].contains("engine_terms: site/data/engine-terms.toml"),
+        "{errors:?}"
+    );
+}
+
+#[test]
 fn a_snippet_of_a_step_reads_the_tutorial_and_no_anchor_is_the_whole_file() {
     let root = std::env::temp_dir().join(format!("llms-step-{}", std::process::id()));
     let step = root.join("tutorial/01-new");
@@ -634,16 +674,34 @@ fn the_api_links_name_each_shuyi_crate_by_rustdoc_s_folder() {
             llms.contains(&format!("({BASE}api/{lib}/index.html)")),
             "{lib}: {llms}"
         );
+        // Its items as text, beside its HTML (ticket 3413).
+        assert!(
+            llms.contains(&format!("[its items as text]({BASE}api/{lib}.txt)")),
+            "{lib}: {llms}"
+        );
     }
     assert!(!llms.contains("helper"), "{llms}");
 
-    // With the API docs built, a missing crate is a broken link.
+    // With the API docs built, a missing crate is a broken link, and so is
+    // a missing text file.
     put(&fixture.public, "api/shuyi/index.html", "");
     put(&fixture.public, "api/shuyi_core/index.html", "");
+    put(&fixture.public, "api/shuyi.txt", "");
+    put(&fixture.public, "api/shuyi_core.txt", "");
+    put(&fixture.public, "api/shuyi_window.txt", "");
     let outcome = fixture.run();
     assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
     assert!(
         has(&outcome.errors, "api/shuyi_window/index.html names no file"),
+        "{:?}",
+        outcome.errors
+    );
+    fs::remove_file(fixture.public.join("api/shuyi_core.txt")).unwrap();
+    put(&fixture.public, "api/shuyi_window/index.html", "");
+    let outcome = fixture.run();
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        has(&outcome.errors, "api/shuyi_core.txt names no file"),
         "{:?}",
         outcome.errors
     );

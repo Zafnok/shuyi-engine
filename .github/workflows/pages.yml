@@ -102,6 +102,17 @@ jobs:
               exit 1
             }
           done
+      # The nightly and cargo-public-api, at the versions of CI's api job
+      # (the consts in crates/xtask/src/api.rs).
+      - run: rustup toolchain install nightly-2026-08-16 --profile minimal
+      - run: cargo install --locked cargo-public-api@0.52.0
+      # Each crate's public items as plain text, /api/<crate>.txt beside its
+      # HTML (ticket 3413), which llms.txt links.
+      - name: Write the API as text
+        env:
+          # As the api job: a lint only the nightly has is no build error.
+          RUSTFLAGS: ""
+        run: cargo xtask api-text --out site/public/api
       # Every example whose shuyi.ron has a `web` section, each copied whole
       # (its NOTICES.txt with it) over the stub Zola wrote at its path. An
       # example with no page in site/content/examples/ has no card, and
