@@ -433,22 +433,22 @@ const LINT: &str = "Check the game's code: keys named in code or text (check-key
      files and outside luck; no screen or device crate under it). Each finding with its \
      file, line and code.";
 
+/// The `new` tool's description.
+const NEW: &str = "Make a new game in `dir` (from the session's folder, the client's first \
+     root) from the engine's template, its parts picked by the answers: `template`, a short \
+     name (`grid`, a title and a turn-based grid stage with a bot and records; `blank`, one \
+     screen), then `answers` (an answers file, from the session's folder) and `set` (answers \
+     by question). It also takes `name`, `id`, `storage`, `engine` (`main`, a `rev` or a \
+     `path`), `private_url` and `force` (write into a folder that isn't empty). With \
+     `questions` it makes nothing and lists the questions to ask the person first, for the \
+     answers given so far: each with who asks it, its answers with their status, its default \
+     and why it is skipped. The game made comes with `command`, the one command that makes it \
+     again, and keeps its answers in its `shuyi.ron` (`created_with`).";
+
 /// What the tool of `op` does, for its description.
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
-        (Op::New, _) => {
-            "Make a new game in `dir` (from the session's folder, the client's first root) from \
-             the engine's template, its parts picked by the answers: `template`, a short name \
-             (`grid`, a title and a turn-based grid stage with a bot and records; `blank`, one \
-             screen), then `answers` (an answers file, from the session's folder) and `set` \
-             (answers by question). It also takes `name`, `id`, `storage`, `engine` (`main`, a \
-             `rev` or a `path`), `private_url` and `force` (write into a folder that isn't \
-             empty). With `questions` it makes nothing and lists the questions to ask the \
-             person first, for the answers given so far: each with who asks it, its answers \
-             with their status, its default and why it is skipped. The game made comes with \
-             `command`, the one command that makes it again, and keeps its answers in its \
-             `shuyi.ron` (`created_with`)."
-        }
+        (Op::New, _) => NEW,
         (Op::Check, _) => {
             "Load the game's content through every validator: each error with its file, line and \
              code. With `baked`, its pack too; with `target`, whether its frame, text and \
