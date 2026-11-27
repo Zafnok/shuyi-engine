@@ -32,6 +32,7 @@ as the notes in the pages say.
 | Tween, ease curve | Making games | A value moving from one place to another over time; how fast it goes on the way | [Chapter 2](@/learn/book/frame-and-skins.md#things-that-move) |
 | Pixel | Making games | One dot of a picture | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
 | Sprite atlas | Making games | Many small pictures packed onto a few big ones, its pages, so the graphics card holds one picture for many sprites | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
+| Nine slices | Making games | A picture cut into its four corners, four edges and middle, so it frames a rectangle of any size: the corners kept, the edges and middle stretched or repeated | [Chapter 2](@/learn/book/frame-and-skins.md#the-frame) |
 | Sound effect | Making games | A sound written as a few numbers in a `.sfx.ron` file: a wave, a pitch, how loud | [Step 8](@/learn/book/box-pusher/08-polish.md#sounds), [chapter 3](@/learn/book/assets-and-formats.md) |
 | Dither | Making games | Turn colors into patterns of black and white dots | [Chapter 3](@/learn/book/assets-and-formats.md#a-target-s-own-files) |
 | Bot | Making games | A player made of code | [Step 9](@/learn/book/box-pusher/09-test.md#a-bot), [chapter 8](@/learn/book/testing.md#bots) |
@@ -69,6 +70,7 @@ as the notes in the pages say.
 | View | Shuyi | What's on a screen, as plain data | [Step 1](@/learn/book/box-pusher/01-new.md#what-it-shows), [chapter 2](@/learn/book/frame-and-skins.md#the-view) |
 | Skin | Shuyi | What decides how a view or scene looks | [Step 2](@/learn/book/box-pusher/02-board.md#the-skin), [chapter 2](@/learn/book/frame-and-skins.md#the-skin) |
 | Console, glyph, cell, `GlyphBuffer`, glyph buffer | Shuyi | The frame's grid of characters; a character; one place in the grid; the whole grid, 48 by 24 | [Step 1](@/learn/book/box-pusher/01-new.md#the-screen-s-jobs), [chapter 2](@/learn/book/frame-and-skins.md#the-frame) |
+| Panel, `PanelLook` | Shuyi | A box of cells with a title in its top border; how it looks: lines or a picture frame, and its colours | [Chapter 2](@/learn/book/frame-and-skins.md#the-frame) |
 | Text key | Shuyi | A name for a line of words in `en.ron` | [Step 1](@/learn/book/box-pusher/01-new.md#the-words-en-ron), [chapter 6](@/learn/book/games-and-screens.md#text-by-key) |
 | Palette | Shuyi | The game's colors, by name | [Step 1](@/learn/book/box-pusher/01-new.md#the-colors-palette-ron) |
 | Debug view, channel, gizmo, role | Shuyi | What your logic works with, drawn over the running game; one thing it can show; a shape it draws; what a gizmo shows, which picks its color | [Chapter 2](@/learn/book/frame-and-skins.md#seeing-what-the-game-sees) |

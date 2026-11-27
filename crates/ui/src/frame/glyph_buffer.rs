@@ -455,7 +455,7 @@ fn offset_clipped(r: PxRect, dx: i64, dy: i64, bounds: PxRect) -> Option<PxRect>
 /// The pixel rectangle covered by cells `x..x + w`, `y..y + h` of a
 /// `spec` console, or `None` if it doesn't fit in `i32` (only far off any
 /// buffer).
-fn cells_to_px(spec: ConsoleSpec, x: i64, y: i64, w: i64, h: i64) -> Option<PxRect> {
+pub(crate) fn cells_to_px(spec: ConsoleSpec, x: i64, y: i64, w: i64, h: i64) -> Option<PxRect> {
     let (cw, ch) = (i64::from(spec.cell_w), i64::from(spec.cell_h));
     let fit = |v: i64| i32::try_from(v).ok();
     Some(Rect::new(
@@ -467,7 +467,7 @@ fn cells_to_px(spec: ConsoleSpec, x: i64, y: i64, w: i64, h: i64) -> Option<PxRe
 }
 
 /// The parts of `r` outside `hole` (up to four rectangles).
-fn subtract(r: Rect, hole: Rect) -> Vec<Rect> {
+pub(crate) fn subtract(r: Rect, hole: Rect) -> Vec<Rect> {
     let Some(i) = r.intersect(&hole) else {
         return vec![r];
     };
