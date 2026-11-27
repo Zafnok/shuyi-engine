@@ -210,8 +210,9 @@ const CHECKS: &[(&str, &str, &str, &str)] = &[
     ),
     (
         r#"90: "eyes" },"#,
-        r#"90: "eyes", 200: "paint" },"#,
-        "200:",
+        r#"90: "eyes",
+        200: "paint" },"#,
+        "200: \"paint\"",
         "key grey 200 is named twice",
     ),
     (
@@ -273,6 +274,48 @@ fn each_check_of_a_file_alone_has_a_file_that_fails_it_at_its_line() {
         let want = format!("faces.ron:{}: {message}", line_of(&source, at));
         let errors = shown(PartsDef::from_source("faces.ron", &source));
         assert!(errors.contains(&want), "{want}\nin {errors:#?}");
+    }
+}
+
+#[test]
+fn a_name_on_a_line_is_found_as_a_whole_word() {
+    assert!(check::holds("    200: \"skin\",", "200:"));
+    assert!(check::holds("{20: \"a\"}", "20:"));
+    // Not as the end of a longer number or name.
+    assert!(!check::holds("    120: \"hair\",", "20:"));
+    assert!(!check::holds("    a_20: 1,", "20:"));
+    assert!(!check::holds("    x20: 1,", "20:"));
+    // A later one counts when an earlier one doesn't.
+    assert!(check::holds("120: \"a\", 20: \"b\"", "20:"));
+}
+
+#[test]
+fn keys_are_a_map_and_say_so() {
+    use serde::de::IntoDeserializer;
+    use serde::de::value::{Error, U32Deserializer};
+    let number: U32Deserializer<Error> = 5_u32.into_deserializer();
+    let read: Result<Vec<(u8, String)>, Error> = entries::deserialize(number);
+    let error = read.unwrap_err().to_string();
+    assert!(error.contains("expected a map"), "{error}");
+}
+
+#[test]
+fn a_set_read_without_its_checks_stops_at_a_cycle_of_bases() {
+    let cycle = EXAMPLE.replacen(
+        r#""plain": (slots: {"#,
+        r#""plain": (base: Some("elf"), slots: {"#,
+        1,
+    );
+    // Read straight into the type, as a game could, without the checks.
+    let def: PartsDef = crate::ron::parse_ron_implicit_some("faces.ron", &cycle).unwrap();
+    let set = def.resolve("faces.ron", "", &example_images()).unwrap();
+    for seed in 0..20 {
+        let elf = set.appearance("elf", seed, &[]).unwrap();
+        let plain = set.appearance("plain", seed, &[]).unwrap();
+        // Each kind's own lists first, then its base's, once.
+        assert_eq!(elf.parts[2].as_deref(), Some("ears_long"));
+        assert_eq!(plain.parts[2].as_deref(), Some("ears_long"));
+        assert_eq!(elf.parts[1], plain.parts[1]);
     }
 }
 
@@ -554,23 +597,28 @@ fn a_grey_near_a_key_but_not_on_it_is_reported_with_its_file_and_pixel() {
         parts: { "head": (slot: "head", image: "x.png", at: (4, 0)) },
         kinds: { "k": (slots: { "head": ["head"] }) },
     )"#;
-    let images = ImageTable::new([("x.png", ImageInfo::new(8, 4))].into());
+    let images = ImageTable::new([("x.png", ImageInfo::new(12, 4))].into());
     let set = PartsDef::from_source("x.ron", source)
         .unwrap()
         .resolve("x.ron", "", &images)
         .unwrap();
-    let mut image = Image::filled(8, 4, [200, 200, 200, 255]);
+    let mut image = Image::filled(12, 4, [200, 200, 200, 255]);
     let mut put = |(x, y): (u32, u32), pixel: [u8; 4]| {
-        let i = ((y * 8 + x) * 4) as usize;
+        let i = ((y * 12 + x) * 4) as usize;
         image.rgba[i..i + 4].copy_from_slice(&pixel);
     };
     put((5, 1), [198, 198, 198, 255]);
     put((6, 1), [190, 190, 190, 255]);
     put((7, 2), [204, 204, 204, 255]);
-    // Not grey, clear, or outside the part: never reported.
+    // Drawn from alpha 128.
+    put((4, 3), [198, 198, 198, 128]);
+    // Not grey, clear, or outside the part (left of it or right of it):
+    // never reported.
     put((5, 2), [198, 199, 198, 255]);
-    put((6, 2), [198, 198, 198, 100]);
+    put((5, 3), [198, 198, 199, 255]);
+    put((6, 2), [198, 198, 198, 127]);
     put((1, 1), [198, 198, 198, 255]);
+    put((9, 1), [198, 198, 198, 255]);
     let errors: Vec<String> = set
         .check_pixels(|_| Some(&image))
         .iter()
@@ -581,6 +629,7 @@ fn a_grey_near_a_key_but_not_on_it_is_reported_with_its_file_and_pixel() {
         [
             "x.png: pixel (5, 1): grey 198 is 2 from key 200 (\"skin\") but not on it",
             "x.png: pixel (7, 2): grey 204 is 4 from key 200 (\"skin\") but not on it",
+            "x.png: pixel (4, 3): grey 198 is 2 from key 200 (\"skin\") but not on it",
         ]
     );
     // An image with no pixels, or too few.
@@ -595,6 +644,10 @@ fn a_grey_near_a_key_but_not_on_it_is_reported_with_its_file_and_pixel() {
     );
     let small = Image::filled(6, 4, [0; 4]);
     assert_eq!(set.check_pixels(|_| Some(&small)).len(), 1);
+    // An image whose bytes are fewer than its size says.
+    let mut short = Image::filled(12, 4, [0; 4]);
+    short.rgba.pop();
+    assert_eq!(set.check_pixels(|_| Some(&short)).len(), 1);
     // The fixture's greys are all on their keys.
     let faces_image = faces_image();
     assert_eq!(faces().check_pixels(|_| Some(&faces_image)), []);

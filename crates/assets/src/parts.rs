@@ -289,16 +289,18 @@ impl PartsDef {
 
     /// Kind `name` with its chain's lists and rows: each slot's and each
     /// group's from the nearest kind that names it, else empty or the
-    /// set's. The chain has no cycle ([`check`] made sure).
+    /// set's. [`check`] refuses a cycle; one read without it stops at the
+    /// first kind seen twice.
     fn flatten(&self, name: &str) -> Kind {
         let mut chain = Vec::new();
-        let mut at = self.kinds.get(name);
-        while let Some(kind) = at {
-            if chain.len() > self.kinds.len() {
-                break;
-            }
+        let mut seen = BTreeSet::new();
+        let mut at = Some(name);
+        while let Some(kind) = at
+            .filter(|k| seen.insert(*k))
+            .and_then(|k| self.kinds.get(k))
+        {
             chain.push(kind);
-            at = kind.base.as_deref().and_then(|b| self.kinds.get(b));
+            at = kind.base.as_deref();
         }
         let slots = self
             .slots

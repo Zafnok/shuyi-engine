@@ -415,7 +415,7 @@ or golden row changed.
 
 **Follow-up tickets.** 2284: the painting (the split).
 
-Size: 2,108 counted lines, the format, its checks and the roll couldn't land apart: the roll reads the resolved set, and the acceptance (the example loading with every check, the golden row of a look, the fuzz test that resolves and rolls) needs all three; the part that could land apart, the painting, went to 2284.
+Size: 2,163 counted lines, the format, its checks and the roll couldn't land apart: the roll reads the resolved set, and the acceptance (the example loading with every check, the golden row of a look, the fuzz test that resolves and rolls) needs all three; the part that could land apart, the painting, went to 2284.
 
 Breaking: none. Everything is new and behind a feature that is off by
 default.

@@ -72,7 +72,7 @@ fn entry(name: &str) -> String {
 
 /// Whether `line` holds `needle`, not as the end of a longer word or
 /// number (`20:` in `120:`).
-fn holds(line: &str, needle: &str) -> bool {
+pub(super) fn holds(line: &str, needle: &str) -> bool {
     line.match_indices(needle).any(|(i, _)| {
         line[..i]
             .chars()
