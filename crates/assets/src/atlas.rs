@@ -1,4 +1,4 @@
-//! Sprite atlases (ADR-0156): loose images packed into square pages, so a
+//! Sprite atlases (ADR-0157): loose images packed into square pages, so a
 //! backend binds one texture for many sprites.
 //!
 //! An [`AtlasBuilder`] takes images by name and packs them into an
