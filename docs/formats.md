@@ -51,6 +51,16 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   `formats.load_under::<K>(&bundle, dir)`, or file by file in one folder
   with `formats.load_each::<K>(&bundle, dir)`, each with its asset or its
   errors, for a loader that checks each file after reading it.
+- **Every layer's copy of one file** is for a loader that merges entries
+  instead of replacing the whole file (mods or DLC adding rows to a data
+  table): `bundle.versions(path)` gives each copy's bytes and shown name
+  (`LayerCopy`), and `formats.load_versions::<K>(&bundle, id)` decodes
+  each through the registry, a pack's baked copy too, with each copy's
+  errors under its own name. They come in the order layers are read: the
+  copy `load` reads first, the game's last, so a fold walks them with
+  `.iter().rev()`. A copy a layer can't read now leaves none, so no merge
+  misses one. The merge rules (keys, removals, two mods changing one
+  entry) are the game's.
 - **`shuyi import <file>`** reads a file through the registry as every
   kind whose formats know it, and says what it read or every error
   ([`contract.md`](contract.md)).

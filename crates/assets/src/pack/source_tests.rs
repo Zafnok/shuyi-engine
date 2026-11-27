@@ -277,6 +277,31 @@ fn a_failed_read_reads_as_missing_and_is_listed_once_as_it_first_failed() {
 }
 
 #[test]
+fn a_copy_a_layer_cant_read_now_leaves_no_copy_to_merge() {
+    static LOOSE: &[(&str, &[u8])] = &[("a.txt", b"loose")];
+    let bytes = raw_pack(&test_info(), &[("a.txt".to_owned(), b"a".to_vec())]);
+    let index = Index::read(&bytes, STAMP).unwrap();
+    let source: &'static Failing = Box::leak(Box::new(Failing(Mutex::new(0))));
+    let bundle = Bundle::new(vec![
+        Layer::table("loose", LOOSE),
+        index.into_layer("pack", source),
+    ]);
+    // The loose copy alone would merge without the pack's: none is given.
+    let (copies, reads) = reads_of(|| bundle.versions("a.txt"));
+    assert_eq!(copies, []);
+    assert!(reads.asked.contains("a.txt") && reads.found.is_empty());
+    let errors = crate::format::Formats::new()
+        .load_versions::<crate::credits::CreditsFile>(&bundle, "a.txt")
+        .unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].to_string(),
+        "loose/a.txt: file not found in asset bundle: a layer has it but can't read it now"
+    );
+    assert_eq!(errors[0].code, Some(crate::error::codes::MISSING_FILE));
+}
+
+#[test]
 fn a_layer_read_file_by_file_lies_under_loose_files() {
     static LOOSE: &[(&str, &[u8])] = &[("a.txt", b"loose")];
     let bytes = kept(&raw_pack(

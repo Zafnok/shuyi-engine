@@ -533,6 +533,86 @@ fn an_asset_is_loaded_by_id_from_the_bundle_with_the_limits_of_the_registry() {
     );
 }
 
+/// What [`Formats::load_versions`] gives for `words/a` with a `mod` layer of
+/// `over` laid over a `base` one of `under`: each copy's shown name and word,
+/// or the errors' text.
+fn versions(
+    formats: &Formats,
+    over: &'static [(&'static str, &'static [u8])],
+    under: &'static [(&'static str, &'static [u8])],
+    id: &str,
+) -> Result<Vec<(String, String)>, Vec<String>> {
+    let bundle = Bundle::new(vec![Layer::table("mod", over), Layer::table("base", under)]);
+    formats
+        .load_versions::<Word>(&bundle, id)
+        .map(|copies| {
+            copies
+                .into_iter()
+                .map(|(copy, Word(word))| (copy.shown, word))
+                .collect()
+        })
+        .map_err(|errors| errors.iter().map(ToString::to_string).collect())
+}
+
+#[test]
+fn every_layers_copy_of_an_asset_is_decoded_in_the_order_layers_are_read() {
+    static MOD: &[(&str, &[u8])] = &[("words/a.low", b"mod")];
+    static BASE: &[(&str, &[u8])] = &[("words/a.low", b"base"), ("words/b.low", b"b")];
+    static BROKEN_MOD: &[(&str, &[u8])] = &[("words/a.low", b"no-lower")];
+    static BROKEN_BASE: &[(&str, &[u8])] = &[("words/a.low", b"base no-lower")];
+    let mut formats = words();
+    let shown = |pairs: &[(&str, &str)]| -> Result<Vec<(String, String)>, Vec<String>> {
+        Ok(pairs
+            .iter()
+            .map(|(shown, word)| ((*shown).to_owned(), (*word).to_owned()))
+            .collect())
+    };
+    // Found without its extension, as `load` finds it.
+    assert_eq!(
+        versions(&formats, MOD, BASE, "words/a"),
+        shown(&[
+            ("mod/words/a.low", "lower:mod"),
+            ("base/words/a.low", "lower:base")
+        ])
+    );
+    // A path only one layer has gives its one copy.
+    assert_eq!(
+        versions(&formats, MOD, BASE, "words/b.low"),
+        shown(&[("base/words/b.low", "lower:b")])
+    );
+    // A broken copy in the upper layer is named as that layer's file.
+    assert_eq!(
+        versions(&formats, BROKEN_MOD, BASE, "words/a"),
+        Err(vec!["mod/words/a.low: lower can't read it".to_owned()])
+    );
+    // Every broken copy is reported.
+    assert_eq!(
+        versions(&formats, BROKEN_MOD, BROKEN_BASE, "words/a"),
+        Err(vec![
+            "mod/words/a.low: lower can't read it".to_owned(),
+            "base/words/a.low: lower can't read it".to_owned(),
+        ])
+    );
+    // A missing id is `find`'s error.
+    assert_eq!(
+        versions(&formats, MOD, BASE, "words/z"),
+        Err(vec![
+            "mod/words/z: file not found in asset bundle, nor words/z.up nor words/z.alt nor \
+             words/z.low"
+                .to_owned()
+        ])
+    );
+    // Each copy is held to the registry's limits.
+    formats.limits = Limits { max_bytes: 3 };
+    assert_eq!(
+        versions(&formats, MOD, BASE, "words/a"),
+        Err(vec![
+            "base/words/a.low: the file is 4 bytes; the \"lower\" word format reads at most 3"
+                .to_owned()
+        ])
+    );
+}
+
 /// Files two of which no word format reads.
 static BROKEN: &[(&str, &[u8])] = &[
     ("a.low", b"no-lower"),

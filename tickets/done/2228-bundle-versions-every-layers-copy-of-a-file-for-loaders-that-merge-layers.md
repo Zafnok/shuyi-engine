@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2228 — Every layer's copy of a file, for loaders that merge layers
@@ -195,33 +195,33 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `versions` returns every layer's copy in read order over directory,
+- [x] `versions` returns every layer's copy in read order over directory,
       table, private and test layers; its first item agrees with `bytes`
       and `display_path` (unit tests).
-- [ ] Inside `story_only`, `versions` has no test layer's copy (unit
+- [x] Inside `story_only`, `versions` has no test layer's copy (unit
       test).
-- [ ] A path no layer has gives an empty list, and the watcher is told
+- [x] A path no layer has gives an empty list, and the watcher is told
       `(path, false)`; a path two layers have tells it `(path, true)`
       once (unit test, in the one test that sets the watcher).
-- [ ] `test_part`'s existing test passes unchanged.
-- [ ] `load_versions` decodes each copy through the registry; a broken
+- [x] `test_part`'s existing test passes unchanged.
+- [x] `load_versions` decodes each copy through the registry; a broken
       copy in an upper layer is reported under that layer's name, errors
       from two broken copies are both reported, and a missing id gives
       `Formats::find`'s error (unit tests).
-- [ ] `load_versions` reads a RON copy laid over a pack layer and the
+- [x] `load_versions` reads a RON copy laid over a pack layer and the
       pack's baked copy under it, each through the registry, and the
       baked copy equals the table read from its source (a test in
       `crates/assets/src/pack/tests.rs`).
-- [ ] A run-time layer's copy (`Layer::owned`) comes before an embedded
+- [x] A run-time layer's copy (`Layer::owned`) comes before an embedded
       layer's copy of the same path (unit test).
-- [ ] A path read through `versions` is in
+- [x] A path read through `versions` is in
       `bundle::recording`'s set (unit test).
-- [ ] `shuyi-assets` builds without `std`
+- [x] `shuyi-assets` builds without `std`
       (`cargo build -p shuyi-assets --no-default-features --target
       thumbv7em-none-eabihf --locked`).
-- [ ] The `docs/formats.md` bullet and the module comment say the order,
+- [x] The `docs/formats.md` bullet and the module comment say the order,
       and that the merge rules are the game's.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -259,6 +259,66 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, the game PR that moves the pin
-for game#1013, notes for Nick.)*
+What was done:
+
+- `bundle.rs`: a private `copies(layers, path)` walk, of which `find` is
+  the first item; a private `tell_read(path, found)` that tells the
+  watcher and `note_read`, called by `Bundle::bytes` and
+  `Bundle::versions`; `LayerCopy` (with `text()`, on the shared
+  `text_of`); `Bundle::versions`. `test_part` reads its test copy through
+  `copies` and still tells no watcher. The module comment, `watch` and
+  `recording` name `versions`.
+- `format.rs`: `Formats::load_versions::<K>`, which finds the path with
+  `Formats::find`, decodes each copy with the registry's limits under the
+  copy's shown name, and reports every copy's errors.
+- Tests: the unit tests the ticket lists in `bundle.rs` (with the watcher's
+  calls added to `the_watcher_is_told_of_every_file_read`, and the
+  recording test), the property test over up to four table layers in and
+  out of `story_only`, `load_versions` in `format/tests.rs`, the pack test
+  in `pack/tests.rs`, and one more in `pack/source_tests.rs` (below).
+- Docs: the bullet in `docs/formats.md` *The parts*, the module comment,
+  and a paragraph in the book's *Layers* (`assets-and-formats.md`).
+- The `no_std` build of `shuyi-assets` passes (`thumbv7em-none-eabihf`).
+
+Deviations:
+
+- The ticket was 36 days old, and the code moved under it: since it was
+  written, ADR-0128 §2 added `Files::Source` (a pack read file by file),
+  whose read of a file it has can fail until its bytes arrive (`Unread`). So `copies`
+  yields each layer's `Read` (`Result<Cow<'static, [u8]>, Unread>`), not
+  `&'static [u8]` as step 2 says, and `versions` needed a rule the ticket
+  hasn't: when a layer that has the file can't read it now, `versions` is
+  empty and the watcher hears `(path, false)`, as `bytes` reads such a
+  file as missing. A merge missing one copy would be silently wrong.
+  `load_versions` then gives one `SH2003` (missing file) error, "a layer
+  has it but can't read it now". A test in `pack/source_tests.rs` covers
+  it.
+- `LayerCopy` is `#[non_exhaustive]` (ADR-0039 kind 3, a value the engine
+  fills in and a game reads), so a field can be added without a
+  break; the ticket said a plain struct. The engine alone builds it, so
+  it has no public constructor.
+- Step 3's helper is `tell_read`.
+- Settled what named 2228: 2516's "Either order with 2228" clause is now
+  "From 2228 (done)", its plan line says done, and `docs/ROADMAP.md` marks
+  2228 done in both places.
+
+No break: `Bundle::versions`, `LayerCopy` and
+`Formats::load_versions` are new; nothing existing changed.
+
+Book: the *Layers* section of `site/content/learn/book/assets-and-formats.md`
+says how to read and fold every layer's copy.
+
+Skills: none, no schema, template, format or problem code changed (the
+error `load_versions` gives uses the existing `SH2003`).
+
+No `Behaviour:` line: `Bundle::bytes` and `test_part` answer and tell the
+watcher as before (searched the game: `gh search code --repo
+Zafnok/visions-of-shuyi 'test_part'` finds its `crates/content` loaders,
+whose answers don't change; `'all_versions'` finds only game#1013's ticket).
+
+Game: game#1013. Its PR adds `"engine#2228"` to its `blocked_by`, uses
+`Formats::load_versions` (or `Bundle::versions`) in place of its own
+`all_versions`, folds the copies walking `.iter().rev()` (game#1013's
+"game first, mods after" is that reversed list), and moves the pin.
+
+Nick input: none.
