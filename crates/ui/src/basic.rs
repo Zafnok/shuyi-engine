@@ -334,7 +334,7 @@ pub struct BasicReload<A: ActionSet, T: Debug + 'static> {
 impl<A: ActionSet, T: Debug + 'static> BasicReload<A, T> {
     /// The module, starting the game over at the screen `first` makes when
     /// its own part reloads.
-    pub fn new(first: fn(&mut Ctx<BasicData<A, T>>) -> Box<dyn Screen<BasicData<A, T>>>) -> Self {
+    pub fn new(first: FirstOf<A, T>) -> Self {
         Self { first }
     }
 }

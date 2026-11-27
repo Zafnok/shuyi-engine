@@ -255,13 +255,16 @@ fn failure(reloads: &[(&'static str, Reload)]) -> Vec<String> {
     }
 }
 
+/// What a reload that read nothing again answers.
+const NOTHING: [(&str, Reload); 0] = [];
+
 #[test]
 fn a_file_nothing_read_reloads_nothing() {
     let mut data = Data::load(disk(GOOD), CONSOLE, NO_OWN).unwrap_or_else(|e| panic!("{e:?}"));
-    assert!(data.reload(&changed(&["notes.txt"])).is_empty());
-    assert!(data.reload(&[]).is_empty());
+    assert_eq!(data.reload(&changed(&["notes.txt"])), NOTHING);
+    assert_eq!(data.reload(&[]), NOTHING);
     // The font atlas and the pictures don't reload here.
-    assert!(data.reload(&changed(&[FONT_RON, FONT_PNG])).is_empty());
+    assert_eq!(data.reload(&changed(&[FONT_RON, FONT_PNG])), NOTHING);
 }
 
 #[test]

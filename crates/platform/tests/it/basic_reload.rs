@@ -154,7 +154,7 @@ fn a_short_path_game_with_debug_tools_reloads_first_and_without_them_not() {
     let mut ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
     ctx.debug_tools = false;
     let shipped = game.game(ctx).unwrap_or_else(|e| panic!("{e}"));
-    assert!(shipped.modules().is_empty(), "{:?}", shipped.modules());
+    assert_eq!(shipped.modules(), []);
 }
 
 #[test]
