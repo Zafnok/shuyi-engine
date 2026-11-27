@@ -201,7 +201,7 @@ These tickets, in order:
 | 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 (done) | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 3537 (done) | The bots' settings, the perf rows and five other constructors take no two neighbouring numbers |
-| 3539 | The perf rows take no two neighbouring numbers |
+| 3539 (done) | The perf rows take no two neighbouring numbers |
 | 2098 | Public API with no second user is hidden or moved out of the engine crates |
 | 3406 (done) | A public game's tag release publishes what Nick decided, and never a debug file |
 | 3504 (done) | A game with private files exports for Linux: the sniper image gets the ssh its private files' checkout needs |

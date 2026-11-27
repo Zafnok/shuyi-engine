@@ -37,7 +37,7 @@ fn realloc(heap: &CountingAlloc<System>, ptr: *mut u8, size: usize, new_size: us
 #[test]
 fn a_new_counter_has_counted_nothing() {
     let heap = CountingAlloc::new(System);
-    assert_eq!(heap.counts(), Counts::new(0, 0, 0));
+    assert_eq!(heap.counts(), Counts::new(0));
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn zeroed_blocks_count_as_blocks() {
     // SAFETY: a valid layout above zero.
     let block = unsafe { heap.alloc_zeroed(layout(64)) };
     assert!(!block.is_null());
-    assert_eq!(heap.counts(), Counts::new(64, 64, 1));
+    assert_eq!(heap.counts(), Counts::new(64).with_allocs(1));
     free(&heap, block, 64);
 }
 
@@ -103,8 +103,11 @@ fn counts_reads_all_three_and_takes_the_calls() {
     let a = alloc(&heap, 40);
     let b = alloc(&heap, 60);
     free(&heap, a, 40);
-    assert_eq!(heap.counts(), Counts::new(60, 100, 2));
-    assert_eq!(heap.counts(), Counts::new(60, 100, 0));
+    assert_eq!(
+        heap.counts(),
+        Counts::new(60).with_peak_bytes(100).with_allocs(2)
+    );
+    assert_eq!(heap.counts(), Counts::new(60).with_peak_bytes(100));
     free(&heap, b, 60);
 }
 
@@ -288,7 +291,7 @@ mod tagged {
         let c = alloc_in(&heap, 4, 10, 1, false);
         assert_eq!(live(&heap, 3), (150, 2));
         assert_eq!(live(&heap, 4), (10, 1));
-        assert_eq!(heap.counts(), Counts::new(160, 160, 3));
+        assert_eq!(heap.counts(), Counts::new(160).with_allocs(3));
         free_in(&heap, a, 100, 8);
         assert_eq!(live(&heap, 3), (50, 1));
         let three = row(&heap, 3).unwrap();
@@ -360,7 +363,7 @@ mod tagged {
         assert!(unsafe { heap.alloc(layout) }.is_null());
         // SAFETY: as above.
         assert!(unsafe { heap.alloc_zeroed(layout) }.is_null());
-        assert_eq!(heap.counts(), Counts::new(0, 0, 2));
+        assert_eq!(heap.counts(), Counts::new(0).with_allocs(2));
         assert_eq!(heap.rows(), []);
         heap.inner.refuse.set(false);
         let before = tags::enter(5);
@@ -395,7 +398,7 @@ mod tagged {
             // refused before the inner allocator sees it.
             assert!(unsafe { heap.realloc(block, small, new_size) }.is_null());
         }
-        assert_eq!(heap.counts(), Counts::new(16, 16, 4));
+        assert_eq!(heap.counts(), Counts::new(16).with_allocs(4));
         assert_eq!(live(&heap, 1), (16, 1));
         free_in(&heap, block, 16, 8);
     }

@@ -578,7 +578,9 @@ fn the_debug_build_has_a_clock_and_counts_the_heap() {
     assert_eq!(platform.clock().is_some(), cfg!(debug_assertions));
     assert_eq!(
         platform.memory(),
-        Some(MemoryReading::new(HeapCounts::new(1024, 2048, 3)))
+        Some(MemoryReading::new(
+            HeapCounts::new(1024).with_peak_bytes(2048).with_allocs(3)
+        ))
     );
 }
 

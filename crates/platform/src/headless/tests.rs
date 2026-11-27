@@ -457,10 +457,12 @@ fn the_platform_reads_its_memory_and_counts_the_calls() {
     let card = Card::text("Loading");
     platform.present(&Frame::new(Show::Card(&card)));
     assert_eq!(platform.memory(), Some(MemoryReading::new(fake_heap(1))));
-    platform.set_memory(Some(|| HeapCounts::new(7, 8, 9)));
+    platform.set_memory(Some(|| {
+        HeapCounts::new(7).with_peak_bytes(8).with_allocs(9)
+    }));
     assert_eq!(
         platform.memory().map(|m| m.heap),
-        Some(HeapCounts::new(7, 8, 9))
+        Some(HeapCounts::new(7).with_peak_bytes(8).with_allocs(9))
     );
     platform.set_memory(None);
     assert!(!platform.has_memory());
@@ -534,7 +536,7 @@ fn the_fake_snapshots_rows_add_up_to_the_live_bytes_of_the_fake_memory() {
 fn the_platform_takes_a_snapshot_from_its_fake_or_a_counter_set() {
     let mut platform = HeadlessPlatform::new();
     assert_eq!(platform.heap_snapshot(), None);
-    platform.set_heap_snapshots(Some(|| HeapSnapshot::new(5, 6, Vec::new())));
+    platform.set_heap_snapshots(Some(|| HeapSnapshot::new(5, Vec::new()).with_peak_bytes(6)));
     assert_eq!(platform.heap_snapshot().map(|s| s.live_bytes), Some(5));
     let mut fake = platform.with_fake_memory();
     let card = Card::text("Loading");

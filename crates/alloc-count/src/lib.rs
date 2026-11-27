@@ -80,13 +80,27 @@ pub struct Counts {
 }
 
 impl Counts {
-    /// `live_bytes` live, `peak_bytes` at the most, and `allocs` calls.
-    pub const fn new(live_bytes: u64, peak_bytes: u64, allocs: u32) -> Self {
+    /// `live_bytes` live, the most there have been, and no call.
+    pub const fn new(live_bytes: u64) -> Self {
         Self {
             live_bytes,
-            peak_bytes,
-            allocs,
+            peak_bytes: live_bytes,
+            allocs: 0,
         }
+    }
+
+    /// The same counts, with `peak_bytes` the most live at once.
+    #[must_use]
+    pub const fn with_peak_bytes(mut self, peak_bytes: u64) -> Self {
+        self.peak_bytes = peak_bytes;
+        self
+    }
+
+    /// The same counts, with `allocs` calls.
+    #[must_use]
+    pub const fn with_allocs(mut self, allocs: u32) -> Self {
+        self.allocs = allocs;
+        self
     }
 }
 
@@ -115,11 +129,12 @@ pub struct TagCounts {
 }
 
 impl TagCounts {
-    /// Tag `tag`, named `name` of `class`, with nothing counted.
-    pub const fn new(tag: u16, class: u8, name: &'static str) -> Self {
+    /// Tag `tag`, named `name` of [`tags::OTHER_CLASS`], with nothing
+    /// counted.
+    pub const fn new(tag: u16, name: &'static str) -> Self {
         Self {
             tag,
-            class,
+            class: tags::OTHER_CLASS,
             name,
             live_bytes: 0,
             live_blocks: 0,
@@ -127,10 +142,50 @@ impl TagCounts {
             peak_bytes: 0,
         }
     }
+
+    /// The same tag, its name of `class`.
+    #[must_use]
+    pub const fn with_class(mut self, class: u8) -> Self {
+        self.class = class;
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{Counts, TagCounts, tags};
+
+    #[test]
+    fn counts_build_what_a_literal_built() {
+        let literal = Counts {
+            live_bytes: 60,
+            peak_bytes: 100,
+            allocs: 2,
+        };
+        assert_eq!(Counts::new(60).with_peak_bytes(100).with_allocs(2), literal);
+        let fresh = Counts {
+            live_bytes: 60,
+            peak_bytes: 60,
+            allocs: 0,
+        };
+        assert_eq!(Counts::new(60), fresh);
+    }
+
+    #[test]
+    fn a_tags_counts_build_what_a_literal_built() {
+        let literal = TagCounts {
+            tag: 3,
+            class: 2,
+            name: "ai",
+            live_bytes: 0,
+            live_blocks: 0,
+            allocated_bytes: 0,
+            peak_bytes: 0,
+        };
+        assert_eq!(TagCounts::new(3, "ai").with_class(2), literal);
+        assert_eq!(TagCounts::new(3, "ai").class, tags::OTHER_CLASS);
+    }
+
     /// The lines of `manifest`'s `[header]` table, without comments and
     /// blank lines.
     fn table<'a>(manifest: &'a str, header: &str) -> Vec<&'a str> {

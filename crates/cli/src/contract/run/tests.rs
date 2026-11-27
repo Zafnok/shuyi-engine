@@ -489,7 +489,11 @@ fn run_with_perf_sums_up_the_heap_where_it_was_counted() {
     let mut game = measured(2);
     if let Ok(session) = &mut game.session {
         for (n, record) in (1..).zip(&mut session.perf) {
-            record.heap = Some(HeapCounts::new(1000 * n, 3_500_000, 4));
+            record.heap = Some(
+                HeapCounts::new(1000 * n)
+                    .with_peak_bytes(3_500_000)
+                    .with_allocs(4),
+            );
         }
     }
     let input = RunInput {
@@ -511,10 +515,12 @@ fn run_with_perf_sums_up_the_heap_where_it_was_counted() {
 fn snapshot(frame: u32, rows: &[(TagClass, &'static str, u64, u32)]) -> HeapSnapshot {
     let rows: Vec<TagRow> = rows
         .iter()
-        .map(|&(class, name, bytes, blocks)| TagRow::new(class, name, bytes, blocks))
+        .map(|&(class, name, bytes, blocks)| {
+            TagRow::new(class, name, bytes).with_live_blocks(blocks)
+        })
         .collect();
     let live = rows.iter().map(|r| r.live_bytes).sum();
-    let mut snapshot = HeapSnapshot::new(live, live, rows);
+    let mut snapshot = HeapSnapshot::new(live, rows);
     snapshot.frame = frame;
     snapshot
 }
@@ -542,7 +548,11 @@ fn run_with_perf_answers_what_holds_the_heap_and_what_grew() {
     if let Ok(session) = &mut game.session {
         session.snapshots = vec![first.clone(), last.clone()];
         for record in &mut session.perf {
-            record.heap = Some(HeapCounts::new(504_096, 631_072, 4));
+            record.heap = Some(
+                HeapCounts::new(504_096)
+                    .with_peak_bytes(631_072)
+                    .with_allocs(4),
+            );
         }
     }
     let dir = std::env::temp_dir().join(format!("shuyi-run-heap-{}", std::process::id()));

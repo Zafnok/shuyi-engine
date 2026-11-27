@@ -138,7 +138,7 @@ impl<A> CountingAlloc<A, Tagged> {
             if live == 0 && allocated == 0 {
                 continue;
             }
-            let mut row = TagCounts::new(tag, class, name);
+            let mut row = TagCounts::new(tag, name).with_class(class);
             row.live_bytes = wide(live);
             row.live_blocks = u32::try_from(words.blocks.get()).unwrap_or(u32::MAX);
             row.allocated_bytes = wide(allocated);

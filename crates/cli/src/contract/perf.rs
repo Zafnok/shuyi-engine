@@ -102,10 +102,10 @@ impl PerfRead {
         }
     }
 
-    /// The first `max` records of `ring` numbered `since` or more. A
-    /// `since` past the ring's next number (a ring of a game started again)
-    /// reads nothing, with `next` 0.
-    pub fn of(ring: &PerfRing, since: u64, max: u32) -> Self {
+    /// Every kept record of `ring` numbered `since` or more (keep fewer
+    /// with [`first`](Self::first)). A `since` past the ring's next number
+    /// (a ring of a game started again) reads nothing, with `next` 0.
+    pub fn of(ring: &PerfRing, since: u64) -> Self {
         let next_seq = ring.next_seq();
         let kept = u64::try_from(ring.records().len()).unwrap_or(u64::MAX);
         let first = next_seq.saturating_sub(kept);
@@ -118,8 +118,7 @@ impl PerfRead {
                 measured,
             };
         }
-        let max = usize::try_from(max).unwrap_or(usize::MAX);
-        let records: Vec<FrameRecord> = ring.since(since).take(max).cloned().collect();
+        let records: Vec<FrameRecord> = ring.since(since).cloned().collect();
         let start = since.max(first);
         Self {
             next: start + u64::try_from(records.len()).unwrap_or(u64::MAX),
@@ -127,6 +126,17 @@ impl PerfRead {
             records,
             measured,
         }
+    }
+
+    /// The same read, keeping only its first `max` records: `next` is the
+    /// one after the last kept.
+    #[must_use]
+    pub fn first(mut self, max: u32) -> Self {
+        let max = usize::try_from(max).unwrap_or(usize::MAX);
+        let cut = self.records.len().saturating_sub(max);
+        self.records.truncate(max);
+        self.next -= u64::try_from(cut).unwrap_or(u64::MAX);
+        self
     }
 }
 

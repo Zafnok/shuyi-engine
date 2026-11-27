@@ -168,15 +168,29 @@ pub struct SpanEvent {
 }
 
 impl SpanEvent {
-    /// A span called `name` of `us` microseconds, `start_us` into the
-    /// frame, inside `depth` others.
-    pub fn new(name: impl Into<Cow<'static, str>>, start_us: u32, us: u32, depth: u8) -> Self {
+    /// A span called `name` of `us` microseconds, at the frame's start and
+    /// inside no other span.
+    pub fn new(name: impl Into<Cow<'static, str>>, us: u32) -> Self {
         Self {
             name: name.into(),
-            start_us,
+            start_us: 0,
             us,
-            depth,
+            depth: 0,
         }
+    }
+
+    /// The same span, `start_us` microseconds into the frame.
+    #[must_use]
+    pub const fn with_start_us(mut self, start_us: u32) -> Self {
+        self.start_us = start_us;
+        self
+    }
+
+    /// The same span, inside `depth` others.
+    #[must_use]
+    pub const fn with_depth(mut self, depth: u8) -> Self {
+        self.depth = depth;
+        self
     }
 }
 
@@ -198,14 +212,28 @@ pub struct HeapCounts {
 }
 
 impl HeapCounts {
-    /// `live_bytes` live, `peak_bytes` at the most, and `allocs` calls
-    /// since the last reading.
-    pub const fn new(live_bytes: u64, peak_bytes: u64, allocs: u32) -> Self {
+    /// `live_bytes` live, the most there have been, and no call since the
+    /// last reading.
+    pub const fn new(live_bytes: u64) -> Self {
         Self {
             live_bytes,
-            peak_bytes,
-            allocs,
+            peak_bytes: live_bytes,
+            allocs: 0,
         }
+    }
+
+    /// The same counts, with `peak_bytes` the most live at once.
+    #[must_use]
+    pub const fn with_peak_bytes(mut self, peak_bytes: u64) -> Self {
+        self.peak_bytes = peak_bytes;
+        self
+    }
+
+    /// The same counts, with `allocs` calls since the last reading.
+    #[must_use]
+    pub const fn with_allocs(mut self, allocs: u32) -> Self {
+        self.allocs = allocs;
+        self
     }
 }
 
@@ -452,23 +480,25 @@ pub struct TagRow {
 }
 
 impl TagRow {
-    /// `class`'s `name` with `live_bytes` live in `live_blocks` blocks, as
-    /// if just allocated: its bytes ever allocated and its peak are its
-    /// live bytes (assign them otherwise).
-    pub fn new(
-        class: TagClass,
-        name: impl Into<Cow<'static, str>>,
-        live_bytes: u64,
-        live_blocks: u32,
-    ) -> Self {
+    /// `class`'s `name` with `live_bytes` live in no block, as if just
+    /// allocated: its bytes ever allocated and its peak are its live bytes
+    /// (assign them otherwise).
+    pub fn new(class: TagClass, name: impl Into<Cow<'static, str>>, live_bytes: u64) -> Self {
         Self {
             class,
             name: name.into(),
             live_bytes,
-            live_blocks,
+            live_blocks: 0,
             allocated_bytes: live_bytes,
             peak_bytes: live_bytes,
         }
+    }
+
+    /// The same row, its bytes live in `live_blocks` blocks.
+    #[must_use]
+    pub const fn with_live_blocks(mut self, live_blocks: u32) -> Self {
+        self.live_blocks = live_blocks;
+        self
     }
 }
 
@@ -496,10 +526,10 @@ pub struct HeapSnapshot {
 }
 
 impl HeapSnapshot {
-    /// A snapshot of frame 0 with `live_bytes` live, `peak_bytes` at the
-    /// most, and the rows `tags`, put in order: the most live bytes first,
+    /// A snapshot of frame 0 with `live_bytes` live, the most there have
+    /// been, and the rows `tags`, put in order: the most live bytes first,
     /// then by class, then by name. None overflowed.
-    pub fn new(live_bytes: u64, peak_bytes: u64, mut tags: Vec<TagRow>) -> Self {
+    pub fn new(live_bytes: u64, mut tags: Vec<TagRow>) -> Self {
         tags.sort_by(|a, b| {
             b.live_bytes
                 .cmp(&a.live_bytes)
@@ -509,10 +539,17 @@ impl HeapSnapshot {
         Self {
             frame: 0,
             live_bytes,
-            peak_bytes,
+            peak_bytes: live_bytes,
             tags,
             overflowed: 0,
         }
+    }
+
+    /// The same snapshot, with `peak_bytes` the most live at once.
+    #[must_use]
+    pub const fn with_peak_bytes(mut self, peak_bytes: u64) -> Self {
+        self.peak_bytes = peak_bytes;
+        self
     }
 
     /// What changed from this snapshot to `later`: the tags whose live
@@ -523,21 +560,17 @@ impl HeapSnapshot {
         for row in &self.tags {
             let after = later.row(row.class, &row.name);
             let (bytes, blocks) = after.map_or((0, 0), |a| (a.live_bytes, a.live_blocks));
-            tags.push(TagDelta::new(
-                row.class,
-                row.name.clone(),
-                change(row.live_bytes, bytes),
-                i64::from(blocks) - i64::from(row.live_blocks),
-            ));
+            tags.push(
+                TagDelta::new(row.class, row.name.clone(), change(row.live_bytes, bytes))
+                    .with_live_blocks(i64::from(blocks) - i64::from(row.live_blocks)),
+            );
         }
         for row in &later.tags {
             if self.row(row.class, &row.name).is_none() {
-                tags.push(TagDelta::new(
-                    row.class,
-                    row.name.clone(),
-                    change(0, row.live_bytes),
-                    i64::from(row.live_blocks),
-                ));
+                tags.push(
+                    TagDelta::new(row.class, row.name.clone(), change(0, row.live_bytes))
+                        .with_live_blocks(i64::from(row.live_blocks)),
+                );
             }
         }
         tags.retain(|t| t.live_bytes != 0 || t.live_blocks != 0);
@@ -589,25 +622,28 @@ pub struct TagDelta {
 }
 
 impl TagDelta {
-    /// `class`'s `name`, with `live_bytes` more bytes live in
-    /// `live_blocks` more blocks.
-    pub fn new(
-        class: TagClass,
-        name: impl Into<Cow<'static, str>>,
-        live_bytes: i64,
-        live_blocks: i64,
-    ) -> Self {
+    /// `class`'s `name`, with `live_bytes` more bytes live in as many blocks
+    /// as before.
+    pub fn new(class: TagClass, name: impl Into<Cow<'static, str>>, live_bytes: i64) -> Self {
         Self {
             class,
             name: name.into(),
             live_bytes,
-            live_blocks,
+            live_blocks: 0,
         }
+    }
+
+    /// The same change, with `live_blocks` more blocks live: less than 0
+    /// for fewer.
+    #[must_use]
+    pub const fn with_live_blocks(mut self, live_blocks: i64) -> Self {
+        self.live_blocks = live_blocks;
+        self
     }
 }
 
 /// What grew and shrank in the heap between two snapshots
-/// ([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::new`]
+/// ([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::until`]
 /// (ADR-0039).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -626,14 +662,21 @@ pub struct HeapDiff {
 }
 
 impl HeapDiff {
-    /// Nothing changed from frame `from` to frame `to`.
-    pub fn new(from: u32, to: u32) -> Self {
+    /// Nothing changed from frame 0 until frame `to`.
+    pub fn until(to: u32) -> Self {
         Self {
-            from,
+            from: 0,
             to,
             live_bytes: 0,
             tags: Vec::new(),
         }
+    }
+
+    /// The same change, from frame `from`.
+    #[must_use]
+    pub const fn with_from(mut self, from: u32) -> Self {
+        self.from = from;
+        self
     }
 }
 
@@ -792,9 +835,11 @@ impl PerfState {
         };
         if record.spans.len() < MAX_SPANS {
             let at = micros(frame_start, start);
-            record
-                .spans
-                .push(SpanEvent::new(name, at, micros(start, end), depth));
+            record.spans.push(
+                SpanEvent::new(name, micros(start, end))
+                    .with_start_us(at)
+                    .with_depth(depth),
+            );
         } else {
             record.spans_dropped = record.spans_dropped.saturating_add(1);
         }

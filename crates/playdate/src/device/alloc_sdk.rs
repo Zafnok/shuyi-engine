@@ -32,11 +32,11 @@ static ALLOC: SdkAlloc = SdkAlloc;
 #[allow(clippy::unnecessary_wraps)]
 pub fn heap() -> Option<HeapCounts> {
     let counts = ALLOC.counts();
-    Some(HeapCounts::new(
-        counts.live_bytes,
-        counts.peak_bytes,
-        counts.allocs,
-    ))
+    Some(
+        HeapCounts::new(counts.live_bytes)
+            .with_peak_bytes(counts.peak_bytes)
+            .with_allocs(counts.allocs),
+    )
 }
 
 /// A release build doesn't count.
