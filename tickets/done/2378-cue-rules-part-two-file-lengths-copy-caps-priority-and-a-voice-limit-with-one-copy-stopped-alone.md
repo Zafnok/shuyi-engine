@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2345", "2280"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2378 — Cue rules, part two: copy caps, priority and a voice limit
@@ -273,45 +273,45 @@ do with a `StopCopy` until it lands.
 
 ## Acceptance criteria
 
-- [ ] Every manifest in the repository's tests loads unchanged; `FULL`
+- [x] Every manifest in the repository's tests loads unchanged; `FULL`
       loads with `CueRules::default()` (no cap, priority 128) on each
       cue and `max_voices: None`.
-- [ ] A cue with `max_copies: 3, when_full: StopOldest, priority: 200`
+- [x] A cue with `max_copies: 3, when_full: StopOldest, priority: 200`
       and a manifest with `max_voices: 12`, written bare, load to those
       values. `max_copies: 0`, `max_voices: 0`, and a cue with
       `max_copies` whose WAV has no `data` chunk, are errors at their
       line.
-- [ ] At no time do more than `max_copies` copies of a cue, or
+- [x] At no time do more than `max_copies` copies of a cue, or
       `max_voices` in all, sound: a property test over random rules,
       lengths and timed plays, checked by a model that rebuilds the
       copies sounding from the `Sound` and `StopCopy` requests and the
       lengths.
-- [ ] The voice rule, in unit tests: with the voices full of higher
+- [x] The voice rule, in unit tests: with the voices full of higher
       priorities, a lower one is dropped as `Voices`; an equal or higher
       one cuts the oldest of the lowest (a `StopCopy` for it, reported
       as `Cut`) and sounds.
-- [ ] `Skip` drops a play over the cap as `Copies`, and `StopOldest`
+- [x] `Skip` drops a play over the cap as `Copies`, and `StopOldest`
       cuts the cue's oldest copy and the new one sounds; a copy whose
       length has passed holds nothing; a file of unknown length never
       holds a copy or a voice (unit tests).
-- [ ] A play dropped as `Copies` or `Voices` draws nothing: the same
+- [x] A play dropped as `Copies` or `Voices` draws nothing: the same
       requests with the dropped ones taken out give the same files and
       volumes (property test). The same seed and the same requests give
       the same plays, cuts and drops.
-- [ ] In the Harness, with the toy game's `click` given `max_copies: 1`
+- [x] In the Harness, with the toy game's `click` given `max_copies: 1`
       and a length of 500 ms (on its `lengths_ms`), Confirm on the menu
       overlay twice 100 ms apart lists the second click in
       `dropped_sounds()` as `Copies`, and `run` answers it under
       `dropped` with `why: copies`.
-- [ ] `shuyi-app`'s player, against its fake backend: of two copies of
+- [x] `shuyi-app`'s player, against its fake backend: of two copies of
       one file, `StopCopy` stops exactly the copy it names and no other
       copy of the same file, and a copy whose length has passed gives
       back its handle.
-- [ ] `pack::VERSION` is one higher, with the pack snapshot updated;
+- [x] `pack::VERSION` is one higher, with the pack snapshot updated;
       the schemas and their line in `versions.json` are updated if they
       changed, and `cargo xtask contract` passes.
-- [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -329,5 +329,143 @@ do with a `StopCopy` until it lands.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- **The data** (`crates/assets/src/audio.rs`): `CueRules` gains
+  `max_copies: Option<u8>`, `when_full: WhenFull` and `priority: u8`
+  (128 by default, `DEFAULT_PRIORITY`), with `with_max_copies(max,
+  when_full)` and `with_priority`; its `Default` is written by hand as
+  `CueRules::DEFAULT`, and the test that they are equal passes. `WhenFull`
+  (`Skip`, the default, and `StopOldest`) is `#[non_exhaustive]`.
+  `AudioManifest::max_voices: Option<u16>`. The RON takes them flat on the
+  sound and `max_voices` at the top, the two options bare. The checks:
+  `max_copies: 0` (at the cue's line), `max_voices: 0` (at its own line),
+  and a file read whose length can't be measured, of a cue with
+  `max_copies` or in a manifest with `max_voices` (naming the cue and the
+  file, at the cue's line). `pack::VERSION` is 27 (the ticket said 23
+  would become the next; other tickets had taken it to 26 since), with
+  the pack's snapshots and the golden table blessed.
+- **`Cues`** (`crates/platform/src/audio/cues.rs`): `CopyId` (a plain
+  `Copy`, `Ord` value from 1; `CopyId::NONE` is 0, a sound no rules
+  counted), the copies sounding with their cue, priority, start and end,
+  forgotten once their end is at or before the frame's time (a clock that
+  goes back counts as no time passing). Each play: the gap, then the copy
+  cap (`Skip` drops as `Copies`; `StopOldest` cuts the cue's oldest), then
+  the voices (the lowest priority, the oldest of those, ties to the lower
+  id, cut if at most the play's priority, else `Voices`). A cut gives a
+  `StopCopy` before the new play's `Sound`, and a `DroppedSound` `Cut`
+  under the cut copy's cue. A dropped play draws nothing, takes no id and
+  starts no gap. `DropWhy` gains `Copies`, `Voices` and `Cut`, named
+  `copies`, `voices` and `cut`.
+- **What reaches the device** (`crates/platform/src/audio.rs`):
+  `SoundRequest::Sound` gains `copy: CopyId` (`with_copy`), and
+  `SoundRequest::StopCopy { copy }`. The headless `Speaker` records it
+  with the frame's other requests (its test).
+- **One copy stopped alone**: since 3029 the player every backend shares
+  is `crates/platform/src/audio/player.rs`, so the per-copy playback is
+  there: `Player` keeps each copy's `Playing` by its `CopyId` until
+  `StopCopy` stops it with `stop_playing`, or its length (the cue's
+  `lengths_ms`) has passed by the frame's time; a copy of unknown length,
+  or `CopyId::NONE`, keeps none. That covers `shuyi-app` (quad-snd and
+  the in-house mixer) and the Playdate, whose test against its fake SDK
+  stops one of two copies of one sound and hears the other play on.
+- **The contract**: `Dropped::why`'s doc lists the new words, so do
+  `docs/contract.md`'s `run` row and the regenerated schemas (a new line
+  in `versions.json` at version 62: no client breaks, `cargo xtask
+  contract` passes).
+- **Tests**: unit tests of the RON fields and the checks, of `Skip`,
+  `StopOldest`, the voice rule (dropped lower, cut equal or higher, the
+  oldest of the lowest, ties to the lower id), ends and unknown lengths;
+  property tests of the caps against a model rebuilt from the `Sound` and
+  `StopCopy` requests and the lengths, and that a dropped play draws
+  nothing and the same seed gives the same frames (cuts included); the
+  Harness test (the toy's `click` at one copy and 500 ms, two Confirms
+  100 ms apart, the second dropped as `Copies`); `run` answering it with
+  `why: copies`; the shared player against its fake backend (one copy
+  stopped alone, a copy past its length let go).
+- **Docs**: `docs/formats.md` (the fields, their checks, lengths measured
+  and never written), `docs/platform-backends.md` (`copy` and
+  `StopCopy`), `docs/contract.md`, `docs/targets/playdate.md` (its eight
+  sample players and `max_voices: 8`), and the book's sound paragraph.
+  ADR-0139 §4 already decides these rules, and the code keeps to it, so it
+  isn't amended.
+
+Deviations:
+
+- Not split. The ticket's **Split** was for `shuyi-app`'s and the
+  Playdate's own handle per copy; since 3029 both play through the shared
+  `Player`, so that part is about 100 lines there, and splitting it off
+  would leave every backend ignoring `StopCopy`. The PR is about 1,110
+  counted lines, under the 1,400 estimated.
+- `copy` defaults to `CopyId::NONE`, so a `Sound` built with
+  `SoundRequest::sound` alone (a test, a backend's own) names no copy and
+  a player keeps nothing for it.
+- The voice check runs before the play's file is picked (a dropped play
+  must draw nothing), so a play whose file turns out to be of unknown
+  length can still cut a copy when the voices are full; it then holds no
+  voice itself. ADR-0139 §4 allows it (the order is gap, copies, voices,
+  then the file).
+- The *From 3031* bullet: the in-house mixer's `VOICES` stays 32. `App`
+  can't see a backend's capacity before admission until 3017 (parked)
+  gives targets `channels`; 3017's clause now says the desktop's and the
+  web's profiles take `channels: 32` from the mixer, and `Cues` reads the
+  smaller. Until then a game with no `max_voices` can ask the mixer for
+  more than 32 copies, and the mixer skips one with a warning in the log,
+  as before. No ticket: 3017 does it. The Playdate's eight sample players
+  take one in turn when all play, as before; `docs/targets/playdate.md`
+  says to give the manifest `max_voices: 8`, and 3017 makes it the
+  target's own `channels`.
+- 3017 is parked and 2218 is open, so their either-order clauses are
+  theirs: both now say what this ticket built (*From 2378 (done)*).
+- By ear on the desktop and the web: not done here (no listening in this
+  session). hello-grid's menu and cursor sounds still reach the device
+  through the MCP `run` (`ui_move`, `ui_select`, `ui_cancel`, and its own
+  `gap` drop), on this branch's base, 03ac186e. Nick may listen once.
+
+No ticket: none is left to write; 3017 and 2218 hold what remains of their clauses.
+
+Searched the game (`gh search code --repo Zafnok/visions-of-shuyi` for
+`SoundRequest`, `CueRules`, `DropWhy` and `max_voices`): its
+`crates/ui/tests/it/sound_cues.rs` matches `SoundRequest::Sound { cue,
+variant, .. }` and reads `DropWhy::Gap`, which still compile; it names
+no `CueRules` or `max_voices`, so its manifests load unchanged.
+
+Game: nothing to adopt, but in the pin move itself: its manifests name no new field and its sound test still compiles; the pin move rebakes its pack and blesses `crates/ui/tests/it/sessions/quick_battle.session.ron` again, as the `Breaking:` lines say, and its Playdate front end (game#1170, open) runs on `shuyi-playdate`, whose shared player stops a cut copy itself.
+
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form holds its copy cap, its rule when full and its priority, and the manifest's its voice limit, so a baked pack is of version 27; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 27, its sound cues with their copy caps and priorities and the audio manifest with its voice limit; a pack of version 26 is refused.
+old: "pack::VERSION == 26"
+new: "pack::VERSION == 27"
+before: |
+  cargo shuyi bake   # with the engine before 2378
+after: |
+  cargo shuyi bake   # again, with this engine
+```
+
+Breaking: shuyi-platform: a session record's frame hashes: each frame's hash covers the sounds sent with their copy (`SoundRequest::Sound`'s `copy`), so a record kept before plays differently from its first sound; a game blesses its kept records again (hello-grid's `tests/sessions/stage.session.ron` is).
+
+```migration
+since: 0.1.0
+what: A session record's frame hashes hold each sound's copy id, so a kept record is blessed again.
+old: "a frame hash over SoundRequest::Sound { cue, volume, variant, cue_volume }"
+new: "a frame hash over SoundRequest::Sound { cue, volume, variant, cue_volume, copy }"
+before: |
+  assert_session(start(), kept("run.session.ron"));   # passes on the old engine
+after: |
+  SHUYI_BLESS=1 cargo test   # write the record again, then assert_session as before
+```
+
+Behaviour: shuyi-platform: each `SoundRequest::Sound` `App` sends names its copy (`copy`, a `CopyId` from 1), so a test that compares one to `SoundRequest::sound(..).with_pick(..)` adds `.with_copy(..)`; a `Sound` built alone has `CopyId::NONE`.
+
+Behaviour: shuyi-assets, shuyi-platform: a sound may say `max_copies`, `when_full` and `priority`, and the manifest `max_voices`; a play past them is dropped (`DropWhy::Copies`, `Voices`) or cuts a copy (`SoundRequest::StopCopy`, `DropWhy::Cut`). `max_copies: 0`, `max_voices: 0` and a counted cue's file whose length can't be measured are errors at their line. No manifest that names none sees a change.
+
+Behaviour: shuyi-cli: `run`'s `dropped` gives `why` as `copies`, `voices` or `cut` too.
+
+Book: the chapter on saves and settings says how `max_copies`, `when_full`, `max_voices` and `priority` work (`site/content/learn/book/saves-and-settings.md`).
+
+Skills: none, the skill pack names no cue rule (2345's neither): `docs/formats.md` and the book's sound paragraph hold them.
+
+Playdate: `docs/targets/playdate.md`'s *Sound* says a cut copy stops its own sample player and to give the manifest `max_voices: 8`.

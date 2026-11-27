@@ -23,6 +23,7 @@ use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
 use shuyi_ui::{GameHooks, IdleMotion, Keyboard};
 
 use super::*;
+use crate::audio::CopyId;
 use crate::headless::{HeadlessPlatform, Presented, ScriptedKeyboard};
 
 /// What a [`Steps`] screen saw in one update.
@@ -116,7 +117,7 @@ fn a_frame_takes_input_then_acts_steps_plays_and_presents() {
     assert_eq!((first.dt, first.ticks), (0.0, 0));
     // Its click went to the device, and the frame drawn after the update
     // to the display.
-    let click = SoundRequest::sound("click", 1.0);
+    let click = SoundRequest::sound("click", 1.0).with_copy(CopyId::new(1));
     assert_eq!(p.speaker().requests(), [click]);
     assert_eq!(app.audio().len(), 1);
     assert_eq!(p.presented(), 1);
@@ -902,7 +903,7 @@ fn muted_without_focus_the_audio_goes_on_at_volume_zero() {
     let _ = app.frame(&mut p, Millis(17));
     assert!(!app.is_paused());
     assert_eq!(log.borrow().len(), 2);
-    let click = SoundRequest::sound("click", 1.0);
+    let click = SoundRequest::sound("click", 1.0).with_copy(CopyId::new(1));
     assert_eq!(p.speaker().requests(), [click]);
     assert!(silenced(&p), "{:?}", p.speaker().gains());
     p.push_system(SystemEvent::FocusGained);
