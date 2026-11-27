@@ -2381,7 +2381,7 @@ fn questions_is_a_field_of_the_input_that_round_trips_and_makes_nothing() {
         input
     );
     // `new` itself refuses it, so a caller that sets it makes nothing.
-    let dir = scratch("questions-refused");
+    let dir = scratch("questions-field-refused");
     let answer = new(&dir, &input);
     assert!(!answer.ok);
     assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0));
