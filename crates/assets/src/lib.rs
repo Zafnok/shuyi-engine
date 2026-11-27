@@ -16,7 +16,9 @@
 //! export targets' profiles ([`target`]); and sprite atlases, images
 //! packed into pages ([`atlas`]); and named pictures per id
 //! ([`picture_set`]). With the `sfx` feature, sound
-//! effects written as a few numbers (`sfx`). Each
+//! effects written as a few numbers (`sfx`); with the `corners` feature, a
+//! terrain's corner pictures made from its one tile, for a tool
+//! (`corners`). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
 //!
@@ -49,6 +51,8 @@ pub mod audio;
 pub mod bitmap;
 pub mod bundle;
 pub mod cinematic;
+#[cfg(feature = "corners")]
+pub mod corners;
 pub mod credits;
 pub mod dialogue;
 pub mod error;

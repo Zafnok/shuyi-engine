@@ -442,6 +442,10 @@ What each one reads:
   (`look "winter": layer 2: …`, `look "winter": prop "lamp": …`).
   `TerrainTilesDef::resolve` reports a picture outside the image, a
   picture to place too.
+  A corner layer's 15 pictures may also be made, not drawn: a
+  `<name>.corners.ron` recipe, a tool's input that no game loads, makes
+  them into a PNG from one tile (`shuyi_assets::corners`, behind its
+  `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0159).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's

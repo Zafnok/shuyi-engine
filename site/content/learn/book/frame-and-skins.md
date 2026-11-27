@@ -134,6 +134,32 @@ the skin's tiles with `TerrainTilesDef::resolve` once its pictures and terrains 
 known. The formats page lists [what the file is checked
 for](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-built-in-formats).
 
+A shore is 15 pictures, one for each way the four tiles round a point can be water or not.
+A game may draw them, or make them from the water's one tile with a tool it opts into:
+`shuyi-cli`'s `corners` feature, on in the game's tools. A recipe beside the tile,
+`water.corners.ron`, says which tile and where the sheet goes, with an optional wobble
+(a wavy edge from a seed) and rim (foam along it):
+
+```ron
+(
+    make: Generated(
+        tile: (image: "tiles/terrain.png", at: (24, 0), size: (24, 24)),
+        wobble: Some((strength: 30, cells: 4, seed: 7)),
+        rim: Some((colour: "#E8F4FF", width: 2, side: Outside)),
+    ),
+    out: "tiles/water-corners.png",
+)
+```
+
+`cargo shuyi corners files-src/water.corners.ron` writes the sheet, a PNG of 8 × 2 pictures
+that the game draws as it draws a drawn one; `make: Rotated(...)` makes it from 5 drawn
+pieces and their quarter turns instead. The corners sit round the point, so their edges
+come out rounded and meet without a seam. The tileset names the sheet's pictures by their
+cells (`shuyi_assets::corners::sheet_rect`), and a test keeps the sheet equal to its recipe:
+`shuyi_cli::corners::check`, which fails naming the file and the command that remakes it.
+The sheet is a plain picture, so a game can make it once, touch it up by hand and drop the
+recipe.
+
 A few things no terrain says, a lamp at a gate or a signpost at a crossing, a map
 places by hand in its file's `look`:
 `look: (props: { (19, 5): "lamp" })`. The tileset's look says what each name is drawn as
