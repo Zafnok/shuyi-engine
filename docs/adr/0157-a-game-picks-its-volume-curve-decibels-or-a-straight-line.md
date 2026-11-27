@@ -52,6 +52,8 @@ the engine's.
   (90 is about 1 dB under 100) and the whole fall in the last few steps:
   the trade ADR-0091 described, made by the game knowingly.
 - No API breaks: a new enum, a new field of a `#[non_exhaustive]`
-  struct, new functions, and a manifest field that defaults.
+  struct, new functions, and a manifest field that defaults. The baked
+  pack holds the curve, so its version moves to 25 and a game bakes
+  again.
 - A third curve, or one per group, is a new variant or field later;
   `VolumeCurve` is `#[non_exhaustive]` for it.

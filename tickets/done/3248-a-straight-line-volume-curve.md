@@ -118,7 +118,8 @@ None.
   it. A ducking rule's floor stays `loudness(to)` on both curves.
 - ADR-0157 records the choice; the book's *Settings* says how a game
   picks the straight line.
-- Deviation: none. The duck rule's error text still says "on the
+- Deviation: the pack's version moves to 25 (the Scope said nothing
+  of the binary form): a new manifest field is in the baked form. The duck rule's error text still says "on the
   loudness curve", unchanged, so a game's tests of it see no change.
 - Searched the game for what this touches (`gh search code --repo
   Zafnok/visions-of-shuyi 'volume_curve'`: no hit; the game pins
@@ -133,4 +134,18 @@ field.
 Skills: none, the skill pack's `shuyi-new-game` shows an `audio.ron` with
 no groups or curve, and a new game keeps the default curve.
 
-Behaviour: none; with no `volume_curve` every gain is as before.
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": an audio manifest's binary form holds its volume curve, so a baked pack is of version 25 and a decoded audio manifest's state hash moves; a pack baked before is refused, so a game bakes again with `shuyi bake`, and blesses again its own golden row of a decoded audio manifest.
+
+```migration
+since: 0.1.0
+what: The pack format is version 25, its audio manifest with the volume curve; a pack of version 24 is refused, and a golden row of a decoded audio manifest moves.
+old: "pack::VERSION == 24"
+new: "pack::VERSION == 25"
+before: |
+  cargo shuyi bake   # with the engine before 3248
+after: |
+  cargo shuyi bake   # again, with this engine
+  cargo xtask golden --bless   # or the game's own way, for a row of a decoded audio manifest
+```
+
+Behaviour: none beyond the pack; with no `volume_curve` every gain is as before.
