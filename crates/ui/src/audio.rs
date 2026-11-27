@@ -22,7 +22,7 @@
 //! screen is started by the screen below it, or is music.
 //!
 //! Every sound, track and voice clip plays in a sound group ([`groups`]):
-//! the player sets a volume for each group, on a loudness curve
+//! the player sets a volume for each group, on the game's volume curve
 //! ([`loudness`]), and one over all of them; the platform gets one
 //! [`Gain`] per cue ([`Gains`]).
 //!
