@@ -254,7 +254,7 @@ glob `shuyi::prelude`; its skill pack's copy follows when the pin moves.
 Skills: the `shuyi-new-game` and `shuyi-animate` skills and every worked
 example's imports follow the preludes.
 
-Size: 1,861 counted lines, not split further: the check's list is what the
+Size: 1,866 counted lines, not split further: the check's list is what the
 moves leave (each entry is a path no prelude took, allowed where it is
 named), and the moves are chosen by the check's failures, so a PR of the
 preludes and moves alone would have nothing holding them and one of the
