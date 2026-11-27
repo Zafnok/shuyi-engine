@@ -362,7 +362,7 @@ launches.
 Some of these close the engine part of a game ticket, so they come when
 the game reaches it, whatever their place below: 2339 (game#0813,
 screen transitions), 2347 and 3215–3217 (game#0250, key names that stand out), 2228
-(game#1013, mod tables merged by id), 2226, 2253 and 2349
+(game#1013, mod tables merged by id; done), 2226, 2253 and 2349
 (game#0825, the language option; 2349 done), and 2278 (game#0831, a
 language's own pictures; done). 2342 (game#0826, the voices' volume)
 is done.
@@ -451,7 +451,7 @@ is done.
 | 3045 | Saves that survive a power cut: flushed writes and the last good copy kept |
 | 2110 | Save migrations: an opt-in chain of steps from older versions, and golden fixtures of each |
 | 2111 | Stamped records: the engine, the game and the content that made a record or a save |
-| 2228 | `Bundle::versions`: every layer's copy of a file, for loaders that merge layers |
+| 2228 (done) | `Bundle::versions`: every layer's copy of a file, for loaders that merge layers |
 | 2229 | Import settings beside any file and per folder |
 | 2571 | `shuyi check` checks the game's import settings files (after 2229) |
 | 2230 | JSON and CSV tables as formats of a game's own data kinds |
@@ -479,7 +479,8 @@ is done.
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
 | 3094 | The grid template's stage record in its crash reports, given through `BasicGame` (after 3046) |
 | 3095 | A panic the game survives is reported, but not offered to the game as a crash (after 3046) |
-| 2520 | `shuyi crash` and `replay --crash`, with the debug file kept for each release |
+| 2520 (done) | `shuyi crash` and `replay --crash`: a crash report read, and its record replayed to the panic |
+| 3441 | `shuyi crash --symbols`: a crash report's frames named from the debug file kept for its release (after 2520) |
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN (2521, the link itself, moved into the MVP on 2026-10-24) |

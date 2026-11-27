@@ -52,6 +52,7 @@ fn parser(op: Op) -> (&'static [&'static str], Parse) {
         Op::Export => (&["web"], |a| export::parse_args(a).map(drop)),
         Op::Explain => (&[], |a| explain::parse_args(a).map(drop)),
         Op::Docs => (&["x"], |a| docs::parse_args(a).map(drop)),
+        Op::Crash => (&["c.ron"], |a| crash::parse_args(a).map(drop)),
         Op::Sfx => (&["coin"], |a| sfx::parse_args(a).map(drop)),
         Op::Attach => (&["127.0.0.1:1", "--token", "t"], |a| {
             attach::parse_args(a).map(drop)

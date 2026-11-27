@@ -8,6 +8,14 @@
 //! for the life of the program, so a game's loaders read them as they read
 //! its own. `shuyi-app`'s `read_folder` reads a folder on disk into one.
 //!
+//! A loader that merges entries instead of replacing a whole file (mods or
+//! DLC adding rows to a data table) reads every layer's copy of it:
+//! [`Bundle::versions`], or [`Formats::load_versions`](crate::format::Formats::load_versions)
+//! to decode each. They come in the order the bundle reads layers, the
+//! copy [`Bundle::bytes`] reads first and the game's last, so a fold of
+//! lower layers under higher ones walks them in reverse. The merge rules
+//! (keys, removals, two mods changing one entry) are the game's.
+//!
 //! Two flags shape a layer. A **private** layer holds files that may not be
 //! handed out (bought art): [`Bundle::is_private`] tells a tool which shown
 //! names come from one. A **test** layer holds the files of the tests and
@@ -639,12 +647,54 @@ impl Bundle {
     /// a file it can't read now (ADR-0128 §1, §2).
     pub fn bytes(&self, path: &str) -> Option<Cow<'static, [u8]>> {
         let bytes = find(self.read(), path).and_then(|(_, bytes)| bytes.ok());
-        if let Some(watcher) = WATCHER.get() {
-            watcher(path, bytes.is_some());
-        }
-        #[cfg(feature = "std")]
-        note_read(path, bytes.is_some());
+        tell_read(path, bytes.is_some());
         bytes
+    }
+
+    /// Every copy of the file at `path` (relative to a layer's root,
+    /// `/`-separated) that a layer this thread reads has, **in the order the
+    /// bundle reads layers**: the first is the copy [`Bundle::bytes`] reads,
+    /// so a mod laid over the game comes before the game's copy, and the
+    /// game's last. A loader that merges entries (mods or DLC adding to a
+    /// data table) folds lower copies under higher ones, walking it with
+    /// `.iter().rev()`; the merge rules are the game's.
+    ///
+    /// Inside [`story_only`] the test layers' copies are hidden, as every
+    /// read hides them. Empty when no layer has the file, and when a layer
+    /// that has it can't read it now (a pack read file by file whose bytes
+    /// haven't arrived): a merge without one of its copies would be wrong,
+    /// so it reads as missing, as [`Bundle::bytes`] reads such a file.
+    ///
+    /// The [`watch`]er and [`recording`] hear of it once, as of one read of
+    /// `path`, found or not: they are told a path, not a layer, and a change
+    /// to any layer's copy is a change at that path.
+    ///
+    /// ```
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    ///
+    /// static GAME: &[(&str, &[u8])] = &[("data/crops.ron", b"wheat")];
+    /// static MOD: &[(&str, &[u8])] = &[("data/crops.ron", b"rice")];
+    /// let bundle = Bundle::new(vec![Layer::table("mods/more", MOD), Layer::table("base", GAME)]);
+    /// let copies = bundle.versions("data/crops.ron");
+    /// let shown: Vec<&str> = copies.iter().map(|copy| copy.shown.as_str()).collect();
+    /// assert_eq!(shown, ["mods/more/data/crops.ron", "base/data/crops.ron"]);
+    /// // The game's copy first, then each mod's over it.
+    /// let folded: Vec<_> = copies.iter().rev().filter_map(|copy| copy.text()).collect();
+    /// assert_eq!(folded, ["wheat", "rice"]);
+    /// ```
+    pub fn versions(&self, path: &str) -> Vec<LayerCopy> {
+        let copies: Option<Vec<LayerCopy>> = copies(self.read(), path)
+            .map(|(layer, bytes)| {
+                Some(LayerCopy {
+                    layer: layer.name,
+                    shown: format!("{}/{path}", layer.name),
+                    bytes: bytes.ok()?,
+                })
+            })
+            .collect();
+        let copies = copies.unwrap_or_default();
+        tell_read(path, !copies.is_empty());
+        copies
     }
 
     /// Whether a layer this thread reads has the file at `path`. Unlike
@@ -728,7 +778,7 @@ impl Bundle {
             return None;
         }
         layer_with(self.shipped(), path)?;
-        let (layer, bytes) = find(self.tests(), path)?;
+        let (layer, bytes) = copies(self.tests(), path).next()?;
         let bytes = bytes.ok()?;
         let display = format!("{}/{path}", layer.name);
         Some((display, text_of(bytes)?))
@@ -868,12 +918,50 @@ pub fn shown_under(shown: &str, name: &str) -> bool {
         .is_some_and(|rest| rest.starts_with('/'))
 }
 
+/// One layer's copy of a file ([`Bundle::versions`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct LayerCopy {
+    /// The name of the layer it is in.
+    pub layer: &'static str,
+    /// Its human-facing name (`base/data/crops.ron`), as
+    /// [`Bundle::display_path`] shows a file of that layer: for errors.
+    pub shown: String,
+    /// Its bytes, as [`Bundle::bytes`] hands them out.
+    pub bytes: Cow<'static, [u8]>,
+}
+
+impl LayerCopy {
+    /// Its bytes as text, if they are UTF-8, as [`Bundle::file`] gives
+    /// them: lent bytes are lent, owned ones copied once.
+    #[must_use]
+    pub fn text(&self) -> Option<Cow<'static, str>> {
+        text_of(self.bytes.clone())
+    }
+}
+
+/// Each of `layers` that has the file at `path`, in order, with its bytes,
+/// or [`Unread`] when that layer can't read them now.
+fn copies<'a>(layers: &'a [Layer], path: &str) -> impl Iterator<Item = (&'a Layer, Read)> {
+    layers
+        .iter()
+        .filter_map(move |layer| Some((layer, layer.files.get(path)?)))
+}
+
 /// The file at `path` and the layer it is read from: the first of `layers`
 /// that has it, and its bytes, unless that layer can't read it now.
 fn find<'a>(layers: &'a [Layer], path: &str) -> Option<(&'a Layer, Read)> {
-    layers
-        .iter()
-        .find_map(|layer| Some((layer, layer.files.get(path)?)))
+    copies(layers, path).next()
+}
+
+/// Tells the [`watch`]er and [`recording`] of a read of `path`, and whether
+/// it was found: every read a loader makes is told here, once.
+fn tell_read(path: &str, found: bool) {
+    if let Some(watcher) = WATCHER.get() {
+        watcher(path, found);
+    }
+    #[cfg(feature = "std")]
+    note_read(path, found);
 }
 
 /// The first of `layers` that has the file at `path`, reading nothing of
@@ -942,9 +1030,9 @@ pub type Watcher = fn(path: &str, found: bool);
 static WATCHER: OnceBox<Watcher> = OnceBox::new();
 
 /// Tells `watcher` of every file any bundle reads from now on
-/// ([`Bundle::bytes`] and [`Bundle::file`]), on the thread that reads it:
-/// for a front end that logs or times what it loads. Set once: a second
-/// call gives its watcher back and changes nothing.
+/// ([`Bundle::bytes`], [`Bundle::file`] and [`Bundle::versions`]), on the
+/// thread that reads it: for a front end that logs or times what it loads.
+/// Set once: a second call gives its watcher back and changes nothing.
 pub fn watch(watcher: Watcher) -> Result<(), Watcher> {
     WATCHER.set(Box::new(watcher)).map_err(|watcher| *watcher)
 }
@@ -1000,8 +1088,8 @@ pub(crate) fn reads_of<T>(f: impl FnOnce() -> T) -> (T, Reads) {
 }
 
 /// What `f` gives, and the paths [`Bundle::bytes`] found while it ran on
-/// this thread (also through [`Bundle::file`] and the formats that read a
-/// bundle). Unlike [`watch`], it is scoped, and more than one tool can use
+/// this thread (also through [`Bundle::file`], [`Bundle::versions`] and the
+/// formats that read a bundle). Unlike [`watch`], it is scoped, and more than one tool can use
 /// it at once. Nested, the outer call sees the inner one's reads too.
 /// [`Bundle::has`] records nothing.
 #[cfg(feature = "std")]
@@ -1292,6 +1380,77 @@ mod tests {
         // No test layers.
         assert_eq!(merged().test_part("data/b.ron"), None);
         assert_eq!(story_only(|| bundle.test_part("data/b.ron")), None);
+    }
+
+    /// The layers and the bytes of `copies`.
+    fn copied(copies: &[LayerCopy]) -> Vec<(&'static str, &[u8])> {
+        copies
+            .iter()
+            .map(|copy| (copy.layer, &*copy.bytes))
+            .collect()
+    }
+
+    #[test]
+    fn versions_are_every_layers_copy_in_the_order_layers_are_read() {
+        let bundle = Bundle::new(vec![Layer::table("over", OVER), PRIVATE, PUBLIC]);
+        let copies = bundle.versions("data/a.ron");
+        assert_eq!(
+            copied(&copies),
+            [
+                ("over", &b"table a"[..]),
+                ("bought", b"private a"),
+                ("base", b"public a"),
+            ]
+        );
+        let shown: Vec<&str> = copies.iter().map(|copy| copy.shown.as_str()).collect();
+        assert_eq!(
+            shown,
+            ["over/data/a.ron", "bought/data/a.ron", "base/data/a.ron"]
+        );
+        // The first is the copy every other read sees.
+        assert_eq!(Some(copies[0].bytes.clone()), bundle.bytes("data/a.ron"));
+        assert_eq!(copies[0].shown, bundle.display_path("data/a.ron"));
+        assert_eq!(copies[0].text().as_deref(), Some("table a"));
+        // A test layer's copy comes after the shipped one's.
+        let tests = with_tests();
+        let copies = tests.versions("data/b.ron");
+        assert_eq!(
+            copied(&copies),
+            [("base", &b"public b"[..]), ("tests", b"test b")]
+        );
+        // Inside `story_only`, it is hidden.
+        let shipped = story_only(|| tests.versions("data/b.ron"));
+        assert_eq!(copied(&shipped), [("base", &b"public b"[..])]);
+        assert_eq!(story_only(|| tests.versions("data/t.ron")), []);
+        // A path no layer has.
+        assert_eq!(tests.versions("data/nope.ron"), []);
+        // Bytes that aren't UTF-8 are no text.
+        let binary = Bundle::new(vec![Layer::table("base", BINARY)]);
+        let copies = binary.versions("x.bin");
+        assert_eq!(copied(&copies), [("base", &[0xff, 0xfe][..])]);
+        assert_eq!(copies[0].text(), None);
+    }
+
+    #[test]
+    fn a_run_time_layers_copy_comes_before_an_embedded_layers() {
+        let layer = owned("mods/more", &[("data/a.ron", "mod a")]);
+        let copies = Bundle::new(vec![layer, PUBLIC]).versions("data/a.ron");
+        assert_eq!(
+            copied(&copies),
+            [("mods/more", &b"mod a"[..]), ("base", b"public a")]
+        );
+        assert_eq!(copies[0].shown, "mods/more/data/a.ron");
+    }
+
+    #[test]
+    fn a_path_read_through_versions_is_recorded_found_or_not() {
+        let bundle = merged();
+        let (copies, read) = recording(|| bundle.versions("data/a.ron"));
+        assert_eq!(copies.len(), 2);
+        assert_eq!(read, BTreeSet::from(["data/a.ron".to_owned()]));
+        let (_, reads) = reads_of(|| bundle.versions("data/nope.ron"));
+        assert!(reads.found.is_empty(), "{:?}", reads.found);
+        assert_eq!(reads.asked, BTreeSet::from(["data/nope.ron".to_owned()]));
     }
 
     #[test]
@@ -1680,6 +1839,67 @@ mod tests {
         }
     }
 
+    /// A table layer named `name` of `files`, kept for the run as
+    /// `Pack::into_layer` keeps a pack's.
+    fn leaked_table(name: String, files: BTreeMap<String, String>) -> Layer {
+        let table: Vec<TableFile> = files
+            .into_iter()
+            .map(|(path, text)| {
+                let path: &'static str = Box::leak(path.into_boxed_str());
+                let bytes: &'static [u8] = Box::leak(text.into_bytes().into_boxed_slice());
+                (path, bytes)
+            })
+            .collect();
+        Layer::table(
+            Box::leak(name.into_boxed_str()),
+            Box::leak(table.into_boxed_slice()),
+        )
+    }
+
+    proptest::proptest! {
+        /// For any table layers, some of them test files, and any path,
+        /// inside `story_only` or not: the first copy is the one every read
+        /// sees, there is none exactly when the path reads as missing, and
+        /// there is one for each layer read that holds the path.
+        #[test]
+        fn the_first_version_is_the_read_and_each_layer_read_gives_one(
+            layers in proptest::collection::vec(
+                (
+                    proptest::collection::btree_map("[ab]{1,2}", "[xyz]{0,3}", 0..4),
+                    proptest::bool::ANY,
+                ),
+                0..=4,
+            ),
+            path in "[ab]{1,2}",
+            shipped_only in proptest::bool::ANY,
+        ) {
+            let layers: Vec<Layer> = layers
+                .into_iter()
+                .enumerate()
+                .map(|(at, (files, test))| {
+                    let layer = leaked_table(format!("layer{at}"), files);
+                    if test { layer.test() } else { layer }
+                })
+                .collect();
+            let bundle = Bundle::new(layers);
+            let read = || {
+                let holding = bundle
+                    .read()
+                    .iter()
+                    .filter(|layer| matches!(layer.files, Files::Table(t) if table_get(t, &path).is_some()))
+                    .count();
+                (bundle.versions(&path), bundle.bytes(&path), bundle.display_path(&path), holding)
+            };
+            let (copies, bytes, shown, holding) = if shipped_only { story_only(read) } else { read() };
+            proptest::prop_assert_eq!(copies.is_empty(), bytes.is_none());
+            proptest::prop_assert_eq!(copies.len(), holding);
+            if let Some(first) = copies.first() {
+                proptest::prop_assert_eq!(Some(first.bytes.clone()), bytes);
+                proptest::prop_assert_eq!(&first.shown, &shown);
+            }
+        }
+    }
+
     #[test]
     #[cfg_attr(
         target_os = "wasi",
@@ -1801,6 +2021,9 @@ mod tests {
         let seen = watched(|| {
             let _ = bundle.file("data/a.ron");
             let _ = bundle.bytes("data/nope.ron");
+            // Every copy of a path is one read of it, found or not.
+            let _ = bundle.versions("data/a.ron");
+            let _ = bundle.versions("data/nope.ron");
             // Listing and naming files reads none.
             let _ = bundle.files_under("");
             let _ = bundle.display_path("top.txt");
@@ -1813,7 +2036,9 @@ mod tests {
             seen,
             [
                 ("data/a.ron".to_owned(), true),
-                ("data/nope.ron".to_owned(), false)
+                ("data/nope.ron".to_owned(), false),
+                ("data/a.ron".to_owned(), true),
+                ("data/nope.ron".to_owned(), false),
             ]
         );
         // Each settings file looked for is heard of, found or not, up to

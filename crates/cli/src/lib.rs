@@ -1,5 +1,5 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `playtest`, `autobalance`,
+//! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `crash`, `playtest`, `autobalance`,
 //! `import`, `bake`, `export`, `doctor`, `explain`, `docs`, `attach`, each with `--json`; [`contract`]),
 //! the exporters `export` runs ([`export`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
@@ -27,7 +27,7 @@
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
-//! `doctor`, `explain`, `docs`, `attach`, `schema` and `check-skills` need none. The commands that run the game itself
+//! `doctor`, `explain`, `docs`, `attach`, `crash`, `schema` and `check-skills` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them. A game on the short path gives [`BasicTools`]
@@ -162,6 +162,11 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   replay <record> [<other>] [--any-stamp]
                                      a state hash per step; where two runs part; a
                                      record made by another build: refused, or run
+  replay --crash <report> [--any-stamp]
+                                     a crash report's record of play, run once: ok while
+                                     it plays to its end, and where it panics if it does
+  crash <report>                     read a crash report: the panic, the versions, the
+                                     frames and the log (no project needed)
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the
                                      game's bands (or none), and what they were the last
@@ -255,7 +260,7 @@ commands:
   bench-play <file> --out <file>     the game's side of `bench`: one scenario, its frames
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, sfx, explain, docs, attach, schema, check-skills, mcp, reveal verify
+{file} (new, doctor, sfx, explain, docs, attach, crash, schema, check-skills, mcp, reveal verify
 and reveal open need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix

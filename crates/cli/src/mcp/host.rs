@@ -28,8 +28,8 @@ use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, check, docs, doctor, explain, export, import, lint,
-    modules, new, playtest, replay, sfx,
+    Answer, Op, add, attach, autobalance, bake, check, crash, docs, doctor, explain, export,
+    import, lint, modules, new, playtest, replay, sfx,
 };
 use crate::frame_png::{Capture, Image, MAX_SCALE, Shot, every_frames, sheet};
 use crate::game::{GameArg, GameTools, check_start, code_of};
@@ -147,6 +147,7 @@ pub fn one_off(
         Op::Explain => answered(op, input, |i| explain::explain(&i)),
         Op::Docs => answered(op, input, |i| docs::docs(&i)),
         Op::Attach => answered(op, input, |i| attach::attach(&i, cwd)),
+        Op::Crash => answered(op, input, |i| crash::crash(&i, cwd)),
         Op::Check => {
             let mut input: check::CheckInput = match read(input) {
                 Ok(input) => input,

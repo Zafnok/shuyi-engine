@@ -412,6 +412,26 @@ fn a_record_made_with_other_content_is_refused_unless_any_stamp() {
         "{:?}",
         answer.limits
     );
+    // A crash report holding that record: `replay --crash` refuses it the
+    // same way, and with `any_stamp` replays it once to its end.
+    let mut report = shuyi::platform::crash::CrashReport::new(1, "a panic on purpose");
+    report.set_record(Some(ron::to_string(&record).unwrap()));
+    fs::write(dir.join("crash-1.ron"), report.to_text()).unwrap();
+    let mut crash = ReplayInput::new("crash-1.ron");
+    crash.crash = true;
+    let answer = replay(&HelloTools, &dir, &crash);
+    assert_eq!(answer.code.as_deref(), Some("SH3007"), "{answer:?}");
+    let error = answer.error.unwrap();
+    assert!(
+        error.starts_with("crash-1.ron was made with content "),
+        "{error}"
+    );
+    crash.any_stamp = true;
+    let answer = replay(&HelloTools, &dir, &crash);
+    assert!(answer.ok, "{answer:?}");
+    let out = answer.result.unwrap();
+    assert_eq!(out.runs.len(), 1);
+    assert_eq!(out.crash.unwrap().replayed, None);
     // A record without a stamp, as written before stamps, runs as before,
     // and says so.
     let commands = ron::to_string(&record.commands).unwrap();

@@ -117,17 +117,37 @@ hashes differ, and that step's command is where to look.
 - A record replays the rules, not the screens: it says nothing of what
   was drawn. Look at a frame with `cargo shuyi frame-png` (`shuyi-test`).
 
+## From a crash report
+
 A player's crash report (`crash-<when>.ron` in the game's data folder)
 holds the game's record of its play in its `record` field, on a
 computer, when the game gives one (`Start::crash_record`, or
 `BasicGame::crash_record` on the short path; the grid template's game
 gives its open stage's `StageRecord`). A release build adds it only when
 the game asks (`CrashReports::with_record_in_release`, or
-`BasicGame::crash_record_in_release`). Write that
-text to a file and replay it as above; it ends with the command the
-rules were applying when they panicked. The report also names the frame,
-the screen on top and the log's last lines. Replaying a report to its
-panic in one command is still to come.
+`BasicGame::crash_record_in_release`). The record ends with the command
+the rules were applying when they panicked.
+
+1. **Read it:** `cargo shuyi crash crash-<when>.ron --json`, which needs
+   no game. `result` has the panic's `message` and `location`, the
+   versions, the `frame`, the `top_screen`, the `log`, and `has_record`:
+   whether the next step can replay it.
+2. **Reproduce it:** `cargo shuyi replay --crash crash-<when>.ron
+   --json` runs that record once by this build's rules. While it panics,
+   `ok` is false: `result.crash.step` is the step it panicked at, its
+   `replayed` panic sits beside the report's `reported` one, and
+   `same_place` says whether they are at the same line (a Windows
+   player's path matches a Linux replay). The step's command is the one
+   to look at.
+3. **Fix the rules**, then replay the report again. Loop until `ok` is
+   true: the record plays to its end. Its `limits` say only the rules
+   were replayed, so a panic in a screen, a skin or the platform needs
+   the session record below. Keep the record as a test, as in step 4
+   above.
+
+A fix in the game's files changes its fingerprint, so the report's
+record is then refused with `SH3007` like any other: pass `--any-stamp`
+to replay it with the fix.
 
 ## From a session record
 
@@ -160,7 +180,12 @@ library, and plays the record from that.
 Branch on the `code`, and read its page with `cargo shuyi explain
 <code>`:
 
-- No code, and `ok` false: the runs differ. Read `first_difference`.
+- No code, and `ok` false: the runs differ (read `first_difference`),
+  or the rules panicked (a step's `panic`, and `crash` with `--crash`).
+- `SH3018`: the file given to `--crash` (or `crash`) isn't a crash
+  report.
+- `SH3019`: the crash report holds no record of play: `crash` still
+  reads it, and the game needs a `crash_record` for the next one.
 - `SH3007`: the record was made by another build or with other files;
   the error names each part that differs. Make the record again, or
   pass `--any-stamp` to see how it plays now.

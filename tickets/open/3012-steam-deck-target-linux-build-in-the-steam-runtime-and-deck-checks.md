@@ -53,7 +53,7 @@ None. Running it on a real Deck is 3013.
     the package;
   - it writes a `tar.gz` with a launch script and the notices;
   - with `--release`, it keeps the debug file beside the package as
-    3004's `linux` exporter does (for 2520's `shuyi crash --symbols`).
+    3004's `linux` exporter does (for 3441's `shuyi crash --symbols`).
 - **Display:**
   - the build sets `SHUYI_TARGET=steam-deck`, so `shuyi-app` takes its
     platform facts from its embedded `targets/steam-deck.ron` (3053):

@@ -49,7 +49,7 @@ use core::fmt;
 
 use once_cell::race::OnceBox;
 
-use crate::bundle::Bundle;
+use crate::bundle::{Bundle, LayerCopy};
 use crate::error::{ContentError, codes};
 use crate::import_settings::{
     self, CheckSection, ImportSettings, SETTINGS_EXTENSION, is_settings_file, settings_chain,
@@ -986,6 +986,55 @@ impl Formats {
     pub fn load<K: AssetKind>(&self, bundle: &Bundle, id: &str) -> Result<K, Vec<ContentError>> {
         let path = self.find::<K>(bundle, id).map_err(|e| vec![e])?;
         self.read(bundle, &path)
+    }
+
+    /// Every layer's copy of the asset of kind `K` with id `id` in `bundle`,
+    /// each decoded with the registry's [`limits`](Self::limits), in the
+    /// order [`Bundle::versions`] gives them: the copy [`Formats::load`]
+    /// reads first, the game's last. A loader that merges entries (mods or
+    /// DLC adding to a data table) folds them walking `.iter().rev()`; the
+    /// merge rules are the game's.
+    ///
+    /// The path is found as [`Formats::load`] finds it ([`Formats::find`]:
+    /// the extension may be left out). A file a format names besides its own
+    /// (a sidecar's picture, through [`DecodeCx`]) is read from the whole
+    /// bundle, as for [`Formats::load`], not from the copy's layer.
+    ///
+    /// # Errors
+    ///
+    /// [`Formats::find`]'s error for a missing or ambiguous id; or every
+    /// error of every copy that doesn't decode, each under that copy's shown
+    /// name (`mods/more/data/crops.ron`), all or nothing as
+    /// [`Formats::load_under`]; or a missing file when a layer that has it
+    /// can't read it now ([`Bundle::versions`]).
+    pub fn load_versions<K: AssetKind>(
+        &self,
+        bundle: &Bundle,
+        id: &str,
+    ) -> Result<Vec<(LayerCopy, K)>, Vec<ContentError>> {
+        let path = self.find::<K>(bundle, id).map_err(|e| vec![e])?;
+        let copies = bundle.versions(&path);
+        if copies.is_empty() {
+            let message = format!("{NOT_FOUND}: a layer has it but can't read it now");
+            let error = ContentError::new(bundle.display_path(&path), message)
+                .with_code(codes::MISSING_FILE);
+            return Err(vec![error]);
+        }
+        let cx = DecodeCx::in_bundle(bundle).with_limits(self.limits);
+        let mut assets = Vec::with_capacity(copies.len());
+        let mut errors = Vec::new();
+        for copy in copies {
+            let file = AssetPath::new(path.as_str()).shown_as(copy.shown.as_str());
+            match self.decode::<K>(&file, &copy.bytes, &cx) {
+                Ok(asset) => assets.push((copy, asset)),
+                Err(e) => errors.extend(e),
+            }
+        }
+        if errors.is_empty() {
+            Ok(assets)
+        } else {
+            Err(errors)
+        }
     }
 
     /// The file at `path` of `bundle`, decoded as kind `K`.

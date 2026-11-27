@@ -268,6 +268,7 @@ fn the_one_off_operations_answer_as_the_cli_does() {
         (Op::Import, json!({ "file": "a.ron" }), false),
         (Op::Explain, json!({ "code": "SH0002" }), true),
         (Op::Doctor, json!({}), true),
+        (Op::Crash, json!({ "report": "a.ron" }), false),
         (
             Op::Sfx,
             json!({ "source": "coin", "out": "c.sfx.ron" }),

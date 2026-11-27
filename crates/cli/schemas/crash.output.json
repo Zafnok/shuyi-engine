@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "type": "string",
+      "const": "crash"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CrashOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "CrashOutput": {
+      "description": "What `crash` read.",
+      "type": "object",
+      "properties": {
+        "backtrace": {
+          "description": "The backtrace as the standard library wrote it.",
+          "type": "string"
+        },
+        "engine": {
+          "description": "The engine's version.",
+          "type": "string"
+        },
+        "fatal": {
+          "description": "Whether the panic ended the game.",
+          "type": "boolean"
+        },
+        "frame": {
+          "description": "The frame that was running.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "game": {
+          "description": "The game's version, empty if the game gave none.",
+          "type": "string"
+        },
+        "has_record": {
+          "description": "Whether it holds the game's record of its play, for\n`replay --crash`.",
+          "type": "boolean"
+        },
+        "location": {
+          "description": "Where it panicked: `file:line:column`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "log": {
+          "description": "The log's last lines, oldest first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "description": "The panic's message.",
+          "type": "string"
+        },
+        "target": {
+          "description": "The OS, the processor and the build: `linux x86_64 release`.",
+          "type": "string"
+        },
+        "thread": {
+          "description": "The panicking thread's name, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "top_screen": {
+          "description": "The screen on top, if the game was running.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when": {
+          "description": "When it happened: milliseconds since 1970 on the game's clock.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "message",
+        "fatal",
+        "when",
+        "engine",
+        "game",
+        "target",
+        "frame",
+        "log",
+        "backtrace",
+        "has_record"
+      ]
+    }
+  }
+}

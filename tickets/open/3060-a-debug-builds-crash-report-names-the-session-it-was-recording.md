@@ -55,7 +55,7 @@ first too):
   headless and name the first frame that plays differently. MCP's
   `start` takes a session too, and `step` goes on from where it
   stopped.
-- **2520** (open; either order, below) reads a report with
+- **2520** (done; below) reads a report with
   `shuyi crash` and replays its rules record with `replay --crash`. A
   rules replay never runs screens, skins or the platform (its
   **Out**).
@@ -146,14 +146,14 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 
   With debug tools off, `App` records nothing, `take_session` gives
   `None`, and nothing is written.
-- **Either order with 2520** (`shuyi crash` and `replay --crash`): if
-  2520 is done:
+- **From 2520 (done)** (`shuyi crash` and `replay --crash`):
   - `CrashOutput` (`crates/cli/src/contract/crash.rs`) gains
     `session: Option<String>`, the report's, and `crash::text` shows
-    it. `CrashOutput` is `#[non_exhaustive]` (ADR-0039, as 2520 makes
-    it), so the field is additive;
+    it. `CrashOutput` is `#[non_exhaustive]` (ADR-0039), so the field
+    is additive;
   - when the report names a session, `replay --crash`'s refusal of a
-    report with no record, and its rules-only line in `limits`, add
+    report with no record (`SH3019`, `crates/cli/src/contract/replay.rs`),
+    and its rules-only line in `limits`, add
     "its session plays the whole game: `shuyi run --session <file>`";
   - the `crash` output schema is regenerated and
     `crates/cli/schemas/versions.json` gets its line (the steps in
@@ -161,8 +161,6 @@ privacy question for Nick (parked 3047 asks it for crash reports).
     `VERSION` stays (ADR-0150);
   - `docs/crash-reports.md`'s paragraph on `shuyi crash` names the
     field.
-
-  If not, nothing to do (2520 adds them, its clause says so).
 - **From 1134 (done)** (the skill pack): its `shuyi-debug-replay`
   skill (`skills/shuyi-debug-replay/SKILL.md`) gains a paragraph. A
   debug build's crash report names its session in `session`, a file in
@@ -196,8 +194,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 - **For the game:** `CrashReport` gains a field, additively. The
   game's debug builds now write their session at a panic and name it
   in the report. Release builds without debug tools don't change, and
-  nothing in the game's code changes. If the part for 2520 is done
-  here, the schemas get its line too. Say so in the PR; the game's
+  nothing in the game's code changes. The schemas get their line
+  too (2520's part). Say so in the PR; the game's
   PR that moves the pin follows.
 - **Size:** about 400 changed lines. The field and its tests about 40;
   `cut_at_panic` and `write_at_panic` with their tests about 150;
@@ -231,7 +229,6 @@ privacy question for Nick (parked 3047 asks it for crash reports).
    2519's `crates/app/src/sessions.rs` and `sessions/disk.rs` (its writer
    and ring), and its write at quit in `run`. Read 2518's `App::record`,
    `App::take_session`, and where `App` pushes each `FrameRecord`.
-   Check whether 2520 is done.
 2. Add `CrashReport::session`, with its unit tests, and add the field
    to 3046's property test's strategy.
 3. Write `cut_at_panic` and `write_at_panic`, with their tests (below).
@@ -241,7 +238,7 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 4. Write `crash::add_session`, and extend 3046's
    `crates/app/tests/crash_hook.rs`.
 5. Add the step to `run`'s catch path.
-6. Do 2520's part if it applies, and the `shuyi-debug-replay`
+6. Do 2520's part, and the `shuyi-debug-replay`
    paragraph (from 1134).
 7. On the machine at hand, run hello-grid's debug build with
    `SHUYI_PANIC_AT_FRAME=30` (3046). Check that the report names a
@@ -272,7 +269,7 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 - [ ] The PR description has step 7's two runs: the debug build's
       report names a session that plays 29 frames with no difference,
       and the release build's report names none.
-- [ ] With 2520's part done here: `shuyi crash` on a report with
+- [ ] 2520's part: `shuyi crash` on a report with
       `session` answers it and `crash::text` shows it; `replay
       --crash` on a report with a session and no record names the
       session in its reason; the schemas have their line in
@@ -297,7 +294,7 @@ privacy question for Nick (parked 3047 asks it for crash reports).
   clears it before the playback.
 - Integration (`shuyi-app`, `crates/app/tests/crash_hook.rs`):
   `add_session`, inside its one `#[test]`, since the hook is global.
-- Integration (`shuyi-cli`, with 2520's part done here): `crash` and
+- Integration (`shuyi-cli`, 2520's part): `crash` and
   `replay --crash` on a report with a session, through the command
   line and the fake game.
 - Manual: step 7.

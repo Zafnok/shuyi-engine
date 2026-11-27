@@ -71,6 +71,45 @@
       "description": "A fingerprint of a game's content: the same bytes give the same one on\nevery platform. Shown, and written to a file, as sixteen lowercase hex\ndigits, as a `StateHash` is shown (a string, since\nJSON can't hold every `u64`).",
       "type": "string"
     },
+    "CrashReplay": {
+      "description": "What `replay --crash` found of a crash report's panic.",
+      "type": "object",
+      "properties": {
+        "replayed": {
+          "description": "The panic the replay ran into, if it did.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PanicAt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reported": {
+          "description": "The panic the report holds.",
+          "$ref": "#/$defs/PanicAt"
+        },
+        "same_place": {
+          "description": "Whether the two panics are at the same place ([`same_place`]).",
+          "type": "boolean"
+        },
+        "step": {
+          "description": "The step it panicked at, if it did.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reported",
+        "same_place"
+      ]
+    },
     "Difference": {
       "description": "Where two runs part.",
       "type": "object",
@@ -122,10 +161,43 @@
         "content"
       ]
     },
+    "PanicAt": {
+      "description": "A panic: its message and where it happened.",
+      "type": "object",
+      "properties": {
+        "location": {
+          "description": "Where it panicked: `file:line:column`, if known.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "description": "The panic's message: its payload when that is text.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "message"
+      ]
+    },
     "ReplayOutput": {
       "description": "What `replay` found.",
       "type": "object",
       "properties": {
+        "crash": {
+          "description": "With `--crash`: the report's panic and the replay's.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrashReplay"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "first_difference": {
           "description": "The first step where they differ, if they do.",
           "anyOf": [
@@ -212,6 +284,18 @@
         "hash": {
           "description": "The state's hash after it (sixteen hex digits).",
           "type": "string"
+        },
+        "panic": {
+          "description": "The rules' panic while applying it, if they panicked: the run\nstops here, its hash the state as the panic left it.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PanicAt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "refused": {
           "description": "Why the rules refused it, if they did (the state didn't change).",

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CrashInput",
+  "description": "What `crash` reads.",
+  "type": "object",
+  "properties": {
+    "report": {
+      "description": "The report's file (`crash-<when>.ron`), from the folder `shuyi`\nruns in.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "report"
+  ]
+}
