@@ -1718,11 +1718,7 @@ pub(crate) mod tests {
         // Left out, each is its default.
         let m = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
         assert_eq!(m.max_voices, None);
-        let rules = m
-            .sounds
-            .get("footfall")
-            .map(|s| s.rules)
-            .unwrap_or_default();
+        let rules = m.sounds.get("footfall").map_or_default(|s| s.rules);
         assert_eq!(
             (rules.max_copies, rules.when_full, rules.priority),
             (None, WhenFull::Skip, 128)

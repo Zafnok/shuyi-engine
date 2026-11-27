@@ -41,7 +41,7 @@ const SALT: u64 = 0x6375_6573_2D72_6E67;
 pub struct Cues {
     rng: VariantRng,
     /// Each cue that has played, by id.
-    cues: BTreeMap<String, Played>,
+    played: BTreeMap<String, Played>,
     /// The copies sounding, oldest first.
     sounding: Vec<Sounding>,
     /// The last copy's id.
@@ -200,7 +200,7 @@ impl Cues {
     pub fn new(seed: u64) -> Self {
         Self {
             rng: VariantRng::new(splitmix64(seed ^ SALT)),
-            cues: BTreeMap::new(),
+            played: BTreeMap::new(),
             sounding: Vec::new(),
             last_copy: 0,
             clock: Millis(0),
@@ -268,7 +268,7 @@ impl Cues {
             });
         };
         if let Some(def) = def {
-            let sounded = self.cues.get(cue).and_then(|played| played.sounded);
+            let sounded = self.played.get(cue).and_then(|played| played.sounded);
             if too_soon(def.rules, sounded, now) {
                 return drop(out, DropWhy::Gap);
             }
@@ -280,7 +280,7 @@ impl Cues {
         self.last_copy += 1;
         let copy = CopyId(self.last_copy);
         if let Some(def) = def {
-            if let Some(played) = self.cues.get_mut(cue) {
+            if let Some(played) = self.played.get_mut(cue) {
                 played.sounded = Some(now);
             }
             if let Some(length) = def.length_ms(file).filter(|&ms| ms > 0) {
@@ -354,10 +354,10 @@ impl Cues {
             return (0, 0);
         };
         let rules = def.rules;
-        if !self.cues.contains_key(cue) {
-            self.cues.insert(cue.to_owned(), Played::default());
+        if !self.played.contains_key(cue) {
+            self.played.insert(cue.to_owned(), Played::default());
         }
-        let Some(played) = self.cues.get_mut(cue) else {
+        let Some(played) = self.played.get_mut(cue) else {
             return (0, 0);
         };
         let file = played.pick(rules.pick, def.files.len(), &mut self.rng);

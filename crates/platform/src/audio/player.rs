@@ -1530,15 +1530,16 @@ mod tests {
         );
         // At its 500 ms copy 1 has ended: a stop of it stops nothing.
         audio.play(&mut fake, &[stop(1)], &[], 0.5);
-        assert!(fake.calls().is_empty());
-        assert!(audio.copies.is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
+        assert!(audio.copies.is_empty(), "copy 1 let go");
         // A copy no rules counted, one of unknown length, and a copy never
         // played keep and stop nothing.
-        let step = SoundRequest::sound("step", 1.0).with_copy(CopyId::new(4));
-        let asked = [SoundRequest::sound("beep", 1.0), step, stop(0), stop(9)];
+        let unknown = SoundRequest::sound("step", 1.0).with_copy(CopyId::new(4));
+        let asked = [SoundRequest::sound("beep", 1.0), unknown, stop(0), stop(9)];
         audio.play(&mut fake, &asked, &[], 1.0);
         assert_eq!(fake.calls(), ["play wav100 1.00", "play wav200 1.00"]);
-        assert!(audio.copies.is_empty());
+        assert!(audio.copies.is_empty(), "no copy kept");
     }
 
     #[test]
