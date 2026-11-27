@@ -33,6 +33,15 @@
             path: "shuyi::enabled_modules",
             why: "the modules a game turned on, at the facade's root: a game's start names it once",
         ),
+        (
+            path: "shuyi::platform::AppInfo",
+            in: [
+                "templates/shuyi-default/base/crates/game/src/app_info.rs",
+                "examples/hello-grid/src/app_info.rs",
+                "examples/snake/src/app_info.rs",
+            ],
+            why: "`cargo shuyi app-info` writes these files and checks them equal: a new spelling there would mark every game's file out of date",
+        ),
         // The backend and the targets' entry points.
         (
             path: "shuyi::app",

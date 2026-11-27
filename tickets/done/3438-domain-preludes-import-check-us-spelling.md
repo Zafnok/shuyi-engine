@@ -200,13 +200,15 @@ call sites, each a line removed and a line added).
   (`crates/xtask/src/imports.rs`) reads every `use` leaf and every engine
   path in the code of `templates/`, `examples/` (snake too), the book's
   snippets and `skills/`, with `shuyi_cli::rust_lines`' lexer. The
-  allowed deeper paths are data, `tools/imports.ron`: 54 entries, each
+  allowed deeper paths are data, `tools/imports.ron`: 55 entries, each
   with its `why` and the files or folders it is allowed in; an entry
   nothing names fails. A gate row (`imports`, the fast set, so the
   pre-push hook runs it) and a step of CI's `layers` job.
-- **The moves:** 85 files had their engine imports moved onto the
+- **The moves:** 82 files had their engine imports moved onto the
   preludes by script and merged one line per prelude: 1,053 deep paths
-  before, 0 past the list after.
+  before, 0 past the list after. The three `app_info.rs` files keep
+  `shuyi::platform::AppInfo`: `cargo shuyi app-info` writes them and
+  checks them equal, so their entry says so.
 - **Docs:** the book's *Tools for agents* has *Which prelude to import*;
   the `shuyi` crate's docs, the template's `AGENTS.md` and the
   `shuyi-new-game` and `shuyi-animate` skills name the preludes.
