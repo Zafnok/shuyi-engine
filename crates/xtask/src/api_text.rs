@@ -304,6 +304,25 @@ pub fn check(
     errors
 }
 
+/// The words a listing line has between `pub ` and an item's path.
+const LISTING_WORDS: [&str; 15] = [
+    "const ",
+    "unsafe ",
+    "async ",
+    "extern \"C\" ",
+    "fn ",
+    "struct ",
+    "enum ",
+    "union ",
+    "trait ",
+    "type ",
+    "mod ",
+    "static ",
+    "macro ",
+    "use ",
+    "mut ",
+];
+
 /// The item's path a `cargo-public-api` listing line names, its generics
 /// left out (`shuyi_ui::input::frame::FrameInput::held`); none for a line
 /// that isn't an item's (`impl …`).
@@ -313,24 +332,7 @@ pub fn listed_path(line: &str) -> Option<String> {
         rest = rest[rest.find(']')? + 1..].trim_start();
     }
     rest = rest.strip_prefix("pub ")?;
-    const WORDS: [&str; 15] = [
-        "const ",
-        "unsafe ",
-        "async ",
-        "extern \"C\" ",
-        "fn ",
-        "struct ",
-        "enum ",
-        "union ",
-        "trait ",
-        "type ",
-        "mod ",
-        "static ",
-        "macro ",
-        "use ",
-        "mut ",
-    ];
-    while let Some(word) = WORDS.iter().find(|word| rest.starts_with(**word)) {
+    while let Some(word) = LISTING_WORDS.iter().find(|word| rest.starts_with(**word)) {
         rest = &rest[word.len()..];
     }
     let mut path = String::new();
@@ -410,10 +412,10 @@ pub fn first_sentence(docs: &str) -> String {
     while let Some((at, c)) = chars.next() {
         match c {
             '`' => code = !code,
-            '.' | '?' | '!' if !code => {
-                if chars.peek().is_none_or(|(_, next)| next.is_whitespace()) {
-                    return plain[..=at].to_owned();
-                }
+            '.' | '?' | '!'
+                if !code && chars.peek().is_none_or(|(_, next)| next.is_whitespace()) =>
+            {
+                return plain[..=at].to_owned();
             }
             _ => {}
         }

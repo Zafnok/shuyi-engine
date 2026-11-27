@@ -136,8 +136,8 @@ fn a_none_yet_row_names_an_open_ticket_or_says_unplanned() {
             &ids(&[]),
         )
     };
-    assert!(check(none_yet(Some("2221"), None)).is_empty());
-    assert!(check(none_yet(None, Some(false))).is_empty());
+    assert_eq!(check(none_yet(Some("2221"), None)), Vec::<String>::new());
+    assert_eq!(check(none_yet(None, Some(false))), Vec::<String>::new());
     assert!(check(none_yet(Some("9999"), None))[0].contains("isn't in tickets/open/"));
     assert!(check(none_yet(None, None))[0].contains("`planned = false`"));
     assert!(check(none_yet(Some("2221"), Some(false)))[0].contains("`planned = false`"));

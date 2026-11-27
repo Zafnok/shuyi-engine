@@ -84,8 +84,8 @@ fn members_are_found_and_a_traits_impl_and_private_items_are_not() {
 fn doc_aliases_reads_one_word_or_a_list_and_nothing_else() {
     assert_eq!(doc_aliases("#[doc(alias = \"Timer\")]"), ["Timer"]);
     assert_eq!(doc_aliases("#[doc(alias(\"a\", \"b\"))]"), ["a", "b"]);
-    assert!(doc_aliases("#[doc(hidden)]").is_empty());
-    assert!(doc_aliases("#[must_use]").is_empty());
+    assert_eq!(doc_aliases("#[doc(hidden)]"), Vec::<String>::new());
+    assert_eq!(doc_aliases("#[must_use]"), Vec::<String>::new());
 }
 
 #[test]
