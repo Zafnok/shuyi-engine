@@ -1540,6 +1540,13 @@ mod tests {
         audio.play(&mut fake, &asked, &[], 1.0);
         assert_eq!(fake.calls(), ["play wav100 1.00", "play wav200 1.00"]);
         assert!(audio.copies.is_empty(), "no copy kept");
+        // Nor does one 0 ms long, even stopped in the frame it played in.
+        if let Some(beep) = audio.manifest.sounds.get_mut("beep") {
+            beep.lengths_ms = vec![Some(0)];
+        }
+        audio.play(&mut fake, &[copy(5), stop(5)], &[], 2.0);
+        assert_eq!(fake.calls(), ["play wav100 1.00"]);
+        assert!(audio.copies.is_empty(), "a copy of no length");
     }
 
     #[test]
