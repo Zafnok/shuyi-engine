@@ -93,6 +93,55 @@ fn every_frame_round_trips() {
 }
 
 #[test]
+fn a_roster_counts_its_humans() {
+    assert_eq!(Roster::default().humans(), 0);
+    assert_eq!(roster().humans(), 2);
+    let all = Roster {
+        seats: vec![SeatKind::Human; 8],
+    };
+    assert_eq!(all.humans(), 8);
+    // Seats 0 and 7, as bits 0 and 7.
+    let bytes = Frame::Roster {
+        place: Joined::Watching,
+        roster: roster(),
+    }
+    .encode();
+    assert_eq!(bytes, [0x03, 0xFF, 8, 0b1000_0001]);
+    let all = Frame::Roster {
+        place: Joined::Seat(3),
+        roster: all,
+    };
+    assert_eq!(all.encode(), [0x03, 3, 8, 0xFF]);
+}
+
+#[test]
+fn a_seat_past_254_is_written_254_never_watching() {
+    for (seat, byte) in [(0, 0), (7, 7), (254, 0xFE), (255, 0xFE), (1_000, 0xFE)] {
+        let frame = Frame::Roster {
+            place: Joined::Seat(seat),
+            roster: Roster::default(),
+        };
+        assert_eq!(frame.encode()[1], byte, "seat {seat}");
+        let over = Frame::RoundOver {
+            winner: Some(seat),
+            wins: Vec::new(),
+        };
+        assert_eq!(over.encode()[1], byte, "winner {seat}");
+    }
+    let past = Frame::Roster {
+        place: Joined::Seat(1_000),
+        roster: Roster::default(),
+    };
+    assert_eq!(
+        Frame::decode::<Dots>(&past.encode()),
+        Err(WireError::NoSuchSeat {
+            seat: 254,
+            seats: 8
+        })
+    );
+}
+
+#[test]
 fn every_client_message_round_trips() {
     for msg in msgs() {
         let bytes = msg.encode();

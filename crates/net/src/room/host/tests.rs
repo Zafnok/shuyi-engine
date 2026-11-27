@@ -82,16 +82,19 @@ fn a_join_takes_the_lowest_bot_seat_whose_rider_is_alive() {
     assert_eq!(room.place(PeerId(22)), None);
 }
 
-/// A round of seven players in seats 0 to 6, who keep talking, stepped
-/// until seat 7's bot is out: then a joiner can only watch.
-fn bots_out(seed: u64) -> (Room<Dots>, Vec<PeerId>) {
+/// A round of `players` players in the first seats, who keep talking,
+/// stepped until every bot's dot is out: then a joiner can only watch.
+fn bots_out(seed: u64, players: u32) -> (Room<Dots>, Vec<PeerId>) {
     let mut room = Room::new(Dots, seed);
-    let peers: Vec<PeerId> = (1..=7).map(PeerId).collect();
+    let peers: Vec<PeerId> = (1..=players).map(PeerId).collect();
     for peer in &peers {
         assert!(matches!(room.join(*peer), Ok(Joined::Seat(_))));
     }
+    let bots = peers.len()..Dots::SEATS;
+    let any_bot_in =
+        |room: &Room<Dots>| bots.clone().any(|seat| Dots::seat_alive(room.sim(), seat));
     for _ in 0..Dots::MAX_ROUND_STEPS {
-        if !Dots::seat_alive(room.sim(), 7) {
+        if !any_bot_in(&room) {
             break;
         }
         for peer in &peers {
@@ -99,7 +102,7 @@ fn bots_out(seed: u64) -> (Room<Dots>, Vec<PeerId>) {
         }
         step(&mut room);
     }
-    assert!(!Dots::seat_alive(room.sim(), 7));
+    assert!(!any_bot_in(&room));
     assert_eq!(room.stats().round, 1);
     (room, peers)
 }
@@ -137,7 +140,7 @@ fn a_watcher_is_seated_when_the_next_round_starts() {
 
 #[test]
 fn a_room_of_players_and_watchers_is_full() {
-    let (mut room, _) = bots_out(3);
+    let (mut room, _) = bots_out(3, 7);
     assert_eq!(room.join(PeerId(20)), Ok(Joined::Watching));
     assert_eq!(room.join(PeerId(21)), Err(Full));
     assert_eq!(
@@ -205,7 +208,7 @@ fn an_input_or_an_alive_keeps_a_seat() {
 
 #[test]
 fn a_silent_watcher_is_dropped_too() {
-    let (mut room, peers) = bots_out(7);
+    let (mut room, peers) = bots_out(7, 7);
     assert_eq!(room.join(PeerId(40)), Ok(Joined::Watching));
     room.leave(PeerId(40));
     assert_eq!(room.stats().watchers, 0);
@@ -223,6 +226,148 @@ fn a_silent_watcher_is_dropped_too() {
     }
     assert_eq!(dropped, [PeerId(41)]);
     assert_eq!(room.place(PeerId(41)), None);
+}
+
+#[test]
+fn one_watchers_messages_and_leave_touch_no_other_watcher() {
+    let (mut room, peers) = bots_out(17, 6);
+    let (talker, silent) = (PeerId(50), PeerId(51));
+    for peer in [talker, silent] {
+        assert_eq!(room.join(peer), Ok(Joined::Watching));
+    }
+    for n in 1..=SILENCE {
+        for peer in peers.iter().chain([&talker]) {
+            room.receive(*peer, ClientMsg::Alive);
+        }
+        let out = step(&mut room);
+        assert_eq!(out.drop, [], "step {n}");
+    }
+    // The talker asks for a catch-up at the step the silent one goes.
+    room.receive(talker, ClientMsg::Resync);
+    let out = step(&mut room);
+    assert_eq!(out.drop, [silent]);
+    assert!(matches!(
+        to(&out, talker)[..],
+        [Frame::Joined { .. }, Frame::Step { .. }]
+    ));
+    assert_eq!(room.place(talker), Some(Joined::Watching));
+    // A newcomer watches beside the talker, and the talker's leave is its
+    // own.
+    assert_eq!(room.join(PeerId(52)), Ok(Joined::Watching));
+    room.leave(talker);
+    assert_eq!(room.place(talker), None);
+    assert_eq!(room.place(PeerId(52)), Some(Joined::Watching));
+}
+
+#[test]
+fn a_watchers_silence_counts_on_into_its_seat() {
+    let (mut room, peers) = bots_out(18, 7);
+    let watcher = PeerId(60);
+    assert_eq!(room.join(watcher), Ok(Joined::Watching));
+    let mut seated_at = None;
+    for n in 1..=SILENCE + 1 {
+        // At step 10, all but seat 6 go out, and the round ends.
+        for (seat, peer) in peers.iter().enumerate() {
+            let msg = if n == 10 && seat < 6 {
+                ClientMsg::Input(press(OUT))
+            } else {
+                ClientMsg::Alive
+            };
+            room.receive(*peer, msg);
+        }
+        let out = step(&mut room);
+        if seated_at.is_none() && room.place(watcher) == Some(Joined::Seat(7)) {
+            seated_at = Some(n);
+        }
+        let dropped = n == SILENCE + 1;
+        assert_eq!(
+            out.drop,
+            if dropped { vec![watcher] } else { vec![] },
+            "step {n}"
+        );
+    }
+    // Seated when the next round began, then let go five seconds after it
+    // last spoke, as a watcher.
+    assert_eq!(seated_at, Some(10 + Dots::PAUSE_STEPS + 1));
+    assert_eq!(room.place(watcher), None);
+}
+
+#[test]
+fn a_rounds_seed_is_two_draws_of_the_rooms_rng_the_high_half_first() {
+    let mut rng = SimRng::new(19);
+    let high = u64::from(rng.next_u32());
+    let low = u64::from(rng.next_u32());
+    let mut room = Room::new(Dots, 19);
+    room.join(PeerId(1)).expect("a seat");
+    let out = step(&mut room);
+    let Frame::Joined { round_start, .. } = &out.frames[0].1 else {
+        panic!("a catch-up first");
+    };
+    assert_eq!(round_start.seed, high * (1 << 32) + low);
+    assert_eq!(round_start.round, 1);
+}
+
+#[test]
+fn clearing_an_outbox_forgets_its_frames_and_drops() {
+    let (mut room, _) = full_room(20);
+    let mut out = Outbox::new();
+    for _ in 0..=SILENCE {
+        room.step(&mut out);
+    }
+    assert!(out.frames.len() > 8);
+    assert_eq!(out.drop.len(), 8);
+    out.clear();
+    assert_eq!(out, Outbox::new());
+}
+
+/// Dots, but its rounds say a seat past its seats won.
+struct Stray;
+
+impl RoomGame for Stray {
+    type Sim = DotsSim;
+    const SEATS: usize = Dots::SEATS;
+    const STEPS_PER_SECOND: u32 = Dots::STEPS_PER_SECOND;
+    const MAX_ROUND_STEPS: u32 = Dots::MAX_ROUND_STEPS;
+    const PAUSE_STEPS: u32 = Dots::PAUSE_STEPS;
+
+    fn made(&self) -> shuyi_core::Made {
+        Dots.made()
+    }
+
+    fn new_round(&self, seed: u64, round: u32) -> DotsSim {
+        Dots.new_round(seed, round)
+    }
+
+    fn round_winner(_sim: &DotsSim) -> crate::room::RoundEnd {
+        crate::room::RoundEnd::Won(Dots::SEATS)
+    }
+
+    fn seat_alive(sim: &DotsSim, seat: usize) -> bool {
+        Dots::seat_alive(sim, seat)
+    }
+
+    fn bot_input(sim: &DotsSim, seat: usize, rng: &mut SimRng) -> SeatInput {
+        Dots::bot_input(sim, seat, rng)
+    }
+}
+
+#[test]
+fn a_winner_past_the_seats_ends_the_round_as_a_draw() {
+    let mut room = Room::new(Stray, 21);
+    room.join(PeerId(1)).expect("a seat");
+    let mut out = Outbox::new();
+    room.step(&mut out);
+    assert_eq!(
+        out.frames.last(),
+        Some(&(
+            PeerId(1),
+            Frame::RoundOver {
+                winner: None,
+                wins: vec![0; 8],
+            }
+        ))
+    );
+    assert_eq!(room.wins(), [0; 8]);
 }
 
 #[test]
@@ -251,8 +396,8 @@ fn two_quick_presses_between_two_steps_are_played_on_two_steps() {
 
 #[test]
 fn an_input_from_a_watcher_or_a_stranger_is_ignored() {
-    let (mut room, _) = bots_out(9);
-    let (mut twin, _) = bots_out(9);
+    let (mut room, _) = bots_out(9, 7);
+    let (mut twin, _) = bots_out(9, 7);
     for room in [&mut room, &mut twin] {
         assert_eq!(room.join(PeerId(60)), Ok(Joined::Watching));
     }

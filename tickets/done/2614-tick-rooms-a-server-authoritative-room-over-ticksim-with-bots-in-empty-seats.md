@@ -280,7 +280,15 @@ Context holds what a client reads from the room, as built here. 2615 and
   `NoSuchSeat`, `TooManySeats`, `CatchUp`, `BadInput` and `BadField`. A
   step's inputs cut short read as `BadInput`: 2612's `TickInput::decode`
   doesn't tell short from malformed.
-- `Dots` has eight seats, as 2615's rooms of eight need.
+- `Dots` has eight seats, as 2615's rooms of eight need. Its
+  `new_round` reads only the seed (the room draws a new one each
+  round), each cell and heading a draw of its own.
+- **CI's mutants** (first run, 29 missed) asked for tests of two
+  watchers at once, a watcher's silence carried into its seat, a winner
+  past the seats, `Outbox::clear`, the round's seed, the seat and roster
+  bytes, and `Dots`' own rules; and two lines changed so no mutant of
+  them is equivalent: a round's seed adds its halves, and a roster's
+  byte sums its humans' bits, where `|` and `^` gave the same.
 
 **Follow-up tickets.** 2621 (the client, above). 2622: a client's
 `Input` may hold up to 255 ids a list, and the room repeats a seat's
@@ -303,7 +311,8 @@ only, which no chapter teaches yet.
 Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
 play; this changes no schema, template, format or problem code.
 
-Size: 2,331 counted lines, the ticket's own split point: `RoomClient` and
+Size: 2,706 counted lines (2,331 before the tests CI's mutation testing
+asked for), the ticket's own split point: `RoomClient` and
 the tests over `MemoryNetwork` went to 2621. What is left lands
 together: the wire's frames are what `Room::step` writes and nothing
 else makes them, so the wire alone would be a codec of frames no code

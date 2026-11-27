@@ -473,7 +473,9 @@ impl<G: RoomGame> Room<G> {
 
 /// A round's seed: two draws, the first the high half.
 fn draw_seed(rng: &mut SimRng) -> u64 {
-    (u64::from(rng.next_u32()) << 32) | u64::from(rng.next_u32())
+    let high = u64::from(rng.next_u32());
+    let low = u64::from(rng.next_u32());
+    (high << 32).wrapping_add(low)
 }
 
 #[cfg(test)]

@@ -55,6 +55,8 @@ mod tag {
 
 /// A place's byte for watching, and a winner's for a draw.
 const NONE: u8 = 0xFF;
+/// The byte of a seat past 254: no game's seats reach it.
+const PAST: u8 = 0xFE;
 
 /// Who rides each seat, by seat number: what every client is told.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -388,10 +390,10 @@ impl ClientMsg {
     }
 }
 
-/// A seat's byte: past 254 it is 254, which no game's seats reach, so a
-/// wrong seat stays wrong rather than reading as watching.
+/// A seat's byte: past 254 it is [`PAST`], so a wrong seat stays wrong
+/// rather than reading as watching.
 fn seat_byte(seat: usize) -> u8 {
-    u8::try_from(seat).map_or(NONE - 1, |b| b.min(NONE - 1))
+    u8::try_from(seat).map_or(PAST, |b| b.min(PAST))
 }
 
 fn put_u32(out: &mut Vec<u8>, value: u32) {
@@ -411,7 +413,8 @@ fn put_roster(out: &mut Vec<u8>, roster: &Roster) {
         .take(8)
         .enumerate()
         .filter(|(_, kind)| **kind == SeatKind::Human)
-        .fold(0_u8, |bits, (seat, _)| bits | (1 << seat));
+        .map(|(seat, _)| 1_u8 << seat)
+        .sum::<u8>();
     out.push(humans);
 }
 

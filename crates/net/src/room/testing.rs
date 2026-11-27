@@ -127,14 +127,15 @@ impl RoomGame for Dots {
         Made::new("dots", ContentHash(0))
     }
 
-    /// Each dot at a cell and a heading the seed picks.
-    fn new_round(&self, seed: u64, round: u32) -> DotsSim {
-        let mut rng = SimRng::new(seed ^ u64::from(round));
-        let mut cell = || u8::try_from(rng.roll_below(u32::from(SIDE))).unwrap_or(0);
+    /// Each dot at a cell and a heading the seed picks: the room draws a
+    /// new seed each round.
+    fn new_round(&self, seed: u64, _round: u32) -> DotsSim {
+        let mut rng = SimRng::new(seed);
+        let mut draw = |below: u8| u8::try_from(rng.roll_below(u32::from(below))).unwrap_or(0);
         let dots = core::array::from_fn(|_| Dot {
-            x: cell(),
-            y: cell(),
-            heading: cell() % 4,
+            x: draw(SIDE),
+            y: draw(SIDE),
+            heading: draw(4),
             alive: true,
         });
         DotsSim { dots, steps: 0 }
@@ -165,3 +166,6 @@ impl RoomGame for Dots {
         SeatInput::new(pressed, Vec::new(), Vec::new())
     }
 }
+
+#[cfg(test)]
+mod tests;
