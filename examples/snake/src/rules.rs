@@ -12,10 +12,11 @@
 
 use serde::{Deserialize, Serialize};
 use shuyi::assets::format::AssetKind;
-use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi::assets::keymap::{ActionSet, UiAction};
-use shuyi::core::tick::{ActionId, TickInput, TickSim};
-use shuyi::core::{Dir, Grid, Pos, RandomSource, SimRng, TerrainId, timer::Every};
+use shuyi::core::prelude::{
+    ActionId, Dir, Every, Grid, Pos, RandomSource, SimRng, TerrainId, TickInput, TickSim,
+};
+use shuyi::prelude::grid::{GridMap, MapFeature, MapFormat, grid_map};
+use shuyi::prelude::{ActionSet, UiAction};
 
 /// Floor: the snake moves on it, and food lands on it.
 pub const FLOOR: TerrainId = TerrainId(0);
@@ -381,7 +382,7 @@ impl TickSim for Snake {
     }
 
     fn hash(&self) -> u64 {
-        shuyi::core::state_hash(self).map_or(0, |hash| hash.0)
+        shuyi::core::prelude::state_hash(self).map_or(0, |hash| hash.0)
     }
 }
 

@@ -7,8 +7,10 @@ use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use shuyi::ui::frame_cap::FrameCap;
-use shuyi::ui::settings::{GameSettings, Settings, TextSpeed, Volumes, read_old_volumes};
-use shuyi::ui::settings::{language_from_text, language_to_text};
+use shuyi::ui::settings::{
+    GameSettings, Settings, TextSpeed, Volumes, language_from_text, language_to_text,
+    read_old_volumes,
+};
 
 /// How the stage is drawn: which of the engine's skins.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,7 +105,7 @@ impl GameSettings for Prefs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shuyi::ui::audio::groups::{MUSIC, SFX};
+    use shuyi::prelude::audio::{groups::MUSIC, groups::SFX};
 
     #[test]
     fn the_settings_read_back_what_was_saved() {
@@ -114,7 +116,7 @@ mod tests {
         s.volumes.set(MUSIC, 3);
         s.volumes.set(SFX, 7);
         s.frame_cap = FrameCap::Off;
-        s.language = shuyi::assets::lang::LangCode::new("ja");
+        s.language = shuyi::prelude::text::LangCode::new("ja");
         let saved = Prefs::to_ron(&s);
         assert_eq!(Prefs::from_ron(&saved), Ok(s));
         assert_eq!(

@@ -1,7 +1,8 @@
 //! What a player can ask for: six actions, every one rebindable, and the
 //! developer's Debug, their default keys and buttons in `files/keymap.ron`.
 
-use shuyi::assets::keymap::{ActionSet, Chord, Key, UiAction};
+use shuyi::assets::keymap::{Chord, Key};
+use shuyi::prelude::{ActionSet, UiAction};
 
 /// Everything a player of Hello, Grid can ask for.
 #[derive(

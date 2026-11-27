@@ -18,21 +18,22 @@ use core::any::Any;
 use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use shuyi::core::Made;
+use shuyi::core::prelude::Made;
 #[cfg(feature = "std")]
-use shuyi::ui::Game;
+use shuyi::prelude::Game;
 
-use shuyi::core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
-use shuyi::ui::audio::MenuSound;
+use shuyi::core::prelude::{Bot, Dir, Pos, Reach, Sides, TurnRules};
+use shuyi::prelude::audio::MenuSound;
+use shuyi::prelude::grid::{
+    Camera, Cursor, CursorStyle, CursorView, GRID, GridSkin, MapScene, layout_gizmos, steer, walk,
+};
+use shuyi::prelude::text::StyledText;
+use shuyi::prelude::{
+    ConsoleSpec, FrameInput, GlyphBuffer, Rect, Screen, ScreenResult, Transition,
+};
 use shuyi::ui::debug::gizmo::Gizmos;
-use shuyi::ui::frame::ConsoleSpec;
-use shuyi::ui::frame::glyph_buffer::{GlyphBuffer, Rect};
-use shuyi::ui::grid::debug::{GRID, layout_gizmos};
-use shuyi::ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
-use shuyi::ui::text::StyledText;
-use shuyi::ui::{FrameInput, Screen, ScreenResult, Transition};
 
-use shuyi::assets::keymap::{ActionSet, UiAction};
+use shuyi::prelude::{ActionSet, UiAction};
 
 use super::{End, HelloCtx, Leave, Talk};
 use crate::map::{self, GLYPHS, Letters, MOVE, Piece, Terrain, Tiles};
@@ -312,7 +313,7 @@ impl StageScreen {
     /// work on `paint`.
     fn with_skin<R>(
         ctx: &HelloCtx,
-        paint: impl FnOnce(&dyn GridSkin<Piece>, &dyn shuyi::ui::grid::UnitPainter<Piece>) -> R,
+        paint: impl FnOnce(&dyn GridSkin<Piece>, &dyn shuyi::prelude::grid::UnitPainter<Piece>) -> R,
     ) -> R {
         match ctx.settings().game.look {
             MapLook::Glyphs => paint(
@@ -388,7 +389,7 @@ impl Screen<Hello> for StageScreen {
     }
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
-        let looks = shuyi::ui::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
+        let looks = shuyi::prelude::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
         Self::with_skin(ctx, |skin, painter| {
             let area = area(ctx.console);
             let scene = self.scene(skin.view_tiles(area));

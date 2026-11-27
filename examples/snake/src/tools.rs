@@ -9,19 +9,17 @@
 //! them too. A tick game has no bots yet, so no `playtest`.
 
 use serde::Serialize;
-use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::palette::PaletteDef;
-use shuyi::core::tick::TickRecord;
-use shuyi::core::{Made, Pos};
-use shuyi::platform::harness::Harness;
-use shuyi::platform::session::{SessionRecord, Stamps};
+use shuyi::core::prelude::{Made, Pos, TickRecord};
+use shuyi::prelude::test::{Harness, SessionRecord, Stamps};
+use shuyi::prelude::text::FontAtlasDef;
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
-use shuyi_cli::contract::replay::{Record, ReplayRun, ticks};
-use shuyi_cli::contract::session::{Headless, Scene, Session};
-use shuyi_cli::frame_png::{Script, Shot};
-use shuyi_cli::{BasicTools, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
+use shuyi_cli::prelude::{
+    BasicTools, GameArg, GameBake, GameLang, GameOption, GameTools, Headless, OneBitSkin, Record,
+    ReplayRun, Scene, Script, Session, Shot, ticks,
+};
 
 use crate::rules::{Outcome, Snake};
 use crate::screens::{self, Stage, Terrain};

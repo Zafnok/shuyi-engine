@@ -1,9 +1,8 @@
 //! The window losing focus: the game pauses, and a run waits in its pause
 //! menu, in the tools' Harness and from the game's real start.
 
-use shuyi::platform::SystemEvent;
-use shuyi::platform::harness::Harness;
-use shuyi::prelude::{Background, UiAction};
+use shuyi::prelude::test::Harness;
+use shuyi::prelude::{Background, SystemEvent, UiAction};
 
 use crate::{at_title, stage};
 

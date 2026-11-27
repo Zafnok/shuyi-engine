@@ -22,36 +22,27 @@ use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use shuyi::assets::ContentError;
-use shuyi::assets::bundle::Bundle;
-use shuyi::assets::font::FontAtlasDef;
-use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon};
 use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::palette::PaletteDef;
 use shuyi::assets::target::Color;
-use shuyi::core::bots::playtest::{
-    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, bot_seed,
-    play_try,
-};
-use shuyi::core::{Bot, Determinize, Knob, Made, RandomBot, Report, TerrainId};
-use shuyi::platform::harness::Harness;
+use shuyi::core::prelude::{Bot, Determinize, Made, RandomBot, Report, TerrainId};
 use shuyi::platform::headless::PresentHook;
-use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::platform::{Frame, Show};
-use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
+use shuyi::prelude::grid::{GridMap, MapText};
+use shuyi::prelude::test::{
+    Check, Entrant, Harness, Knob, Measure, Measures, PlaytestError, PlaytestReport, SessionRecord,
+    Stamps, Tries, bot_seed, play_try, playtest,
+};
+use shuyi::prelude::text::{Font, FontAtlasDef};
+use shuyi::prelude::{Bundle, ContentError, Game, GameData, GameHooks};
+use shuyi::ui::frame::onebit::{PatternMap, to_one_bit};
 use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
-use shuyi::ui::{Game, GameData, GameHooks};
-use shuyi_cli::contract::autobalance::AutobalanceInput;
-use shuyi_cli::contract::import::Importers;
-use shuyi_cli::contract::playtest::{PlaytestInput, Summary};
-use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
-use shuyi_cli::contract::session::{Headless, Scene, Session};
-use shuyi_cli::contract::target::engine_profiles;
-use shuyi_cli::frame_png::{self, Painter, Script, Shot};
-use shuyi_cli::{
-    AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
-    PlaytestPlan, Tunable,
+use shuyi_cli::frame_png;
+use shuyi_cli::prelude::{
+    AutobalanceInput, AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption,
+    GameTools, Headless, Importers, OneBitSkin, Painter, PlaytestInput, PlaytestPlan, Record,
+    ReplayRun, Scene, Script, Session, Shot, Summary, Tunable, engine_profiles, turns,
 };
 
 use crate::map::Terrain;
@@ -122,12 +113,12 @@ impl Start {
         self.harness_of(crate::ctx_on(target, self.seed))
     }
 
-    fn harness_of(self, mut ctx: shuyi::ui::Ctx<Hello>) -> Harness<Hello> {
+    fn harness_of(self, mut ctx: shuyi::prelude::Ctx<Hello>) -> Harness<Hello> {
         ctx.preview_settings(|s| s.game.look = self.look);
         let game = if self.preview {
             let scene = crate::file(crate::DIALOGUE).unwrap_or_default().to_vec();
             let files = std::collections::BTreeMap::from([(crate::DIALOGUE.to_owned(), scene)]);
-            let folder = shuyi::assets::bundle::Layer::owned("files".to_owned(), files)
+            let folder = shuyi::prelude::Layer::owned("files".to_owned(), files)
                 .unwrap_or_else(|e| panic!("the scene's folder: {e}"));
             crate::preview::game(ctx, folder).unwrap_or_else(|e| panic!("the preview: {e}"))
         } else if self.stage {
@@ -141,7 +132,7 @@ impl Start {
 }
 
 /// The frame `h` shows, each console pixel `scale` × `scale` pixels.
-pub fn picture(h: &Harness<Hello>, scale: u32) -> Result<shuyi_cli::frame_png::Image, String> {
+pub fn picture(h: &Harness<Hello>, scale: u32) -> Result<shuyi_cli::prelude::Image, String> {
     let ctx = h.ctx();
     let png = crate::file(FONT_PNG).ok_or("no font atlas picture")?;
     let clear = ctx.game.blank_cell(&ctx.palette).bg;
@@ -180,7 +171,7 @@ pub fn one_bit_skin() -> Result<OneBitSkin, String> {
 pub fn one_bit_picture(
     h: &Harness<Hello>,
     scale: u32,
-) -> Result<shuyi_cli::frame_png::Image, String> {
+) -> Result<shuyi_cli::prelude::Image, String> {
     let ctx = h.ctx();
     let map = PatternMap::new(ctx.palette.iter(), &one_bit_skin()?.map);
     let bits = crate::file(FONT_1BIT).ok_or("no one-bit font atlas")?;

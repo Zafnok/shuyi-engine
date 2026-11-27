@@ -8,13 +8,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use hello_grid::tools::HelloTools;
 use hello_grid::{Hello, PACK_STAMP};
-use shuyi::assets::bundle::{Bundle, Layer};
 use shuyi::assets::pack::{InMemory, Index, Pack, PackError, Source, SourceError};
 use shuyi::platform::Progress;
-use shuyi_cli::contract::bake::{BakeInput, bake};
-use shuyi_cli::contract::check::{CheckInput, check};
-use shuyi_cli::project::Config;
-use shuyi_cli::{GameTools, Project};
+use shuyi::prelude::{Bundle, Layer};
+use shuyi_cli::prelude::{BakeInput, CheckInput, Config, GameTools, Project, bake, check};
 
 /// The game's pack, as `cargo shuyi bake` makes it, kept for the run as
 /// a game that embeds it keeps it.

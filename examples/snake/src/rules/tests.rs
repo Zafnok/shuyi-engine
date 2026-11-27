@@ -1,5 +1,4 @@
-use shuyi::core::ScriptedRng;
-use shuyi::core::tick::SeatInput;
+use shuyi::core::prelude::{ScriptedRng, SeatInput};
 
 use super::*;
 

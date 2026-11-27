@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 
 use hello_grid::{bundle_over, ctx_from, file, lay_over_files, problems_over};
-use shuyi::assets::bundle::Layer;
-use shuyi::core::Pos;
+use shuyi::core::prelude::Pos;
+use shuyi::prelude::Layer;
 
 /// The game's own stage map.
 fn own_map() -> String {

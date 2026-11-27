@@ -22,20 +22,19 @@
 use std::path::PathBuf;
 
 use serde::Serialize;
-use shuyi::assets::bundle::Bundle;
 use shuyi::assets::dialogue::DialogueFile;
-use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::format::{AssetKind, Formats};
-use shuyi::assets::grid_map::GridMap;
 use shuyi::assets::image::ImageInfo;
 use shuyi::assets::keymap::KeymapDef;
 use shuyi::assets::pack::Pack;
 use shuyi::assets::palette::PaletteDef;
-use shuyi::core::{TerrainId, state_hash};
-use shuyi::platform::harness::{Harness, assert_session};
+use shuyi::core::prelude::{TerrainId, state_hash};
+use shuyi::prelude::Bundle;
+use shuyi::prelude::grid::GridMap;
+use shuyi::prelude::test::{Harness, assert_session};
+use shuyi::prelude::text::FontAtlasDef;
 use shuyi_assets::golden::Golden;
-use shuyi_cli::GameTools;
-use shuyi_cli::contract::replay::Record;
+use shuyi_cli::prelude::{GameTools, Record};
 
 use hello_grid::rules::Feature;
 use hello_grid::screens::StageScreen;

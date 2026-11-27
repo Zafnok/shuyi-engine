@@ -4,7 +4,7 @@
 //! where it was.
 
 use hello_grid::screens::Talk;
-use shuyi::platform::SystemEvent;
+use shuyi::prelude::SystemEvent;
 
 use crate::title;
 
@@ -14,7 +14,7 @@ fn a_suspended_game_stands_still_and_goes_on_where_it_was() {
     h.keys("Enter");
     // Half the first line typed out.
     h.wait(0.2);
-    let typed = |h: &shuyi::platform::harness::Harness<hello_grid::Hello>| {
+    let typed = |h: &shuyi::prelude::test::Harness<hello_grid::Hello>| {
         let talk = h.screen::<Talk>().unwrap_or_else(|| panic!("no talk"));
         talk.text.is_revealed()
     };

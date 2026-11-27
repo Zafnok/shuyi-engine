@@ -12,21 +12,16 @@ use core::borrow::Borrow;
 
 use crate::prelude::*;
 
-use shuyi::assets::ContentError;
-use shuyi::assets::bundle::Bundle;
 use shuyi::assets::dialogue::{DialogueFile, DialogueTable};
-use shuyi::assets::font::FontAtlasDef;
 use shuyi::assets::format::Formats;
-use shuyi::assets::grid_map::GridMap;
 use shuyi::assets::image::ImageTable;
 use shuyi::assets::keymap::KeymapDef;
-use shuyi::assets::lang::Lang;
-use shuyi::assets::lighting::Lighting;
 use shuyi::assets::palette::PaletteDef;
-use shuyi::core::TerrainId;
+use shuyi::core::prelude::TerrainId;
 use shuyi::platform::Progress;
-use shuyi::ui::Game;
-use shuyi::ui::text::check_key_placeholders;
+use shuyi::prelude::grid::{GridMap, Lighting};
+use shuyi::prelude::text::{FontAtlasDef, Lang, check_key_placeholders};
+use shuyi::prelude::{Bundle, ContentError, Game};
 
 use crate::rules::{self, Feature};
 use crate::{

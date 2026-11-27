@@ -16,10 +16,9 @@ mod tools;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use shuyi::core::Dir;
-use shuyi::core::tick::TickRecord;
-use shuyi::platform::harness::Harness;
+use shuyi::core::prelude::{Dir, TickRecord};
 use shuyi::prelude::UiAction;
+use shuyi::prelude::test::Harness;
 use snake::Data;
 use snake::screens::Stage;
 use snake::tools::Tools;

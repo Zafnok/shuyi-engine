@@ -5,10 +5,9 @@
 
 use crate::prelude::*;
 
-use shuyi::assets::audio::{AudioManifest, CreditRef, CueRules, SoundCue};
+use shuyi::prelude::audio::{AudioConfig, AudioManifest, CreditRef, CueRules, SoundCue};
 #[cfg(feature = "std")]
-use shuyi::assets::audio::{Bytes, Files, playable};
-use shuyi::ui::audio::AudioConfig;
+use shuyi::prelude::audio::{Bytes, Files, playable};
 
 /// The sound files, by their names under `files/`: the highlight's move,
 /// a choice made, backing out and the cursor's tick.
@@ -116,7 +115,7 @@ mod tests {
                 let bytes = file(name).unwrap_or_else(|| panic!("no {name}"));
                 assert_eq!(&bytes[..4], b"RIFF", "{name} is rendered to a WAV");
                 assert_eq!(
-                    shuyi::assets::audio::format_problem(name, &bytes),
+                    shuyi::prelude::audio::format_problem(name, &bytes),
                     None,
                     "{name}"
                 );

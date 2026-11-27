@@ -6,10 +6,10 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
+use shuyi::assets::Formats;
 use shuyi::assets::format::AssetKind;
 use shuyi::assets::hot::Hot;
 use shuyi::assets::ron::Ron;
-use shuyi::assets::{Bundle, ContentError, Formats};
 use shuyi::prelude::*;
 
 // ANCHOR: kind
@@ -101,8 +101,8 @@ impl<G: GameData> Module<G> for HotPlan {
 mod tests {
     use std::collections::BTreeMap;
 
-    use shuyi::assets::Layer;
     use shuyi::assets::hot::Reload;
+    use shuyi::prelude::Layer;
 
     use super::*;
     use crate::game;
@@ -167,8 +167,7 @@ mod tests {
 
     #[test]
     fn a_game_written_in_chinese_names_its_wide_set_in_its_code() {
-        use shuyi::assets::font::CellWidths;
-        use shuyi::assets::lang::{Lang, LangCode, SourceLang};
+        use shuyi::prelude::text::{CellWidths, Lang, LangCode, SourceLang};
         let ui = BTreeMap::from([("menu.title".to_owned(), "“开始”".to_owned())]);
         let zh = LangCode::new("zh-Hans").unwrap();
         // ANCHOR: source_lang
@@ -180,7 +179,7 @@ mod tests {
         let widths = lang.widths(&zh, &CellWidths::wide(['开', '始']));
         assert_eq!(widths.wide_font(), Some("zh-Hans"));
         let title = lang.source_text("menu.title").unwrap();
-        assert_eq!(shuyi::assets::lang::text_width(title, &widths), 8);
+        assert_eq!(shuyi::prelude::text::text_width(title, &widths), 8);
     }
 
     #[test]

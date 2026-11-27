@@ -18,8 +18,8 @@ Example(
         // luck to come redrawn, which a bot that plans plays on.
         Edit(
             file: "crates/rules/src/lib.rs",
-            find: "use shuyi_core::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};",
-            replace: "use shuyi_core::{Determinize, Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};",
+            find: "use shuyi_core::prelude::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};",
+            replace: "use shuyi_core::prelude::{\n    Determinize, Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules,\n};",
         ),
         Edit(
             file: "crates/rules/src/lib.rs",
