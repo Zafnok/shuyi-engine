@@ -152,6 +152,7 @@ line, then one character per tile, top row first.
     name: "The stage",
     legend: { '.': "floor", '#': "wall", '>': "goal" },
     features: { (1, 6): Hero, (6, 3): Wanderer },
+    look: (props: { (10, 0): "lamp" }),
 )
 ---
 ############
@@ -164,6 +165,16 @@ line, then one character per tile, top row first.
   `terrain_named` turns into a `TerrainId`.
 - `features` puts the game's own things on tiles (`Hero`, a sign, a
   chest): a serde type of the rules' that implements `MapFeature`.
+- `look` says how a skin with pictures paints the map, and the rules
+  never see it: `tiles`, which tile look (`"outdoor"` unless it says);
+  `light`, which light (`"noon"`); and `props`, pictures placed by hand
+  on tiles, a tile `(x, y)` to a name. A tileset's look draws each name
+  (`tileset::Look::props`, an `ImageRect`) standing on its tile, its
+  bottom on the tile's and centred across, so a lamp two tiles tall
+  reaches over the tile above; a name the look lacks draws nothing. Use
+  them for what no terrain says goes there (a lamp at a gate, a
+  signpost), never for what the rules read: that is a feature. A place
+  off the map is a problem at its line.
 - A `MapFormat` says which tile looks a map may name and how big it may
   be. `grid_map::parse(file, text, &FORMAT, terrain_named)` reads it,
   every problem with its line and column.

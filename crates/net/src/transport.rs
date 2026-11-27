@@ -38,7 +38,8 @@ pub enum Channel {
     /// once, after every one sent before it to the same peer.
     Reliable,
     /// May be lost, duplicated or reordered, where the backend's network
-    /// does that. Over a WebSocket a backend sends these reliably too.
+    /// does that (the in-memory network's [`Faults`](crate::Faults) hit
+    /// only these). Over a WebSocket a backend sends these reliably too.
     Unreliable,
 }
 
@@ -211,12 +212,14 @@ impl NetStats {
         self.messages_in
     }
 
-    /// How many messages sent the network lost.
+    /// How many messages sent the network lost (the in-memory network's
+    /// loss fault).
     pub const fn dropped(&self) -> u64 {
         self.dropped
     }
 
-    /// How many messages sent the network delivered twice.
+    /// How many messages sent the network delivered twice (the in-memory
+    /// network's duplicate fault).
     pub const fn duplicated(&self) -> u64 {
         self.duplicated
     }

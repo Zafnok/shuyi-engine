@@ -6,7 +6,7 @@
 //!     name: "Crossing",
 //!     legend: { '.': "plain", 'T': "forest", '~': "water" },
 //!     features: { (2, 0): Sign("Turn back") },
-//!     look: (tiles: "indoor", light: "dusk"),
+//!     look: (tiles: "indoor", light: "dusk", props: { (0, 1): "lamp" }),
 //! )
 //! ---
 //! ..T
@@ -15,7 +15,9 @@
 //!
 //! The header has the map's `name`, its `legend` (tile character →
 //! terrain id), its `features` and its `look`; the last two may be left
-//! out. A game says what a feature is (the [`MapFeature`] hook: its own
+//! out, and so may each of the look's fields. A look's `props` are
+//! pictures placed by hand on tiles: a tileset's look says what each name
+//! is drawn as. A game says what a feature is (the [`MapFeature`] hook: its own
 //! serde type, written after the tile's `(x, y)`), what a terrain id
 //! resolves to, and which tile looks there are ([`MapFormat`]). Every
 //! problem is reported together, each with its line and column.
@@ -82,10 +84,13 @@ pub enum NoFeature {}
 impl MapFeature for NoFeature {}
 
 /// How a map looks, as far as its file says: which pictures a skin that
-/// has pictures paints its terrain with, and in which light. A skin
-/// without them ignores it. Look data only: the rules never see it.
+/// has pictures paints its terrain with, in which light, and the pictures
+/// its designer placed by hand on chosen tiles. A skin without pictures
+/// ignores it. Look data only: the rules never see it. Build it with
+/// [`MapLook::new`] or [`Default`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct MapLook {
     /// Which set of terrain pictures: one of the game's
     /// [`looks`](MapFormat::looks).
@@ -94,6 +99,14 @@ pub struct MapLook {
     /// Which light the map is in. [`DEFAULT_LIGHT`] unless the file says.
     #[serde(default = "default_light", skip_serializing_if = "is_default_light")]
     pub light: String,
+    /// Pictures placed by hand: a tile, in map coordinates `(x, y)`, to the
+    /// name of what stands on it (`props: { (19, 5): "lamp" }`). A
+    /// tileset's look says what each name is drawn as
+    /// ([`Look::props`](crate::tileset::Look::props)); the names are the
+    /// game's, checked against its tilesets by the game. Empty unless the
+    /// file says, and written only when it isn't.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub props: BTreeMap<(i32, i32), String>,
 }
 
 fn default_tiles() -> String {
@@ -114,11 +127,23 @@ impl Default for MapLook {
         Self {
             tiles: default_tiles(),
             light: default_light(),
+            props: BTreeMap::new(),
         }
     }
 }
 
 impl MapLook {
+    /// The look of the terrain pictures `tiles` in the light `light`, with
+    /// nothing placed on its tiles ([`props`](Self::props) starts empty).
+    #[must_use]
+    pub fn new(tiles: impl Into<String>, light: impl Into<String>) -> Self {
+        Self {
+            tiles: tiles.into(),
+            light: light.into(),
+            props: BTreeMap::new(),
+        }
+    }
+
     /// Whether it is the look of a map that names none: not written when
     /// a map is printed.
     pub fn is_default(&self) -> bool {
@@ -195,10 +220,12 @@ pub struct GridMap<T, F> {
     pub look: MapLook,
 }
 
-/// A map's look in a map's serde form (a baked map, `pack`): both fields,
-/// always. The look's own form leaves the default light out, which only a
-/// format that names its fields (RON) reads back.
+/// A map's look in a map's serde form (a baked map, `pack`): every field,
+/// always. The look's own form leaves the default light and an empty
+/// `props` out, which only a format that names its fields (RON) reads
+/// back.
 mod look_in_full {
+    use alloc::collections::BTreeMap;
     use alloc::string::String;
 
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -209,14 +236,19 @@ mod look_in_full {
         look: &MapLook,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        (&look.tiles, &look.light).serialize(serializer)
+        (&look.tiles, &look.light, &look.props).serialize(serializer)
     }
 
     pub(super) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<MapLook, D::Error> {
-        let (tiles, light) = <(String, String)>::deserialize(deserializer)?;
-        Ok(MapLook { tiles, light })
+        let (tiles, light, props) =
+            <(String, String, BTreeMap<(i32, i32), String>)>::deserialize(deserializer)?;
+        Ok(MapLook {
+            tiles,
+            light,
+            props,
+        })
     }
 }
 
@@ -374,6 +406,19 @@ where
             errors.push(ContentError::new(file, format!("{}: {problem}", at())));
         }
         features.insert(pos, feature);
+    }
+    for &(x, y) in header.look.props.keys() {
+        if tiles
+            .as_ref()
+            .is_some_and(|t| t.get(Pos::new(x, y)).is_none())
+        {
+            let (line, col) = prop_position(&lines[..sep], x, y);
+            errors.push(
+                ContentError::new(file, format!("look: prop at ({x}, {y}): outside the map"))
+                    .at(line, Some(col))
+                    .with_code(codes::OUT_OF_RANGE),
+            );
+        }
     }
     match tiles {
         Some(tiles) if errors.is_empty() => Ok(GridMap {
@@ -537,6 +582,30 @@ pub fn header_position(header: &[&str], needle: &str) -> Option<(u32, u32)> {
         let byte = line.find(needle)?;
         Some((line_number(i), column_number(line[..byte].chars().count())))
     })
+}
+
+/// 1-based line and column of the place `(x, y)` in the header's
+/// `props`: the first `(x, y)` (or `(x,y)`) written after the word
+/// `props`, so not a feature's at the same place; else the word itself;
+/// else the start.
+fn prop_position(header: &[&str], x: i32, y: i32) -> (u32, u32) {
+    let text = header.join("\n");
+    let Some(props) = text.find("props") else {
+        return (1, 1);
+    };
+    let after = &text[props..];
+    let place = [format!("({x}, {y})"), format!("({x},{y})")]
+        .iter()
+        .filter_map(|needle| after.find(needle.as_str()))
+        .min()
+        .unwrap_or(0);
+    let at = props + place;
+    let line_start = text[..at].rfind('\n').map_or(0, |i| i + 1);
+    let line = text[..at].matches('\n').count();
+    (
+        line_number(line),
+        column_number(text[line_start..at].chars().count()),
+    )
 }
 
 /// 1-based line number of 0-based line index `i`.

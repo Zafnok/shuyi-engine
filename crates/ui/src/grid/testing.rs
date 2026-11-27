@@ -95,7 +95,7 @@ prop_compose! {
         shown in prop::option::of((any_pos(), 0u64..5000)),
     ) -> MapScene<Piece> {
         let rim = rim.into_iter().map(|id| id.map(TerrainId)).collect();
-        let look = MapLook { tiles: look.to_owned(), light: light.to_owned() };
+        let look = MapLook::new(look, light);
         let threat = threat.map(|(tile, enemies)| ThreatView { tile, enemies });
         let x = Ends { before: more.0, after: more.1 };
         let y = Ends { before: more.2, after: more.3 };

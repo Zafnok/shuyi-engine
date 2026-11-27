@@ -42,8 +42,10 @@ pub struct MapScene<U> {
     /// [`terrain_near`](Self::terrain_near).
     pub rim: Vec<Option<TerrainId>>,
     /// How the map looks, as far as its file says: which set of pictures
-    /// a skin that has pictures paints its terrain with, and which light
-    /// it shades them by (the light's name: the skin says how it looks).
+    /// a skin that has pictures paints its terrain with, which light it
+    /// shades them by (the light's name: the skin says how it looks), and
+    /// the pictures placed by hand on its tiles (by name, in map
+    /// coordinates, whether in the view or not). The glyph skin ignores it.
     pub look: MapLook,
     /// The units on visible tiles, in the game's order.
     pub units: Vec<U>,
