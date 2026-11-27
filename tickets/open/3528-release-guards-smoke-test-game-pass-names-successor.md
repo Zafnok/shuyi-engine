@@ -74,7 +74,7 @@ evidence below was checked in this repository on 2026-11-23.
    the API, so done after the release they are breaking versions, which
    Nick wants avoided (2026-11-14, *no run of breaking versions after
    the MVP*). Others make the first publish work at all. 2842, 2843,
-   3441, 3518 and 2847 already say their place is decided here.
+   3442, 3518 and 2847 already say their place is decided here.
    2099 (open) will make the ticket lint fail an MVP ticket that 2005
    doesn't wait for, so each yes moves both the milestone and 2005's
    `blocked_by`.
@@ -163,7 +163,7 @@ time, in these words. Before asking, re-check each number in
      MVP on 2026-11-25 (`docs/decisions.md`, *the publish list (3510)
      joins the MVP*); ask about 3511 and 3512 only.
    - **Changes that would break games if they came later** (the agent
-     recommends yes): 3441, one spelling of identifiers, the API
+     recommends yes): 3442, one spelling of identifiers, the API
      change left of 3413 and 3438 (both done: names agents guess find
      something, and domain preludes); 3518, an outside module tries the extension API and how
      it is versioned is settled; 3520, the grid, dialogue, cutscene and

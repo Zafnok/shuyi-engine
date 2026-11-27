@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-27
 - **Related tickets:** 3438 (this), 3413 (doc aliases and the plain-text
-  API), 3441 (one spelling of identifiers), 3520 (the genre kits behind
+  API), 3442 (one spelling of identifiers), 3520 (the genre kits behind
   features)
 - **Amends:** ADR-0036 §6 (the prelude in `shuyi-platform`: "nothing
   else")

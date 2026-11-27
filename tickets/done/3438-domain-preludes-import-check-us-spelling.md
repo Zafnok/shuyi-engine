@@ -151,22 +151,22 @@ and the spelling check) into a new ticket.
 - [x] The template's code imports from preludes only: no `use` path
       deeper than `shuyi::prelude::<domain>` or a prelude of
       `shuyi_core` or `shuyi_cli`, but the allowed ones.
-- [x] **Split off to 3441:** `print_centered`, `print_centered_styled`,
+- [x] **Split off to 3442:** `print_centered`, `print_centered_styled`,
       `center_x`, `center` (both), `centered_on`,
       `NarrationAlign::Centered`, `Scroll::Centered` and
       `Rule::SharedColor` exist; each old name is `#[deprecated]`, gives
       what its new name gives (one `#[expect(deprecated)]` test each),
       and still matches in a pattern for the three variants.
-- [x] **Split off to 3441:** No code in this repository calls an old
+- [x] **Split off to 3442:** No code in this repository calls an old
       name but those tests. `shuyi check` reads a text sink by either
       name.
-- [x] **Split off to 3441:** `cargo xtask api-text --check` fails on a
+- [x] **Split off to 3442:** `cargo xtask api-text --check` fails on a
       public, non-deprecated item named with a UK spelling, with its own
       message, and passes on this branch.
-- [x] **Split off to 3441:** The ADR for one spelling is in `docs/adr/`
+- [x] **Split off to 3442:** The ADR for one spelling is in `docs/adr/`
       and its README. This ticket's ADR, for the preludes and the check,
       is ADR-0161.
-- [x] **Split off to 3441:** Completion notes: a `Behaviour:` line per
+- [x] **Split off to 3442:** Completion notes: a `Behaviour:` line per
       renamed item. This ticket renames nothing.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
@@ -185,7 +185,7 @@ and the spelling check) into a new ticket.
 
 **Done (2026-11-27):** steps 1, 2 and the prelude half of step 6. Steps
 3–5 (the ADR for one spelling, the renames, the spelling check) and the
-*Games and screens* half of step 6 are split off to **3441**, at this
+*Games and screens* half of step 6 are split off to **3442**, at this
 ticket's size valve: the renames alone are about 500 counted lines (250
 call sites, each a line removed and a line added).
 
@@ -200,7 +200,7 @@ call sites, each a line removed and a line added).
   (`crates/xtask/src/imports.rs`) reads every `use` leaf and every engine
   path in the code of `templates/`, `examples/` (snake too), the book's
   snippets and `skills/`, with `shuyi_cli::rust_lines`' lexer. The
-  allowed deeper paths are data, `tools/imports.ron`: 55 entries, each
+  allowed deeper paths are data, `tools/imports.ron`: 56 entries, each
   with its `why` and the files or folders it is allowed in; an entry
   nothing names fails. A gate row (`imports`, the fast set, so the
   pre-push hook runs it) and a step of CI's `layers` job.
@@ -215,7 +215,7 @@ call sites, each a line removed and a line added).
 
 **Deviations:**
 
-- The split above (3441).
+- The split above (3442).
 - The ticket's `shuyi::prelude::test` was to hold the playtest bots. The
   bots that play a turn game (`Bot`, `RandomBot`, `Rollout`, `play`, …)
   went to `shuyi_core::prelude` instead: `examples/hello-grid`'s stage
@@ -236,7 +236,7 @@ call sites, each a line removed and a line added).
   clause now says what it does with these preludes (its *From 3438
   (done)* line).
 
-**Follow-up tickets:** 3441 (the split). No ticket: a prelude for the
+**Follow-up tickets:** 3442 (the split). No ticket: a prelude for the
 modules `tools/imports.ron` allows (dialogue, cinematics, menus,
 settings) is written when games on that domain name them, ADR-0161 §3.
 
@@ -259,4 +259,4 @@ moves leave (each entry is a path no prelude took, allowed where it is
 named), and the moves are chosen by the check's failures, so a PR of the
 preludes and moves alone would have nothing holding them and one of the
 check alone fails on 1,053 paths. The ticket's own split (the spelling,
-3441) is taken.
+3442) is taken.

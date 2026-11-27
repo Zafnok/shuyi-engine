@@ -1,5 +1,5 @@
 ---
-id: "3441"
+id: "3442"
 title: "One spelling of identifiers: the US names beside deprecated UK ones, and a spelling check in api-text"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3441 — One spelling of identifiers: the US names beside deprecated UK ones, and a spelling check in api-text
+# 3442 — One spelling of identifiers: the US names beside deprecated UK ones, and a spelling check in api-text
 
 ## Context
 

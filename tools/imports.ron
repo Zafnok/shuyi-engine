@@ -281,6 +281,11 @@
             why: "how the tools show a frame",
         ),
         (
+            path: "shuyi::platform::crash",
+            in: ["examples/hello-grid/tests/it/contract.rs"],
+            why: "a crash report, which the contract's test of `shuyi crash` writes for the command to read",
+        ),
+        (
             path: "shuyi::platform::headless",
             in: ["examples/hello-grid/src/tools.rs", "examples/hello-grid/tests/it/files.rs"],
             why: "the headless platform under the Harness, which the tools and the files' test drive",
