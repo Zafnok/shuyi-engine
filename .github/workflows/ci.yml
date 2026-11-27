@@ -180,7 +180,7 @@ jobs:
       fail-fast: false
       matrix:
         target: [windows, linux, web, macos]
-        exclude: ${{ github.event_name == 'push' && fromJSON('[]') || fromJSON('[{"target":"macos"}]') }}
+        exclude: []
         include:
           - target: windows
             host: windows
