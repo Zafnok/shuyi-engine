@@ -47,7 +47,7 @@ pub fn is_built_in(group: &str) -> bool {
 }
 
 /// How a player's volume, 0 to 100, becomes the gain it plays at: the
-/// manifest's `volume_curve` (ADR-0157), one for every group of a game.
+/// manifest's `volume_curve` (ADR-0158), one for every group of a game.
 /// `Decibels` unless the file says otherwise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[non_exhaustive]

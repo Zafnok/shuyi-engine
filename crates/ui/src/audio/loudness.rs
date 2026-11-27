@@ -3,7 +3,7 @@
 //! decibel curve (ADR-0091, [`loudness`], the default) each step is the
 //! same change in loudness ([`STEP_DB_TENTHS`]), so the slider's whole
 //! length is heard, where a linear one crowds what a player hears into
-//! its top steps. On the straight line (ADR-0157, [`linear`]) each number
+//! its top steps. On the straight line (ADR-0158, [`linear`]) each number
 //! is that percentage of full. Integers only: a backend's mixer of our
 //! own takes the same units.
 

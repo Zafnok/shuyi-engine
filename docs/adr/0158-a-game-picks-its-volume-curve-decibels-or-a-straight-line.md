@@ -1,4 +1,4 @@
-# ADR-0157: A game picks its volume curve: decibels by default, or a straight line
+# ADR-0158: A game picks its volume curve: decibels by default, or a straight line
 
 - **Status:** Accepted
 - **Date:** 2026-11-26
@@ -53,7 +53,7 @@ the engine's.
   the trade ADR-0091 described, made by the game knowingly.
 - No API breaks: a new enum, a new field of a `#[non_exhaustive]`
   struct, new functions, and a manifest field that defaults. The baked
-  pack holds the curve, so its version moves to 25 and a game bakes
+  pack holds the curve, so its version moves to 26 and a game bakes
   again.
 - A third curve, or one per group, is a new variant or field later;
   `VolumeCurve` is `#[non_exhaustive]` for it.

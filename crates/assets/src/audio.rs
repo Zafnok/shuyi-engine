@@ -120,7 +120,7 @@ pub struct AudioManifest {
     /// The ducking rules (ADR-0099), in the file's order: a group lowered
     /// while a voice plays. None by default, and nothing is lowered.
     pub ducks: Vec<DuckRule>,
-    /// How every group's volume becomes its gain (ADR-0157):
+    /// How every group's volume becomes its gain (ADR-0158):
     /// [`VolumeCurve::Decibels`] unless the file says `volume_curve:
     /// Linear`.
     pub volume_curve: VolumeCurve,
