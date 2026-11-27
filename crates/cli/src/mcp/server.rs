@@ -30,7 +30,9 @@
 //! On 2026-07-28, a long tool's call from a client that declared MCP's
 //! tasks extension answers a task at once (`mcp::tasks`): the host's
 //! reply is awaited while the server answers `tasks/get`, and the session
-//! has no game until `start`'s task completes (ADR-0159).
+//! has no game until `start`'s task completes (ADR-0159). A call another
+//! workspace's server answers is a task too, its call sent once that
+//! server is ready (ADR-0162).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -153,8 +155,9 @@ pub struct Server<'a> {
     /// Whether its own workspace's calls go to a fresh server of it: the
     /// engine moved under it.
     restarted: bool,
-    /// The tasks of the process, and the calls that wait on their hosts.
-    tasks: Tasks<Pending<'a>>,
+    /// The tasks of the process, and the calls that wait on their hosts or
+    /// on another server.
+    tasks: Tasks<Work<'a>>,
     /// The time now, for a task's times.
     now: fn() -> SystemTime,
 }
@@ -176,6 +179,93 @@ struct Pending<'a> {
     /// root: a fresh server takes the call if the engine moved.
     arguments: Value,
     root: PathBuf,
+}
+
+/// A task's work: a call that waits on its host here, or on another
+/// workspace's server.
+enum Work<'a> {
+    Here(Pending<'a>),
+    There(Away),
+}
+
+/// A tool's call that another workspace's server answers (ADR-0162): a
+/// task's work while that server builds itself, then the call.
+struct Away {
+    /// The workspace whose server answers: dropping that server stops it
+    /// (a cancel).
+    workspace: PathBuf,
+    op: Op,
+    /// The `tools/call` parameters it is sent.
+    params: Value,
+    /// The id it was sent under ([`Forward::send`]); none until the server
+    /// is ready.
+    id: Option<u64>,
+    /// When it is the engine-moved restart's call to a fresh server of the
+    /// server's own workspace: this server's own answer and picture, which
+    /// it answers if that one doesn't start.
+    fallback: Option<(Value, Option<String>)>,
+}
+
+impl Away {
+    /// The call of the tool of `op` with `arguments`, to the server of
+    /// `workspace`.
+    fn new(workspace: PathBuf, op: Op, arguments: &Value) -> Self {
+        Self {
+            workspace,
+            op,
+            params: json!({ "name": op.name(), "arguments": arguments }),
+            id: None,
+            fallback: None,
+        }
+    }
+}
+
+/// What came for a task's work: its host's reply, or its server's
+/// response.
+enum Replied {
+    Host(Result<Reply, String>),
+    Server(Result<Value, String>),
+}
+
+/// Why a call to a workspace's server has no answer: it isn't running.
+const NOT_RUNNING: &str = "the project's own server isn't running";
+
+/// The response of `away`'s server to its call, once it has come, or why
+/// there is none: none while that server builds or works. The call is
+/// sent once the server is ready; to a server that only answers as it
+/// waits, it is made then if `may_wait`.
+fn poll_away<'a>(
+    forwarded: &mut BTreeMap<PathBuf, Box<dyn Forward + 'a>>,
+    away: &mut Away,
+    may_wait: bool,
+) -> Option<Result<Value, String>> {
+    let Some(server) = forwarded.get_mut(&away.workspace) else {
+        return Some(Err(NOT_RUNNING.to_owned()));
+    };
+    if let Some(id) = away.id {
+        return server.response(id);
+    }
+    if let Err(why) = server.ready(false)? {
+        return Some(Err(why));
+    }
+    match server.send("tools/call", &away.params) {
+        Ok(Some(id)) => {
+            away.id = Some(id);
+            server.response(id)
+        }
+        Ok(None) if may_wait => Some(server.request("tools/call", &away.params)),
+        Ok(None) => None,
+        Err(why) => Some(Err(why)),
+    }
+}
+
+/// How a task ended on the response `answered` (under no id): completed
+/// with its result, or failed with its JSON-RPC error.
+fn ended_as<W>(mut answered: Value) -> State<W> {
+    match answered.get_mut("result") {
+        Some(result) => State::Completed(result.take()),
+        None => State::Failed(answered["error"].take()),
+    }
 }
 
 /// How far a call got before its host's reply.
@@ -523,6 +613,14 @@ impl<'a> Server<'a> {
         let Some(workspace) = self.follow.clone() else {
             return Vec::new();
         };
+        // A server answering a task's call would hold the loop on its list
+        // until the call ends: it is asked after.
+        let busy = self.tasks.works().any(|work| {
+            matches!(work, Work::There(away) if away.workspace == workspace && away.id.is_some())
+        });
+        if busy {
+            return Vec::new();
+        }
         let Some(server) = self.forwarded.get_mut(&workspace) else {
             self.follow = None;
             return Vec::new();
@@ -592,8 +690,9 @@ impl<'a> Server<'a> {
 
     /// The response to `tools/call` with `params`, under `id`, as a task:
     /// none if its tool isn't one ([`tasked`], `start` with `link` not
-    /// either) or another server answers it (a forwarded call answers as it
-    /// is). The task exists before its answer is sent.
+    /// either). A call another workspace's server answers is a task too,
+    /// sent once that server is ready. The task exists before its answer is
+    /// sent.
     fn task_call(&mut self, id: &Value, params: &Value) -> Option<Value> {
         let (op, session) = tool(params["name"].as_str()?)?;
         let arguments = params.get("arguments").cloned().unwrap_or(Value::Null);
@@ -601,8 +700,10 @@ impl<'a> Server<'a> {
             return None;
         }
         let (arguments, root) = self.absolute(op, session, arguments);
-        if self.forward_to(&root).is_some() {
-            return None;
+        if let Some(workspace) = self.forward_to(&root) {
+            let state = self.away_task(workspace, op, &root, &arguments)?;
+            let task = self.tasks.make(op, (self.now)(), state);
+            return self.tasks.json(&task).map(|task| response(id, &task));
         }
         let prepared = if op == Op::Start {
             self.end_session_elsewhere(None);
@@ -618,7 +719,7 @@ impl<'a> Server<'a> {
                 match pending.host.send(&pending.request) {
                     Ok(sent) => {
                         pending.sent = sent;
-                        State::Working(pending)
+                        State::Working(Work::Here(pending))
                     }
                     Err(why) => self.completed(pending, Err(why)),
                 }
@@ -628,52 +729,134 @@ impl<'a> Server<'a> {
         self.tasks.json(&task).map(|task| response(id, &task))
     }
 
-    /// Ends each working task whose host has replied, with its result
-    /// (a host that answers only as it waits is called now), and forgets
-    /// the tasks that ended an hour ago.
+    /// The state of a task of the tool of `op` with `arguments`, on the
+    /// project at `root`, that the server of `workspace` answers: working
+    /// until that server has answered. A `start` there ends the session's
+    /// game anywhere, and the session has none until the task completes.
+    fn away_task(
+        &mut self,
+        workspace: PathBuf,
+        op: Op,
+        root: &Path,
+        arguments: &Value,
+    ) -> Option<State<Work<'a>>> {
+        let mut workspace = workspace;
+        if op == Op::Start {
+            self.end_session_elsewhere(Some(&workspace));
+            // Its game there is replaced by this one.
+            self.session_at = None;
+            // A start there that was building was cancelled with its server.
+            workspace = self.forward_to(root)?;
+        }
+        let mut away = Away::new(workspace, op, arguments);
+        Some(match poll_away(&mut self.forwarded, &mut away, false) {
+            Some(reply) => ended_as(self.away_ended(away, reply)),
+            None => State::Working(Work::There(away)),
+        })
+    }
+
+    /// Ends each working task whose host or server has replied, with its
+    /// result (a host that answers only as it waits is called now, and a
+    /// server once it is ready), and forgets the tasks that ended an hour
+    /// ago.
     fn advance(&mut self) {
         for task in self.tasks.working(None) {
-            let Some(pending) = self.tasks.work(&task) else {
-                continue;
-            };
-            let reply = if pending.sent {
-                pending.host.reply()
-            } else {
-                pending.sent = true;
-                Some(pending.host.call(&pending.request))
+            let reply = match self.tasks.work(&task) {
+                Some(Work::Here(pending)) => {
+                    let reply = if pending.sent {
+                        pending.host.reply()
+                    } else {
+                        pending.sent = true;
+                        Some(pending.host.call(&pending.request))
+                    };
+                    reply.map(Replied::Host)
+                }
+                Some(Work::There(away)) => {
+                    poll_away(&mut self.forwarded, away, true).map(Replied::Server)
+                }
+                None => None,
             };
             let Some(reply) = reply else {
                 continue;
             };
-            if let Some(pending) = self.tasks.end(&task, (self.now)(), State::Cancelled) {
-                let state = self.completed(pending, reply);
-                self.tasks.ended(&task, state);
-            }
+            let state = match (self.tasks.end(&task, (self.now)(), State::Cancelled), reply) {
+                (Some(Work::Here(pending)), Replied::Host(reply)) => self.completed(pending, reply),
+                (Some(Work::There(away)), Replied::Server(reply)) => {
+                    ended_as(self.away_ended(away, reply))
+                }
+                _ => continue,
+            };
+            self.tasks.ended(&task, state);
         }
         self.tasks.expire((self.now)());
     }
 
     /// How the task of `pending` ended on its host's `reply`: completed
     /// with the result `tools/call` would have answered, or failed with
-    /// its JSON-RPC error.
-    fn completed(
-        &mut self,
-        pending: Pending<'a>,
-        reply: Result<Reply, String>,
-    ) -> State<Pending<'a>> {
+    /// its JSON-RPC error. If the engine moved under the server, the call
+    /// goes to a fresh server of its own workspace, and the task works on
+    /// until that one answers.
+    fn completed(&mut self, pending: Pending<'a>, reply: Result<Reply, String>) -> State<Work<'a>> {
         let (op, root, arguments) = (pending.op, pending.root.clone(), pending.arguments.clone());
         let (answer, png) = self.finish(pending, reply);
-        let mut answered = self.answered(&Value::Null, op, &root, &arguments, answer, png);
-        match answered.get_mut("result") {
-            Some(result) => State::Completed(result.take()),
-            None => State::Failed(answered["error"].take()),
+        let Some(workspace) = self.restart_to(op, &root, &answer) else {
+            return ended_as(response(&Value::Null, &tool_result(&answer, png)));
+        };
+        let mut away = Away::new(workspace, op, &arguments);
+        away.fallback = Some((answer, png));
+        match poll_away(&mut self.forwarded, &mut away, false) {
+            Some(reply) => ended_as(self.away_ended(away, reply)),
+            None => State::Working(Work::There(away)),
         }
     }
 
     /// Stops task `id` if it works: its host is dropped, which ends it
-    /// (the game's tool program and its build are killed).
+    /// (the game's tool program and its build are killed), or the server
+    /// that answers it, which is started again on the next call.
     fn cancel(&mut self, id: &str) {
-        drop(self.tasks.end(id, (self.now)(), State::Cancelled));
+        if let Some(Work::There(away)) = self.tasks.end(id, (self.now)(), State::Cancelled) {
+            self.lost(&away.workspace);
+        }
+    }
+
+    /// Forgets the server of `workspace`, which stops it, and the session
+    /// that ran there: the next call starts it again.
+    fn lost(&mut self, workspace: &Path) {
+        self.forwarded.remove(workspace);
+        if self.session_at.as_deref() == Some(workspace) {
+            self.session_at = None;
+        }
+    }
+
+    /// The response (under no id) to `away`'s call on its server's
+    /// `reply`: a `start` that answered `ok` makes the session that
+    /// server's. A server that stopped is forgotten, and its call answers
+    /// [`codes::GAME_PROGRAM`] with why, or, for the restart's call, this
+    /// server's own answer with why the fresh one didn't start.
+    fn away_ended(&mut self, away: Away, reply: Result<Value, String>) -> Value {
+        match reply {
+            Ok(mut answered) => {
+                answered["id"] = Value::Null;
+                if away.fallback.is_some() && self.follow.is_none() && self.listing.is_none() {
+                    self.follow = Some(away.workspace.clone());
+                }
+                if away.op == Op::Start && is_ok(&answered) {
+                    self.session_at = Some(away.workspace);
+                }
+                answered
+            }
+            Err(why) => {
+                self.lost(&away.workspace);
+                let (answer, png) = match away.fallback {
+                    Some((answer, png)) => {
+                        self.restarted = false;
+                        (not_restarted(answer, &why), png)
+                    }
+                    None => (failed(away.op, codes::GAME_PROGRAM, why), None),
+                };
+                response(&Value::Null, &tool_result(&answer, png))
+            }
+        }
     }
 
     /// The workspace of the project root `root`, looked up once.
@@ -714,7 +897,7 @@ impl<'a> Server<'a> {
         arguments: &Value,
     ) -> Result<Value, String> {
         let Some(server) = self.forwarded.get_mut(workspace) else {
-            return Err("the project's own server isn't running".to_owned());
+            return Err(NOT_RUNNING.to_owned());
         };
         // On the old protocol whatever the client speaks: the answer is
         // made a 2026-07-28 one, if it must be, as the server's own are.
@@ -725,10 +908,7 @@ impl<'a> Server<'a> {
                 Ok(answer)
             }
             Err(why) => {
-                self.forwarded.remove(workspace);
-                if self.session_at.as_deref() == Some(workspace) {
-                    self.session_at = None;
-                }
+                self.lost(workspace);
                 Err(why)
             }
         }
@@ -760,6 +940,8 @@ impl<'a> Server<'a> {
             )
         };
         if session && op != Op::Start {
+            // A `start` task that completed elsewhere makes the session there.
+            self.advance();
             if let Some(workspace) = self.session_at.clone() {
                 return self
                     .forwarded_call(&workspace, id, name, &arguments)
@@ -777,7 +959,7 @@ impl<'a> Server<'a> {
         }
         let (arguments, root) = self.absolute(op, session, arguments);
         if let Some(workspace) = self.forward_to(&root) {
-            return self.forwarded_tool(&workspace, id, op, &arguments);
+            return self.forwarded_tool(workspace, &root, id, op, &arguments);
         }
         if op == Op::Start {
             self.end_session_elsewhere(None);
@@ -799,76 +981,68 @@ impl<'a> Server<'a> {
         answer: Value,
         png: Option<String>,
     ) -> Value {
-        if self.forwarding.is_some()
+        let Some(workspace) = self.restart_to(op, root, &answer) else {
+            return response(id, &tool_result(&answer, png));
+        };
+        let reply = self.forwarded_call(&workspace, &Value::Null, op.name(), arguments);
+        let mut away = Away::new(workspace, op, arguments);
+        away.fallback = Some((answer, png));
+        let mut answered = self.away_ended(away, reply);
+        answered["id"] = id.clone();
+        answered
+    }
+
+    /// The workspace of the fresh server that answers the tool of `op` on
+    /// the project at `root`, which this server answered `answer`, when
+    /// the engine moved under the server (the answer's contract isn't the
+    /// server's) and the project is in the server's own workspace: from now
+    /// on, every call of that workspace goes there. None otherwise.
+    fn restart_to(&mut self, op: Op, root: &Path, answer: &Value) -> Option<PathBuf> {
+        let moved = self.forwarding.is_some()
             && !self.restarted
-            && stale(&answer, VERSION, "").is_some()
+            && stale(answer, VERSION, "").is_some()
             && self
                 .workspace_of(root)
-                .is_some_and(|ws| Some(ws) == self.workspace_of(&self.cwd.clone()))
-        {
-            // The engine moved under the server: a fresh server of its own
-            // workspace answers this call and every later one.
-            self.restarted = true;
-            if op == Op::Start {
-                self.game = None;
-            }
-            if let Some(workspace) = self.forward_to(root) {
-                let name = op.name();
-                match self.forwarded_call(&workspace, id, name, arguments) {
-                    Ok(answered) => {
-                        if self.follow.is_none() && self.listing.is_none() {
-                            self.follow = Some(workspace.clone());
-                        }
-                        if op == Op::Start && is_ok(&answered) {
-                            self.session_at = Some(workspace);
-                        }
-                        return answered;
-                    }
-                    Err(why) => {
-                        self.restarted = false;
-                        let mut answer = answer;
-                        // What stopped the fresh server is the fix, not a
-                        // reconnect: the limit keeps the diagnosis alone.
-                        let diagnosis = stale_diagnosis(&answer, VERSION);
-                        if let Some(limits) = answer["limits"].as_array_mut() {
-                            if let Some(diagnosis) = diagnosis {
-                                limits.retain(|l| {
-                                    l.as_str().is_none_or(|l| !l.starts_with(&diagnosis))
-                                });
-                                limits.push(Value::String(diagnosis));
-                            }
-                            limits.push(Value::String(format!(
-                                "a fresh server of this checkout didn't start: {why}"
-                            )));
-                        }
-                        return response(id, &tool_result(&answer, png));
-                    }
-                }
-            }
+                .is_some_and(|ws| Some(ws) == self.workspace_of(&self.cwd.clone()));
+        if !moved {
+            return None;
+        }
+        self.restarted = true;
+        if op == Op::Start {
+            self.game = None;
+        }
+        let workspace = self.forward_to(root);
+        if workspace.is_none() {
             self.restarted = false;
         }
-        response(id, &tool_result(&answer, png))
+        workspace
     }
 
     /// The response of the server of `workspace` to the tool of `op` (not
-    /// a session tool, or `start`) with `arguments`, under `id`; a `start`
-    /// there ends the session's game anywhere else.
-    fn forwarded_tool(&mut self, workspace: &Path, id: &Value, op: Op, arguments: &Value) -> Value {
+    /// a session tool, or `start`) with `arguments`, on the project at
+    /// `root`, under `id`; a `start` there ends the session's game anywhere
+    /// else.
+    fn forwarded_tool(
+        &mut self,
+        workspace: PathBuf,
+        root: &Path,
+        id: &Value,
+        op: Op,
+        arguments: &Value,
+    ) -> Value {
+        let mut workspace = workspace;
         if op == Op::Start {
-            self.end_session_elsewhere(Some(workspace));
-        }
-        match self.forwarded_call(workspace, id, op.name(), arguments) {
-            Ok(answered) => {
-                if op == Op::Start && is_ok(&answered) {
-                    self.session_at = Some(workspace.to_path_buf());
-                }
-                answered
+            self.end_session_elsewhere(Some(&workspace));
+            // A start there that was building was cancelled with its server.
+            match self.forward_to(root) {
+                Some(again) => workspace = again,
+                None => return error(id, INTERNAL_ERROR, NOT_RUNNING),
             }
-            Err(why) => response(
-                id,
-                &tool_result(&failed(op, codes::GAME_PROGRAM, why), None),
-            ),
         }
+        let reply = self.forwarded_call(&workspace, &Value::Null, op.name(), arguments);
+        let mut answered = self.away_ended(Away::new(workspace, op, arguments), reply);
+        answered["id"] = id.clone();
+        answered
     }
 
     /// Stops the session's game unless it runs in the server of `at`
@@ -881,7 +1055,8 @@ impl<'a> Server<'a> {
         }
         if at.is_some() {
             self.attached = None;
-            // A `start` still building here would take the session back.
+            // A `start` still building, here or in another workspace's
+            // server, would take the session back.
             for task in self.tasks.working(Some(Op::Start)) {
                 self.cancel(&task);
             }
@@ -1233,6 +1408,24 @@ fn stale_diagnosis(answer: &Value, version: u32) -> Option<String> {
         };
         format!("the game's engine speaks contract {theirs} and this server {version}: {newer}")
     })
+}
+
+/// This server's own `answer` when the fresh server started for it, once
+/// the engine moved, stopped with `why`: the limit keeps the diagnosis
+/// alone, since what stopped the fresh server is the fix, not a
+/// reconnect, and says why.
+fn not_restarted(mut answer: Value, why: &str) -> Value {
+    let diagnosis = stale_diagnosis(&answer, VERSION);
+    if let Some(limits) = answer["limits"].as_array_mut() {
+        if let Some(diagnosis) = diagnosis {
+            limits.retain(|l| l.as_str().is_none_or(|l| !l.starts_with(&diagnosis)));
+            limits.push(Value::String(diagnosis));
+        }
+        limits.push(Value::String(format!(
+            "a fresh server of this checkout didn't start: {why}"
+        )));
+    }
+    answer
 }
 
 /// The limit a host's `answer` gets, where no fresh server is started for
