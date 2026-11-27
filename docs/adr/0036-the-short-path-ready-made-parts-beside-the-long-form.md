@@ -1,6 +1,6 @@
 # ADR-0036: The short path: ready-made parts beside the long form
 
-- **Status:** Accepted
+- **Status:** Accepted; §6 amended by ADR-0161 (the domain preludes beside it)
 - **Date:** 2026-10-23
 - **Related tickets:** 2511 (this), 2512 (the line counter and its cap),
   2003 (the `shuyi` crate), 2013 (types that can grow), 2316 and 2357

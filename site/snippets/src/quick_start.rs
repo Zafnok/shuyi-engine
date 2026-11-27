@@ -6,7 +6,7 @@
 use std::process::ExitCode;
 
 use shuyi::prelude::*;
-use shuyi_cli::BasicTools;
+use shuyi_cli::prelude::BasicTools;
 
 use crate::assets::{Plan, read_plan};
 use crate::screens::{GardenScreen, Leave, Title};
@@ -70,7 +70,10 @@ pub fn main() {
 /// short path.
 pub fn tool_program() -> ExitCode {
     let tools = BasicTools::new(game());
-    ExitCode::from(shuyi_cli::main_with(std::env::args().skip(1), Some(&tools)))
+    ExitCode::from(shuyi_cli::prelude::main_with(
+        std::env::args().skip(1),
+        Some(&tools),
+    ))
 }
 // ANCHOR_END: tools
 

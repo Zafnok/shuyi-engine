@@ -23,18 +23,15 @@ use std::any::Any;
 
 use rules::{Command, Event, Feature, Outcome, Stage, TERRAIN_NAMES};
 use serde::{Deserialize, Serialize};
-use shuyi::assets::grid_map::GridMap;
-use shuyi::assets::lighting::Lighting;
-use shuyi::core::{Dir, Made, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
+use shuyi::core::prelude::{Dir, Made, Pos, Sides, StateHash, TerrainId, TurnRules, state_hash};
+use shuyi::prelude::grid::{
+    Camera, GRID, GlyphSkin, Grid, GridMap, GridSkin, Lighting, Looks, MapColors, MapScene,
+    MapUnit, TerrainGlyphs, Terrains, UnitPainter, WalkSpeeds, glyph, layout_gizmos,
+};
+use shuyi::prelude::text::StyledText;
 use shuyi::prelude::*;
 use shuyi::ui::debug::gizmo::Gizmos;
 use shuyi::ui::frame::Palette;
-use shuyi::ui::grid::debug::{GRID, layout_gizmos};
-use shuyi::ui::grid::{
-    Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
-    Terrains, UnitPainter, WalkSpeeds, glyph,
-};
-use shuyi::ui::text::StyledText;
 
 use crate::Data;
 

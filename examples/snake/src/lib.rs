@@ -22,10 +22,10 @@ pub mod tools;
 use std::sync::OnceLock;
 
 use shuyi::assets::format::Formats;
-use shuyi::assets::grid_map::MapText;
 use shuyi::assets::ron::Ron;
-use shuyi::core::{Made, TerrainId};
+use shuyi::core::prelude::{Made, TerrainId};
 use shuyi::platform::SystemHook;
+use shuyi::prelude::grid::MapText;
 use shuyi::prelude::*;
 
 use rules::{Board, Feature, Snake, Tuning};

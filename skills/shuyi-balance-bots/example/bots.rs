@@ -4,13 +4,13 @@
 //! not a screen: `shuyi.ron`'s `check_text` skips this file.
 
 use rules::{Command, Event, Feature, Outcome, Player, Stage};
-use shuyi::assets::grid_map::GridMap;
-use shuyi::core::bots::playtest::{Check, Entrant, Measure, Measures, play_try};
-use shuyi::core::{
+use shuyi::core::prelude::{
     Bot, Determinize, Horizon, Pos, RandomBot, Report, Rollout, RolloutSettings, TerrainId,
     TurnRules, Unordered,
 };
-use shuyi_cli::PlaytestPlan;
+use shuyi::prelude::grid::GridMap;
+use shuyi::prelude::test::{Check, Entrant, Measure, Measures, play_try};
+use shuyi_cli::prelude::PlaytestPlan;
 
 /// How a try is measured: `won` (1 if your piece reached the goal, else
 /// 0) and `turns` (the turn it stopped on).
