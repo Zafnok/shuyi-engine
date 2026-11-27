@@ -1,6 +1,6 @@
 # ADR-0031: The MCP server: hand-written JSON-RPC, the game in its tool program, and session tools as operations
 
-- **Status:** Accepted; extended by ADR-0156 (protocol 2026-07-28 beside the old one)
+- **Status:** Accepted; extended by ADR-0156 (protocol 2026-07-28 beside the old one); §1 amended by ADR-0159 (a task's work waits off the loop)
 - **Date:** 2026-10-22
 - **Related tickets:** 1133 (this), 2356 (debug commands: a `command`
   tool), 2514 (frames over time from `frame_png`), 2519 (`start` from a

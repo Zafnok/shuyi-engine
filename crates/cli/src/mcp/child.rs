@@ -2,12 +2,14 @@
 //! program `shuyi.ron` names, as `shuyi mcp-host`, with pipes to its
 //! stdin and stdout. What it writes to stderr (the compiler's errors, a
 //! panic) goes on to the server's stderr, and its last lines go into the
-//! error when it stops before it answers.
+//! error when it stops before it answers. Its replies are read on a thread
+//! of their own, so a task's reply is awaited without blocking the server
+//! ([`Link::send`]).
 
 use std::fmt::Write as _;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-use std::sync::mpsc::{Receiver, channel};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -49,6 +51,8 @@ impl<'a> Launch<'a> for Cargo {
                 "cargo started without its pipes".to_owned(),
             ));
         };
+        let (sent, replies) = channel();
+        std::thread::spawn(move || read_replies(BufReader::new(stdout), &sent));
         let tail = Arc::new(Mutex::new(Vec::new()));
         let kept = Arc::clone(&tail);
         let (ended, copied) = channel();
@@ -59,7 +63,7 @@ impl<'a> Launch<'a> for Cargo {
         Ok(Box::new(Program {
             child,
             stdin: Some(stdin),
-            stdout: BufReader::new(stdout),
+            replies,
             tail,
             copied,
         }))
@@ -83,11 +87,32 @@ pub(super) fn keep_tail(mut from: impl Read, tail: &Mutex<Vec<u8>>) {
     }
 }
 
+/// Sends each reply of `from`, the text after the mark [`REPLY`] on a
+/// line, on `to`, until `from` ends or nobody hears. A line without the
+/// mark is the game's own printing.
+fn read_replies(from: impl BufRead, to: &Sender<String>) {
+    for line in from.lines() {
+        let Ok(line) = line else { break };
+        if let Some(reply) = line.trim_end().strip_prefix(REPLY)
+            && to.send(reply.to_owned()).is_err()
+        {
+            break;
+        }
+    }
+}
+
+/// `reply`, a reply's text, read.
+fn reply_of(reply: &str) -> Result<Reply, String> {
+    serde_json::from_str(reply)
+        .map_err(|e| format!("the game's tool program sent a broken reply ({e})"))
+}
+
 /// A running game tool program.
 struct Program {
     child: Child,
     stdin: Option<ChildStdin>,
-    stdout: BufReader<ChildStdout>,
+    /// The replies on its stdout, as [`read_replies`] reads them.
+    replies: Receiver<String>,
     tail: Arc<Mutex<Vec<u8>>>,
     /// Hears when its stderr has been copied to the end.
     copied: Receiver<()>,
@@ -119,6 +144,14 @@ impl Program {
 
 impl Link for Program {
     fn call(&mut self, request: &Request) -> Result<Reply, String> {
+        self.send(request)?;
+        match self.replies.recv() {
+            Ok(reply) => reply_of(&reply),
+            Err(_) => Err(self.stopped()),
+        }
+    }
+
+    fn send(&mut self, request: &Request) -> Result<bool, String> {
         let line = serde_json::to_string(request).map_err(|e| e.to_string())?;
         let sent = self
             .stdin
@@ -127,18 +160,14 @@ impl Link for Program {
         if !matches!(sent, Some(Ok(()))) {
             return Err(self.stopped());
         }
-        let mut line = String::new();
-        loop {
-            line.clear();
-            match self.stdout.read_line(&mut line) {
-                Ok(0) | Err(_) => return Err(self.stopped()),
-                Ok(_) => {}
-            }
-            // A line without the mark is the game's own printing.
-            if let Some(reply) = line.trim_end().strip_prefix(REPLY) {
-                return serde_json::from_str(reply)
-                    .map_err(|e| format!("the game's tool program sent a broken reply ({e})"));
-            }
+        Ok(true)
+    }
+
+    fn reply(&mut self) -> Option<Result<Reply, String>> {
+        match self.replies.try_recv() {
+            Ok(reply) => Some(reply_of(&reply)),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => Some(Err(self.stopped())),
         }
     }
 }

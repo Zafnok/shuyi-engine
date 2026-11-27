@@ -31,6 +31,7 @@ mod kit;
 mod text;
 
 pub use commitment::{Salts, open, opens};
+pub(crate) use kit::civil;
 pub use kit::{Build, prepare, today, verify};
 
 /// The folder of the kit when `shuyi.ron`'s `reveal` part names none.
