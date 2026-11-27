@@ -153,8 +153,10 @@ A game may draw them, or make them from the water's one tile with a tool it opts
 
 `cargo shuyi corners files-src/water.corners.ron` writes the sheet, a PNG of 8 × 2 pictures
 that the game draws as it draws a drawn one. The corners sit round the point, so their edges
-come out rounded and meet without a seam. The tileset names the sheet's pictures by their
-cells (`shuyi_assets::corners::sheet_rect`), and a test keeps the sheet equal to its recipe:
+come out rounded and meet without a seam. The tileset's corner layer names the sheet as an
+image of its own, `image: "tiles/water-corners.png"`, its 15 pictures the sheet's cells
+(`shuyi_assets::corners::sheet_layer` builds it in code), so nothing is pasted into the
+tileset's picture. A test keeps the sheet equal to its recipe:
 `shuyi_cli::corners::check`, which fails naming the file and the command that remakes it.
 The sheet is a plain picture, so a game can make it once, touch it up by hand and drop the
 recipe.

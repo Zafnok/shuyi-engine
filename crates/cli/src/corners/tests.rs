@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use shuyi_assets::corners::{Rim, RimSide, Wobble, generate, layer};
+use shuyi_assets::corners::{Rim, RimSide, Wobble, generate, layer, sheet_layer};
+use shuyi_assets::image::{ImageInfo, ImageTable};
 use shuyi_assets::tileset::{Layer, MIXES};
 use shuyi_core::Pos;
 use shuyi_ui::frame::raster::Painter;
@@ -135,9 +136,13 @@ fn a_layer_of_a_sheet_is_laid_out_as_the_toys_shore() {
 /// The committed picture of the look snapshot.
 const SHORE: &str = "tests/fixtures/corners/shore.png";
 
-/// The toy's tiles picture in its size: grass and water tiles of their
-/// own on row 0, and a shore made from the water's tile on rows 4 and 5.
-fn tiles_picture() -> Image {
+/// The made sheet's path in the snapshot's image table.
+const SHEET: &str = "tiles/water-corners.png";
+
+/// The toy's tiles picture in its size, grass and water tiles of their
+/// own on row 0; and the shore made from the water's tile, a sheet of
+/// its own.
+fn pictures() -> (Image, Image) {
     let mut picture = Image::filled(TILES_SIZE.width, TILES_SIZE.height, [0; 4]);
     let paint = |picture: &mut Image, x0: u32, y0: u32, from: &Image| {
         for y in 0..from.height {
@@ -168,14 +173,14 @@ fn tiles_picture() -> Image {
     let wobble = Wobble::new(3).with_strength(40);
     let rim = Rim::new([232, 244, 255], RimSide::Outside).with_width(2);
     let shore = generate(&water, Some(wobble), Some(rim)).unwrap();
-    paint(&mut picture, 0, 96, &shore);
-    picture
+    (picture, shore)
 }
 
 /// A 4 × 3 map with a lake and a bay, its shore made from the water's
 /// tile, painted by the grid kit's sprite skin and the raster: the same
 /// as its committed picture. The water tiles' own picture is grass, so
-/// the layer draws all the water, rounded. When it changes on purpose,
+/// the layer draws all the water, rounded. The layer names the made
+/// sheet as an image of its own: nothing is pasted into the tiles'. When it changes on purpose,
 /// the test writes the new picture beside the old (`shore.new.png`): look
 /// at it, then move it over the old one.
 #[test]
@@ -186,9 +191,11 @@ fn a_made_shore_is_painted_as_its_committed_picture() {
         .look
         .tiles
         .insert(WATER, tile_at(u32::from(GRASS.0), 0));
-    terrain.look.layers = vec![Layer::Corners(layer(
+    let sheets = ImageTable::new([(SHEET, ImageInfo::new(192, 48))].into());
+    let sheet = sheets.id(SHEET).unwrap();
+    terrain.look.layers = vec![Layer::Corners(sheet_layer(
         BTreeSet::from([WATER]),
-        (0, 96),
+        sheet,
         (24, 24),
     ))];
     let skin = sprite(Some(terrain));
@@ -213,7 +220,8 @@ fn a_made_shore_is_painted_as_its_committed_picture() {
     let font =
         read_font(&root.join("../../templates/shuyi-default/base/files-src/ter-u16n.bdf")).unwrap();
     let atlas = build_atlas(&font, &AtlasChars::default());
-    let images = BTreeMap::from([(kit.tiles_image(), tiles_picture())]);
+    let (tiles, shore) = pictures();
+    let images = BTreeMap::from([(kit.tiles_image(), tiles), (sheet, shore)]);
     let image = Painter::new(atlas.def, atlas.image, images, clear).render(&buf, 2);
     assert_eq!((image.width, image.height), (192, 160));
     let path = root.join(SHORE);

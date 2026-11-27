@@ -263,6 +263,23 @@ fn a_layer_names_each_mix_in_its_place() {
     assert_eq!((layer.of, layer.tiles.to_vec()), (of, want));
 }
 
+#[test]
+fn a_sheet_layer_names_its_own_image_from_its_top_left() {
+    let images = crate::image::ImageTable::new(
+        [(
+            "tiles/water-corners.png",
+            crate::image::ImageInfo::new(128, 16),
+        )]
+        .into(),
+    );
+    let sheet = images.id("tiles/water-corners.png").unwrap();
+    let of = BTreeSet::from([TerrainId(1)]);
+    let made = sheet_layer(of.clone(), sheet, (16, 8));
+    assert_eq!(made, layer(of, (0, 0), (16, 8)).with_image(sheet));
+    assert_eq!(made.image, Some(sheet));
+    assert_eq!(layer(BTreeSet::new(), (0, 0), (16, 8)).image, None);
+}
+
 const GENERATED: &str = r##"(
     make: Generated(
         tile: (image: "tiles/terrain.png", at: (24, 0), size: (24, 24)),
