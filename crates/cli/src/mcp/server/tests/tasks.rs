@@ -448,10 +448,7 @@ fn a_task_is_kept_an_hour_after_it_ends_then_forgotten() {
 #[test]
 fn a_start_in_another_workspace_cancels_one_building_here() {
     let own = scratch("tasks-fw-own", GAME);
-    let theirs = scratch(
-        "tasks-fw-theirs",
-        r#"(command: "cargo shuyi", game: (package: "fake"))"#,
-    );
+    let theirs = scratch("tasks-fw-theirs", THEIRS);
     let gate = Gate::default();
     let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
     let mut server =
@@ -461,11 +458,237 @@ fn a_start_in_another_workspace_cancels_one_building_here() {
     // Forwarded, it answers as it is, and the session is there now.
     let project = json!({ "project": theirs.display().to_string() });
     let there = tasked_call(&mut server, "start", &project);
-    assert_eq!(there["structuredContent"]["by"], "forwarded", "{there}");
+    assert_eq!(there["resultType"], "task", "{there}");
     assert_eq!(gate.dropped.get(), 1);
+    let done = got(&mut server, "shuyi-2");
+    assert_eq!(
+        done["result"]["structuredContent"]["by"], "forwarded",
+        "{done}"
+    );
     gate.open.set(true);
     assert_eq!(got(&mut server, "shuyi-1")["status"], "cancelled");
     assert!(server.game.is_none() && server.session_at.is_some());
     fs::remove_dir_all(&own).unwrap();
     fs::remove_dir_all(&theirs).unwrap();
+}
+
+/// A project of another workspace, whose server is its `command`'s.
+const THEIRS: &str = r#"(command: "cargo shuyi", game: (package: "fake"))"#;
+
+/// A server in `own`, launching with `gate`, that forwards the calls of
+/// `theirs` to a fake server of `workspaces`; and `theirs` as a call's
+/// `project`.
+fn forwards<'a>(
+    own: &Path,
+    theirs: &Path,
+    gate: &Gate,
+    workspaces: Workspaces,
+) -> (Server<'a>, Value) {
+    let server =
+        Server::new(own.to_path_buf(), Box::new(gate.clone())).forwarding(Box::new(workspaces));
+    (server, json!({ "project": theirs.display().to_string() }))
+}
+
+/// The names of the tools the fake servers were called.
+fn names(asked: &Asked) -> Vec<String> {
+    asked
+        .called
+        .borrow()
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect()
+}
+
+/// The response to `tasks/cancel` of `task`.
+fn cancel(server: &mut Server<'_>, task: &str) -> Value {
+    asked(server, "tasks/cancel", json!({ "taskId": task }))
+}
+
+#[test]
+fn a_forwarded_long_tool_works_while_its_server_builds_then_completes() {
+    let own = scratch("tasks-away-own", GAME);
+    let theirs = scratch("tasks-away-theirs", THEIRS);
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces.ready.set(false);
+    workspaces.answers.set(false);
+    let ready = Rc::clone(&workspaces.ready);
+    let answers = Rc::clone(&workspaces.answers);
+    let asked = Rc::clone(&workspaces.asked);
+    let (mut server, project) = forwards(&own, &theirs, &Gate::open(), workspaces);
+    let task = tasked_call(&mut server, "playtest", &project);
+    assert_eq!(
+        (task["resultType"].as_str(), task["status"].as_str()),
+        (Some("task"), Some("working")),
+        "{task}"
+    );
+    // While its server builds, the call isn't sent.
+    assert_eq!(got(&mut server, "shuyi-1")["status"], "working");
+    assert_eq!(names(&asked), Vec::<String>::new());
+    // Ready, it is sent, and the task works while that server does.
+    ready.set(true);
+    assert_eq!(got(&mut server, "shuyi-1")["status"], "working");
+    assert_eq!(names(&asked), ["playtest"]);
+    let arguments = asked.called.borrow()[0].1.clone();
+    assert_eq!(Path::new(arguments["project"].as_str().unwrap()), theirs);
+    answers.set(true);
+    let completed = got(&mut server, "shuyi-1");
+    assert_eq!(completed["status"], "completed", "{completed}");
+    // The result the call answers without tasks.
+    assert_eq!(
+        completed["result"],
+        called(&mut server, "playtest", &project)
+    );
+    assert_eq!(completed["result"]["structuredContent"]["by"], "forwarded");
+    assert_eq!(asked.spawned.borrow().len(), 1);
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}
+
+#[test]
+fn a_forwarded_start_that_completes_makes_the_session_that_servers() {
+    let own = scratch("tasks-away-start-own", GAME);
+    let theirs = scratch("tasks-away-start-theirs", THEIRS);
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces.ready.set(false);
+    let ready = Rc::clone(&workspaces.ready);
+    let asked = Rc::clone(&workspaces.asked);
+    let (mut server, project) = forwards(&own, &theirs, &Gate::open(), workspaces);
+    // A game of the server's own runs: the start there ends it.
+    assert_eq!(called(&mut server, "start", &json!({}))["isError"], false);
+    let task = tasked_call(&mut server, "start", &project);
+    assert_eq!(
+        (task["status"].as_str(), task["pollIntervalMs"].as_u64()),
+        (Some("working"), Some(2_000))
+    );
+    assert!(!server.has_game());
+    // While it works, a session tool has no game, and names the task.
+    let step = called(&mut server, "step", &json!({}));
+    let answer = &step["structuredContent"];
+    assert_eq!(answer["code"], "SH0002");
+    assert!(
+        answer["error"]
+            .as_str()
+            .unwrap()
+            .contains("`start` is building it, as task `shuyi-1`"),
+        "{answer}"
+    );
+    // The loop's poll ends it once that server answered.
+    ready.set(true);
+    assert_eq!(server.poll(), Vec::<String>::new());
+    assert!(server.has_game() && server.session_at.is_some());
+    let step = called(&mut server, "step", &json!({ "frames": 1 }));
+    assert_eq!(step["structuredContent"]["by"], "forwarded", "{step}");
+    assert_eq!(names(&asked), ["start", "step"]);
+    assert_eq!(got(&mut server, "shuyi-1")["status"], "completed");
+    // One that answers not `ok` leaves no session there.
+    let failing = json!({ "project": theirs.display().to_string(), "start": "fail" });
+    tasked_call(&mut server, "start", &failing);
+    let ended = got(&mut server, "shuyi-2");
+    assert_eq!(ended["result"]["isError"], true, "{ended}");
+    assert!(!server.has_game());
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}
+
+#[test]
+fn a_cancel_of_a_forwarded_task_drops_its_server_and_the_next_call_starts_it() {
+    let own = scratch("tasks-away-cancel-own", GAME);
+    let theirs = scratch("tasks-away-cancel-theirs", THEIRS);
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces.answers.set(false);
+    let dropped = Rc::clone(&workspaces.dropped);
+    let asked = Rc::clone(&workspaces.asked);
+    let (mut server, project) = forwards(&own, &theirs, &Gate::open(), workspaces);
+    let task = tasked_call(&mut server, "export", &project);
+    assert_eq!(task["status"], "working", "{task}");
+    assert_eq!(names(&asked), ["export"], "sent at once to a server ready");
+    let cancelled = cancel(&mut server, "shuyi-1");
+    assert_eq!(cancelled["result"]["resultType"], "complete", "{cancelled}");
+    assert_eq!(dropped.get(), 1, "its server was stopped");
+    assert_eq!(got(&mut server, "shuyi-1")["status"], "cancelled");
+    let again = called(&mut server, "check", &project);
+    assert_eq!(again["structuredContent"]["by"], "forwarded", "{again}");
+    assert_eq!(asked.spawned.borrow().len(), 2, "started again");
+    // A second start cancels a forwarded one building, and that server
+    // starts again for the second.
+    tasked_call(&mut server, "start", &project);
+    tasked_call(&mut server, "start", &project);
+    assert_eq!(got(&mut server, "shuyi-2")["status"], "cancelled");
+    assert_eq!(got(&mut server, "shuyi-3")["status"], "working");
+    assert_eq!((dropped.get(), asked.spawned.borrow().len()), (2, 3));
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}
+
+#[test]
+fn a_forwarded_call_without_the_extension_or_on_the_old_protocol_answers_as_it_did() {
+    let own = scratch("tasks-away-without-own", GAME);
+    let theirs = scratch("tasks-away-without-theirs", THEIRS);
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    // A call that waits never reads `answers`.
+    workspaces.answers.set(false);
+    let (mut server, project) = forwards(&own, &theirs, &Gate::open(), workspaces);
+    let old = called(&mut server, "playtest", &project);
+    assert_eq!(old["structuredContent"]["by"], "forwarded", "{old}");
+    let call = json!({ "name": "playtest", "arguments": project });
+    let new = handled(&mut server, &of_2026("c", "tools/call", call, &json!({})));
+    assert_eq!(new["result"]["resultType"], "complete", "{new}");
+    assert_eq!(new["result"]["structuredContent"], old["structuredContent"]);
+    // A server that doesn't build: a task completed at once with why.
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces.fail.set(true);
+    let (mut server, project) = forwards(&own, &theirs, &Gate::open(), workspaces);
+    let task = tasked_call(&mut server, "playtest", &project);
+    assert_eq!(task["status"], "completed", "{task}");
+    let ended = got(&mut server, "shuyi-1");
+    assert_eq!(
+        ended["result"]["structuredContent"]["code"], "SH3005",
+        "{ended}"
+    );
+    assert_eq!(ended["result"], called(&mut server, "playtest", &project));
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}
+
+#[test]
+fn a_stale_tasks_restart_sends_its_call_to_the_fresh_server_without_waiting() {
+    let dir = scratch("tasks-restart", THEIRS);
+    let workspaces = Workspaces::new(&[(&dir, "own")]);
+    workspaces.answers.set(false);
+    let answers = Rc::clone(&workspaces.answers);
+    let asked = Rc::clone(&workspaces.asked);
+    let speaks = Speaks {
+        contract: VERSION + 1,
+    };
+    let mut server = Server::new(dir.clone(), Box::new(speaks)).forwarding(Box::new(workspaces));
+    let task = tasked_call(&mut server, "start", &json!({}));
+    assert_eq!(task["status"], "working", "{task}");
+    // The host answered with another contract: the fresh server has the
+    // call, and the task works on while it does.
+    assert_eq!(got(&mut server, "shuyi-1")["status"], "working");
+    assert_eq!(names(&asked), ["start"]);
+    answers.set(true);
+    let done = got(&mut server, "shuyi-1");
+    assert_eq!(
+        done["result"]["structuredContent"]["by"], "forwarded",
+        "{done}"
+    );
+    assert!(server.has_game() && server.session_at.is_some());
+
+    // If the fresh one doesn't start, the server's own answer, with why.
+    let workspaces = Workspaces::new(&[(&dir, "own")]);
+    workspaces.fail.set(true);
+    let speaks = Speaks {
+        contract: VERSION + 1,
+    };
+    let mut server = Server::new(dir.clone(), Box::new(speaks)).forwarding(Box::new(workspaces));
+    tasked_call(&mut server, "playtest", &json!({}));
+    let done = got(&mut server, "shuyi-1");
+    let limits = done["result"]["structuredContent"]["limits"].to_string();
+    assert!(
+        limits.contains("a fresh server of this checkout didn't start: "),
+        "{done}"
+    );
+    assert!(!server.restarted);
+    fs::remove_dir_all(&dir).unwrap();
 }

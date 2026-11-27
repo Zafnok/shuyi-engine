@@ -17,6 +17,9 @@ feed_filenames = ["atom.xml"]
 # (ticket 2804). Each tag has its own feed.
 taxonomies = [{ name = "tags", feed = true }]
 
+# The file a post is copied from (ticket 2805) is never a page.
+ignored_content = ["**/news/_template.md"]
+
 [markdown]
 highlight_code = true
 # Classes, not colors: `static/style.css` colors them, in light and dark.

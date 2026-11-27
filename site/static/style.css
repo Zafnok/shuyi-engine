@@ -427,6 +427,36 @@ h3 {
   color: var(--muted);
 }
 
+/* A post's author and tags, beside its date (ticket 2805). */
+.post-list .author,
+.post-list .tags,
+.meta .author,
+.meta .tags {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-left: 0.4rem;
+}
+
+.post .cover {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+}
+
+/* The older and newer post, or the pages of News. */
+.post-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 2rem 0 1rem;
+}
+
+.post-pager a[rel="next"] {
+  margin-left: auto;
+}
+
 /* Tables in a page scroll on their own on a narrow screen, never the page. */
 .prose table {
   display: block;

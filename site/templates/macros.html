@@ -11,9 +11,24 @@
   {%- for post in pages %}
   <li>
     <a href="{{ post.permalink | safe }}">{{ post.title }}</a>
-    {%- if post.date %} <time datetime="{{ post.date }}">{{ post.date | date(format="%-d %B %Y") }}</time>{% endif %}
+    {{- self::post_meta(post=post) }}
     {%- if post.description %}<p>{{ post.description }}</p>{% endif %}
   </li>
   {%- endfor %}
 </ul>
 {%- endmacro post_list %}
+
+{#- A post's date, author and tags (ticket 2805). The author is a key of
+    data/authors.toml; a post with none (a release post) shows none. #}
+{% macro post_meta(post) %}
+{%- if post.date %} <time datetime="{{ post.date }}">{{ post.date | date(format="%-d %B %Y") }}</time>{% endif %}
+{%- if post.extra.author %}
+{%- set authors = load_data(path="data/authors.toml") %}
+{%- set author = authors[post.extra.author] %}
+{%- if author.link %}{% set author_link = author.link %}{% else %}{% set author_link = "https://github.com/" ~ author.github %}{% endif %}
+ <span class="author">by <a href="{{ author_link }}">{{ author.name }}</a></span>
+{%- endif %}
+{%- if post.taxonomies.tags %}
+ <span class="tags">{% for tag in post.taxonomies.tags %}<a href="{{ get_taxonomy_url(kind='tags', name=tag) }}">{{ tag }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+{%- endif %}
+{%- endmacro post_meta %}

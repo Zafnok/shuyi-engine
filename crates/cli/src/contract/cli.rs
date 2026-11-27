@@ -500,12 +500,22 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("shuyi-cli-crash-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        let report = shuyi_platform::crash::CrashReport::new(1, "boom");
+        let mut report = shuyi_platform::crash::CrashReport::new(1, "boom");
+        report.frames = vec![shuyi_platform::crash::CodeFrame::new(Some(0x10))];
         fs::write(dir.join("crash-1.ron"), report.to_text()).unwrap();
         fs::write(dir.join("f"), "").unwrap();
+        // This test program is a debug file `--symbols` reads, on any OS:
+        // one with no DWARF names nothing, and says so in its limits.
+        let program = std::env::current_exe().unwrap();
+        let program = program.to_str().unwrap();
         for (items, exit) in [
             (&["crash-1.ron"][..], 0),
             (&["crash-1.ron", "--json"], 0),
+            (&["crash-1.ron", "--symbols", program], 0),
+            (&["crash-1.ron", "--symbols", program, "--json"], 0),
+            (&["crash-1.ron", "--symbols", "nope.debug"], 1),
+            (&["crash-1.ron", "--symbols", "f"], 1),
+            (&["crash-1.ron", "--symbols"], 2),
             (&["nope.ron"], 1),
             (&["f"], 1),
             (&[], 2),

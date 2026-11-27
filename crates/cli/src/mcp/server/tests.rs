@@ -532,12 +532,15 @@ struct Asked {
 /// Workspaces by folder (the longest that a folder is in), and forwarded
 /// servers that list `tools`, answer every call (a `start` of
 /// `"fail"` not ok), or stop while `fail` is set, and are ready once
-/// `ready` is.
+/// `ready` is. A call sent without waiting is answered once `answers`
+/// is set, and `dropped` counts the servers dropped (a cancel's stop).
 struct Workspaces {
     of: Vec<(PathBuf, PathBuf)>,
     tools: Vec<Value>,
     fail: Rc<Cell<bool>>,
     ready: Rc<Cell<bool>>,
+    answers: Rc<Cell<bool>>,
+    dropped: Rc<Cell<u32>>,
     asked: Rc<Asked>,
 }
 
@@ -551,6 +554,8 @@ impl Workspaces {
             tools: tools(),
             fail: Rc::default(),
             ready: Rc::new(Cell::new(true)),
+            answers: Rc::new(Cell::new(true)),
+            dropped: Rc::default(),
             asked: Rc::default(),
         }
     }
@@ -575,18 +580,46 @@ impl<'a> Forwarding<'a> for Workspaces {
             tools: self.tools.clone(),
             fail: Rc::clone(&self.fail),
             ready: Rc::clone(&self.ready),
+            answers: Rc::clone(&self.answers),
+            dropped: Rc::clone(&self.dropped),
             asked: Rc::clone(&self.asked),
+            sent: None,
         })
     }
 }
 
-/// A fake forwarded server, run in `root`.
+/// A fake forwarded server, run in `root`, with the call it was sent
+/// without waiting.
 struct Forwarded {
     root: PathBuf,
     tools: Vec<Value>,
     fail: Rc<Cell<bool>>,
     ready: Rc<Cell<bool>>,
+    answers: Rc<Cell<bool>>,
+    dropped: Rc<Cell<u32>>,
     asked: Rc<Asked>,
+    sent: Option<(u64, Value)>,
+}
+
+impl Forwarded {
+    /// Its result for the tool call of `params`: `ok` but for a `start`
+    /// of `"fail"`.
+    fn called(&self, params: &Value) -> Value {
+        let name = params["name"].as_str().unwrap().to_owned();
+        self.asked
+            .called
+            .borrow_mut()
+            .push((name.clone(), params["arguments"].clone()));
+        let ok = !(name == "start" && params["arguments"]["start"] == "fail");
+        let answer = json!({ "ok": ok, "op": name, "by": "forwarded", "limits": [] });
+        tool_result(&answer, None)
+    }
+}
+
+impl Drop for Forwarded {
+    fn drop(&mut self) {
+        self.dropped.set(self.dropped.get() + 1);
+    }
 }
 
 /// Why a fake forwarded server that fails answers nothing.
@@ -611,19 +644,32 @@ impl Forward for Forwarded {
                 self.asked.listed.borrow_mut().push(self.root.clone());
                 json!({ "tools": self.tools })
             }
-            "tools/call" => {
-                let name = params["name"].as_str().unwrap().to_owned();
-                self.asked
-                    .called
-                    .borrow_mut()
-                    .push((name.clone(), params["arguments"].clone()));
-                let ok = !(name == "start" && params["arguments"]["start"] == "fail");
-                let answer = json!({ "ok": ok, "op": name, "by": "forwarded", "limits": [] });
-                tool_result(&answer, None)
-            }
+            "tools/call" => self.called(params),
             _ => panic!("{method}"),
         };
         Ok(json!({ "jsonrpc": "2.0", "id": 99, "result": result }))
+    }
+
+    fn send(&mut self, method: &str, params: &Value) -> Result<Option<u64>, String> {
+        assert_eq!(method, "tools/call");
+        if self.fail.get() {
+            return Err(DIDNT_BUILD.to_owned());
+        }
+        let id = 7;
+        self.sent = Some((id, self.called(params)));
+        Ok(Some(id))
+    }
+
+    fn response(&mut self, id: u64) -> Option<Result<Value, String>> {
+        if self.fail.get() {
+            return Some(Err(DIDNT_BUILD.to_owned()));
+        }
+        if !self.answers.get() {
+            return None;
+        }
+        let (sent, result) = self.sent.take()?;
+        assert_eq!(sent, id);
+        Some(Ok(json!({ "jsonrpc": "2.0", "id": id, "result": result })))
     }
 }
 
