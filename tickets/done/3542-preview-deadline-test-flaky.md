@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3542 — The preview server's deadline test gives its worker time to start on a loaded machine
@@ -65,13 +65,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The test's first worker starts within its deadline on a machine
+- [x] The test's first worker starts within its deadline on a machine
       running every test binary at once (a full `cargo xtask gates`).
-- [ ] It still fails if a stalled press isn't ended at the deadline.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] It still fails if a stalled press isn't ended at the deadline.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: the changed test itself; nothing new.
 
 ## Completion notes
+
+- `a_worker_that_doesnt_answer_in_time_is_ended_with_its_session` now
+  sets `Limits::deadline` to 2 s, and builds the error it expects from
+  that `Duration` (`{deadline:?}`, as the server writes it). The stalled
+  worker still never answers the press, so the press still ends at the
+  deadline with a 500 and that text; the test takes about 2 s longer.
+- No other test in `tests.rs` (or `tests/limits.rs`) has a first frame
+  that shares a deadline under 1 s.
+  `a_worker_process_past_its_deadline_is_killed_and_none_is_left` keeps
+  its 200 ms: its worker is `sort`, which renders no frame.
+- Docs: none, the change is one test's numbers.
+- No break; no `Behaviour:` line, since nothing but a test changed.

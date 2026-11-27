@@ -195,15 +195,19 @@ fn the_sessions_at_once_are_bounded_those_starting_among_them() {
 
 #[test]
 fn a_worker_that_doesnt_answer_in_time_is_ended_with_its_session() {
+    // Wide enough for the first frame on a machine running every test
+    // binary at once (ticket 3542): the press still reaches it, since a
+    // stalled worker never answers one.
+    let deadline = Duration::from_secs(2);
     let limits = Limits {
-        deadline: Duration::from_millis(200),
+        deadline,
         ..Limits::default()
     };
     let server = Server::new(limits.clone(), stalled(true));
     let path = start(&server);
     let (status, body) = press(&server, &path, "CursorDown");
     assert_eq!(status, 500);
-    let error = "the game stopped: the game took longer than 200ms";
+    let error = format!("the game stopped: the game took longer than {deadline:?}");
     assert_eq!(body["error"], error);
     assert_eq!(press(&server, &path, "CursorDown").0, 404);
     // One that doesn't start in time never is a session.
