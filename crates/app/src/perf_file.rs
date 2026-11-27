@@ -170,7 +170,7 @@ mod tests {
     fn the_writer_writes_lines_that_parse_back_to_the_records() {
         let mut first = FrameRecord::new(1);
         first.times.frame_us = 16_700;
-        first.spans = vec![SpanEvent::new("ai", 40, 250, 0)];
+        first.spans = vec![SpanEvent::new("ai", 250).with_start_us(40)];
         let records = [first, FrameRecord::new(2)];
         let mut out = Vec::new();
         write_lines(&mut out, &records, &[]).unwrap();
@@ -216,8 +216,8 @@ mod tests {
     /// A snapshot of `frame` whose `update` tag holds 64 bytes a frame.
     fn snapshot_of(frame: u32) -> HeapSnapshot {
         let bytes = 64 * u64::from(frame);
-        let rows = vec![TagRow::new(TagClass::Phase, "update", bytes, frame)];
-        let mut snapshot = HeapSnapshot::new(bytes, bytes, rows);
+        let rows = vec![TagRow::new(TagClass::Phase, "update", bytes).with_live_blocks(frame)];
+        let mut snapshot = HeapSnapshot::new(bytes, rows);
         snapshot.frame = frame;
         snapshot
     }

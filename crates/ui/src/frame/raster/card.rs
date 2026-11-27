@@ -18,6 +18,8 @@
 //!   or half clear), indexed and one-bit (with a mask and without), in
 //!   both layers, at brightness 102, cut by a `clip`, part of one, and one
 //!   the frame's table lacks;
+//! - a sprite atlas's pages among them (ADR-0157): a sprite packed into
+//!   a page, and one inserted after the page was shown;
 //! - two key caps: a box under each, the name's glyph moved
 //!   off the grid and bold, one drawn from the atlas's bold face (ticket
 //!   3216) and one, which the face lacks, struck twice;
@@ -241,6 +243,7 @@ fn frame(card: ImageId, missing: ImageId) -> GlyphBuffer {
     rects(&mut buf);
     sprites(&mut buf, card, missing);
     painted(&mut buf);
+    atlas_sprites(&mut buf);
     backdrop(&mut buf, card);
     gizmos(&mut buf);
     buf
@@ -481,6 +484,56 @@ fn painted(buf: &mut GlyphBuffer) {
     missing.dest.y = 158;
     missing.clip = missing.dest;
     buf.add_painted(missing);
+}
+
+/// The atlas whose sprites are on the card (ADR-0157): its pages are
+/// pictures of the frame, `card/atlas#0` and on.
+pub const ATLAS_ID: &str = "card/atlas";
+
+/// A sprite atlas (ADR-0157), from y 158 beside the missing picture,
+/// each sprite twice its size: one packed into the page, `Over`, and one
+/// inserted after the page was shown, `Under`, which writes its page
+/// again.
+fn atlas_sprites(buf: &mut GlyphBuffer) {
+    use crate::frame::atlas::{insert, show, sprite};
+    use shuyi_assets::atlas::AtlasBuilder;
+    let pattern = |w: u32, h: u32, tint: [u8; 3]| {
+        let mut image = Image::filled(w, h, [0, 0, 0, 0]);
+        let places = (0..h).flat_map(|y| (0..w).map(move |x| (x, y)));
+        for (pixel, (x, y)) in image.rgba.as_chunks_mut::<4>().0.iter_mut().zip(places) {
+            // A ring, see-through inside, half clear in one corner.
+            let edge = x == 0 || y == 0 || x == w - 1 || y == h - 1;
+            let alpha = if x + y < 2 { 128 } else { 255 };
+            if edge || (x + y) % 3 == 0 {
+                pixel.copy_from_slice(&[tint[0], tint[1], tint[2], alpha]);
+            }
+        }
+        image
+    };
+    let mut builder = AtlasBuilder::new(ATLAS_ID, 32).with_padding(1);
+    let packed = builder.add("card/coin", &pattern(8, 8, [250, 200, 40]));
+    let mut atlas = match packed.and_then(|()| builder.build()) {
+        Ok(atlas) => atlas,
+        Err(e) => unreachable!("the card's atlas packs: {e}"),
+    };
+    show(&atlas, buf.pictures_mut());
+    if let Err(e) = insert(
+        &mut atlas,
+        buf.pictures_mut(),
+        "card/gem",
+        &pattern(6, 8, [60, 200, 250]),
+    ) {
+        unreachable!("the card's gem fits: {e}");
+    }
+    let places = [
+        ("card/coin", Rect::new(26, 158, 16, 16), Layer::Over),
+        ("card/gem", Rect::new(48, 158, 12, 16), Layer::Under),
+    ];
+    for (name, dest, layer) in places {
+        if let Some(sprite) = sprite(&atlas, name, dest, layer) {
+            buf.add_painted(sprite);
+        }
+    }
 }
 
 /// The backdrop: a scene of 6 × 5 cells, zoom 2, behind cells 21 to 30

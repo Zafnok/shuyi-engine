@@ -109,6 +109,8 @@ over  painted 92,140 16x16  card/masked 8x8 one-bit r2 c20cd8efcf7608a3
 under painted 114,140 16x16  card/one-bit 16x8 one-bit r1 12fcaa45906de8f8 src=0,0 8x8
 over  painted 136,140 16x16  card/painted-missing missing src=0,0 8x8
 under painted 4,158 16x16  card/painted-missing missing src=0,0 8x8
+over  painted 26,158 16x16  card/atlas#0 32x32 rgba r2 9d243dc1235958e1 src=1,1 8x8
+under painted 48,158 12x16  card/atlas#0 32x32 rgba r2 9d243dc1235958e1 src=10,1 6x8
 over  gizmo card path line 208,96 238,104
 over  gizmo card path line 208,96 216,126
 over  gizmo card path line 208,96 200,126

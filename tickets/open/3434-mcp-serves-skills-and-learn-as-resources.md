@@ -93,11 +93,22 @@ pinned engine's.
 
 None.
 
+**From 3435 (done):** there is no `Protocol` type. `Server::handled`
+picks the generation per request: `of_old` (the old protocol, no
+version in `_meta`, and `initialize`) and `of_stateless` (2026-07-28)
+each have their own `match method`, and the handlers return the JSON-RPC
+message as a `Value`, not a `String`. A 2026-07-28 response goes through
+`of_2026(message, "complete")`, which adds `resultType` and `serverInfo`;
+`server/discover`'s capabilities are `discover()`'s. On 2026-07-28 a
+missing resource is `-32602` (SEP-2164), on the old protocol `-32002`.
+`ttlMs` and `cacheScope` are required on `resources/list` and
+`resources/read` (ADR-0156 §2 says how `tools/list` picks them).
+
 ## Scope
 
 **In:**
 - **The skills extension** on a 2026-07-28 connection (3435's
-  `Protocol`): `server/discover` declares `"resources": {}` and
+  `of_stateless`): `server/discover` declares `"resources": {}` and
   `"extensions": { "io.modelcontextprotocol/skills": {} }` (no
   `directoryRead`). `skills/list` answers every skill of
   `Pack::embedded()` in name order, in one page (no `nextCursor`; a

@@ -567,7 +567,8 @@ fn a_full_read_is_read_again_at_once_and_snapshots_end_the_trace() {
     let mut clock = FakeClock::default();
     let mut asked = Vec::new();
     let snapshot = |frame| {
-        let mut snapshot = HeapSnapshot::new(1024 * u64::from(frame), 0, Vec::new());
+        let mut snapshot =
+            HeapSnapshot::new(1024 * u64::from(frame), Vec::new()).with_peak_bytes(0);
         snapshot.frame = frame;
         snapshot
     };

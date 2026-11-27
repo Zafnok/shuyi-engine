@@ -451,7 +451,7 @@ impl Sdk for FakeSdk {
     }
 
     fn heap() -> Option<HeapCounts> {
-        Some(HeapCounts::new(1024, 2048, 3))
+        Some(HeapCounts::new(1024).with_peak_bytes(2048).with_allocs(3))
     }
 
     fn buttons(&self) -> (u32, u32) {

@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 3540 — The local site gate copies the examples' shots and previews
@@ -68,13 +68,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] In a worktree with no `site/static/shots/`, the local `site`
+- [x] In a worktree with no `site/static/shots/`, the local `site`
       gate passes on `main`.
-- [ ] The test fails if a `site/copy-*.sh` script is missing from the
+- [x] The test fails if a `site/copy-*.sh` script is missing from the
       gate's steps.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -82,5 +82,27 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/xtask/src/gates.rs`: the `site` gate runs `bash
+  site/copy-previews.sh` and `bash site/copy-shots.sh` after `bash
+  site/copy-playground.sh` and before `zola check`, in CI's order, and
+  its comment says so.
+- Its `local` paths take `examples/` in place of
+  `examples/hello-grid/`: a test (`an_examples_pictures_run_the_site_gate`)
+  shows a change to `examples/snake/preview.png` or
+  `examples/snake/shots/` now runs the gate, which the old prefix
+  skipped. A change to an example's code now runs the site gate too, a
+  few seconds of zola.
+- `the_site_gate_runs_every_copy_script_before_zola_check` reads
+  `site/copy-*.sh` and checks each runs before `zola check`; it fails
+  with `copy-shots.sh` left out (checked by hand).
+- The `run-gates` skill's site steps list the two copies too.
+- In this fresh worktree (no `site/static/shots/`), `cargo xtask gates`
+  passed the `site` gate.
+
+Deviations: none.
+
+Book: none, the change is to the local gates only; no public API, page or
+chapter changes.
+Skills: none, no schema, template, format or problem code changed (the
+`run-gates` skill under `.claude/skills/` is updated, not the shipped
+pack).

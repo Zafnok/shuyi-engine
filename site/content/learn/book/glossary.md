@@ -31,6 +31,7 @@ as the notes in the pages say.
 | Outcome | Making games | How a game ends: a question asked of the state | [Step 4](@/learn/book/box-pusher/04-push.md#winning), [chapter 5](@/learn/book/rules-as-commands.md#turnrules) |
 | Tween, ease curve | Making games | A value moving from one place to another over time; how fast it goes on the way | [Chapter 2](@/learn/book/frame-and-skins.md#things-that-move) |
 | Pixel | Making games | One dot of a picture | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
+| Sprite atlas | Making games | Many small pictures packed onto a few big ones, its pages, so the graphics card holds one picture for many sprites | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
 | Sound effect | Making games | A sound written as a few numbers in a `.sfx.ron` file: a wave, a pitch, how loud | [Step 8](@/learn/book/box-pusher/08-polish.md#sounds), [chapter 3](@/learn/book/assets-and-formats.md) |
 | Dither | Making games | Turn colors into patterns of black and white dots | [Chapter 3](@/learn/book/assets-and-formats.md#a-target-s-own-files) |
 | Bot | Making games | A player made of code | [Step 9](@/learn/book/box-pusher/09-test.md#a-bot), [chapter 8](@/learn/book/testing.md#bots) |

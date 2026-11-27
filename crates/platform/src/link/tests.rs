@@ -236,7 +236,7 @@ fn requests_and_answers_are_one_json_object_a_line() {
             dropped: 2,
             measured: true,
             frames: 3,
-            snapshot: Some(HeapSnapshot::new(4096, 8192, Vec::new())),
+            snapshot: Some(HeapSnapshot::new(4096, Vec::new()).with_peak_bytes(8192)),
         }),
         Answer::Error { error: "no".into() },
         Answer::Busy,

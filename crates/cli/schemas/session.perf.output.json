@@ -189,7 +189,7 @@
       ]
     },
     "HeapDiff": {
-      "description": "What grew and shrank in the heap between two snapshots\n([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::new`]\n(ADR-0039).",
+      "description": "What grew and shrank in the heap between two snapshots\n([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::until`]\n(ADR-0039).",
       "type": "object",
       "properties": {
         "from": {

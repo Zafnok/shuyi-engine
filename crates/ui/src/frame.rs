@@ -4,7 +4,8 @@
 //! ([`Rgb`], [`Palette`]); the text form snapshot tests read
 //! ([`snapshot`]); fitting the console to a window ([`console`]), a shot
 //! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]);
-//! pictures a skin paints at run time ([`painted`], ADR-0078); the debug
+//! pictures a skin paints at run time ([`painted`], ADR-0078), and a sprite
+//! atlas's pages among them ([`atlas`]); the debug
 //! view's shapes ([`gizmo`], ADR-0085), drawn by the integer pixel rules
 //! of [`shape`]; and
 //! the one-bit renderer ([`onebit`]); with the `raster` feature, the
@@ -21,6 +22,7 @@
 //! The game picks the console's size when it starts; nothing here knows
 //! it.
 
+pub mod atlas;
 pub mod cinema;
 pub mod color;
 pub mod console;
