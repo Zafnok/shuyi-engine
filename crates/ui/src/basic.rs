@@ -7,16 +7,24 @@
 //! the game's own rides along in [`BasicData::own`]. It has no voices
 //! (`()`), no settings of the game's own (`()`) and one palette. A game
 //! that needs more writes its own `GameData`, as before.
+//!
+//! It remembers the files each of its text, keymap, palette and own part
+//! read, and [`BasicData::reload`] reads again those whose files changed
+//! on disk. [`BasicReload`], a module a game on the short path installs
+//! with debug tools on (`shuyi_platform::BasicGame::game`), hands the
+//! context what reloaded: the new text, colours and keys, and a game
+//! started over at its first screen for a new own part (ADR-0162).
 
 use crate::prelude::*;
-use alloc::collections::BTreeMap;
-use core::fmt::Debug;
+use alloc::collections::{BTreeMap, BTreeSet};
+use core::fmt::{self, Debug};
 
 use shuyi_assets::ContentError;
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::bundle::Bundle;
 use shuyi_assets::font::{FontAtlasDef, FontAtlasRon};
 use shuyi_assets::format::Formats;
+use shuyi_assets::hot::Reload;
 use shuyi_assets::image::ImageTable;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, KeymapRon};
 use shuyi_assets::lang::{English, Lang};
@@ -24,8 +32,10 @@ use shuyi_assets::pack::{Bake, Packed};
 use shuyi_assets::palette::{PaletteDef, PaletteRon};
 use shuyi_assets::ron::Ron;
 
-use crate::ctx::GameData;
-use crate::frame::{ConsoleSpec, EngineColor};
+use crate::ctx::{Ctx, GameData};
+use crate::frame::{ConsoleSpec, EngineColor, Palette};
+use crate::module::{Hook, Install, Module};
+use crate::screen::Screen;
 use crate::text::check_key_placeholders;
 
 /// The English screen text by key, in the bundle.
@@ -41,6 +51,10 @@ pub const FONT_PNG: &str = "font/atlas.png";
 /// The audio manifest, in the bundle, if the game has sounds: its sound
 /// files are named from the bundle's root (`sfx/move.sfx.ron`).
 pub const AUDIO_RON: &str = "audio.ron";
+/// What [`BasicData::reload`] names the game's own part by: it may read
+/// any of the files, and its errors name each.
+// check-text: not player text, a reload's name in the debug overlay
+pub const OWN_PART: &str = "own part";
 
 /// The glyphs the font must have: printable ASCII, and the box and shape
 /// glyphs the engine's widgets draw.
@@ -68,6 +82,67 @@ pub struct BasicData<A: ActionSet, T: Debug + 'static = ()> {
     pub bundle: Bundle,
     /// The game's own part.
     pub own: T,
+    /// How the game reads its own part, to read it again.
+    read_own: Own<T>,
+    /// The files each value that reloads read.
+    reads: Reads,
+}
+
+/// The files each of [`BasicData`]'s values that reload read at its last
+/// good decode, and at the failed ones since.
+#[derive(Debug, Default)]
+struct Reads {
+    english: BTreeSet<String>,
+    keymap: BTreeSet<String>,
+    palette: BTreeSet<String>,
+    own: BTreeSet<String>,
+}
+
+/// What `f` gives, and the files of a bundle it read (`recording`): none
+/// without `std`, where no file changes as the game runs.
+fn recorded<V>(f: impl FnOnce() -> V) -> (V, BTreeSet<String>) {
+    #[cfg(feature = "std")]
+    {
+        shuyi_assets::bundle::recording(f)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        (f(), BTreeSet::new())
+    }
+}
+
+/// How a value that read `reads` reloaded, from its new decode `decoded`,
+/// which read `read`: a good one goes to `apply`, and `reads` becomes
+/// `read`; a failed one keeps the value, and `reads` takes `read` too, as
+/// a file the broken one names may be what is missing.
+fn reload_with<V>(
+    reads: &mut BTreeSet<String>,
+    (decoded, read): (Result<V, Vec<ContentError>>, BTreeSet<String>),
+    apply: impl FnOnce(V),
+) -> Reload {
+    match decoded {
+        Ok(value) => {
+            apply(value);
+            *reads = read;
+            Reload::Reloaded
+        }
+        Err(errors) => {
+            reads.extend(read);
+            Reload::Failed(errors)
+        }
+    }
+}
+
+/// The English of `bundle`, with its key placeholders checked.
+fn read_english<A: ActionSet>(
+    formats: &Formats,
+    bundle: &Bundle,
+) -> Result<English, Vec<ContentError>> {
+    formats
+        .load::<English>(bundle, ENGLISH_RON)
+        .and_then(|english| {
+            check_key_placeholders::<A>(bundle, ENGLISH_RON, &english.0).map(|()| english)
+        })
 }
 
 /// What `loaded` gives, or `None` with its problems added to `errors`.
@@ -120,22 +195,16 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
     ) -> Result<Self, Vec<ContentError>> {
         let formats = Self::formats();
         let mut errors = Vec::new();
-        let english = gather(
-            &mut errors,
-            formats
-                .load::<English>(&bundle, ENGLISH_RON)
-                .and_then(|english| {
-                    check_key_placeholders::<A>(&bundle, ENGLISH_RON, &english.0).map(|()| english)
-                }),
-        );
-        let keymap = gather(
-            &mut errors,
-            formats.load::<KeymapDef<A>>(&bundle, KEYMAP_RON),
-        );
-        let palette = gather(
-            &mut errors,
-            formats.load::<PaletteDef>(&bundle, PALETTE_RON),
-        );
+        let mut reads = Reads::default();
+        let (english, read) = recorded(|| read_english::<A>(&formats, &bundle));
+        let english = gather(&mut errors, english);
+        reads.english = read;
+        let (keymap, read) = recorded(|| formats.load::<KeymapDef<A>>(&bundle, KEYMAP_RON));
+        let keymap = gather(&mut errors, keymap);
+        reads.keymap = read;
+        let (palette, read) = recorded(|| formats.load::<PaletteDef>(&bundle, PALETTE_RON));
+        let palette = gather(&mut errors, palette);
+        reads.palette = read;
         let font = gather(&mut errors, formats.load::<FontAtlasDef>(&bundle, FONT_RON));
         let audio = if bundle.has(AUDIO_RON) {
             gather(
@@ -149,8 +218,10 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
             &mut errors,
             ImageTable::load_with(&bundle, &formats, &[FONT_PNG]),
         );
-        let own = gather(&mut errors, own(&bundle));
-        match (english, keymap, palette, font, images, audio, own) {
+        let (part, read) = recorded(|| own(&bundle));
+        let part = gather(&mut errors, part);
+        reads.own = read;
+        match (english, keymap, palette, font, images, audio, part) {
             (
                 Some(english),
                 Some(keymap),
@@ -158,7 +229,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
                 Some(font),
                 Some(images),
                 Some(audio),
-                Some(own),
+                Some(part),
             ) => Ok(Self {
                 lang: Lang::new(english.0, BTreeMap::new()),
                 keymap,
@@ -168,9 +239,137 @@ impl<A: ActionSet, T: Debug + 'static> BasicData<A, T> {
                 font,
                 images,
                 bundle,
-                own,
+                own: part,
+                read_own: own,
+                reads,
             }),
             _ => Err(errors),
+        }
+    }
+
+    /// Reads again each of the English, the keymap, the palette and the
+    /// game's own part a file of which is among `changed` (paths in the
+    /// bundle), with the checks [`load`](Self::load) makes: the English's
+    /// key placeholders, the palette's engine colours ([`formats`](Self::formats)
+    /// refuses a palette that lacks one). A good decode
+    /// replaces the value; a failed one keeps the old value and gives its
+    /// errors, and reads again the next time one of its files changes.
+    /// Each value read again is in the list, in that order, named by its
+    /// file ([`ENGLISH_RON`], [`KEYMAP_RON`], [`PALETTE_RON`]), or by
+    /// [`OWN_PART`]; one no file of which changed is not. The font atlas
+    /// and the pictures don't reload here: a changed picture's pixels
+    /// redraw on their own, and a new picture or atlas needs a restart.
+    /// Without `std`, no read is recorded, and nothing reloads.
+    pub fn reload(&mut self, changed: &[String]) -> Vec<(&'static str, Reload)> {
+        let touched = |reads: &BTreeSet<String>| changed.iter().any(|path| reads.contains(path));
+        let (english, keymap, palette, own) = (
+            touched(&self.reads.english),
+            touched(&self.reads.keymap),
+            touched(&self.reads.palette),
+            touched(&self.reads.own),
+        );
+        let mut reloads = Vec::new();
+        if !(english || keymap || palette || own) {
+            return reloads;
+        }
+        let formats = Self::formats();
+        let bundle = &self.bundle;
+        if english {
+            let decoded = recorded(|| read_english::<A>(&formats, bundle));
+            let reload = reload_with(&mut self.reads.english, decoded, |english| {
+                self.lang = Lang::new(english.0, BTreeMap::new());
+            });
+            reloads.push((ENGLISH_RON, reload));
+        }
+        if keymap {
+            let decoded = recorded(|| formats.load::<KeymapDef<A>>(bundle, KEYMAP_RON));
+            let reload = reload_with(&mut self.reads.keymap, decoded, |keymap| {
+                self.keymap = keymap;
+            });
+            reloads.push((KEYMAP_RON, reload));
+        }
+        if palette {
+            let decoded = recorded(|| formats.load::<PaletteDef>(bundle, PALETTE_RON));
+            let reload = reload_with(&mut self.reads.palette, decoded, |palette| {
+                self.palette = palette;
+            });
+            reloads.push((PALETTE_RON, reload));
+        }
+        if own {
+            let decoded = recorded(|| (self.read_own)(bundle));
+            let reload = reload_with(&mut self.reads.own, decoded, |part| self.own = part);
+            reloads.push((OWN_PART, reload));
+        }
+        reloads
+    }
+}
+
+/// The screen a game on the short path starts on, and starts over at when
+/// its own part reloads.
+type FirstOf<A, T> = fn(&mut Ctx<BasicData<A, T>>) -> Box<dyn Screen<BasicData<A, T>>>;
+
+/// The module that reloads a game on the short path's own files as they
+/// change on disk (`cargo shuyi run --watch`), with no code of the game's:
+/// its English, keymap, palette and own part ([`BasicData::reload`]). It
+/// hands the context what reloaded:
+///
+/// - the English: its languages' wide sets again, and the next frame shows
+///   the new text;
+/// - the palette: the context's colours ([`Ctx::palette`]);
+/// - the keymap: the keys of the layout in use, with the player's own
+///   bindings kept ([`Ctx::refresh_keymap`]);
+/// - the own part: the game starts over at its first screen on the same
+///   context ([`Ctx::restart`]), as no screen built from the old part (a
+///   map) can follow the new one. The settings, the profile, the layout
+///   and the player's bindings stay; every screen's state goes.
+///
+/// Every outcome goes to [`Ctx::note_reload`], so a broken file shows its
+/// errors over the frame while the old value stays, until a good save.
+/// `shuyi_platform::BasicGame::game` installs it, before the game's own
+/// modules, in a build with debug tools on.
+pub struct BasicReload<A: ActionSet, T: Debug + 'static> {
+    first: FirstOf<A, T>,
+}
+
+impl<A: ActionSet, T: Debug + 'static> BasicReload<A, T> {
+    /// The module, starting the game over at the screen `first` makes when
+    /// its own part reloads.
+    pub fn new(first: fn(&mut Ctx<BasicData<A, T>>) -> Box<dyn Screen<BasicData<A, T>>>) -> Self {
+        Self { first }
+    }
+}
+
+impl<A: ActionSet, T: Debug + 'static> Debug for BasicReload<A, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BasicReload").finish_non_exhaustive()
+    }
+}
+
+impl<A: ActionSet, T: Debug + 'static> Module<BasicData<A, T>> for BasicReload<A, T> {
+    fn name(&self) -> &'static str {
+        "basic_reload"
+    }
+
+    fn install(&mut self, install: &mut Install<'_, BasicData<A, T>>) {
+        install.hook(Hook::Reloaded);
+    }
+
+    fn reloaded(&mut self, ctx: &mut Ctx<BasicData<A, T>>, changed: &[String]) {
+        for (id, reload) in ctx.game.reload(changed) {
+            if reload == Reload::Reloaded {
+                match id {
+                    ENGLISH_RON => ctx.refresh_lang_widths(),
+                    KEYMAP_RON => ctx.refresh_keymap(),
+                    PALETTE_RON => {
+                        // Its format refuses one that lacks a colour.
+                        if let Ok(palette) = Palette::new::<EngineColor>(&ctx.game.palette) {
+                            ctx.palette = palette;
+                        }
+                    }
+                    _ => ctx.restart(self.first),
+                }
+            }
+            ctx.note_reload(id, &reload);
         }
     }
 }

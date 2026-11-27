@@ -421,6 +421,16 @@ impl<G: GameData> ScreenStack<G> {
         ctx.audio.set_owner(self.screens.len().saturating_sub(1));
     }
 
+    /// Takes every screen off, top first, each with its sounds
+    /// ([`Ctx::restart`]): no screen is told it is covered or uncovered.
+    pub(crate) fn clear_in(&mut self, ctx: &mut Ctx<G>) {
+        while !self.screens.is_empty() {
+            self.release_top(ctx);
+            self.screens.pop();
+        }
+        self.own_top(ctx);
+    }
+
     /// Stops the top screen's sounds: it is leaving.
     fn release_top(&self, ctx: &mut Ctx<G>) {
         if let Some(depth) = self.screens.len().checked_sub(1) {

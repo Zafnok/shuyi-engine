@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2269 — BasicGame reloads its own files under run --watch
@@ -143,30 +143,30 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Through `BasicGame::harness()` over an owned layer
+- [x] Through `BasicGame::harness()` over an owned layer
       (`BasicGame::over`, `Harness::change_file`): a changed `en.ron`
       line shows in the next frame's buffer; a changed `palette.ron`
       colour is the context's palette on the next frame; a changed
       `keymap.ron` binding works on the next frame while a binding the
       player changed stays.
-- [ ] A changed file the own part read (the template stage's
+- [x] A changed file the own part read (the template stage's
       `stage.map`) reloads the own part, and the game is at its first
       screen on the next frame with the same layout and settings.
-- [ ] A changed file nothing read reloads nothing, and the screens keep
+- [x] A changed file nothing read reloads nothing, and the screens keep
       their state (the stack's state hash is unchanged).
-- [ ] A broken `en.ron`, `palette.ron` (one lacking an engine colour),
+- [x] A broken `en.ron`, `palette.ron` (one lacking an engine colour),
       `keymap.ron` or map keeps the old value, the game keeps running
       on the same screen, and `Ctx::reload_errors` names the file and
       line; a good save clears it.
-- [ ] A build with debug tools off installs no `BasicReload`
+- [x] A build with debug tools off installs no `BasicReload`
       (`Game::modules` lists only the game's).
 - [ ] A game made by `shuyi new` reloads its text and map under
       `cargo shuyi run --watch` with no code of its own (checked by
       hand; say so in the completion notes).
-- [ ] The completion notes have a `Behaviour:` line: a short-path game
+- [x] The completion notes have a `Behaviour:` line: a short-path game
       with debug tools lists the `basic_reload` module and reloads its
       files under `run --watch`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -179,5 +179,89 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `BasicData` (`crates/ui/src/basic.rs`) records, at `load`, what each of
+  the English, the keymap, the palette and the own part read, inside
+  `shuyi_assets::bundle::recording`, and keeps the own part's `Own<T>`.
+  `BasicData::reload(&changed)` reads again each value one of whose files
+  changed, with `load`'s checks (the English's key placeholders, the
+  palette format's engine colours), and answers each value read again,
+  named by its file or by the new `OWN_PART`; a value none of whose files
+  changed is not listed. A failed decode keeps the old value and adds its
+  reads, as `Hot::refresh` does.
+- `BasicReload` (`basic_reload`, same file) declares `Hook::Reloaded` and
+  applies each good reload: the languages' wide sets again
+  (`Ctx::refresh_lang_widths`, crate-private), `ctx.palette`,
+  `ctx.refresh_keymap()`, and `Ctx::restart` at the game's first screen for
+  the own part; every outcome goes to `Ctx::note_reload`.
+- `Ctx::restart(first)` (`crates/ui/src/ctx.rs`): `Game::reloaded` honours
+  it once every module's hook has run, once, and a restart asked anywhere
+  else is honoured at the start of the next frame (the ticket's step 3 let
+  me pick: honoured, since a "start again" of a screen's own then needs no
+  second way). The stack drops every screen top first with its sounds
+  (`ScreenStack::clear_in`), and `first` makes the only one.
+  `Game::reloaded` also hands a keymap a hook changed to the input before
+  the frame's update, so a new key works on the frame that told of it.
+- `BasicGame::game` installs `BasicReload` first when
+  `shuyi_ui::DEBUG_TOOLS` and `ctx.debug_tools` are on.
+- ADR-0162 records it, amending ADR-0071 §4 and ADR-0040 §3 (a file reload's
+  hook may replace the data read from files and ask for a restart). The
+  *Hot reload* section of `docs/formats.md`, the base part's row in
+  `docs/templates.md`, the template's `AGENTS.md` row for
+  `cargo shuyi run --watch` and the book's *Reloading while the game runs*
+  say what reloads on its own and the restart rule.
+- Tests: `crates/ui/src/basic/tests.rs` (each file, each outcome, the own
+  part's reads), `crates/ui/src/game/restart_tests.rs` (`Ctx::restart`
+  after every hook, once; outside a reload at the next frame), and
+  `crates/platform/tests/it/basic_reload.rs` (the harness criteria, on the
+  blank template's files and the grid stage's `stage.map`).
+
+Deviations:
+
+- The ticket says the template's first screen is the stage; it is the
+  title (`templates/shuyi-default/base/crates/game/src/lib.rs`), so a
+  changed `stage.map` starts a new game over at its title. The rule is
+  the same: the game's first screen.
+- The keymap criterion, "a binding the player changed stays": the player's
+  bindings for a layout they changed keep all its keys (`PlayerKeys`, as
+  before), so a changed `keymap.ron` key shows only in a layout the player
+  didn't change. The test changes the player's pad button (shared by every
+  layout) and the file's keys and buttons: the file's new key works on the
+  next frame and the player's button stays over the file's.
+- A palette lacking an engine colour fails with the file named but no
+  line (`disk/palette.ron: missing required colour "focus"`): the colour
+  that isn't there has no line. The English, keymap and map errors name
+  their line.
+- No separate `Palette::new` check in `BasicData::reload`: the palette
+  format (`PaletteRon::requiring`) already refuses a palette lacking an
+  engine colour, so a second check could never fail.
+- 3414 isn't done: nothing to do for the MCP session here. Its clause on
+  this ticket now says what holds, and it adds the session's test.
+- `site/snippets/src/assets.rs`'s test read a short-path game's first
+  module as its own `hot_plan`; it reads the last one now, after
+  `basic_reload`.
+
+Follow-ups: 2792 (the template stage's map errors name `stage.map`
+twice and carry their line in the message, found checking this by hand).
+Keeping the player's place across an own-part reload
+is 2905's research, which now names this ticket's restart; the font atlas's
+description and new pictures stay read once (this ticket's **Out**). No
+ticket: the 3414 test is that ticket's own, written into its scope.
+
+Behaviour: shuyi-platform, shuyi-ui: a short-path game (`BasicGame::game`) in a build with debug tools lists the `basic_reload` module first in `Game::modules`, before the game's own, and reloads its `en.ron`, `palette.ron`, `keymap.ron` and own part under `cargo shuyi run --watch`; a changed own part starts the game over at its first screen.
+Behaviour: shuyi-ui: `Game::reloaded` hands a keymap a module's hook changed to the input at once, so the new keys work on that frame rather than the next; and it, and the start of each frame, honour a restart asked with the new `Ctx::restart`.
+
+No break: the additions are `BasicData::reload`, `OWN_PART`, `BasicReload`
+and `Ctx::restart`; `BasicData` gains only private fields (it had private
+ones already), and no public type gains a field (ADR-0039).
+
+Game: nothing to adopt, the game isn't on the short path:
+`gh search code --repo Zafnok/visions-of-shuyi 'BasicData'` and
+`'BasicGame'` find only its copies of the engine's skills, old tickets and
+`docs/engine/pins.md`. Its own reload module (`crates/ui/src/hot.rs`, found
+by `'reloaded'`) asks no restart; the keymap it may change now works a
+frame sooner (the second `Behaviour:` line).
+
+Book: the chapter *Assets and formats* (`site/content/learn/book/assets-and-formats.md`), *Reloading while the game runs*, says what a game made with `cargo shuyi new` reloads on its own.
+Skills: none, no skill of the pack teaches reloading (`grep -rn "run --watch" skills` finds only `shuyi-private-files`' line on what builds see); an agent reads it in the template's `AGENTS.md` row for `cargo shuyi run --watch`, which says it.

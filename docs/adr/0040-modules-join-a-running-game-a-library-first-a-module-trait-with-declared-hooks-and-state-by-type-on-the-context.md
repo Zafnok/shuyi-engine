@@ -1,6 +1,6 @@
 # ADR-0040: Modules join a running game: a library first, a `Module` trait with declared hooks, and state by type on the context
 
-- **Status:** Accepted
+- **Status:** Accepted; §3 amended by ADR-0162 (a file reload in a build with debug tools)
 - **Date:** 2026-10-23
 - **Related tickets:** 2358 (this), 2372 (debug entries), 2220 (hot reload, the first new
   hook), 2003 (the catalog, `shuyi add` and the modules a feature turns

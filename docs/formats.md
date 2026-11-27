@@ -1090,6 +1090,22 @@ the folder `shuyi.ron`'s `assets` names (`assets` until it says) over its
 embedded files. A file deleted keeps its last bytes until the game restarts. It
 isn't on the web or a console.
 
+A game on the short path needs no module of its own (ADR-0162):
+`BasicGame::game` installs `shuyi_ui::basic::BasicReload` (`basic_reload`)
+first, with debug tools on. `BasicData::load` records what each of the English,
+the keymap, the palette and the game's own part read (`bundle::recording`), and
+`BasicData::reload(&changed)` reads again those whose files changed, with the
+checks of the load: a good decode replaces the value, a failed one keeps it and
+answers `Reload::Failed`. The module applies each: the text's wide sets again,
+`ctx.palette`, `ctx.refresh_keymap()` (the player's own bindings stay; a layout
+they changed keeps all its keys), and for the own part `Ctx::restart` at the
+game's first screen, as no screen built from an old map can follow a new one.
+The settings, the profile, the layout and the player's bindings stay; every
+screen's state goes. `Game::reloaded` honours a restart once every module's hook
+has run, once; asked outside a reload, at the start of the next frame. The font
+atlas's description and the picture table are read once: a new picture or atlas
+needs a restart.
+
 The pictures the window draws follow with no module: `shuyi-app` makes a texture
 again when the font's picture or an image of the look changes. A picture that
 doesn't decode keeps its old texture, and its error shows over the frame until

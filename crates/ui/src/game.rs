@@ -503,7 +503,10 @@ impl<G: GameData> Game<G> {
     /// Tells the modules that declared [`Hook::Reloaded`], in install order,
     /// that the files at `changed` changed on disk (paths in the bundle).
     /// The platform's `App` calls it before the frame's update, in a build
-    /// with debug tools on. After a quit, nothing.
+    /// with debug tools on. Once every hook has run, a keymap a module
+    /// changed ([`Ctx::refresh_keymap`]) works from this frame's keys, and
+    /// a restart one asked for ([`Ctx::restart`]) is honoured, once. After
+    /// a quit, nothing.
     pub fn reloaded(&mut self, changed: &[String]) {
         if self.quit {
             return;
@@ -513,6 +516,22 @@ impl<G: GameData> Game<G> {
                 module.reloaded(&mut self.ctx, changed);
             }
         }
+        self.sync_keymap();
+        self.restart_if_asked();
+    }
+
+    /// Starts the game over at the screen a restart asked for makes
+    /// ([`Ctx::restart`]), if one was: every screen leaves, with its
+    /// sounds, and the frame is drawn again with the new one alone.
+    fn restart_if_asked(&mut self) {
+        let Some(first) = self.ctx.take_restart() else {
+            return;
+        };
+        self.stack.clear_in(&mut self.ctx);
+        let root = first(&mut self.ctx);
+        self.stack.push(root);
+        self.stack.own_top(&mut self.ctx);
+        self.redraw();
     }
 
     /// Runs one frame: applies `events` (in order), advances input by `dt`
@@ -545,6 +564,8 @@ impl<G: GameData> Game<G> {
         let ticks = core::mem::take(&mut self.ticks);
         let resumed = core::mem::take(&mut self.resumed);
         if !self.quit {
+            // A restart asked for outside a reload (Ctx::restart).
+            self.restart_if_asked();
             // The update's and the drawing's times, in a frame the
             // platform measures, and with memory scopes their tags
             // (crate::perf).
@@ -1207,5 +1228,7 @@ fn plays_a_loop<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool 
 #[cfg(test)]
 mod key_caps_tests;
 mod pads;
+#[cfg(test)]
+mod restart_tests;
 #[cfg(test)]
 mod tests;

@@ -102,6 +102,14 @@ None. This is technical.
   `dev` rebuild of step 2 takes 1.3 s). Say in this ticket's report
   whether the chosen reload changes that recommendation, and what a
   reader in that Codespace would see after a rebuild.
+- **From 2269 (done):** a game on the short path under `run --watch`
+  reloads its own part (a map, dialogue) by starting over at its first
+  screen on the same context (`Ctx::restart`, `BasicReload`,
+  [ADR-0162](../../docs/adr/0162-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md)),
+  so the player loses their place in the stage. Say in this ticket's
+  report whether the rebuild-and-replay keeps that place for a data
+  reload too (replay the session to the same moment on the new own
+  part), and what it would take.
 
 **Out (do not do):**
 - building it beyond the prototypes the measurements need.
