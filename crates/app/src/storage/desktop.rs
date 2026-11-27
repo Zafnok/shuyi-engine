@@ -1,6 +1,6 @@
-//! Which folder a desktop keeps the storage in ([`DesktopFolder`], ticket
-//! 3310, ADR-0109), and the move of the old storage into a new folder on
-//! the first launch that uses it.
+//! Which folder a desktop keeps the storage in ([`DesktopFolder`],
+//! ADR-0109), and the move of the old storage into a new folder on the
+//! first launch that uses it.
 //!
 //! The move copies every file under the old folder into the new one, each
 //! to the same place, never over a file that is there (`create_new`), and

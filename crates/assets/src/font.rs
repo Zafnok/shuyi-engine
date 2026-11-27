@@ -558,8 +558,8 @@ impl FontAtlasDef {
 /// ([`wide_font`](Self::wide_font)). [`CellWidths::NARROW`] has nothing
 /// wide. Cheap to clone: the set is shared.
 ///
-/// It also carries what a key cap is measured and placed by (ticket
-/// 3215): the atlas's [`ink`](Self::ink) boxes, and, where a frame draws
+/// It also carries what a key cap is measured and placed by: the
+/// atlas's [`ink`](Self::ink) boxes, and, where a frame draws
 /// a key's name as a cap, the cells a cap takes beyond its name
 /// ([`key_cap_cells`](Self::key_cap_cells)), which styled text counts,
 /// and the cells of the picture of the arrow keys it draws in their place

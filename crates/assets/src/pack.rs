@@ -95,8 +95,8 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// order and with bytes between them (a recipient's layout, ADR-0118);
 /// version 16 holds a font atlas's ink (ADR-0124), version
 /// 17 its bold face, version 18 checks the header and the
-/// index apart from each file, which has a checksum of its own (ticket
-/// 2263, ADR-0128 §2), version 19's index holds the span of each
+/// index apart from each file, which has a checksum of its own
+/// (ADR-0128 §2), version 19's index holds the span of each
 /// folder laid first (ADR-0128 §3), version 20's music cue
 /// holds a loop region, version 21's sound cue holds its
 /// rules (ADR-0139), version 22's target profile its
