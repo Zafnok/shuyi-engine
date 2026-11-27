@@ -118,12 +118,8 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     missing
 }
 
-/// Checks every row of `formats.ron` but the guard's, and returns them.
-fn check_rows() -> Rows {
-    let mut rows = Rows {
-        golden: crate::golden!("tests/golden/formats.ron"),
-        names: BTreeSet::new(),
-    };
+/// Checks the rows of the pictures' and the sounds' formats.
+fn check_binary_rows(rows: &mut Rows) {
     let rate = audio::SAMPLE_RATE;
     let picture = png_file([255, 0, 0, 255, 0, 0, 255, 128]);
     rows.format(&PngInfo, "a.png", &picture, None);
@@ -153,6 +149,16 @@ fn check_rows() -> Rows {
         .as_bytes();
     rows.format(&SfxRon, "sfx/coin.sfx.ron", coin, None);
     rows.format(&SfxDefRon, "sfx/coin.sfx.ron", coin, None);
+}
+
+/// Checks every row of `formats.ron` but the guard's, and returns them.
+fn check_rows() -> Rows {
+    let mut rows = Rows {
+        golden: crate::golden!("tests/golden/formats.ron"),
+        names: BTreeSet::new(),
+    };
+    let rate = audio::SAMPLE_RATE;
+    check_binary_rows(&mut rows);
     let sounds = bundle(vec![
         ("audio/audio.ron", MANIFEST.into()),
         ("audio/sfx/gone.wav", wav(1, rate, 1)),

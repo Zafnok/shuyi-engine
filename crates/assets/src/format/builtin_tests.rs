@@ -752,9 +752,8 @@ fn a_picture_set_is_named_as_its_file_and_has_the_names_the_game_requires() {
         .into(),
     );
     let set = def.resolve("cards/fox.ron", "cards", &images, None, &PICTURE_RULES);
-    let names: Vec<String> = set
-        .map(|s| s.pictures.into_iter().map(|p| p.name).collect())
-        .unwrap_or_default();
+    let set = set.unwrap_or_else(|e| panic!("{e:?}"));
+    let names: Vec<String> = set.pictures.into_iter().map(|p| p.name).collect();
     assert_eq!(names, ["front", "back", "foil"]);
     assert_eq!(
         shown(alone(&picture_set(), "cards/wolf.ron", bytes)),
