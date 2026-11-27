@@ -1823,6 +1823,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "flac",
             "mp3",
             "sfx",
+            "corners",
         ],
     ),
     (
@@ -1845,7 +1846,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
         "shuyi-app",
         &["link", "capture", "sound-probe", "system-languages"],
     ),
-    ("shuyi-cli", &["toy", "jis"]),
+    ("shuyi-cli", &["toy", "jis", "corners"]),
     (
         "shuyi",
         &["std", "app", "schema", "script", "net", "system-languages"],
