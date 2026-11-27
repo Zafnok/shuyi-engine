@@ -484,7 +484,7 @@ is done.
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN (2521, the link itself, moved into the MVP on 2026-10-24) |
-| 2510 | Compiler messages on the traits a game implements |
+| 2510 (done) | Compiler messages on the traits a game implements |
 | 2024 | The other config and views a game builds moved onto constructors (ADR-0039): `shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core` |
 | 2025 | The contract's inputs and the game tools' types moved onto constructors (ADR-0039) |
 | 2534 | `shuyi lint`: `check-keys`, `check-text` and the rules crate's fence in one answer, with file and line |

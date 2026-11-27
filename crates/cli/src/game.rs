@@ -467,6 +467,12 @@ impl<S: Clone + Sync> TunableStage for Tunable<S> {
 /// What a game gives the commands that run it. Only `frame-png`'s and
 /// `lang-status`'s parts are required; a contract operation whose part a
 /// game leaves out answers that the game's tools don't offer it.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a game's tools: it doesn't implement `GameTools`",
+    label = "write `impl GameTools for {Self}`, or use the engine's `BasicTools`",
+    note = "only `frame_options`, `frame` and `lang` are required; every other operation has a default that says the game doesn't offer it",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/tools-for-agents/"
+)]
 pub trait GameTools {
     /// The options the game adds to `frame-png`, which also start its
     /// game for `run`, `scene` and `playtest` (none: `&[]`).

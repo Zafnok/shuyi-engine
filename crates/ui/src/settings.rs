@@ -248,6 +248,12 @@ impl Default for Background {
 /// The settings a game adds to the engine's, and the saved form of both:
 /// one record, so the game decides its form (and keeps the one it has
 /// always written).
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a game's settings: it doesn't implement `GameSettings`",
+    label = "write `impl GameSettings for {Self}`, or use `()`",
+    note = "a game's settings are those it adds to the engine's, and the saved form of both (`to_ron`, `from_ron`); a game with none of its own uses `()`, as `BasicData` does",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/saves-and-settings/"
+)]
 pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// The game's color themes, each a palette
     /// ([`GameData::theme_def`](crate::GameData::theme_def)); `()` for a

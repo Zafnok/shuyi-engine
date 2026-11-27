@@ -1014,6 +1014,22 @@ jobs:
       contents: read
     uses: ./.github/workflows/compile-times.yml
 
+  # What the compiler tells a game that misses an impl of an engine trait
+  # (ticket 2510): each fixture of crates/xtask/compile-messages/ is checked
+  # in a package of its own, and its `//~` texts must be in its errors.
+  compile-messages:
+    name: compile-messages
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo xtask compile-messages
+
   # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
   # 3005): built for a target that has no `std` at all, their tests run
   # without `std` on the host, and no `std::` path outside
@@ -1602,7 +1618,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, exercises, playtest, skills, eval, compile-times, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, exercises, playtest, skills, eval, compile-times, compile-messages, no-std, determinism, bench, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     # `actions: read` reads the attempt before a re-run (ticket 2064).
     permissions:

@@ -23,6 +23,7 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask eval-grade <task.ron> <project> [--base <dir>] [--out <file>]`
 //! - `cargo xtask eval-reference (<id> | --all) [--out <dir>] [--template-only]`
+//! - `cargo xtask compile-messages`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]`
 //! - `cargo xtask template-lines [<folder>...] [--json] [--check] [--summary <file>]`
 //! - `cargo xtask gates [--base <rev>] [--fast] [--list]`
@@ -48,6 +49,7 @@ mod api_text;
 mod book;
 mod book_pad;
 mod changelog;
+mod compile_messages;
 mod compile_times;
 mod compress;
 mod contract;
@@ -226,6 +228,12 @@ usage:
       the plain template instead, to show the checks can fail. The games build
       in target/eval-build with no incremental cache unless CARGO_TARGET_DIR
       is set. Exits as eval-grade, its worst over the tasks.
+  cargo xtask compile-messages
+      Check that the compiler tells a game what it misses (ticket 2510): each
+      fixture in crates/xtask/compile-messages/ misses one impl of an engine
+      trait, and its `//~ <text>` lines at the top are text the compiler's
+      output for it must hold. Checked as one package in
+      target/compile-messages/, with none of the caller's RUSTFLAGS.
   cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--out <file>] [--dir <dir>] [--count-only]
       Time a new `grid` game's clean build, its rebuild after a one-line change
       in main.rs and the same for `cargo check`, a fixed reference build, and
@@ -417,6 +425,9 @@ fn main() -> ExitCode {
             let env_target = std::env::var_os("CARGO_TARGET_DIR").is_some();
             let (maker, runner) = skills::runners(&root, eval::reference::BUILD, env_target);
             ExitCode::from(eval::reference::command(&root, &args[1..], &maker, &runner))
+        }
+        Some("compile-messages") if args.len() == 1 => {
+            report("compile-messages", &compile_messages::run(&root), &[])
         }
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("template-lines") => template_lines(&root, &args[1..]),

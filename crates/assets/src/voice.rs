@@ -42,6 +42,12 @@ pub mod plan;
 
 /// Which recording of a line a clip is: the game's type, with its default
 /// for a line's only clip.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a voice clip's variant: it doesn't implement `ClipVariant`",
+    label = "write `impl ClipVariant for {Self}`, or use `()`",
+    note = "a game with no voices uses `()`, as `BasicData` does (ADR-0036); a game with variants writes `suffix` and `split`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/assets-and-formats/#voices"
+)]
 pub trait ClipVariant: Copy + Ord + Default + Debug + DeserializeOwned + 'static {
     /// What goes between the line id and `.ogg` in the file name: nothing
     /// for the default, `.m` for a variant `M`, say.

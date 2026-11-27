@@ -70,6 +70,12 @@ impl<'a> MapFormat<'a> {
 /// A game's tile feature, as written in a map header after the tile's
 /// `(x, y)` (a shop, a chest, a sign): the hook through which a game adds
 /// its own things to the format.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a map's tile feature: it doesn't implement `MapFeature`",
+    label = "write `impl MapFeature for {Self}`, or use the engine's `NoFeature`",
+    note = "a tile feature is read from a map's header with serde; its one method has a default, and a map with none uses the engine's `NoFeature`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait MapFeature: Serialize + DeserializeOwned {
     /// A problem visible in the file alone, if the feature has one.
     fn problem(&self) -> Option<String> {

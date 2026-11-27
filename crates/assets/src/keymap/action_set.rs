@@ -58,6 +58,12 @@ impl UiAction {
 /// The keymap file, the keymap, held keys and repeat, the player's saved
 /// bindings and help text are all built on it, never on one game's
 /// actions.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a set of actions: it doesn't implement `ActionSet`",
+    label = "write `impl ActionSet for {Self}`, or use the engine's `UiAction`",
+    note = "an action set is an enum of the game's actions, deriving `Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug`, which lists them in `ALL` and names each for the keymap file",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/actions/"
+)]
 #[doc(alias = "InputMap")]
 #[doc(alias = "ButtonInput")]
 #[doc(alias = "InputAction")]

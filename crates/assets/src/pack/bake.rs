@@ -21,6 +21,12 @@ use crate::format::{AssetKind, Encode, Formats, RegisterError};
 
 /// A kind that can be baked: it has a binary form (serde, both ways), and
 /// two of it can be compared, for [`Bake::check`].
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` can't be baked: it doesn't implement `Bakeable`",
+    label = "implement or derive what `{Self}` lacks",
+    note = "a kind is `Bakeable` once it has `AssetKind`, `Serialize`, `Deserialize`, `PartialEq` and `Debug`: implement or derive the missing ones",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/assets-and-formats/"
+)]
 pub trait Bakeable: AssetKind + Serialize + DeserializeOwned + PartialEq + fmt::Debug {}
 
 impl<K: AssetKind + Serialize + DeserializeOwned + PartialEq + fmt::Debug> Bakeable for K {}
