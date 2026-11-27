@@ -126,5 +126,9 @@ None.
   files of folders skipped whole (`.cargo/`, `font/`, `examples/`,
   `.sentry-native/`); nothing reads them.
 - Deviations: none.
+- Follow-up ticket 3542: under a full `cargo xtask gates`, the preview
+  server's deadline test failed once (its worker's first frame took
+  235 ms of a 200 ms deadline), and passed alone and on the next run.
+  The local site gate's missing shots in a new worktree are ticket 3540.
 
 Behaviour: shuyi-embed: `walk` leaves out a file or folder deleted while it walks, where it failed; a folder a skip pattern matches whole (`dir/**`) isn't entered, so its files are no longer in `Walk::skipped`, `skipped!` or `Written::watched`, and a change in it no longer reruns the build script.
