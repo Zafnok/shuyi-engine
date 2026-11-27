@@ -90,15 +90,41 @@ pub const fn suffix_color(kind: SuffixKind) -> EngineColor {
 /// ([`Ctx::label`]). It records the box as a hit area of the view's
 /// widget ([`Hit::AREA`]), then each row shown as its item's index.
 pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, x: i32, y: i32) {
+    paint_with(ctx, view, buf, x, y, &look(ctx));
+}
+
+/// The look [`paint`] gives a menu's box: single lines in the palette's
+/// border colour, its text colour on its panel colour.
+pub fn look<G: GameData>(ctx: &Ctx<G>) -> PanelLook {
+    let color = |e| ctx.palette.engine(e);
+    PanelLook::new(
+        BoxStyle::Single,
+        color(EngineColor::Text),
+        color(EngineColor::Panel),
+    )
+    .with_border(color(EngineColor::Border))
+}
+
+/// [`paint`] in the box `look`: start from [`look`] and
+/// change what differs, such as a picture frame
+/// ([`PanelLook::with_frame`]) or the background. The rows' background is
+/// `look.bg`; the focus bar and the text keep the palette's colours. With
+/// a frame, the note's rule has no joins in the border.
+pub fn paint_with<G: GameData>(
+    ctx: &Ctx<G>,
+    view: &MenuView,
+    buf: &mut GlyphBuffer,
+    x: i32,
+    y: i32,
+    look: &PanelLook,
+) {
     let palette: &Palette = &ctx.palette;
     let color = |e| palette.engine(e);
-    let bg = color(EngineColor::Panel);
+    let bg = look.bg;
     let labels = labels(ctx, view);
     let (w, h) = size_with(view, &labels, buf.widths());
     let rect = Rect::new(x, y, w, h);
-    let look = PanelLook::new(BoxStyle::Single, color(EngineColor::Text), bg)
-        .with_border(color(EngineColor::Border));
-    buf.panel(rect, &look, None);
+    buf.panel(rect, look, None);
     buf.hit_cells(rect, view.widget, Hit::AREA);
     let first = view.first_shown.min(view.items.len());
     let shown = view.shown_items().iter().zip(&labels[first..]);
@@ -134,10 +160,12 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
     };
     if has_notes(view) {
         let rule = y + h - 3;
-        let border = color(EngineColor::Border);
+        let border = look.border;
         buf.fill_rect(Rect::new(x + 1, rule, w - 2, 1), Cell::new('─', border, bg));
-        buf.set(x, rule, Cell::new('├', border, bg));
-        buf.set(x + w - 1, rule, Cell::new('┤', border, bg));
+        if look.frame.is_none() {
+            buf.set(x, rule, Cell::new('├', border, bg));
+            buf.set(x + w - 1, rule, Cell::new('┤', border, bg));
+        }
         if let Some(note) = view.focused().and_then(|i| i.note.as_ref()) {
             buf.print(x + 2, rule + 1, note, color(EngineColor::Text), bg);
         }
@@ -315,5 +343,56 @@ mod tests {
         assert_eq!(at(9, 2).fg, p.engine(EngineColor::Warning));
         assert_eq!(at(7, 3).glyph, '(');
         assert_eq!(at(7, 3).fg, p.engine(EngineColor::Panel));
+    }
+
+    #[test]
+    fn a_menu_in_a_framed_look_has_its_background_and_no_joins() {
+        use crate::frame::color::Rgb;
+        use crate::frame::draw::PanelFrame;
+        use crate::frame::slice::{Borders, NineSlice};
+        use shuyi_assets::image::{ImageInfo, ImageRect, ImageTable, Picture};
+        let table = ImageTable::new([("frame.png", ImageInfo::new(9, 9))].into());
+        let rect = ImageRect {
+            x: 0,
+            y: 0,
+            w: 9,
+            h: 9,
+        };
+        let picture = Picture {
+            image: table.id("frame.png").unwrap(),
+            rect,
+        };
+        let frame = PanelFrame::new(NineSlice::new(picture, Borders::uniform(3)));
+        let painter = ctx();
+        let mut look = super::look(&painter).with_frame(Some(frame));
+        let plum = Rgb::new(58, 44, 54);
+        look.bg = plum;
+        let mut brace = item("Brace", true, false);
+        brace.note = Some("self: Def +5".to_owned());
+        let view = MenuView::new(vec![brace, item("Wait", true, true)]);
+        let (wide, tall) = size(&view);
+        let blank = Cell::new(' ', plum, plum);
+        let mut buf = GlyphBuffer::new(
+            u16::try_from(wide).unwrap(),
+            u16::try_from(tall).unwrap(),
+            blank,
+        );
+        paint_with(&painter, &view, &mut buf, 0, 0, &look);
+        // No lines: the rule keeps its `─` but not its joins.
+        assert_eq!(row(&buf, 0).trim(), "");
+        assert_eq!(buf.get(0, 3).unwrap().glyph, ' ');
+        assert_eq!(buf.get(1, 3).unwrap().glyph, '─');
+        // The unfocused row is on the look's background; the bar isn't.
+        assert_eq!(buf.get(3, 1).unwrap().bg, plum);
+        assert_eq!(
+            buf.get(3, 2).unwrap().bg,
+            painter.palette.engine(EngineColor::Focus)
+        );
+        assert_ne!(buf.sprites().len(), 0);
+        // `paint` is `paint_with` in `look`.
+        let (mut plain, mut with) = (buf.clone(), buf);
+        paint(&painter, &view, &mut plain, 0, 0);
+        paint_with(&painter, &view, &mut with, 0, 0, &super::look(&painter));
+        assert_eq!(plain, with);
     }
 }
