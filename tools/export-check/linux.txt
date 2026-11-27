@@ -3,3 +3,4 @@
 {base}/capture/frames.ron
 {base}/hello-grid
 {base}/hello-grid.pack
+{base}/share/applications/io.github.zafnok.shuyi-engine.hello-grid.desktop

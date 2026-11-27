@@ -103,9 +103,12 @@ None.
   `debian:bullseye` pinned by digest (record the image and how it was
   checked in the job's comment), with the `-dev` packages that
   `scripts/setup-linux.sh` installs, and `tools/export-check/` gets its
-  file list. **Either order with 3049:** if 3049 is done, `linux-arm64`
-  carries 3049's identity files as `linux` does; if not, nothing to do
-  (3049 gives them to every desktop package). **From 3050
+  file list. **From 3049 (done):** `desktop::pack` writes the desktop
+  entry and the hicolor icons (`identity::linux_files`) into every
+  `System::Linux` package, so `linux-arm64` carries them as `linux`
+  does, and its file list names hello-grid's
+  `{base}/share/applications/io.github.zafnok.shuyi-engine.hello-grid.desktop`
+  as `linux.txt` does. **From 3050
   (done):** `linux-arm64` fills `host()` (`Host::LinuxArm64`),
   `container()` and `ci()` (`InCi::Build`), which the trait requires;
   the tests `every_registered_exporter_says_where_ci_builds_it` and the

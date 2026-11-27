@@ -210,6 +210,13 @@ Each desktop package builds on its own system: Windows on Windows, Linux on Linu
 (CI has all three). Every package carries `NOTICES.txt`. The Windows and macOS ones also carry
 `HOW-TO-OPEN.txt`: they aren't signed by a developer, so a player opens them once by hand.
 
+Each desktop package also says who the game is, from `shuyi.ron`'s `app` part: its name, id,
+version, build, publisher and icon. The `.exe` shows the icon, and its Properties show the name, the
+version and the publisher. The `.app` is named after the game and holds its id, versions and icon.
+The Linux package holds a desktop entry and the icon at each size a desktop asks for, which a player
+copies into `~/.local/share`. Every size comes from your one icon, or from a picture `icon_sizes`
+draws for it. Without an `app` part the packages carry none of this, and the export says so.
+
 With `--release`, the build carries nothing of the machine it was made on: its paths are renamed,
 and a program that still holds one is refused. Nor does it carry what only you need: the program
 has no symbol table (the names of its functions), and a build without debug tools leaves out its

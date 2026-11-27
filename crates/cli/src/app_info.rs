@@ -180,7 +180,13 @@ fn checked(part: &AppPart, root: &Path) -> Vec<AppProblem> {
 /// The RGBA8 pixels of `path` in the project at `root`, which must be a PNG
 /// of `size` pixels: the size a device's launcher asks, or a drawn icon's.
 fn sized_png(root: &Path, path: &str, size: (u32, u32)) -> Result<Vec<u8>, String> {
-    let bytes = fs::read(root.join(path)).map_err(|e| format!("{path} can't be read: {e}"))?;
+    sized_file(&root.join(path), path, size)
+}
+
+/// The RGBA8 pixels of the file `file`, called `path` in an error, which must
+/// be a PNG of `size` pixels.
+pub(crate) fn sized_file(file: &Path, path: &str, size: (u32, u32)) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(file).map_err(|e| format!("{path} can't be read: {e}"))?;
     let (width, height, rgba) =
         codec::decode_png(&bytes).map_err(|e| format!("{path} isn't a PNG file: {e}"))?;
     if (width, height) == size {
@@ -209,7 +215,13 @@ pub fn icon(part: &AppPart, root: &Path) -> Result<Option<Icon>, String> {
     let Some(path) = &part.icon else {
         return Ok(None);
     };
-    let bytes = fs::read(root.join(path)).map_err(|e| format!("{path} can't be read: {e}"))?;
+    icon_file(&root.join(path), path).map(Some)
+}
+
+/// The icon in the file `file`, called `path` in an error, checked as
+/// [`icon`] checks it.
+pub(crate) fn icon_file(file: &Path, path: &str) -> Result<Icon, String> {
+    let bytes = fs::read(file).map_err(|e| format!("{path} can't be read: {e}"))?;
     let (width, height, rgba) =
         codec::decode_png(&bytes).map_err(|e| format!("{path} isn't a PNG file: {e}"))?;
     if width != height {
@@ -223,7 +235,7 @@ pub fn icon(part: &AppPart, root: &Path) -> Result<Option<Icon>, String> {
              target asks is made from it by downscaling"
         ));
     }
-    Ok(Some(Icon { side: width, rgba }))
+    Ok(Icon { side: width, rgba })
 }
 
 /// `rgba`, a `width` × `height` picture of RGBA8 pixels, downscaled to

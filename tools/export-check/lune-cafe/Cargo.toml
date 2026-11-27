@@ -1,0 +1,15 @@
+# Lune Café, the fixture game of CI's `export` job (ticket 3049): a program
+# that does nothing, with an `app` part and an icon in `shuyi.ron`, so the
+# job reads its identity in each desktop package. A workspace of its own:
+# no engine crate, nothing to build but itself.
+[workspace]
+
+[package]
+name = "lune-cafe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[profile.release]
+strip = true

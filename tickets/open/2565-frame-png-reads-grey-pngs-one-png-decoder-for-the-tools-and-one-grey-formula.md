@@ -86,10 +86,9 @@ None.
 - **From 3072 (done):** `app_info::icon` (`crates/cli/src/app_info.rs`,
   the icon `check --target` checks and `app-info` downscales) decodes
   with `codec::decode_png`: move it onto `png_pixels` with the other
-  callers. **Either order with 3049:** if it is done, its `icons` in
-  packaging decodes the icon too (through `app_info::icon`, or
-  `decode_png` if it calls one itself): the same move; if not, nothing
-  to do (3049 decodes with `png_pixels`).
+  callers. **From 3049 (done):** `export::identity::icons` decodes the
+  icon and the drawn sizes through `app_info::icon_file` and
+  `app_info::sized_file`, which call `decode_png`: the same move.
 - **From 2391 (done):** `frame_png::decode_image`
   and `glyph_tiles::render_files` build a `shuyi_assets::image::Image`
   from the decoder's `(width, height, rgba)`: swap `decode_png` for

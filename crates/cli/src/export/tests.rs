@@ -676,9 +676,6 @@ fn the_players_notes_say_how_to_open_an_unsigned_program() {
     assert!(WINDOWS_NOTE.contains("More info, then Run\nanyway"));
     assert!(MACOS_NOTE.contains("Privacy & Security"));
     assert!(MACOS_NOTE.contains("Open Anyway"));
-    let plist = desktop::info_plist("game");
-    assert!(plist.contains("<key>CFBundleExecutable</key>\n\t<string>game</string>"));
-    assert!(plist.contains("<key>CFBundlePackageType</key>\n\t<string>APPL</string>"));
 }
 
 #[test]
@@ -696,6 +693,7 @@ fn a_release_package_with_a_build_path_is_refused_by_name() {
 }
 
 mod editions;
+mod identity;
 
 #[test]
 fn a_release_desktop_or_web_build_of_a_packed_package_turns_packed_on() {

@@ -512,7 +512,8 @@ is done.
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
 | 3072 | The game's icon in `shuyi.ron`, and the window's icon from it |
-| 3049 | The identity in every package: icons, version resources, `Info.plist`, `.desktop` files |
+| 3049 (done) | The identity in every desktop package: icons, version resources, `Info.plist`, `.desktop` files |
+| 3354 | The identity on the web: the page's icons, and its title from `app.name` (split from 3049) |
 | 2223 | Credits are the game's: every third-party file covered, and the credits in every build's notices |
 | 3050 | Release a game from a tag: every target's package built in CI, a GitHub Release, and itch.io |
 | 3052 | The web shell: a download progress bar, and readable errors in place of a black page |

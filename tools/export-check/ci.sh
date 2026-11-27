@@ -4,7 +4,9 @@
 # repository's root: check.sh on the package (ticket 3004), then the same
 # input gives the same exposure report (ticket 3081): every hash in it, the
 # program's and the archive's too. Then recipient.sh: two recipients' copies of
-# the package, and the detector over them and over it (ticket 3302).
+# the package, and the detector over them and over it (ticket 3302). Then
+# identity.sh: the fixture game's identity in its desktop package (ticket
+# 3049).
 #
 # Usage: bash tools/export-check/ci.sh <target> <game folder>
 
@@ -23,3 +25,5 @@ cp "$out/exposure-report.json" "$first"
 diff "$first" "$out/exposure-report.json"
 
 bash "$here/recipient.sh" "$target" "$game"
+
+bash "$here/identity.sh" "$target"
