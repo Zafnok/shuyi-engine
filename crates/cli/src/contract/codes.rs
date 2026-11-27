@@ -137,6 +137,9 @@ pub const CRASH_REPORT: Code = Code("SH3018");
 /// `no-crash-record`: `replay --crash` was given a crash report that
 /// holds no record of the game's play.
 pub const NO_CRASH_RECORD: Code = Code("SH3019");
+/// `debug-file`: `crash --symbols` was given a file that doesn't read as
+/// a program with its debug information (a PE or ELF file).
+pub const DEBUG_FILE: Code = Code("SH3020");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -672,6 +675,15 @@ pub static TABLE: &[Entry] = &[
         "The crash report holds no record of the game's play",
         "read the report with `shuyi crash`; to replay the next crash, give `Start` a \
          `crash_record` (and `with_record_in_release` in a release build)"
+    ),
+    row!(
+        DEBUG_FILE,
+        "debug-file",
+        Operation,
+        "SH3020",
+        "The debug file doesn't read as a program",
+        "give `--symbols` the `<package>.debug` file kept beside the report's build's package \
+         (`shuyi export --release` keeps it), not the package itself"
     ),
 ];
 

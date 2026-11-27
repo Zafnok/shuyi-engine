@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{#- A post of News (ticket 2805): its cover image, date, author and tags,
+    and the posts before and after it. #}
+{% block content %}
+<article class="prose post">
+  <h1>{{ page.title }}</h1>
+  <p class="meta">{{ macros::post_meta(post=page) }}</p>
+  {%- if page.extra.image %}
+  <img class="cover" src="{{ page.permalink ~ page.extra.image | safe }}" alt="{{ page.extra.image_alt | default(value='') }}">
+  {%- endif %}
+  {{ page.content | safe }}
+  {#- News is sorted newest first, so Zola's `higher` is the older post
+      and `lower` the newer one. #}
+  {%- if page.higher or page.lower %}
+  <nav class="post-pager" aria-label="More posts">
+    {%- if page.higher %}<a rel="prev" href="{{ page.higher.permalink | safe }}">← Older: {{ page.higher.title }}</a>{% endif %}
+    {%- if page.lower %}<a rel="next" href="{{ page.lower.permalink | safe }}">Newer: {{ page.lower.title }} →</a>{% endif %}
+  </nav>
+  {%- endif %}
+  <p><a href="{{ get_url(path='news/') }}">All news</a></p>
+</article>
+{% endblock content %}

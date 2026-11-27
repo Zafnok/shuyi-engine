@@ -304,6 +304,7 @@ fn a_pr_for_no_tickets_work_is_reported_not_failed() {
         ),
         (PrKind::Bot, "a bot's PR"),
         (PrKind::Sonar, "a Sonar batch"),
+        (PrKind::Post, "a post for News"),
         (PrKind::GameSmall("1203".to_owned()), "game ticket 1203"),
         (PrKind::None, "no ticket is named"),
     ] {

@@ -1,6 +1,6 @@
 # ADR-0159: The MCP server's long tools run as tasks: a host's reply awaited off the loop, and no session until `start`'s task completes
 
-- **Status:** Accepted
+- **Status:** Accepted; §1 amended by ADR-0162 (a forwarded call is a task too)
 - **Date:** 2026-11-27
 - **Related tickets:** 3436 (this); 3440 (forwarded calls as tasks)
 - **Amends:** ADR-0031 §1 (the loop is no longer the only place a call's
