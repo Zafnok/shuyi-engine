@@ -1124,3 +1124,299 @@ fn a_restart_keeps_the_session_that_runs_and_the_list_the_server_follows() {
     fs::remove_dir_all(&own).unwrap();
     fs::remove_dir_all(&theirs).unwrap();
 }
+
+/// A 2026-07-28 request `method` under `id`: `params` with the `_meta`
+/// that names the version and the client's `capabilities`.
+fn of_2026(id: &str, method: &str, params: Value, capabilities: &Value) -> Value {
+    let mut params = params;
+    params["_meta"] = json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": capabilities,
+        "io.modelcontextprotocol/clientInfo": { "name": "test", "version": "1" },
+    });
+    json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })
+}
+
+/// The `serverInfo` in `result`'s `_meta`.
+fn server_info_of(result: &Value) -> &Value {
+    &result["_meta"]["io.modelcontextprotocol/serverInfo"]
+}
+
+#[test]
+fn server_discover_answers_on_2026_07_28_and_initialize_stays_the_old_protocol() {
+    let dir = scratch("discover", GAME);
+    let game = Fake::default();
+    let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
+    let found = handled(
+        &mut server,
+        &of_2026("d", "server/discover", json!({}), &json!({})),
+    );
+    assert_eq!(found["id"], "d");
+    let result = &found["result"];
+    assert_eq!(result["resultType"], "complete");
+    assert_eq!(result["supportedVersions"], json!(["2026-07-28"]));
+    assert_eq!(result["capabilities"]["tools"]["listChanged"], true);
+    assert!(result["instructions"].as_str().unwrap().contains("`start`"));
+    assert_eq!(
+        (result["ttlMs"].as_u64(), result["cacheScope"].as_str()),
+        (Some(3_600_000), Some("public"))
+    );
+    assert_eq!(server_info_of(result)["name"], "shuyi");
+    // `initialize` is the old protocol's, whatever its `_meta` says.
+    let init = handled(
+        &mut server,
+        &of_2026(
+            "i",
+            "initialize",
+            json!({ "protocolVersion": "2025-11-25" }),
+            &json!({}),
+        ),
+    );
+    assert_eq!(init["result"]["protocolVersion"], "2025-11-25");
+    assert!(init["result"]["resultType"].is_null(), "{init}");
+    // Without a version in `_meta`, the old protocol: no such method. And
+    // on 2026-07-28 `ping` is gone.
+    for asked in [
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "server/discover" }),
+        of_2026("p", "ping", json!({}), &json!({})),
+    ] {
+        assert_eq!(handled(&mut server, &asked)["error"]["code"], -32_601);
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn an_unknown_version_in_meta_is_unsupported() {
+    let dir = scratch("unsupported", GAME);
+    let game = Fake::default();
+    let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
+    for (version, requested) in [(json!("2025-11-25"), "2025-11-25"), (json!(3), "3")] {
+        let mut asked = of_2026("u", "tools/list", json!({}), &json!({}));
+        asked["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] = version;
+        let refused = handled(&mut server, &asked);
+        assert_eq!(refused["error"]["code"], -32_022, "{refused}");
+        assert_eq!(
+            refused["error"]["data"],
+            json!({ "supported": ["2026-07-28"], "requested": requested })
+        );
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_tools_answer_alike_on_both_protocols() {
+    let dir = scratch("both", GAME);
+    let game = Fake::default();
+    let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
+    let old = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
+    );
+    let list = || of_2026("l", "tools/list", json!({}), &json!({}));
+    let new = handled(&mut server, &list());
+    let result = &new["result"];
+    assert_eq!(result["tools"], old["result"]["tools"]);
+    assert_eq!(
+        (
+            result["resultType"].as_str(),
+            result["ttlMs"].as_u64(),
+            result["cacheScope"].as_str()
+        ),
+        (Some("complete"), Some(3_600_000), Some("public"))
+    );
+    assert_eq!(server_info_of(result)["name"], "shuyi");
+    assert_eq!(handled(&mut server, &list()), new, "the same order");
+
+    let explain = json!({ "name": "explain", "arguments": { "code": "SH0002" } });
+    let old = called(&mut server, "explain", &explain["arguments"]);
+    let new = handled(
+        &mut server,
+        &of_2026("c", "tools/call", explain, &json!({})),
+    );
+    let result = &new["result"];
+    assert_eq!(result["structuredContent"], old["structuredContent"]);
+    assert_eq!(result["resultType"], "complete");
+    assert_eq!(server_info_of(result)["version"], env!("CARGO_PKG_VERSION"));
+    assert!(
+        old["resultType"].is_null() && old["_meta"].is_null(),
+        "{old}"
+    );
+    // An error is a JSON-RPC error on both, with no result type.
+    let fly = of_2026("f", "tools/call", json!({ "name": "fly" }), &json!({}));
+    let unknown = handled(&mut server, &fly);
+    assert_eq!(unknown["error"]["code"], -32_602);
+    assert!(unknown["result"].is_null(), "{unknown}");
+
+    // A server that follows its session's folder lists what may change.
+    let mut server = Server::new(dir.clone(), Box::new(InProcess::new(&game)))
+        .forwarding(Box::new(Workspaces::new(&[(&dir, "own")])));
+    let result = handled(&mut server, &list())["result"].clone();
+    assert_eq!(
+        (result["ttlMs"].as_u64(), result["cacheScope"].as_str()),
+        (Some(0), Some("private"))
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// A 2026-07-28 client's `inputResponses`: its `roots/list` result with
+/// `folder` as its root.
+fn roots_answer(folder: &Path) -> Value {
+    let path = folder.display().to_string().replace('\\', "/");
+    let uri = if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    };
+    json!({ ROOTS: { "roots": [{ "uri": uri.replace(' ', "%20") }] } })
+}
+
+#[test]
+fn on_2026_07_28_a_client_with_roots_is_asked_for_them_once() {
+    let cwd = scratch("mrtr-cwd", "()");
+    let root = scratch("mrtr-root", "()");
+    let spaced = root.join("a game");
+    fs::create_dir_all(&spaced).unwrap();
+    fs::write(spaced.join("shuyi.ron"), GAME).unwrap();
+    let game = Fake::default();
+    let roots = json!({ "roots": {} });
+    let start = json!({ "name": "start", "arguments": { "project": "a game" } });
+    let code = |answered: &Value| answered["result"]["structuredContent"]["code"].clone();
+
+    // A client with no roots is answered at once, from the server's
+    // folder, whose project has no game.
+    let mut server = Server::new(cwd.clone(), Box::new(InProcess::new(&game)));
+    let answered = handled(
+        &mut server,
+        &of_2026("s", "tools/call", start.clone(), &json!({})),
+    );
+    assert_eq!(code(&answered), "SH1002", "{answered}");
+
+    // One with roots is asked on its first call.
+    let mut server = Server::new(cwd.clone(), Box::new(InProcess::new(&game)));
+    let asked = handled(
+        &mut server,
+        &of_2026("s1", "tools/call", start.clone(), &roots),
+    );
+    assert_eq!(asked["id"], "s1");
+    let result = &asked["result"];
+    assert_eq!(result["resultType"], "input_required");
+    assert_eq!(
+        result["inputRequests"],
+        json!({ ROOTS: { "method": "roots/list" } })
+    );
+    assert_eq!(server_info_of(result)["name"], "shuyi");
+    assert!(result["ttlMs"].is_null(), "no caching hints: {result}");
+    assert!(!server.has_game(), "nothing ran");
+    // The retry carries them, and is answered from the first root.
+    let mut retry = start.clone();
+    retry["inputResponses"] = roots_answer(&root);
+    let answered = handled(&mut server, &of_2026("s2", "tools/call", retry, &roots));
+    assert_eq!(answered["result"]["resultType"], "complete");
+    assert_eq!(answered["result"]["isError"], false, "{answered}");
+    assert_eq!(server.folder(), root.as_path());
+    // Not asked again.
+    let stop = json!({ "name": "stop", "arguments": {} });
+    let answered = handled(&mut server, &of_2026("s3", "tools/call", stop, &roots));
+    assert_eq!(answered["result"]["isError"], false, "{answered}");
+
+    // A retry without them is answered from the server's folder.
+    let mut server = Server::new(cwd.clone(), Box::new(InProcess::new(&game)));
+    handled(
+        &mut server,
+        &of_2026("a", "tools/call", start.clone(), &roots),
+    );
+    let answered = handled(&mut server, &of_2026("b", "tools/call", start, &roots));
+    assert_eq!(code(&answered), "SH1002", "{answered}");
+    assert_eq!(server.folder(), cwd.as_path());
+    fs::remove_dir_all(&cwd).unwrap();
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_subscription_hears_the_tool_list_follow_the_folder() {
+    let own = scratch("listen-own", GAME);
+    let theirs = scratch("listen-theirs", GAME);
+    let game = Fake::default();
+    let mut workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    let fly = json!({ "name": "fly", "description": "Fly.", "inputSchema": { "type": "object" } });
+    workspaces.tools.push(fly.clone());
+    workspaces.ready.set(false);
+    let ready = Rc::clone(&workspaces.ready);
+    let mut server =
+        Server::new(own.clone(), Box::new(InProcess::new(&game))).forwarding(Box::new(workspaces));
+    let roots = json!({ "roots": {} });
+    let subscription = "io.modelcontextprotocol/subscriptionId";
+
+    // A subscription lasts: no response, its acknowledgment first, with
+    // what the server agreed to.
+    let wants =
+        json!({ "notifications": { "toolsListChanged": true, "promptsListChanged": true } });
+    let listen = of_2026("listen-1", "subscriptions/listen", wants, &json!({}));
+    assert_eq!(
+        messages(&server.handle(&listen.to_string())),
+        [
+            json!({ "jsonrpc": "2.0", "method": "notifications/subscriptions/acknowledged",
+                 "params": { "_meta": { subscription: "listen-1" },
+                             "notifications": { "toolsListChanged": true } } })
+        ]
+    );
+    let other = of_2026("listen-2", "subscriptions/listen", json!({}), &json!({}));
+    let got = messages(&server.handle(&other.to_string()));
+    assert_eq!(got[0]["params"]["notifications"], json!({}));
+
+    // The session's folder is another workspace's: its server starts at
+    // the roots' answer, and while it builds, nothing is said.
+    let explain = json!({ "name": "explain", "arguments": {} });
+    handled(
+        &mut server,
+        &of_2026("e1", "tools/call", explain.clone(), &roots),
+    );
+    let mut retry = explain.clone();
+    retry["inputResponses"] = roots_answer(&theirs);
+    let answered = handled(&mut server, &of_2026("e2", "tools/call", retry, &roots));
+    assert_eq!(answered["result"]["structuredContent"]["by"], "forwarded");
+    assert_eq!(answered["result"]["resultType"], "complete", "{answered}");
+    assert_eq!(server_info_of(&answered["result"])["name"], "shuyi");
+    // Once it is ready, the subscription that wants it hears, and only it:
+    // the client said no `initialize`.
+    ready.set(true);
+    assert_eq!(
+        messages(&server.poll()),
+        [
+            json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed",
+                 "params": { "_meta": { subscription: "listen-1" } } })
+        ]
+    );
+    let list = handled(
+        &mut server,
+        &of_2026("l", "tools/list", json!({}), &json!({})),
+    );
+    assert_eq!(
+        list["result"]["tools"].as_array().unwrap().last(),
+        Some(&fly)
+    );
+    // Its tool goes to it, answered as 2026-07-28.
+    let flown = handled(
+        &mut server,
+        &of_2026("f", "tools/call", json!({ "name": "fly" }), &json!({})),
+    );
+    assert_eq!(flown["result"]["structuredContent"]["op"], "fly");
+    assert_eq!(flown["result"]["resultType"], "complete");
+
+    // Cancelled, it hears nothing more: back in the server's own
+    // workspace, the list changes, and only the answer comes.
+    let cancel = json!({ "jsonrpc": "2.0", "method": "notifications/cancelled",
+                         "params": { "requestId": "listen-1" } });
+    assert_eq!(server.handle(&cancel.to_string()), Vec::<String>::new());
+    let mut back = explain;
+    back["inputResponses"] = roots_answer(&own);
+    let got = server.handle(&of_2026("e3", "tools/call", back, &roots).to_string());
+    assert_eq!(got.len(), 1, "{got:?}");
+    let list = handled(
+        &mut server,
+        &of_2026("l2", "tools/list", json!({}), &json!({})),
+    );
+    assert_eq!(list["result"]["tools"], json!(tools()));
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}

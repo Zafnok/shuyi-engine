@@ -1,6 +1,17 @@
 //! The MCP server: JSON-RPC 2.0 messages, one per line ([`Server::handle`]),
-//! the methods `initialize`, `ping`, `tools/list` and `tools/call`, and
-//! the session.
+//! in both generations of the protocol, and the session.
+//!
+//! - **The old protocol** ([`PROTOCOL_VERSIONS`]): `initialize`, `ping`,
+//!   `tools/list` and `tools/call`, for a client that starts with
+//!   `initialize` and sends no version in a request's `_meta`.
+//! - **2026-07-28** (`STATELESS`): a request whose `params._meta` holds
+//!   `io.modelcontextprotocol/protocolVersion`. `server/discover`,
+//!   `tools/list`, `tools/call` and `subscriptions/listen`; each result
+//!   carries `resultType` and the server's `serverInfo`, and a version the
+//!   server doesn't know is `-32022`.
+//!
+//! The session (`start` … `stop`) is the process's on both: on stdio one
+//! client has the process, so it needs no handle.
 //!
 //! A tool that runs the game is answered by a host of the game's tools
 //! ([`super::host`]) that a [`Launch`] starts: the game's tool program,
@@ -8,8 +19,10 @@
 //! ([`super::host::InProcess`]). A one-off operation gets a host of its
 //! own; the session keeps one from `start` to `stop`.
 //!
-//! The session's folder is the client's first root (`roots/list`), or the
-//! working folder: a relative `project` is from it. A call whose project
+//! The session's folder is the client's first root, or the working folder:
+//! a relative `project` is from it. On the old protocol the server asks
+//! `roots/list` itself; on 2026-07-28 it answers the first `tools/call`
+//! `input_required` with a `roots/list` to fill in, once. A call whose project
 //! is in another cargo workspace than the server's goes to that
 //! workspace's own server ([`super::forward`]), and the tools the server
 //! lists follow the session folder's.
@@ -27,8 +40,10 @@ use crate::contract::codes::{self, Code};
 use crate::contract::{Op, VERSION};
 use crate::project::Project;
 
-/// The MCP protocol versions the server speaks, newest first: it answers
-/// with the client's if it is one of them, else with the first.
+/// The versions of the old MCP protocol, the one `initialize` starts,
+/// that the server speaks: it answers with the client's if it is one of
+/// them, else with the first. 2026-07-28 has no `initialize`, so it isn't
+/// one of them (`STATELESS`).
 pub const PROTOCOL_VERSIONS: [&str; 4] = ["2025-06-18", "2025-11-25", "2025-03-26", "2024-11-05"];
 
 /// What the server tells a client it is for.
@@ -42,8 +57,27 @@ const INSTRUCTIONS: &str = "Shuyi Engine's tool contract on a game. Each operati
     `play a sound`, `Sprite`): it searches the engine's Learn pages, skills, examples and \
     problem codes at the game's engine revision.";
 
-/// The id of the server's `roots/list` request.
+/// The id of the server's `roots/list` request, and on 2026-07-28 the key
+/// of its `inputRequests` entry.
 pub const ROOTS: &str = "shuyi-roots";
+
+/// The MCP revision whose requests each carry their version in `_meta`,
+/// with no `initialize`: the only one `server/discover` lists.
+pub(crate) const STATELESS: &str = "2026-07-28";
+
+/// A request's `_meta` key naming its protocol version.
+const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
+/// A request's `_meta` key holding the client's capabilities.
+const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
+/// A result's `_meta` key naming the server.
+const META_SERVER: &str = "io.modelcontextprotocol/serverInfo";
+/// A notification's `_meta` key naming the subscription it is sent on.
+const META_SUBSCRIPTION: &str = "io.modelcontextprotocol/subscriptionId";
+
+/// How long a client may keep what doesn't change while the process runs
+/// (`server/discover`, and a list that follows no folder): an hour, in
+/// milliseconds.
+const KEEP_MS: u64 = 3_600_000;
 
 /// A host of the game's tools to send requests to.
 pub trait Link {
@@ -74,8 +108,11 @@ pub struct Server<'a> {
     /// How it starts the projects' own servers: none in one of them, which
     /// answers every call itself.
     forwarding: Option<Box<dyn Forwarding<'a> + 'a>>,
-    /// Whether the client lists its roots.
-    roots: bool,
+    /// What it knows of its client.
+    client: Client,
+    /// The ids of the `subscriptions/listen` requests that want to hear
+    /// when the tools change.
+    subscriptions: Vec<Value>,
     /// The session's folder: the client's first root, once it said.
     folder: Option<PathBuf>,
     /// The workspace of each project root looked up, none outside one.
@@ -97,6 +134,19 @@ pub struct Server<'a> {
     restarted: bool,
 }
 
+/// What the server knows of its client, from what it sent.
+#[derive(Debug, Default)]
+struct Client {
+    /// Whether it lists its roots (the old protocol's `initialize` said).
+    roots: bool,
+    /// Whether it said `initialize`: it hears that the tools changed by
+    /// the old protocol's notification.
+    initialized: bool,
+    /// Whether, on 2026-07-28, it was asked for its roots or gave them: it
+    /// is asked once.
+    asked_roots: bool,
+}
+
 /// A JSON-RPC error's code: the message isn't JSON.
 const PARSE_ERROR: i64 = -32700;
 /// The message isn't a request.
@@ -107,15 +157,51 @@ const METHOD_NOT_FOUND: i64 = -32601;
 const INVALID_PARAMS: i64 = -32602;
 /// The server couldn't answer.
 const INTERNAL_ERROR: i64 = -32603;
+/// The request's `_meta` names a protocol version the server doesn't
+/// speak (2026-07-28).
+const UNSUPPORTED_VERSION: i64 = -32022;
 
 /// A JSON-RPC response to `id` with `result`.
-fn response(id: &Value, result: &Value) -> String {
-    json!({ "jsonrpc": "2.0", "id": id, "result": result }).to_string()
+fn response(id: &Value, result: &Value) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "result": result })
 }
 
 /// A JSON-RPC error response to `id`.
-fn error(id: &Value, code: i64, message: &str) -> String {
-    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } }).to_string()
+fn error(id: &Value, code: i64, message: &str) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
+}
+
+/// The server's name and version, as `initialize` and each 2026-07-28
+/// result give them.
+fn server_info() -> Value {
+    json!({ "name": "shuyi", "version": env!("CARGO_PKG_VERSION") })
+}
+
+/// `message` as a 2026-07-28 response: its result, if it has one, with
+/// `result_type` and the server's `serverInfo`. An error is left as it
+/// is.
+fn of_2026(mut message: Value, result_type: &str) -> Value {
+    if let Some(result) = message.get_mut("result").and_then(Value::as_object_mut) {
+        result.insert("resultType".to_owned(), json!(result_type));
+        let meta = result.entry("_meta").or_insert_with(|| json!({}));
+        if let Some(meta) = meta.as_object_mut() {
+            meta.insert(META_SERVER.to_owned(), server_info());
+        }
+    }
+    message
+}
+
+/// The error for a request whose `_meta` names the version `requested`,
+/// which isn't [`STATELESS`].
+fn unsupported(id: &Value, requested: &Value) -> Value {
+    let requested = requested
+        .as_str()
+        .map_or_else(|| requested.to_string(), str::to_owned);
+    json!({ "jsonrpc": "2.0", "id": id, "error": {
+        "code": UNSUPPORTED_VERSION,
+        "message": "Unsupported protocol version",
+        "data": { "supported": [STATELESS], "requested": requested },
+    } })
 }
 
 /// A tool's MCP result: the answer as text and as structured content,
@@ -148,7 +234,8 @@ impl<'a> Server<'a> {
             attached: None,
             command: "shuyi".to_owned(),
             forwarding: None,
-            roots: false,
+            client: Client::default(),
+            subscriptions: Vec::new(),
             folder: None,
             workspaces: BTreeMap::new(),
             forwarded: BTreeMap::new(),
@@ -183,6 +270,11 @@ impl<'a> Server<'a> {
     /// response if it wants one (a notification and a response want none),
     /// and the server's own request or notification it led to.
     pub fn handle(&mut self, message: &str) -> Vec<String> {
+        self.handled(message).iter().map(Value::to_string).collect()
+    }
+
+    /// [`Self::handle`]'s messages, as JSON.
+    fn handled(&mut self, message: &str) -> Vec<Value> {
         if message.trim().is_empty() {
             return Vec::new();
         }
@@ -193,7 +285,7 @@ impl<'a> Server<'a> {
             if message.get("result").is_some() || message.get("error").is_some() {
                 // A response to a request of ours: taken, not answered.
                 if message.get("id") == Some(&json!(ROOTS)) {
-                    return self.rooted(&message);
+                    return self.rooted(&message["result"]);
                 }
                 return Vec::new();
             }
@@ -201,48 +293,144 @@ impl<'a> Server<'a> {
             return vec![error(&id, INVALID_REQUEST, "Invalid Request")];
         };
         let params = message.get("params").cloned().unwrap_or(Value::Null);
-        // A notification (`notifications/initialized`, `…/cancelled`):
-        // nothing to answer, but the roots to ask for, again when they
-        // change.
         let Some(id) = message.get("id") else {
-            let asks = matches!(
-                method,
-                "notifications/initialized" | "notifications/roots/list_changed"
-            );
-            if asks && self.roots {
-                let ask = json!({ "jsonrpc": "2.0", "id": ROOTS, "method": "roots/list" });
-                return vec![ask.to_string()];
-            }
-            return Vec::new();
+            return self.notified(method, &params);
         };
-        vec![match method {
+        // `initialize` is the old protocol's, whatever it carries.
+        let version = params["_meta"]
+            .get(META_VERSION)
+            .filter(|_| method != "initialize");
+        match version {
+            None => vec![self.of_old(id, method, &params)],
+            Some(Value::String(version)) if version == STATELESS => {
+                self.of_stateless(id, method, &params)
+            }
+            Some(other) => vec![unsupported(id, other)],
+        }
+    }
+
+    /// What the notification `method` with `params` leads to: nothing to
+    /// answer, but on the old protocol the roots to ask for
+    /// (`notifications/initialized`), again when they change; and a
+    /// subscription ended (`notifications/cancelled`).
+    fn notified(&mut self, method: &str, params: &Value) -> Vec<Value> {
+        match method {
+            "notifications/initialized" | "notifications/roots/list_changed"
+                if self.client.roots =>
+            {
+                vec![json!({ "jsonrpc": "2.0", "id": ROOTS, "method": "roots/list" })]
+            }
+            "notifications/cancelled" => {
+                let ended = &params["requestId"];
+                self.subscriptions.retain(|id| id != ended);
+                Vec::new()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The response to the old protocol's request `method` with `params`,
+    /// under `id`.
+    fn of_old(&mut self, id: &Value, method: &str, params: &Value) -> Value {
+        match method {
             "initialize" => {
-                self.roots = params["capabilities"]["roots"].is_object();
-                response(id, &initialize(&params))
+                self.client.roots = params["capabilities"]["roots"].is_object();
+                self.client.initialized = true;
+                response(id, &initialize(params))
             }
             "ping" => response(id, &json!({})),
             "tools/list" => response(id, &json!({ "tools": self.tools })),
-            "tools/call" => self.tool_call(id, &params),
+            "tools/call" => self.tool_call(id, params),
             _ => error(id, METHOD_NOT_FOUND, &format!("Method not found: {method}")),
-        }]
+        }
     }
 
-    /// The client's roots, `answer`: the first is the session's folder. If
-    /// it is in another workspace than the server's, that workspace's
-    /// server starts now, so its build runs while the agent works, and the
-    /// server will list its tools.
-    fn rooted(&mut self, answer: &Value) -> Vec<String> {
-        let Some(folder) = answer["result"]["roots"][0]["uri"]
-            .as_str()
-            .and_then(path_of_uri)
-        else {
+    /// The messages for the 2026-07-28 request `method` with `params`,
+    /// under `id`: its response (none for `subscriptions/listen`, which
+    /// lasts), and the notifications it led to.
+    fn of_stateless(&mut self, id: &Value, method: &str, params: &Value) -> Vec<Value> {
+        let complete = |message| of_2026(message, "complete");
+        match method {
+            "server/discover" => vec![complete(response(id, &discover()))],
+            "tools/list" => {
+                // A list that follows the session's folder may change, and
+                // is this client's.
+                let (ttl, scope) = if self.forwarding.is_some() {
+                    (0, "private")
+                } else {
+                    (KEEP_MS, "public")
+                };
+                let listed = json!({ "tools": self.tools, "ttlMs": ttl, "cacheScope": scope });
+                vec![complete(response(id, &listed))]
+            }
+            "tools/call" => {
+                let mut out = Vec::new();
+                if let Some(roots) = params["inputResponses"].get(ROOTS) {
+                    out = self.rooted(roots);
+                } else if !self.client.asked_roots
+                    && params["_meta"][META_CAPABILITIES]["roots"].is_object()
+                {
+                    self.client.asked_roots = true;
+                    let asked = json!({ "inputRequests": { ROOTS: { "method": "roots/list" } } });
+                    return vec![of_2026(response(id, &asked), "input_required")];
+                }
+                out.push(complete(self.tool_call(id, params)));
+                out
+            }
+            "subscriptions/listen" => {
+                let wants = params["notifications"]["toolsListChanged"] == true;
+                if wants {
+                    self.subscriptions.push(id.clone());
+                }
+                let agreed = if wants {
+                    json!({ "toolsListChanged": true })
+                } else {
+                    json!({})
+                };
+                vec![
+                    json!({ "jsonrpc": "2.0", "method": "notifications/subscriptions/acknowledged",
+                             "params": { "_meta": { META_SUBSCRIPTION: id }, "notifications": agreed } }),
+                ]
+            }
+            _ => vec![error(
+                id,
+                METHOD_NOT_FOUND,
+                &format!("Method not found: {method}"),
+            )],
+        }
+    }
+
+    /// The notifications that the tools changed: the old protocol's, if a
+    /// client said `initialize`, and one on each subscription that wants
+    /// them.
+    fn changed(&self) -> Vec<Value> {
+        let old = json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" });
+        let on = self.subscriptions.iter().map(|id| {
+            json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed",
+                    "params": { "_meta": { META_SUBSCRIPTION: id } } })
+        });
+        self.client
+            .initialized
+            .then_some(old)
+            .into_iter()
+            .chain(on)
+            .collect()
+    }
+
+    /// The client's roots, `listed` (a `roots/list` result): the first is
+    /// the session's folder. If it is in another workspace than the
+    /// server's, that workspace's server starts now, so its build runs
+    /// while the agent works, and the server will list its tools.
+    fn rooted(&mut self, listed: &Value) -> Vec<Value> {
+        self.client.asked_roots = true;
+        let Some(folder) = listed["roots"][0]["uri"].as_str().and_then(path_of_uri) else {
             return Vec::new();
         };
         let root = project_root(&folder);
         self.folder = Some(folder);
         if let Some(workspace) = self.forward_to(&root) {
             self.follow = Some(workspace);
-            return self.poll();
+            return self.polled();
         }
         // The server's own workspace: its own list, again if the folder
         // moved back from another one.
@@ -252,14 +440,20 @@ impl<'a> Server<'a> {
             return Vec::new();
         }
         self.tools = tools();
-        vec![json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" }).to_string()]
+        self.changed()
     }
 
-    /// The notification the client gets when the tools it should list
+    /// The notifications the client gets when the tools it should list
     /// changed: once the followed server has answered `initialize`, its
     /// list, if it isn't the server's. Asks nothing of a server still
-    /// building.
+    /// building. On the old protocol it is one notification; on 2026-07-28
+    /// one on each subscription that wants it.
     pub fn poll(&mut self) -> Vec<String> {
+        self.polled().iter().map(Value::to_string).collect()
+    }
+
+    /// [`Self::poll`]'s messages, as JSON.
+    fn polled(&mut self) -> Vec<Value> {
         let Some(workspace) = self.follow.clone() else {
             return Vec::new();
         };
@@ -283,9 +477,7 @@ impl<'a> Server<'a> {
             Some(list) if *list != self.tools => {
                 self.tools.clone_from(list);
                 self.listing = Some(workspace);
-                let changed =
-                    json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" });
-                vec![changed.to_string()]
+                self.changed()
             }
             Some(_) => {
                 // The same list from another folder's server: its tools
@@ -335,15 +527,17 @@ impl<'a> Server<'a> {
         id: &Value,
         name: &str,
         arguments: &Value,
-    ) -> Result<String, String> {
+    ) -> Result<Value, String> {
         let Some(server) = self.forwarded.get_mut(workspace) else {
             return Err("the project's own server isn't running".to_owned());
         };
+        // On the old protocol whatever the client speaks: the answer is
+        // made a 2026-07-28 one, if it must be, as the server's own are.
         let params = json!({ "name": name, "arguments": arguments });
         match server.request("tools/call", &params) {
             Ok(mut answer) => {
                 answer["id"] = id.clone();
-                Ok(answer.to_string())
+                Ok(answer)
             }
             Err(why) => {
                 self.forwarded.remove(workspace);
@@ -356,7 +550,7 @@ impl<'a> Server<'a> {
     }
 
     /// The response to `tools/call` with `params`, under `id`.
-    fn tool_call(&mut self, id: &Value, params: &Value) -> String {
+    fn tool_call(&mut self, id: &Value, params: &Value) -> Value {
         let name = params.get("name").and_then(Value::as_str).unwrap_or("");
         let arguments = params.get("arguments").cloned().unwrap_or(Value::Null);
         let Some((op, session)) = tool(name) else {
@@ -458,13 +652,7 @@ impl<'a> Server<'a> {
     /// The response of the server of `workspace` to the tool of `op` (not
     /// a session tool, or `start`) with `arguments`, under `id`; a `start`
     /// there ends the session's game anywhere else.
-    fn forwarded_tool(
-        &mut self,
-        workspace: &Path,
-        id: &Value,
-        op: Op,
-        arguments: &Value,
-    ) -> String {
+    fn forwarded_tool(&mut self, workspace: &Path, id: &Value, op: Op, arguments: &Value) -> Value {
         if op == Op::Start {
             self.end_session_elsewhere(Some(workspace));
         }
@@ -708,8 +896,21 @@ impl<'a> Server<'a> {
 
 /// Whether the response `answered` holds a tool result that isn't an
 /// error.
-fn is_ok(answered: &str) -> bool {
-    serde_json::from_str::<Value>(answered).is_ok_and(|answer| answer["result"]["isError"] == false)
+fn is_ok(answered: &Value) -> bool {
+    answered["result"]["isError"] == false
+}
+
+/// `server/discover`'s result, before its `resultType` and `serverInfo`:
+/// the versions a request may name in `_meta`, the tools, what the server
+/// is for, and that it keeps for the process's life.
+fn discover() -> Value {
+    json!({
+        "supportedVersions": [STATELESS],
+        "capabilities": { "tools": { "listChanged": true } },
+        "instructions": INSTRUCTIONS,
+        "ttlMs": KEEP_MS,
+        "cacheScope": "public",
+    })
 }
 
 /// The answer and the picture of `reply` to the tool of `op`, in a
@@ -780,7 +981,7 @@ fn initialize(params: &Value) -> Value {
     json!({
         "protocolVersion": version,
         "capabilities": { "tools": { "listChanged": true } },
-        "serverInfo": { "name": "shuyi", "version": env!("CARGO_PKG_VERSION") },
+        "serverInfo": server_info(),
         "instructions": INSTRUCTIONS,
     })
 }

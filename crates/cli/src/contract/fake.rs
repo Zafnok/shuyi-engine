@@ -180,7 +180,7 @@ impl Session for FakeSession {
         for record in &self.perf {
             ring.push(record.clone());
         }
-        PerfRead::of(&ring, since, max)
+        PerfRead::of(&ring, since).first(max)
     }
 
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
