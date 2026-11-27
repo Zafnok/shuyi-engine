@@ -196,10 +196,10 @@ None.
     `CharacterDef`s answer them (a `SceneRules` built from the
     characters), so a VN game writes its characters once, in
     `*.character.ron`. Say this choice in the module's README;
-  - **Either order with 2246:** if 2246 is done, the `Expression`
-    layer's names are checked, and `expression_problem` answered, with
-    `shuyi_assets::picture_set` (`name_problem`), not a second copy; if
-    not, nothing to do (2246's clause says so);
+  - **From 2246 (done):** the `Expression` layer's names are checked,
+    and `expression_problem` answered, with `shuyi_assets::picture_set`
+    (`name_problem`), not a second copy, and the module docs of
+    `picture_set` gain that a VN character is a richer picture set;
   - a fuzz-style test (random bytes never panic) and a determinism
     fixture: the decoded value's hash is a row of
     `crates/vn/tests/golden/formats.ron`, a golden table (2116's

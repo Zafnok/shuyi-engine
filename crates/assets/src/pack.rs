@@ -95,16 +95,17 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// order and with bytes between them (a recipient's layout, ADR-0118);
 /// version 16 holds a font atlas's ink (ADR-0124), version
 /// 17 its bold face, version 18 checks the header and the
-/// index apart from each file, which has a checksum of its own (ticket
-/// 2263, ADR-0128 §2), version 19's index holds the span of each
+/// index apart from each file, which has a checksum of its own
+/// (ADR-0128 §2), version 19's index holds the span of each
 /// folder laid first (ADR-0128 §3), version 20's music cue
 /// holds a loop region, version 21's sound cue holds its
 /// rules (ADR-0139), version 22's target profile its
 /// graphics tier, version 23's sound cue and `Sound` kind their files'
 /// lengths, version 24's map look the pictures placed on its tiles, and
 /// version 25's target profile its texture limit, beside the atlas kind
-/// (ADR-0157).
-pub const VERSION: u32 = 25;
+/// (ADR-0157), and version 26's audio manifest its volume curve
+/// (ADR-0158).
+pub const VERSION: u32 = 26;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";

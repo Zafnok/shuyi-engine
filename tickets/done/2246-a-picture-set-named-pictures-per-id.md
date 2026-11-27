@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2246 — A picture set: named pictures per id
@@ -104,16 +104,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A set lacking a required name, with an id other than its stem, a
+- [x] A set lacking a required name, with an id other than its stem, a
       missing image and one too big gives all four errors, the image
       ones with their lines.
-- [ ] A good set's pictures come required first, then by name.
-- [ ] `name_problem` gives each variant and `None` (tests).
-- [ ] Random bytes into `PictureSetRon` never panic; its golden row
+- [x] A good set's pictures come required first, then by name.
+- [x] `name_problem` gives each variant and `None` (tests).
+- [x] Random bytes into `PictureSetRon` never panic; its golden row
       passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass, `api` reporting additions
+- [x] All gates in the `run-gates` skill pass, `api` reporting additions
       only.
 
 ## Tests required
@@ -124,5 +124,36 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/assets/src/picture_set.rs`: `PictureRules`, `PictureSetDef`
+  (`from_source`, `resolve`), `PictureSetRon` (`picture-set`, `.ron`,
+  not in `Formats::standard`), `PictureSet` (`get`), `NamedPicture`,
+  `NameProblem` and `name_problem`, all additive, `#[non_exhaustive]`
+  with `new`. Its module docs have a file and a `SceneRules` example
+  answering `expression_problem` with `name_problem` (a doc test).
+- A picture not in the table carries `SH2003` (`missing-file`), one too
+  big `SH2010` (`out-of-range`): existing codes, no new one.
+- The fixture `PICTURE_SET` (a card's front and back) in
+  `format/builtin_tests.rs`, its `named` check, a decode test, a
+  random-bytes property test that resolves what decodes, and the golden
+  row `picture set: picture-set`.
+- `docs/formats.md`: the row among the formats a game registers with its
+  rules, and a *Checks after loading* bullet.
+- Deviation: the four errors of the first acceptance criterion come in
+  two stages, as terrain tiles' do: the format reads the file alone (the
+  id and the missing name), and `resolve` the images (the missing one and
+  the big one, at their lines). The test runs both on one file.
+- Deviation: a picture's line is found from the line holding `pictures`
+  on, not with `error::line_of` over the whole file, so a name that is
+  also the set's id (`id: "happy"`) doesn't take the id's line (a test).
+- 2721 is parked and not done, so its clause leaves nothing to do here.
+- The ticket is 23 days old (2026-11-03); the names its steps give
+  (`PaletteRon::requiring`, `error::line_of`, `SceneRules`,
+  `ImageTable`, `Bundle::display_path`, `AssetPath::stem`) are on `main`
+  as it says, and no done ticket built a picture set.
+
+Book: `site/content/learn/book/frame-and-skins.md` has a paragraph on
+picture sets.
+Skills: `skills/shuyi-import-art/SKILL.md` says how a picture set file
+is written and read.
+Game: game#1222 moves the pin and deletes the game's `portrait.rs`.
+No break: additions only. No `Behaviour:` line: no existing item changes.

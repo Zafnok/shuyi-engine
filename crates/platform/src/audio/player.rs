@@ -117,8 +117,8 @@ pub trait Backend {
     /// Readies the sound file `file` of the manifest. By default it reads
     /// the file with `files` and decodes it with
     /// [`load_sound`](Self::load_sound): a FLAC or MP3 file as the WAV
-    /// [`decode_to_wav`] makes of it, which every backend reads (ticket
-    /// 2234), and one that doesn't decode is an error that never reaches
+    /// [`decode_to_wav`] makes of it, which every backend reads, and one
+    /// that doesn't decode is an error that never reaches
     /// the backend. A device that loads a sound from its own path says so
     /// here.
     fn load_sound_file(

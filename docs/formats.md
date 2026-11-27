@@ -140,6 +140,7 @@ The ones a game registers with its own types or rules:
 | ---- | ---------------- | ------ | -- | ---------- | ------------------- |
 | map | `grid_map::GridMap<T, F>` | `grid_map::MapText<T, F>` | `map` | `map` | its `MapFormat` and what a terrain id resolves to |
 | terrain tiles | `tileset::TerrainTilesDef`: a tileset's ground as written | `tileset::TerrainTilesRon` | `terrain-tiles` | `ron` | its `TileRules`: the looks its maps may name, the sides a tile may have |
+| picture set | `picture_set::PictureSetDef`: an id's pictures by name, as written | `picture_set::PictureSetRon` | `picture-set` | `ron` | its `PictureRules`: the names every set has, the largest a picture may be |
 | keymap | `keymap::KeymapDef<A>` | `keymap::KeymapRon<A>` | `keymap` | `ron` | its actions |
 | cinematic | `cinematic::CinematicFile<S, P>` | `cinematic::CinematicRon<S, P>` | `cinematic` | `ron` | its shots and shared lists |
 | dialogue | `dialogue::DialogueFile<D>` | `dialogue::Dlg<D>` | `dlg` | `dlg` | its directives |
@@ -724,6 +725,14 @@ assets loaded, with the functions that were there before the registry:
   game lacks, a terrain of the game with no tile in a look. The terrains
   are a map of name to `TerrainId`, not a function as `MapText` takes,
   since "every terrain has a tile" needs them all;
+- a picture set against the image table: `PictureSetDef::resolve(file,
+  dir, &images, bundle, &rules)` makes the `PictureSet` a game draws
+  from, its pictures the required names first, or reports each picture
+  not in the table (`SH2003`) or bigger than the rules' `max_px`
+  (`SH2010`), at its line. The format checked the file alone: its `id`
+  is the file's stem, and it has every required name. Whether an id may
+  show a picture of a name, as `SceneRules::expression_problem` asks, is
+  `picture_set::name_problem(&sets, name, without_a_set)`;
 - every language at once, with its directory's other rules:
   `lang::from_files`.
 

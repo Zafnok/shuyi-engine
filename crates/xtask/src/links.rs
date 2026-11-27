@@ -101,50 +101,84 @@ fn process_errors(repo_root: &Path) -> Vec<String> {
 /// `engine#`, `game ADR`, the word `Nick` and `AGENTS.md`. Each starts a
 /// word; a match inside an earlier one (the `ticket 0923` of `game ticket
 /// 0923`) isn't counted again.
+///
+/// A word split across two doc lines, one right after the other, is read
+/// too: the first line's last word and the second's text, joined by one
+/// space (`ticket` and `2234` read as `ticket 2234`), with the first
+/// line's number.
 pub(crate) fn process_words(text: &str) -> Vec<(usize, String)> {
-    const PLAIN: &[&str] = &["game ticket", "game#", "engine#", "game ADR", "AGENTS.md"];
     let mut words = Vec::new();
+    let mut previous: Option<(usize, &str)> = None;
     for (i, line) in text.lines().enumerate() {
         let trimmed = line.trim_start();
         let doc = trimmed
             .strip_prefix("//!")
             .or_else(|| trimmed.strip_prefix("///").filter(|d| !d.starts_with('/')));
         let Some(doc) = doc else {
+            previous = None;
             continue;
         };
-        let mut at = 0;
-        while at < doc.len() {
-            let rest = &doc[at..];
-            let starts_word = !doc[..at]
-                .chars()
-                .next_back()
-                .is_some_and(|c| c.is_alphanumeric() || c == '_');
-            let found = if starts_word {
-                PLAIN
-                    .iter()
-                    .find(|w| rest.starts_with(**w))
-                    .map(|w| w.len())
-                    .or_else(|| ticket_number_len(rest))
-                    .or_else(|| {
-                        let after = rest.strip_prefix("Nick")?;
-                        (!after
-                            .chars()
-                            .next()
-                            .is_some_and(|c| c.is_alphanumeric() || c == '_'))
-                        .then_some(4)
-                    })
-            } else {
-                None
-            };
-            if let Some(len) = found {
-                words.push((i + 1, rest[..len].to_string()));
-                at += len;
-            } else {
-                at += rest.chars().next().map_or(1, char::len_utf8);
+        if let Some((before, prev)) = previous.filter(|(before, _)| before + 1 == i) {
+            let tail = prev
+                .rsplit(char::is_whitespace)
+                .find(|w| !w.is_empty())
+                .unwrap_or("");
+            let head = doc.trim_start();
+            if !tail.is_empty() && !head.is_empty() {
+                let joined = format!("{tail} {head}");
+                for (at, word) in process_matches(&joined) {
+                    if at < tail.len() && at + word.len() > tail.len() + 1 {
+                        words.push((before + 1, word.to_string()));
+                    }
+                }
             }
         }
+        for (_, word) in process_matches(doc) {
+            words.push((i + 1, word.to_string()));
+        }
+        previous = Some((i, doc));
     }
+    words.sort_by_key(|(line, _)| *line);
     words
+}
+
+/// The words of [`process_words`] in one piece of doc text, with where
+/// each starts.
+fn process_matches(doc: &str) -> Vec<(usize, &str)> {
+    const PLAIN: &[&str] = &["game ticket", "game#", "engine#", "game ADR", "AGENTS.md"];
+    let mut found_words = Vec::new();
+    let mut at = 0;
+    while at < doc.len() {
+        let rest = &doc[at..];
+        let starts_word = !doc[..at]
+            .chars()
+            .next_back()
+            .is_some_and(|c| c.is_alphanumeric() || c == '_');
+        let found = if starts_word {
+            PLAIN
+                .iter()
+                .find(|w| rest.starts_with(**w))
+                .map(|w| w.len())
+                .or_else(|| ticket_number_len(rest))
+                .or_else(|| {
+                    let after = rest.strip_prefix("Nick")?;
+                    (!after
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_'))
+                    .then_some(4)
+                })
+        } else {
+            None
+        };
+        if let Some(len) = found {
+            found_words.push((at, &rest[..len]));
+            at += len;
+        } else {
+            at += rest.chars().next().map_or(1, char::len_utf8);
+        }
+    }
+    found_words
 }
 
 /// The length of `ticket NNNN` or `tickets NNNN` at the start of `text`.
@@ -537,6 +571,51 @@ mod tests {
                     f(); /// ticket 2397\n\
                     /// Nicked, Nicky, aNick, a ticket, ticket 12, subticket 1234, the game's ADR.\n";
         assert!(process_words(text).is_empty(), "{:?}", process_words(text));
+    }
+
+    #[test]
+    fn process_words_joins_a_word_split_across_two_doc_lines() {
+        assert_eq!(
+            process_words("/// before ticket\n/// 2234 after\n"),
+            vec![(1, "ticket 2234".to_string())]
+        );
+        assert_eq!(
+            process_words("//! the (game\n//! ADR-0019) said\n"),
+            vec![(1, "game ADR".to_string())]
+        );
+        assert_eq!(
+            process_words("/// x\n    /// a ticket   \n    ///    2234\n"),
+            vec![(2, "ticket 2234".to_string())]
+        );
+    }
+
+    #[test]
+    fn process_words_ends_the_join_at_a_non_doc_line_or_a_near_miss() {
+        for text in [
+            "/// a ticket\n// 2234\n",
+            "/// a ticket\n\n/// 2234\n",
+            "/// a ticket\n/// 223x\n",
+            "/// a ticket\n//// 2234\n",
+            "///\n/// 2234\n",
+        ] {
+            assert!(
+                process_words(text).is_empty(),
+                "{text:?}: {:?}",
+                process_words(text)
+            );
+        }
+    }
+
+    #[test]
+    fn process_words_counts_a_word_on_one_line_once() {
+        assert_eq!(
+            process_words("/// ticket 2234\n/// more\n"),
+            vec![(1, "ticket 2234".to_string())]
+        );
+        assert_eq!(
+            process_words("/// told Nick\n/// more\n"),
+            vec![(1, "Nick".to_string())]
+        );
     }
 
     #[test]

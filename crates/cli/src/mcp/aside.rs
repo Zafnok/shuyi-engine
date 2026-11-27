@@ -12,8 +12,8 @@
 //! there to run (another session's `cargo run`, a test's
 //! `CARGO_BIN_EXE_shuyi`), and cargo sees it fresh and already linked.
 //!
-//! The order of the moves never leaves the program's path empty (ticket
-//! 2561, ADR-0115): the running file is hard-linked into `.shuyi-running/`
+//! The order of the moves never leaves the program's path empty
+//! (ADR-0115): the running file is hard-linked into `.shuyi-running/`
 //! and the copy renamed over the old name, rather than the file renamed
 //! away and the copy renamed in after it. Windows lets a running
 //! program's name be replaced while another name keeps the file.
@@ -178,8 +178,8 @@ pub fn sweep(dir: &Path) {
 /// can, rarely, read as missing for a moment on Windows: the system's,
 /// not the order's (ADR-0115).
 ///
-/// Each step after the copy is retried while the file is busy (ticket
-/// 2564): the copy is a new `.exe`, which a scan may hold just then, and a
+/// Each step after the copy is retried while the file is busy: the
+/// copy is a new `.exe`, which a scan may hold just then, and a
 /// busy machine refused the rename with `Access is denied`. A refusal that
 /// lasts is still returned.
 ///

@@ -7,8 +7,8 @@
 //! `groups` (`shuyi_assets::audio`), and a cue names its group there.
 //!
 //! [`SoundGroups`] is the tree and which cue plays where; [`GroupGains`]
-//! each group's gain from the player's volumes, on the loudness curve
-//! ([`loudness`]) and times its parent's; and [`Gains`] the two together,
+//! each group's gain from the player's volumes, on the game's volume
+//! curve ([`gain_on`]) and times its parent's; and [`Gains`] the two together,
 //! which the platform hands its sound device every frame. A device gets
 //! one gain per cue and never the tree.
 
@@ -21,7 +21,7 @@ pub use shuyi_assets::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 
 use super::AudioConfig;
 use super::duck::DuckState;
-use super::loudness::{Gain, loudness};
+use super::loudness::{Gain, VolumeCurve, gain_on};
 use crate::settings::Volumes;
 
 /// The volume `music`, `sfx` and `voice` start at: the position whose gain
@@ -67,6 +67,8 @@ pub struct SoundGroups {
     sounds: BTreeMap<String, usize>,
     /// The music cues that play in a group other than [`MUSIC`], by cue.
     music: BTreeMap<String, usize>,
+    /// How each group's volume becomes its gain: the manifest's.
+    curve: VolumeCurve,
 }
 
 impl SoundGroups {
@@ -132,7 +134,14 @@ impl SoundGroups {
             groups,
             sounds,
             music,
+            curve: manifest.volume_curve,
         }
+    }
+
+    /// How each group's volume becomes its gain: the manifest's
+    /// `volume_curve`.
+    pub const fn curve(&self) -> VolumeCurve {
+        self.curve
     }
 
     /// Where `group` is, if there is one.
@@ -188,7 +197,7 @@ impl Default for SoundGroups {
 }
 
 /// Each group's gain, in the order of its [`SoundGroups`]: its volume on
-/// the loudness curve, times its parent's gain, down from [`MASTER`].
+/// the game's volume curve, times its parent's gain, down from [`MASTER`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GroupGains(Vec<Gain>);
 
@@ -213,8 +222,8 @@ impl GroupGains {
     pub fn update_ducked(&mut self, groups: &SoundGroups, volumes: &Volumes, ducks: &DuckState) {
         self.0.clear();
         for group in &groups.groups {
-            let own = loudness(volumes.get(&group.id).unwrap_or(group.default))
-                .times(ducks.multiplier(&group.id));
+            let volume = volumes.get(&group.id).unwrap_or(group.default);
+            let own = gain_on(groups.curve, volume).times(ducks.multiplier(&group.id));
             let gain = match group.parent {
                 Some(parent) => own.times(self.0[parent]),
                 None => own,
@@ -334,6 +343,7 @@ impl<'a> Gains<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio::loudness::{linear, loudness};
     use crate::settings::MAX_VOLUME;
 
     fn volumes(set: &[(&str, u8)]) -> Volumes {
@@ -508,6 +518,53 @@ mod tests {
         for group in [MASTER, MUSIC, VOICE] {
             assert_eq!(ducked.group(group), plain.group(group), "{group}");
         }
+    }
+
+    /// The built-in groups of a manifest whose `volume_curve` is
+    /// [`VolumeCurve::Linear`].
+    fn linear_groups() -> SoundGroups {
+        let mut manifest = AudioManifest::default();
+        manifest.volume_curve = VolumeCurve::Linear;
+        SoundGroups::new(&AudioConfig::DEFAULT, &manifest)
+    }
+
+    #[test]
+    fn on_the_straight_line_a_groups_gain_is_its_percent_times_its_parents() {
+        assert_eq!(SoundGroups::default().curve(), VolumeCurve::Decibels);
+        let groups = linear_groups();
+        assert_eq!(groups.curve(), VolumeCurve::Linear);
+        // master 50 → 2048; music 20 → 819 × 2048 / 4096 = 410; sfx at
+        // its default 97 → 3973 × 2048 / 4096 = 1987.
+        let volumes = volumes(&[(MASTER, 50), (MUSIC, 20)]);
+        let gains = GroupGains::of(&groups, &volumes);
+        let view = Gains::new(&groups, &gains);
+        assert_eq!(view.group(MASTER), Gain::new(2048));
+        assert_eq!(view.group(MUSIC), Gain::new(410));
+        assert_eq!(view.group(SFX), linear(97).times(Gain::new(2048)));
+        assert_eq!(view.group(SFX), Gain::new(1987));
+        for v in 0..=MAX_VOLUME {
+            let gains = GroupGains::of(&groups, &self::volumes(&[(MUSIC, v)]));
+            assert_eq!(Gains::new(&groups, &gains).group(MUSIC), linear(v), "{v}");
+        }
+    }
+
+    #[test]
+    fn on_the_straight_line_a_duck_still_lowers_by_its_decibels() {
+        use shuyi_assets::audio::DuckRule;
+        let groups = linear_groups();
+        let mut rule = DuckRule::default();
+        rule.when = VOICE.into();
+        rule.lower = MUSIC.into();
+        rule.to = 90;
+        let mut ducks = DuckState::new(&[rule]);
+        ducks.update(0, true);
+        let volumes = volumes(&[(MUSIC, 100)]);
+        let mut ducked = GroupGains::default();
+        ducked.update_ducked(&groups, &volumes, &ducks);
+        // Full times loudness(90), 6 dB down: never linear(90).
+        let view = Gains::new(&groups, &ducked);
+        assert_eq!(view.group(MUSIC), loudness(90));
+        assert_eq!(view.group(MUSIC), Gain::new(2053));
     }
 
     #[test]

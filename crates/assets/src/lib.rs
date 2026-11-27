@@ -14,7 +14,8 @@
 //! word wrap for text boxes ([`text`]); and
 //! cinematics, timed shots of a game's own kinds ([`cinematic`]); and
 //! export targets' profiles ([`target`]); and sprite atlases, images
-//! packed into pages ([`atlas`]). With the `sfx` feature, sound
+//! packed into pages ([`atlas`]); and named pictures per id
+//! ([`picture_set`]). With the `sfx` feature, sound
 //! effects written as a few numbers (`sfx`). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
@@ -68,6 +69,7 @@ pub mod names;
 pub mod onebit;
 pub mod pack;
 pub mod palette;
+pub mod picture_set;
 // The engine's own: semver doesn't cover it (its doc, ADR-0119).
 #[doc(hidden)]
 pub mod recipient;

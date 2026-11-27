@@ -228,8 +228,8 @@ fn volume(volume: u8, min: Option<u8>, rng: &mut VariantRng) -> u8 {
 }
 
 /// Picks sound variants and volumes (`audio.md`: footsteps vary each step).
-/// A small `SplitMix64`, separate from core's simulation RNG (game
-/// ADR-0019): what plays never affects the game.
+/// A small `SplitMix64`, separate from core's simulation RNG so that
+/// what plays never changes the game.
 #[derive(Debug)]
 struct VariantRng(u64);
 

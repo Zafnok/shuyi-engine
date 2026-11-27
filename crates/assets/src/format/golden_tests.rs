@@ -10,9 +10,9 @@ use serde::Serialize;
 use shuyi_core::state_hash;
 
 use super::builtin_tests::{
-    ATLAS, CREDITS, FILM, LIGHTS, MANIFEST, MAP, NAMES, PALETTE, PATTERN_MAP, SCRIPT, Shot, TABLE,
-    TERRAIN_TILES, Table, bundle, lang_pack, map_text, ogg, ogg_file, pack_files, png_file,
-    terrain_tiles, wav,
+    ATLAS, CREDITS, FILM, LIGHTS, MANIFEST, MAP, NAMES, PALETTE, PATTERN_MAP, PICTURE_SET, SCRIPT,
+    Shot, TABLE, TERRAIN_TILES, Table, bundle, lang_pack, map_text, ogg, ogg_file, pack_files,
+    picture_set, png_file, terrain_tiles, wav,
 };
 use super::codec_tests::{FLAC, JPEG, JPEG_XL, MP3, QOI, WEBP};
 use super::*;
@@ -118,12 +118,8 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     missing
 }
 
-/// Checks every row of `formats.ron` but the guard's, and returns them.
-fn check_rows() -> Rows {
-    let mut rows = Rows {
-        golden: crate::golden!("tests/golden/formats.ron"),
-        names: BTreeSet::new(),
-    };
+/// Checks the rows of the pictures' and the sounds' formats.
+fn check_binary_rows(rows: &mut Rows) {
     let rate = audio::SAMPLE_RATE;
     let picture = png_file([255, 0, 0, 255, 0, 0, 255, 128]);
     rows.format(&PngInfo, "a.png", &picture, None);
@@ -153,6 +149,16 @@ fn check_rows() -> Rows {
         .as_bytes();
     rows.format(&SfxRon, "sfx/coin.sfx.ron", coin, None);
     rows.format(&SfxDefRon, "sfx/coin.sfx.ron", coin, None);
+}
+
+/// Checks every row of `formats.ron` but the guard's, and returns them.
+fn check_rows() -> Rows {
+    let mut rows = Rows {
+        golden: crate::golden!("tests/golden/formats.ron"),
+        names: BTreeSet::new(),
+    };
+    let rate = audio::SAMPLE_RATE;
+    check_binary_rows(&mut rows);
     let sounds = bundle(vec![
         ("audio/audio.ron", MANIFEST.into()),
         ("audio/sfx/gone.wav", wav(1, rate, 1)),
@@ -201,6 +207,12 @@ fn check_rows() -> Rows {
         &terrain_tiles(),
         "tiles/farm.ron",
         TERRAIN_TILES.as_bytes(),
+        None,
+    );
+    rows.format(
+        &picture_set(),
+        "cards/fox.ron",
+        PICTURE_SET.as_bytes(),
         None,
     );
     let keymap = KeymapRon::<sample::Action>::new();

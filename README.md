@@ -7,18 +7,19 @@ without guessing.
 > **Status: early, not yet released.** The engine's code was carved out of
 > the game it was built for, [Visions of Shuyi](https://github.com/Zafnok/visions-of-shuyi),
 > a Fire Emblem-like tactics game drawn with colored glyphs and sprites,
-> and moved here with its history on 2026-10-19 (the game's ticket 1131).
-> The game runs on it, pinned to a revision of this repository, and so
-> does one example. Its crates on crates.io are empty 0.0.0 placeholders
-> that hold the names until the first release, and its API still moves.
-> See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> and moved here with its history on 2026-10-19. The game runs on it,
+> pinned to a revision of this repository, and so do two examples. Its
+> crates on crates.io are empty 0.0.0 placeholders that hold the names
+> until the first release, and its API still moves. See
+> [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+To learn it, read [the book](https://zafnok.github.io/shuyi-engine/learn/book/)
+on the website, where the examples also play in the browser.
 
 [Open in GitHub Codespaces](https://codespaces.new/Zafnok/shuyi-engine?quickstart=1):
-a container with the C linker, the system libraries and the pinned Rust
-set up (`.devcontainer/`), and the MCP server registered with your
-coding agents (its first creation also takes the server's first build).
-Codespaces bills whoever opens it, from their
-own GitHub account's free hours or plan.
+the C linker, the system libraries and the pinned Rust set up, and the
+MCP server registered with your coding agents. Codespaces bills whoever
+opens it.
 
 ## What it is for
 
@@ -100,8 +101,8 @@ It is parked until the engine reaches parity with the game.
 
 **Targets.** Windows, Linux, macOS and the web come first, then the
 Steam Deck and the Playdate. The GBA, the DS, the Switch, mobile and
-other consoles are parked. Each target says what its hardware can do,
-and a game that needs more than that doesn't export there
+other consoles are parked. Each target's profile, in `targets/`, says
+what its hardware can do, and a game that needs more doesn't export there
 ([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md),
 [ADR-0012](docs/adr/0012-gba-and-ds-targets-capabilities-indexed-colour-two-screens-and-homebrew.md)).
 
@@ -115,27 +116,26 @@ and a game that needs more than that doesn't export there
 | `docs/decisions.md` | The owner's product decisions: name, license, scope, what is parked |
 | `docs/adr/` | Technical decisions |
 | `tickets/` | The backlog, one ticket per pull request |
-| `.claude/skills/`, `.agents/skills/` | Shared skills for developing the engine, with Codex discovery loaders: tickets and ADRs, gates, input rules, the Sonar queue, dependency upkeep, the pinned Rust (see `AGENTS.md`) |
-| `crates/` | The engine's crates ([below](#the-crates)) |
-| `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
-| `.github/dependabot.yml`, `.github/workflows/security.yml`, `dependabot-waiting.yml`, `codeql.yml`, `scorecard.yml` | Dependency upkeep: Dependabot for the crates and the actions' pins (the templates' too), the weekly advisory check that files `advisory` issues, the daily `dependabot-waiting` issue listing the Dependabot PRs open over a day, CodeQL and Scorecard; zizmor audits the workflows in `ci.yml` (ADR-0037) |
-| `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
-| `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
+| `docs/README.md` | The docs map: where each kind of fact is written, and who reads it |
+| `docs/contract.md` | The tool contract: every operation, its JSON answer and its schema |
 | `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |
-| `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `playtest`, `import`, `doctor`, their JSON answers and schemas |
-| `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
-| `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
-| `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, so does the book's (`.devcontainer/book/`, the code pad: [`site/README.md`](site/README.md), *The code pad*), and so does CI |
-| `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs on a new game. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
-| `site/` | The website: a Zola project that `pages.yml` publishes on GitHub Pages, with the book, the API docs and the examples playing in the browser; the book's code is the crate in `site/snippets/` ([`site/README.md`](site/README.md)) |
+| `.claude/skills/`, `.agents/skills/` | Skills for developing the engine, with Codex's loaders (see `AGENTS.md`) |
+| `crates/` | The engine's crates ([below](#the-crates)) |
+| `examples/` | Games made from the engine's crates alone ([below](#the-examples)) |
+| `templates/` | The engine's template, made of parts that `shuyi new`'s answers pick; `--template grid` (a turn-based grid stage) and `--template blank` (one screen, on the short path) name two sets of answers ([`docs/templates.md`](docs/templates.md)) |
+| `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
+| `evals/` | The agent eval: tasks an agent makes a game for, graded through the contract ([`evals/README.md`](evals/README.md)) |
+| `site/` | The website on GitHub Pages: the book, the API docs and the examples in the browser ([`site/README.md`](site/README.md)) |
+| `scripts/setup-linux.sh`, `.devcontainer/` | Linux set up in one command, as `shuyi doctor` checks it; the dev containers and CI run it |
+| `.github/`, `sonar-project.properties`, `tools/sonar-triage/` | CI, Dependabot, the weekly advisory check, CodeQL, Scorecard, and SonarCloud with its findings filed as `sonar` issues (ADR-0017, ADR-0037) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
 ## The crates
 
-Each sits under the game crate of the same layer (game ADR-0063 §2). The
-core is pure and deterministic, only platform backends touch devices,
-time is an argument, and there's no `unsafe` outside the app and the heap
-counter. An engine crate never depends on a game.
+The core is pure and deterministic, only platform backends touch
+devices, time is an argument, and there's no `unsafe` outside the
+backends, the sound output and the heap counter. `cargo xtask check-layers` holds the
+crates to their layers ([`tools/layers.ron`](tools/layers.ron)).
 
 | Crate | Folder | Owns |
 | ----- | ------ | ---- |
@@ -145,13 +145,13 @@ counter. An engine crate never depends on a game.
 | `shuyi-platform` | `crates/platform` | The platform boundary: the `Platform` trait every backend implements, `App`, which runs one frame of a game for the backend's loop (the loading card, fixed steps, suspend and resume), the headless backend and the test Harness; a game on the short path (`BasicGame`) and the `prelude` it names. No devices ([`docs/platform-backends.md`](docs/platform-backends.md)). |
 | `shuyi-playdate` | `crates/playdate` | The Playdate backend: the update callback, the d-pad, A, B and the crank, the 1-bit display with changed rows, storage on the SDK's files and sound on its sample and file players, behind `Platform`; built by `shuyi export playdate` |
 | `shuyi-app` | `crates/app` | The macroquad backend, for desktop and the web: the window, blitting, input devices, the audio player and storage, and the loop that drives `App`; `run_game` runs a game on the short path from a plain `main`. |
-| `shuyi-alloc-count` | `crates/alloc-count` | The heap counter: `CountingAlloc`, a global allocator around another that counts the bytes live, their peak and the allocations, and with its `global` feature the one counter every debug build of a game on `shuyi-app`, and of its tool program, runs on, counting by memory tag too (the frame's phase, the game's span, the asset kind being decoded). Each frame's perf record carries its counts; `--cfg shuyi_no_heap_count` opts out. Builds without `std`. |
+| `shuyi-alloc-count` | `crates/alloc-count` | The heap counter: `CountingAlloc`, a global allocator that counts the bytes live, their peak and the allocations, by memory tag too, in every debug build of a game on `shuyi-app`; each frame's perf record carries its counts, and `--cfg shuyi_no_heap_count` opts out. Builds without `std`. |
 | `shuyi-sound` | `crates/sound` | Decoded sound apart from the rest of the engine: `Pcm`, a bounded `Source` of it, optional WAV and Ogg Vorbis adapters, and an integer mixer. Builds without `std`; only the backend of `shuyi-app`'s `in-house-sound` feature plays through it yet. |
 | `shuyi-sound-out` | `crates/sound-out` | Hands a mix to the system: CPAL on Windows, a Web Audio worklet in the browser, and an output that discards it. |
 | `shuyi-embed` | `crates/embed` | A folder's files as a sorted table of paths and `include_bytes!`: a build script writes it (`Table`), and `shuyi-embed-macros`' `table!` writes it at compile time for `shuyi::files!`. Refuses names that aren't UTF-8 and paths that differ only by case. |
 | `shuyi-script` | `crates/script` | A module: rules written as Rhai scripts, compiled once and run on a read-only view the game hands them, integer only, with no clock, no luck and no files, inside an operation and size limit ([`crates/script/README.md`](crates/script/README.md)). Needs `std`. |
-| `shuyi-net` | `crates/net` | A module: the `Transport` trait a game's online play talks through, and `MemoryNetwork`, an in-memory network for tests (seeded faults: 2620). Pure: no sockets, no clock ([`crates/net/README.md`](crates/net/README.md)). |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `crash`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `sfx`, `explain`, `docs`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `bench`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web`, `private-assets`, `repos`, `reveal` (the reveal kit, evidence before a game's first public footage) and `preview` (the hosted preview: the game played by visitors as pictures from this machine, never as its program), on the project a `shuyi.ron` describes. |
+| `shuyi-net` | `crates/net` | A module: the `Transport` trait a game's online play talks through, and `MemoryNetwork`, an in-memory network for tests. Pure: no sockets, no clock ([`crates/net/README.md`](crates/net/README.md)). |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `crash`, `playtest`, `autobalance`, `import`, `bake`, `export`, `doctor`, `sfx`, `explain`, `docs`, `attach`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and the tool programs a game's `shuyi.ron` names: frames to PNG, font atlases and glyph tiles, the web build (`web`), benchmarks, text and key checks, and the hosted preview, where visitors play the game as pictures from this machine. |
 | `shuyi` | `crates/shuyi` | The front door a game depends on: the crates above under short names (`shuyi::core` to `shuyi::app`), the `prelude` with `run_game`, and one cargo feature per module, all off by default, with `enabled_modules`, the modules turned on, for the game to install. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
@@ -171,15 +171,12 @@ pinned by revision moves its pin when a PR past it isn't `api: none`,
 and reads the ticket's `Breaking:` lines when it is `api: breaking`
 ([ADR-0038](docs/adr/0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md)).
 
-A project need not poll for that: a push to `main` starts the workflows
-listed in the repository variable `DEPENDENT_WORKFLOWS`, one `owner/repo
-workflow-file` per line, with the new commit as the input `engine_sha`
+Or be told: a push to `main` starts each workflow listed in the
+repository variable `DEPENDENT_WORKFLOWS` with the new commit as its
+`engine_sha` input. Give yours a `workflow_dispatch` trigger with that
+input and open an issue here naming the repository and the file; keep a
+slow scheduled poll as a backstop
 ([ADR-0045](docs/adr/0045-a-push-to-main-starts-dependents-watchers-workflow-dispatch-with-an-actions-only-token-kept-in-an-environment-for-main.md)).
-To be on the list, give your workflow a `workflow_dispatch` trigger with
-an `engine_sha` input, and open an issue here naming the repository and
-the file. The dispatch token needs Actions: write on your repository, so
-until it has that, poll on a schedule (keep a slow one anyway, as a
-backstop).
 
 Everything else is a module, turned on as a feature of `shuyi`: the
 catalog, [`docs/modules.md`](docs/modules.md), lists them by concern
@@ -219,39 +216,32 @@ A game made with `shuyi new` rebuilds in about a second after a
 one-line change, on the stable Rust it pins. The book's [Fast
 compiles](https://zafnok.github.io/shuyi-engine/learn/book/fast-compiles/)
 has the numbers and the setup behind them, and the nightly-only options.
-`cargo xtask compile-times`, in this repository, measures it: a new
-`grid` game's clean build, its rebuild and `check` after a one-line
-change, a fixed reference build, and a new game's dependency count, and
-names the CPU. CI runs it on Linux and Windows, and fails a rebuild that
-takes longer, against the reference build on the same runner, than
-`tools/compile-budget.ron` allows, or a new game that depends on more
-crates than it says.
+CI measures it on Linux and Windows with `cargo xtask compile-times`,
+and fails a rebuild slower, or a dependency count higher, than
+`tools/compile-budget.ron` allows.
 
-## The first example: Hello, Grid
+## The examples
 
-`examples/hello-grid/` is a small game made from the engine's crates
-alone. Its art is the Terminus font (OFL-1.1) and a tileset `glyph-tiles`
-draws from it; its sounds are a few numbers each (`.sfx.ron`). Its
-[README](examples/hello-grid/README.md) says how it is laid out.
+Two small games made from the engine's crates alone, each with a README
+that says how it is laid out. CI builds them natively and for the web
+and runs their tests, and the website plays them.
 
-Run it, from the repository's root:
+- [Hello, Grid](examples/hello-grid/README.md): a turn-based grid stage,
+  with the screens most games need. Its art is the Terminus font
+  (OFL-1.1) and a tileset `glyph-tiles` draws from it; its sounds are a
+  few numbers each (`.sfx.ron`).
+- [Snake](examples/snake/README.md): a grid in real time, on the short
+  path (`BasicGame` and `run_game`).
+
+Run one from the repository's root, or build it for the web from its
+folder (the page goes to `dist/web/`; serve that folder over HTTP):
 
 ```
 cargo run -p hello-grid
+cd examples/hello-grid && cargo shuyi web --release
 ```
 
-Build it for the web, from its folder (the page goes to `dist/web/`;
-serve that folder over HTTP):
-
-```
-cd examples/hello-grid
-cargo shuyi web --release
-```
-
-CI builds it natively and for the web and runs its tests (`cargo test -p
-hello-grid`), and the website plays the web build at `/examples/hello-grid/`.
-
-What it shows, and the engine's part in each:
+What Hello, Grid shows, and the engine's part in each:
 
 | In the game | The engine's |
 | ----------- | ------------ |
