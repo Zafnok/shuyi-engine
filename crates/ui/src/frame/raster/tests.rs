@@ -739,3 +739,50 @@ fn a_glyph_style_moves_the_glyph_and_bold_strikes_it_twice() {
     let lit = |x: u32, y: u32| plain.pixel(x, y) == Some([fg.r, fg.g, fg.b, 255]);
     assert!(lit(0, 0) && lit(1, 10) && !lit(2, 10));
 }
+
+/// `image` as text, a character a pixel: `.` the clear colour, `r` red,
+/// `b` blue, `?` anything else.
+fn as_text(image: &Image) -> String {
+    let mut out = String::new();
+    for y in 0..image.height {
+        for x in 0..image.width {
+            out.push(match image.pixel(x, y) {
+                Some([16, 16, 16, 255]) => '.',
+                Some([255, 0, 0, 255]) => 'r',
+                Some([0, 0, 255, 255]) => 'b',
+                _ => '?',
+            });
+        }
+        out.push('\n');
+    }
+    out
+}
+
+#[test]
+fn a_sprite_inserted_into_an_atlas_is_drawn_on_the_next_frame() {
+    use crate::frame::atlas;
+    use shuyi_assets::atlas::AtlasBuilder;
+    let (painter, _) = painter(false);
+    let mut builder = AtlasBuilder::new("sprites", 16).with_padding(1);
+    builder
+        .add("red", &Image::filled(4, 4, Rgb::new(255, 0, 0)))
+        .unwrap();
+    let mut sprites = builder.build().unwrap();
+    // The game's buffer outlives its frames, and its pictures with it.
+    let mut buf = GlyphBuffer::new(2, 1, Cell::new(' ', CLEAR, CLEAR));
+    atlas::show(&sprites, buf.pictures_mut());
+    let at = |x| Rect::new(x, 2, 4, 4);
+    let red = atlas::sprite(&sprites, "red", at(2), Layer::Over).unwrap();
+    buf.add_painted(red);
+    let first = painter.render(&buf, 1);
+    // The next frame, a sprite added while the game runs.
+    let blue = Image::filled(4, 4, Rgb::new(0, 0, 255));
+    atlas::insert(&mut sprites, buf.pictures_mut(), "blue", &blue).unwrap();
+    buf.add_painted(atlas::sprite(&sprites, "blue", at(10), Layer::Over).unwrap());
+    let next = painter.render(&buf, 1);
+    insta::assert_snapshot!(format!(
+        "first frame:\n{}next frame:\n{}",
+        as_text(&first),
+        as_text(&next)
+    ));
+}

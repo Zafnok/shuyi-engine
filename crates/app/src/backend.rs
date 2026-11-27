@@ -693,7 +693,9 @@ impl Platform for Macroquad {
     /// shuyi_no_heap_count`.
     fn memory(&mut self) -> Option<MemoryReading> {
         let counts = global::reading()?;
-        let heap = HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs);
+        let heap = HeapCounts::new(counts.live_bytes)
+            .with_peak_bytes(counts.peak_bytes)
+            .with_allocs(counts.allocs);
         Some(MemoryReading::new(heap))
     }
 

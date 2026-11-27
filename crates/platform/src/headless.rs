@@ -499,7 +499,9 @@ fn fake_heap(n: u32) -> HeapCounts {
     const BASE: u64 = 1 << 20;
     const STEP: u64 = 16 * 1024;
     let wide = u64::from(n);
-    HeapCounts::new(BASE + STEP * (wide % 30), BASE + STEP * wide.min(29), n % 7)
+    HeapCounts::new(BASE + STEP * (wide % 30))
+        .with_peak_bytes(BASE + STEP * wide.min(29))
+        .with_allocs(n % 7)
 }
 
 /// The fake memory's snapshot after `n` frames presented, its rows adding
@@ -513,7 +515,7 @@ fn fake_snapshot(n: u32) -> HeapSnapshot {
     const STEP: u64 = 16 * 1024;
     let heap = fake_heap(n);
     let row = |class, name: &'static str, live_bytes, live_blocks, peak_bytes| {
-        let mut row = TagRow::new(class, name, live_bytes, live_blocks);
+        let mut row = TagRow::new(class, name, live_bytes).with_live_blocks(live_blocks);
         row.allocated_bytes = peak_bytes;
         row.peak_bytes = peak_bytes;
         row
@@ -534,7 +536,7 @@ fn fake_snapshot(n: u32) -> HeapSnapshot {
             peak,
         ));
     }
-    HeapSnapshot::new(heap.live_bytes, heap.peak_bytes, rows)
+    HeapSnapshot::new(heap.live_bytes, rows).with_peak_bytes(heap.peak_bytes)
 }
 
 /// A backend with no devices, for tests and tools.

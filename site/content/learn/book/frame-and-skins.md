@@ -179,6 +179,16 @@ picture's revision, not its pixels:
 
 {{ snippet(file="src/frame.rs", anchor="test_plasma") }}
 
+A **sprite atlas** is many small pictures packed onto a few big ones, its
+*pages*, so the graphics card holds one picture for many sprites. A file
+`atlas.ron` beside your sprites packs every picture of their folder as the
+game loads (`(from: "sprites/", page_size: 1024, padding: 1)`). Its pages
+go in the frame as painted pictures with `shuyi::ui::frame::atlas::show`,
+and `atlas::sprite` places one of its sprites. A picture made while the
+game runs (a player's avatar) goes in with `atlas::insert`: it finds free
+space on a page, or starts a new one, and only that page is sent to the
+graphics card again.
+
 ## Why tests read the view
 
 A test of what happened reads the view, or the state behind it:

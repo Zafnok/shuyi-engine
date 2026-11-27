@@ -281,7 +281,7 @@ fn a_line_logged_between_frames_carries_the_next() {
 fn the_harness_takes_its_platforms_heap_snapshots_at_its_frames() {
     let mut h = Harness::new(toy::game());
     assert_eq!(h.heap_snapshot(), None, "no fake memory, no counter");
-    h.set_heap_snapshots(Some(|| HeapSnapshot::new(7, 9, Vec::new())));
+    h.set_heap_snapshots(Some(|| HeapSnapshot::new(7, Vec::new()).with_peak_bytes(9)));
     h.frame(&[], FRAME_DT);
     let set = h.heap_snapshot().expect("the counter's snapshot");
     assert_eq!((set.frame, set.live_bytes, set.peak_bytes), (1, 7, 9));

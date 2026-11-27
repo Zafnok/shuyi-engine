@@ -632,7 +632,9 @@ fn now_us() -> u64 {
 #[inline(never)]
 pub(crate) fn process_heap() -> HeapCounts {
     global::reading().map_or_else(HeapCounts::default, |counts| {
-        HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs)
+        HeapCounts::new(counts.live_bytes)
+            .with_peak_bytes(counts.peak_bytes)
+            .with_allocs(counts.allocs)
     })
 }
 
@@ -1000,7 +1002,7 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     fn perf(&self, since: u64, max: u32) -> PerfRead {
-        PerfRead::of(self.harness.perf(), since, max)
+        PerfRead::of(self.harness.perf(), since).first(max)
     }
 
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {

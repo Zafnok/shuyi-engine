@@ -1434,8 +1434,8 @@ fn a_record_has_the_memory_read_at_its_frames_end() {
     assert_eq!(
         heaps,
         [
-            Some(HeapCounts::new(1_064_960, 1_064_960, 1)),
-            Some(HeapCounts::new(1_081_344, 1_081_344, 2)),
+            Some(HeapCounts::new(1_064_960).with_allocs(1)),
+            Some(HeapCounts::new(1_081_344).with_allocs(2)),
         ]
     );
     assert_eq!(p.memory_calls(), 2);

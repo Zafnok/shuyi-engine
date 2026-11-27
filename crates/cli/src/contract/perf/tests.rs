@@ -16,7 +16,7 @@ fn record(frame: u32, us: u32, spans: &[(&'static str, u32)]) -> FrameRecord {
     record.times.present_us = us / 16;
     record.spans = spans
         .iter()
-        .map(|&(name, us)| SpanEvent::new(name, 0, us, 0))
+        .map(|&(name, us)| SpanEvent::new(name, us))
         .collect();
     record
 }
@@ -36,13 +36,13 @@ fn frames(read: &PerfRead) -> Vec<u32> {
 #[test]
 fn a_read_answers_the_records_since_and_the_number_after_the_last() {
     let ring = ring(10, 6);
-    let all = PerfRead::of(&ring, 0, 120);
+    let all = PerfRead::of(&ring, 0);
     assert_eq!(frames(&all), [1, 2, 3, 4, 5, 6]);
     assert_eq!((all.next, all.dropped, all.measured), (6, 0, true));
-    let some = PerfRead::of(&ring, 2, 3);
+    let some = PerfRead::of(&ring, 2).first(3);
     assert_eq!(frames(&some), [3, 4, 5]);
     assert_eq!(some.next, 5);
-    let none = PerfRead::of(&ring, 6, 120);
+    let none = PerfRead::of(&ring, 6);
     assert!(none.records.is_empty(), "{none:?}");
     assert_eq!(none.next, 6);
 }
@@ -51,33 +51,49 @@ fn a_read_answers_the_records_since_and_the_number_after_the_last() {
 fn a_read_past_a_full_ring_counts_what_it_dropped() {
     // Ten kept of twenty-five: numbers 15 to 24.
     let ring = ring(10, 25);
-    let read = PerfRead::of(&ring, 0, 120);
+    let read = PerfRead::of(&ring, 0);
     assert_eq!(frames(&read), (16..=25).collect::<Vec<_>>());
     assert_eq!((read.next, read.dropped), (25, 15));
-    let later = PerfRead::of(&ring, 12, 4);
+    let later = PerfRead::of(&ring, 12).first(4);
     assert_eq!(frames(&later), [16, 17, 18, 19]);
     assert_eq!((later.next, later.dropped), (19, 3));
-    let kept = PerfRead::of(&ring, 20, 120);
+    let kept = PerfRead::of(&ring, 20);
     assert_eq!(kept.dropped, 0);
 }
 
 #[test]
 fn a_read_past_the_rings_next_number_reads_nothing_from_0() {
-    let read = PerfRead::of(&ring(10, 3), 8, 120);
+    let read = PerfRead::of(&ring(10, 3), 8);
     assert!(read.records.is_empty(), "{read:?}");
     assert_eq!((read.next, read.dropped, read.measured), (0, 0, true));
 }
 
 #[test]
 fn a_ring_never_pushed_measured_nothing() {
-    let read = PerfRead::of(&PerfRing::new(10), 0, 120);
+    let read = PerfRead::of(&PerfRing::new(10), 0);
     assert!(!read.measured);
     assert_eq!(read.next, 0);
     assert_eq!(PerfRead::none(4), {
-        let mut none = PerfRead::of(&PerfRing::new(1), 0, 1);
+        let mut none = PerfRead::of(&PerfRing::new(1), 0).first(1);
         none.next = 4;
         none
     });
+}
+
+#[test]
+fn a_read_of_its_first_records_builds_what_a_literal_built() {
+    let ring = ring(10, 6);
+    let records: Vec<FrameRecord> = ring.since(2).take(3).cloned().collect();
+    let literal = PerfRead {
+        records,
+        next: 5,
+        dropped: 0,
+        measured: true,
+    };
+    assert_eq!(PerfRead::of(&ring, 2).first(3), literal);
+    // Keeping more than were read keeps them all, with the same next.
+    assert_eq!(PerfRead::of(&ring, 2).first(9), PerfRead::of(&ring, 2));
+    assert_eq!(PerfRead::of(&ring, 2).first(0).next, 2);
 }
 
 #[test]
@@ -163,7 +179,7 @@ fn a_line_with_a_field_it_doesnt_know_is_refused() {
 #[test]
 fn a_line_has_its_heap_only_where_it_was_counted() {
     let mut counted = record(2, 900, &[]);
-    counted.heap = Some(HeapCounts::new(2048, 4096, 5));
+    counted.heap = Some(HeapCounts::new(2048).with_peak_bytes(4096).with_allocs(5));
     let text = lines(&[record(1, 1000, &[]), counted.clone()]);
     let (plain, heap) = text.trim_end().split_once('\n').unwrap();
     assert!(!plain.contains("heap"), "{plain}");
@@ -178,7 +194,11 @@ fn a_line_has_its_heap_only_where_it_was_counted() {
 /// Frame `frame`'s record with the heap's counts.
 fn counted(frame: u32, live: u64, peak: u64, allocs: u32) -> FrameRecord {
     let mut record = record(frame, 1000, &[]);
-    record.heap = Some(HeapCounts::new(live, peak, allocs));
+    record.heap = Some(
+        HeapCounts::new(live)
+            .with_peak_bytes(peak)
+            .with_allocs(allocs),
+    );
     record
 }
 
@@ -269,11 +289,11 @@ fn the_limits_say_why_nothing_was_measured_and_what_was_dropped() {
 /// A diff from frame 0 to 600 of `live_bytes` in all, with `changes`
 /// (name, bytes) in order.
 fn diff(live_bytes: i64, changes: &[(&'static str, i64)]) -> HeapDiff {
-    let mut diff = HeapDiff::new(0, 600);
+    let mut diff = HeapDiff::until(600);
     diff.live_bytes = live_bytes;
     diff.tags = changes
         .iter()
-        .map(|&(name, bytes)| TagDelta::new(TagClass::Span, name, bytes, 1))
+        .map(|&(name, bytes)| TagDelta::new(TagClass::Span, name, bytes).with_live_blocks(1))
         .collect();
     diff
 }
@@ -326,9 +346,12 @@ fn the_heaps_line_follows_the_perf_line() {
 fn the_summary_keeps_ten_rows_of_the_last_snapshot_and_of_the_diff() {
     let rows = |frame: u32, bytes: u64| {
         let rows: Vec<TagRow> = (0..12u64)
-            .map(|n| TagRow::new(TagClass::Span, format!("span {n:02}"), bytes * (n + 1), 1))
+            .map(|n| {
+                TagRow::new(TagClass::Span, format!("span {n:02}"), bytes * (n + 1))
+                    .with_live_blocks(1)
+            })
             .collect();
-        let mut snapshot = HeapSnapshot::new(0, 0, rows);
+        let mut snapshot = HeapSnapshot::new(0, rows);
         snapshot.frame = frame;
         snapshot
     };
@@ -351,9 +374,15 @@ fn the_summary_keeps_ten_rows_of_the_last_snapshot_and_of_the_diff() {
 
 #[test]
 fn the_heaps_lines_are_the_two_snapshots_then_their_diff() {
-    let mut first = HeapSnapshot::new(10, 10, vec![TagRow::new(TagClass::Phase, "load", 10, 1)]);
+    let mut first = HeapSnapshot::new(
+        10,
+        vec![TagRow::new(TagClass::Phase, "load", 10).with_live_blocks(1)],
+    );
     first.frame = 0;
-    let mut last = HeapSnapshot::new(30, 30, vec![TagRow::new(TagClass::Phase, "load", 30, 2)]);
+    let mut last = HeapSnapshot::new(
+        30,
+        vec![TagRow::new(TagClass::Phase, "load", 30).with_live_blocks(2)],
+    );
     last.frame = 5;
     let text = heap_lines(&first, &last);
     assert!(text.ends_with('\n'));

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2219"]
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 2222 — Sprite atlases
@@ -117,15 +117,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] No two packed rectangles overlap, and each is inside its page with
+- [x] No two packed rectangles overlap, and each is inside its page with
       its padding (property test over random sizes).
-- [ ] The same images in any order give the same atlas (property test).
-- [ ] An atlas packed at load equals the baked one (the pack's test).
-- [ ] An inserted sprite is drawn on the next frame (a `frame-png`
+- [x] The same images in any order give the same atlas (property test).
+- [x] An atlas packed at load equals the baked one (the pack's test).
+- [x] An inserted sprite is drawn on the next frame (a `frame-png`
       snapshot).
-- [ ] The render card holds an atlas sprite and an inserted one, and
+- [x] The render card holds an atlas sprite and an inserted one, and
       2018's `render` job passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -135,4 +135,77 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done:**
+- `shuyi_assets::atlas` (`crates/assets/src/atlas.rs`): `Atlas` (the kind,
+  `atlas`), `Page`, `Placed { page, rect }`, `AtlasError`, `AtlasBuilder`,
+  `AtlasSpec` and `AtlasRon`. A bottom-left skyline packer, the tallest
+  first then by name; each page keeps its skyline, so `Atlas::insert` puts
+  a sprite in free space or on a new page and moves none. `AtlasRon` is a
+  standard format (`atlas`, `.ron`): an `atlas.ron` packs every image
+  directly inside `from` through a registry of the picture formats whose
+  features are on (`Formats::load_each`).
+- `target::Display::max_texture_side` (4096 unless said, 2048 in
+  `targets/web.ron`), given to `AtlasBuilder::with_max_side` and
+  `AtlasRon::with_max_side`.
+- Bake: `Atlas` is `Bakeable`; the pack's test bakes `sprites/atlas.ron`
+  and checks the atlas read from the pack equals the one packed at load.
+  `pack::VERSION` is 25 (the target profile's binary form grew; 23 and 24 went to 2280 and 3247 on `main` first), and the
+  binary form of `Atlas` is pinned beside the others.
+- `shuyi_ui::frame::atlas::{show, insert, sprite, page_id}`: a page is a
+  painted picture of the frame (ADR-0078) named by the page, so
+  `shuyi-app` uploads it the first frame a sprite draws it and again when
+  `insert` moves its revision (through `upload_rgba` now), and the raster
+  paints it. ADR-0157 records why.
+- The render card holds an atlas sprite (`Over`) and one inserted after
+  its page was shown (`Under`); a raster snapshot shows a sprite inserted
+  between two frames drawn on the next one.
+- Docs: `docs/formats.md` (a built-in formats row, *Sprite atlases*, the
+  kinds row split), the book's *Frame and skins*, ADR-0157. Handoffs
+  written in 1123 and 3229 as **From 2222 (done)**.
+
+**Deviations:**
+- The ticket's `.add(name, &Bitmap)`: `bitmap::Bitmap` is the one-bit
+  file reader; RGBA pixels are `image::Image`, which `add` and `insert`
+  take.
+- `AtlasBuilder::new(id, page_size).with_padding(padding)`, not
+  `new(page_size, padding)`: ADR-0151 (no two neighbouring numbers), and
+  an id names the pages (`id#0`), which a frame needs as `&'static str`.
+- `build()` gives `Result<Atlas, AtlasError>` and `insert` gives
+  `Result<Placed, AtlasError>`, not `Full`: an atlas is never full (a new
+  page is made), so the errors are a sprite too big for a page, a name
+  taken, and a picture with no pixels.
+- "The sprite skin draws a sprite from its atlas page": an atlas sprite is
+  a `PaintedSprite` of the page's picture, not a `Sprite` (ADR-0157 §5),
+  so it has a painted sprite's brightness and clip, not a sprite's paints,
+  opacity or mirroring. The window and the raster needed no new path.
+- 1123 isn't done, so `Atlas` is written here and 1123 adds its import
+  fields (its Scope says how, from this ticket).
+- 3229 isn't done: nothing to do; its ticket now says the painted
+  textures' forget path covers the pages.
+- The `render` job (2018) is CI's: the render card example compares the
+  window with the raster there; it wasn't run locally.
+
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "target profile: target-ron": a target profile's binary form has `max_texture_side`, and a baked pack is of version 25; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 25, its target profiles with a texture limit; a pack of version 24 is refused.
+old: "pack::VERSION == 24"
+new: "pack::VERSION == 25"
+before: |
+  cargo shuyi bake   # with the engine before 2222
+after: |
+  cargo shuyi bake   # again, with this engine
+```
+
+Behaviour: shuyi-assets: `Formats::standard()` has an `atlas` format of the new `Atlas` kind, claiming `.ron`: `Formats::load_under::<Atlas>` reads every `.ron` file of a folder as an `atlas.ron`.
+Behaviour: shuyi-assets: `TargetProfile`'s `display` has `max_texture_side` (4096 unless said; the engine's `web` profile says 2048).
+Behaviour: shuyi-app: a painted picture's texture is made with `upload_rgba` (the same nearest filter as before).
+
+Skills: none, the skill pack's worked examples draw no atlas and name no pack version.
+
+Game: nothing to adopt, the game bakes no packs, builds no `Display` literal and keeps no golden row of a target profile (searched `gh search code --repo Zafnok/visions-of-shuyi` for `TargetProfile`, `pack::VERSION` and `max_texture_side`: `TargetProfile::from_source` of its Playdate profile reads the new field's default).
+
+Size: 1,554 counted lines, past 1,500 only by the skyline's direct tests that CI's mutation testing asked for; the frame half (`shuyi_ui::frame::atlas`, the render card) draws the assets half's `Atlas`, and the ticket's acceptance needs both, so they landed together.
+
+Nick input: none.
