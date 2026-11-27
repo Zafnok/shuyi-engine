@@ -7,10 +7,12 @@
 //! A Learn page is read as its twin is (`cargo xtask llms`):
 //! its front matter dropped, a `snippet` shortcode replaced by the code it
 //! shows, a `shot` by its picture's alt text and caption, the bodies of
-//! `newcomer`, `check` and `exercise` kept without their markers, and
-//! `try_it` dropped. [`learn_page`] is that text.
+//! `newcomer`, `check` and `exercise` kept without their markers,
+//! `engine_terms` replaced by appendix A's table, and `try_it` dropped.
+//! [`learn_page`] is that text.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 use serde::Deserialize;
 
@@ -159,6 +161,45 @@ fn embedded_file(step: Option<&str>, file: &str) -> Option<String> {
     }
 }
 
+/// The other engines' words, appendix A's table.
+const ENGINE_TERMS: &str = include_str!("../../../../../site/data/engine-terms.toml");
+
+/// A row of `engine-terms.toml`, the columns the table shows.
+#[derive(Debug, Deserialize)]
+struct Term {
+    shuyi: String,
+    godot: String,
+    unity: String,
+    bevy: String,
+    gamemaker: String,
+    pico8: String,
+}
+
+/// `engine-terms.toml`'s rows.
+#[derive(Debug, Deserialize)]
+struct Terms {
+    #[serde(default)]
+    term: Vec<Term>,
+}
+
+/// The `engine_terms` shortcode: appendix A's table, from `terms` (the
+/// TOML of `site/data/engine-terms.toml`), as its twin writes it.
+fn engine_terms(terms: &str) -> Result<String, String> {
+    let terms: Terms = toml_edit::de::from_str(terms).map_err(|e| format!("engine_terms: {e}"))?;
+    let mut out = String::from(
+        "| Shuyi Engine | Godot | Unity | Bevy | GameMaker | PICO-8 |\n\
+         | ------------ | ----- | ----- | ---- | --------- | ------ |",
+    );
+    for t in terms.term {
+        let _ = write!(
+            out,
+            "\n| {} | {} | {} | {} | {} | {} |",
+            t.shuyi, t.godot, t.unity, t.bevy, t.gamemaker, t.pico8
+        );
+    }
+    Ok(out)
+}
+
 /// The blocks whose body is kept, and their markers dropped.
 const BLOCKS: [&str; 3] = ["newcomer", "check", "exercise"];
 
@@ -222,6 +263,10 @@ pub fn clean(
                 Err(e) => unknown.push(e),
             },
             ("{{", "try_it") => {}
+            ("{{", "engine_terms") => match engine_terms(ENGINE_TERMS) {
+                Ok(table) => out.push_str(&table),
+                Err(e) => unknown.push(e),
+            },
             ("{%", block) if BLOCKS.contains(&block) => {}
             _ => unknown.push(format!(
                 "the shortcode `{name}` has no reading in the corpus"

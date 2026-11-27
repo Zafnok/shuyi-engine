@@ -717,6 +717,23 @@ the shape of <https://llmstxt.org/>:
 - the contract's schemas, `crates/cli/schemas/`, at
   `/contract/schemas/v<N>/`, with an `index.md`.
 
+Before it, `cargo xtask api-text --out public/api` (`crates/xtask/src/api_text.rs`,
+ticket 3413) writes each crate's API as text beside its HTML,
+`/api/<crate>.txt`, which `llms.txt` links: a line per item of its
+`cargo-public-api` listing, with its first doc sentence, its doc aliases
+and its deprecation from rustdoc's JSON. It needs the `api` job's nightly
+and `cargo-public-api` (the consts in `crates/xtask/src/api.rs`), which
+pages.yml installs.
+
+Appendix A's table, *Coming from another engine*, is drawn from
+[`data/engine-terms.toml`](data/engine-terms.toml) by the `engine_terms`
+shortcode: a row per term, and beside the rows the names agents guess
+from other engines. Each name it gives an item is that item's
+`#[doc(alias)]`, so rustdoc's search finds it. Change the file, never the
+page's table; `cargo xtask api-text --check` (CI's `api` job) fails a path
+that names no public item, an alias missing from its item or from the
+file, and a "none yet" row whose ticket is done.
+
 Change Learn, never a twin: they are written at each build. The twins
 follow Zola's URL rule only for names already in slug form, so a Learn
 page that sets `slug` or `path`, or a file or folder named other than

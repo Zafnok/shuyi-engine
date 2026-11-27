@@ -326,6 +326,31 @@ fn the_text_of_the_fixture_crate() {
 }
 
 #[test]
+fn the_workflows_install_the_api_jobs_tools_and_run_api_text() {
+    let pages = include_str!("../../../../.github/workflows/pages.yml");
+    let ci = include_str!("../../../../.github/workflows/ci.yml");
+    for pinned in [
+        format!(
+            "rustup toolchain install {} --profile minimal",
+            api::NIGHTLY
+        ),
+        format!(
+            "cargo install --locked cargo-public-api@{}",
+            api::PUBLIC_API
+        ),
+        "cargo xtask api-text --out site/public/api".to_owned(),
+    ] {
+        assert!(pages.contains(&pinned), "pages.yml lacks `{pinned}`");
+    }
+    // After the API docs are copied in (they replace site/public/api), and
+    // before llms.txt's links to the files are checked.
+    let text = pages.find("cargo xtask api-text").unwrap();
+    assert!(pages.find("cp -r target/doc site/public/api").unwrap() < text);
+    assert!(text < pages.find("cargo xtask llms --public").unwrap());
+    assert!(ci.contains("cargo xtask api-text --check"));
+}
+
+#[test]
 fn site_crates_pairs_each_crate_of_api_toml_with_its_check() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let crates = site_crates(&root).unwrap();

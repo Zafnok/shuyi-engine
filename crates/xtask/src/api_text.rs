@@ -126,6 +126,23 @@ pub fn read_terms(text: &str) -> Result<Terms, String> {
     toml::from_str(text).map_err(|e| format!("{TERMS}: {e}"))
 }
 
+/// Appendix A's table in Markdown, a row per term, as the `engine_terms`
+/// shortcode draws it (`site/templates/shortcodes/engine_terms.md`).
+pub fn table(terms: &Terms) -> String {
+    let mut out = String::from(
+        "| Shuyi Engine | Godot | Unity | Bevy | GameMaker | PICO-8 |\n\
+         | ------------ | ----- | ----- | ---- | --------- | ------ |\n",
+    );
+    for term in &terms.term {
+        let _ = write!(out, "| {} |", term.shuyi);
+        for (_, words) in term.engines() {
+            let _ = write!(out, " {words} |");
+        }
+        out.push('\n');
+    }
+    out
+}
+
 /// Whether `word` can be a doc alias here: an identifier.
 fn is_identifier(word: &str) -> bool {
     let mut chars = word.chars();

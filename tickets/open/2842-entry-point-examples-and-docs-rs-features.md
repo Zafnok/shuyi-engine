@@ -104,7 +104,8 @@ None.
   reuse the crate root's game.
 - Small standalone task programs (`examples/cookbook/`): 2786 writes
   them. This ticket writes rustdoc examples on the entry-point types.
-- `#[doc(alias)]`, a plain-text API per crate and domain preludes: 3413.
+- `#[doc(alias)]` and a plain-text API per crate: 3413 (done); domain
+  preludes: 3438.
 - Examples on items outside the list. The list grows in the ticket that
   adds a new entry point.
 - Removing ticket numbers, game tickets and other repository process

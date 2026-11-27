@@ -158,11 +158,9 @@ None.
   *Time in rules*; a row in `from-another-engine.md`'s table (Unreal's
   attributes and gameplay effects, Godot's and Unity's stat patterns).
 
-**Either order with 3413:** if 3413 is done, write the stats row of
-appendix A in `site/data/engine-terms.toml` (the page's table is drawn
-from it, and `cargo xtask api-text --check` checks its paths); if not,
-add it to the page's table in `from-another-engine.md`, and 3413 moves
-it into the data file.
+Appendix A's table is drawn from `site/data/engine-terms.toml` (3413,
+done): write the stats row there, with the paths it names; `cargo xtask
+api-text --check` checks the paths.
 
 **Out (do not do):**
 - Any stat, pool, effect, item or slot named in engine code, and any
