@@ -395,7 +395,7 @@ Deviations:
 - Not split. The ticket's **Split** was for `shuyi-app`'s and the
   Playdate's own handle per copy; since 3029 both play through the shared
   `Player`, so that part is about 100 lines there, and splitting it off
-  would leave every backend ignoring `StopCopy`. The PR is about 1,050
+  would leave every backend ignoring `StopCopy`. The PR is about 1,110
   counted lines, under the 1,400 estimated.
 - `copy` defaults to `CopyId::NONE`, so a `Sound` built with
   `SoundRequest::sound` alone (a test, a backend's own) names no copy and
@@ -430,7 +430,7 @@ Searched the game (`gh search code --repo Zafnok/visions-of-shuyi` for
 variant, .. }` and reads `DropWhy::Gap`, which still compile; it names
 no `CueRules` or `max_voices`, so its manifests load unchanged.
 
-Game: nothing to adopt, its manifests name no new field and its sound test still compiles; the pin move rebakes its pack, as the pack's version asks, and its Playdate front end (game#1170, open) runs on `shuyi-playdate`, whose shared player stops a cut copy itself.
+Game: nothing to adopt, but in the pin move itself: its manifests name no new field and its sound test still compiles; the pin move rebakes its pack and blesses `crates/ui/tests/it/sessions/quick_battle.session.ron` again, as the `Breaking:` lines say, and its Playdate front end (game#1170, open) runs on `shuyi-playdate`, whose shared player stops a cut copy itself.
 
 Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form holds its copy cap, its rule when full and its priority, and the manifest's its voice limit, so a baked pack is of version 26; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
@@ -443,6 +443,19 @@ before: |
   cargo shuyi bake   # with the engine before 2378
 after: |
   cargo shuyi bake   # again, with this engine
+```
+
+Breaking: shuyi-platform: a session record's frame hashes: each frame's hash covers the sounds sent with their copy (`SoundRequest::Sound`'s `copy`), so a record kept before plays differently from its first sound; a game blesses its kept records again (hello-grid's `tests/sessions/stage.session.ron` is).
+
+```migration
+since: 0.1.0
+what: A session record's frame hashes hold each sound's copy id, so a kept record is blessed again.
+old: "a frame hash over SoundRequest::Sound { cue, volume, variant, cue_volume }"
+new: "a frame hash over SoundRequest::Sound { cue, volume, variant, cue_volume, copy }"
+before: |
+  assert_session(start(), kept("run.session.ron"));   # passes on the old engine
+after: |
+  SHUYI_BLESS=1 cargo test   # write the record again, then assert_session as before
 ```
 
 Behaviour: shuyi-platform: each `SoundRequest::Sound` `App` sends names its copy (`copy`, a `CopyId` from 1), so a test that compares one to `SoundRequest::sound(..).with_pick(..)` adds `.with_copy(..)`; a `Sound` built alone has `CopyId::NONE`.
