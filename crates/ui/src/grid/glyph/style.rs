@@ -184,8 +184,8 @@ impl GlyphStyle {
         self.draw_tiles_shown(RangeShow::TINT, looks, colors, buf, scene, layout);
     }
 
-    /// [`draw_tiles`](Self::draw_tiles), its ranges shown as `show` (ticket
-    /// 3224): tinted as strongly as it says, with its outline and relief
+    /// [`draw_tiles`](Self::draw_tiles), its ranges shown as `show`:
+    /// tinted as strongly as it says, with its outline and relief
     /// under the glyphs ([`RangeShow::overlays`], 1-pixel lines). A
     /// [fill](RangeLook::Fill) takes only its spread: a tile fills once the
     /// spread has reached it.

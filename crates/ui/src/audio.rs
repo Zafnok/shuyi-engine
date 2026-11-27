@@ -1213,8 +1213,8 @@ mod tests {
         assert_eq!(m.current(), None);
     }
 
-    /// A whole fade-out's gain as it was written by hand before ticket
-    /// 2136, `elapsed` seconds into a fade of `secs`.
+    /// A whole fade-out's gain as it was first written by hand, a
+    /// straight line, `elapsed` seconds into a fade of `secs`.
     fn gain_before(elapsed: f32, secs: f32) -> f32 {
         (1.0 - elapsed / secs).clamp(0.0, 1.0)
     }

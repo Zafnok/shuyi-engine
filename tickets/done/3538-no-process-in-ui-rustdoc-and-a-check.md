@@ -129,6 +129,11 @@ None.
 - Docs: the module's docs, the `run-gates` skill's line on
   `check-links`, and rule 4 of the docs map say the check reads rustdoc.
 - 2842's **Out** line now says 3538 did `shuyi-ui` and the check.
+- The check reads one line at a time, so a reference broken across two
+  lines (`ticket` ending one, the number starting the next) isn't found.
+  The six of those in `shuyi-ui` were rewritten by hand; about twelve
+  remain in `shuyi-app`, `shuyi-assets`, `shuyi-cli`, `shuyi-platform`
+  and `shuyi-sound-out`.
 
 No break. Doc comments and an xtask check only.
 

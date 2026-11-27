@@ -268,8 +268,8 @@ impl<U> Ground<'_, U> {
         dest.intersect(&self.grid.bounds()).map(|_| dest)
     }
 
-    /// What tints each tile, over its pictures, as `show` says (ticket
-    /// 3224): the tints as strong as it says, then its outline and relief
+    /// What tints each tile, over its pictures, as `show` says:
+    /// the tints as strong as it says, then its outline and relief
     /// in lines a pixel thick at the art's size (so 2 at twice the zoom,
     /// as the game's renders that picked it were drawn).
     fn paint_tints(&self, looks: &Looks, show: RangeShow, buf: &mut GlyphBuffer) {

@@ -21,8 +21,8 @@
 //! - a sprite atlas's pages among them (ADR-0157): a sprite packed into
 //!   a page, and one inserted after the page was shown;
 //! - two key caps: a box under each, the name's glyph moved
-//!   off the grid and bold, one drawn from the atlas's bold face (ticket
-//!   3216) and one, which the face lacks, struck twice;
+//!   off the grid and bold, one drawn from the atlas's bold face
+//!   and one, which the face lacks, struck twice;
 //! - a backdrop at zoom 2, its scene offset by half a scene pixel, with
 //!   a painted picture of its own;
 //! - the debug view's gizmos (ADR-0085) over everything: lines into all

@@ -187,8 +187,8 @@ impl<A: ActionSet> Keymap<A> {
     }
 
     /// How long `button` holds back its own actions when pressed, so that
-    /// a [button chord](ButtonChord) with it can fire instead (ticket
-    /// 1034). A button in no chord, or whose own action
+    /// a [button chord](ButtonChord) with it can fire instead.
+    /// A button in no chord, or whose own action
     /// [repeats](ActionSet::is_repeatable) (the D-pad on the cursor), acts
     /// on press. Otherwise it waits until it is let go if a partner of its
     /// acts on press (`B` in `B+←`: hold it as long as you like before `←`)

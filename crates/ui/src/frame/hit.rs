@@ -1,5 +1,5 @@
-//! Hit areas: where a painter put what the pointer can land on (ticket
-//! 2405, ADR-0134). A painter records each area in the frame as it paints
+//! Hit areas: where a painter put what the pointer can land on
+//! (ADR-0134). A painter records each area in the frame as it paints
 //! it ([`GlyphBuffer::hit`](super::GlyphBuffer::hit)), so the geometry is
 //! the look's own and the views stay plain data. The pointer looks a
 //! place up with [`GlyphBuffer::hit_at`](super::GlyphBuffer::hit_at): the
