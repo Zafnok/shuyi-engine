@@ -1028,6 +1028,10 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # The macroquad backend's build scripts need the system libraries
+      # (libudev for its gamepads), as clippy's do.
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - run: cargo xtask compile-messages
 
   # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
