@@ -64,9 +64,11 @@ impl Volumes {
     }
 
     /// Sets `group` where an old linear volume of `percent` (0–100) sounds
-    /// the same on the loudness curve
+    /// the same on the decibel curve, the default one
     /// ([`position_of_linear`](crate::audio::loudness::position_of_linear)):
-    /// for a saved form that reads the volumes it wrote before the curve.
+    /// for a saved form that reads the volumes it wrote before the curve. A
+    /// game on the straight line (ADR-0157) sets the same number with
+    /// [`set`](Self::set) instead.
     pub fn set_from_linear(&mut self, group: &str, percent: u8) {
         self.set(group, crate::audio::loudness::position_of_linear(percent));
     }

@@ -46,6 +46,22 @@ pub fn is_built_in(group: &str) -> bool {
     BUILT_IN.iter().any(|&(id, _)| id == group)
 }
 
+/// How a player's volume, 0 to 100, becomes the gain it plays at: the
+/// manifest's `volume_curve` (ADR-0157), one for every group of a game.
+/// `Decibels` unless the file says otherwise.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum VolumeCurve {
+    /// Each step is the same change in loudness, 0.6 dB, so the slider's
+    /// whole length is heard (ADR-0091): 50 is 30 dB under 100, and 1 is
+    /// 59.4 dB under it.
+    #[default]
+    Decibels,
+    /// Each number is that percentage of full: 20 plays at 20% of full,
+    /// 1 at 1%, 100 at full.
+    Linear,
+}
+
 /// A sound group as the manifest declares it: a game's own, or a built-in
 /// one whose default the game sets (`volume` alone). Build it with
 /// `default()` and assign its fields (ADR-0039).
@@ -86,9 +102,10 @@ pub struct DuckRule {
     pub when: String,
     /// The group lowered: any group but `when` and its parents.
     pub lower: String,
-    /// How far down it goes, as a position on the loudness curve (0–100):
-    /// its gain is multiplied by that position's. 80 lowers it by 12 dB,
-    /// and 100 changes nothing.
+    /// How far down it goes, as a position on the decibel curve (0–100,
+    /// [`VolumeCurve::Decibels`]) whatever the game's own curve: its gain
+    /// is multiplied by that position's. 80 lowers it by 12 dB, and 100
+    /// changes nothing.
     pub to: u8,
     /// How long it takes to go down, in milliseconds (0: at once).
     pub attack_ms: u32,

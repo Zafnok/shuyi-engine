@@ -1,8 +1,13 @@
-//! The loudness curve (ADR-0091): a volume the player sets, 0 to 100, as
-//! the [`Gain`] it plays at. Each step is the same change in loudness
-//! ([`STEP_DB_TENTHS`]), so the slider's whole length is heard, where a
-//! linear one crowds what a player hears into its top steps. Integers
-//! only: a backend's mixer of our own takes the same units.
+//! The volume curves: a volume the player sets, 0 to 100, as the [`Gain`]
+//! it plays at, on the game's [`VolumeCurve`] ([`gain_on`]). On the
+//! decibel curve (ADR-0091, [`loudness`], the default) each step is the
+//! same change in loudness ([`STEP_DB_TENTHS`]), so the slider's whole
+//! length is heard, where a linear one crowds what a player hears into
+//! its top steps. On the straight line (ADR-0157, [`linear`]) each number
+//! is that percentage of full. Integers only: a backend's mixer of our
+//! own takes the same units.
+
+pub use shuyi_assets::audio::VolumeCurve;
 
 use crate::settings::MAX_VOLUME;
 
@@ -76,9 +81,33 @@ pub fn loudness(volume: u8) -> Gain {
     Gain(TABLE[usize::from(volume.min(MAX_VOLUME))])
 }
 
-/// The volume whose gain is nearest `percent` of full (0 to 100; above it
-/// counts as 100): an old linear volume put where it sounds the same. 80
-/// gives 97, 35 gives 85.
+/// The gain a volume of `volume` (0 to [`MAX_VOLUME`]) plays at on the
+/// straight line ([`VolumeCurve::Linear`]): `volume` percent of full,
+/// rounded to the nearest unit, so 20 is 819 of 4096 and 1 is 41; above
+/// [`MAX_VOLUME`] counts as it.
+#[must_use]
+pub fn linear(volume: u8) -> Gain {
+    let volume = u32::from(volume.min(MAX_VOLUME));
+    let max = u32::from(MAX_VOLUME);
+    let units = (volume * u32::from(Gain::UNIT) + max / 2) / max;
+    // At most UNIT, since volume is at most MAX_VOLUME.
+    Gain::new(u16::try_from(units).unwrap_or(Gain::UNIT))
+}
+
+/// The gain a volume of `volume` plays at on `curve`: [`loudness`] on the
+/// decibel curve, [`linear`] on the straight line.
+#[must_use]
+pub fn gain_on(curve: VolumeCurve, volume: u8) -> Gain {
+    match curve {
+        VolumeCurve::Linear => linear(volume),
+        _ => loudness(volume),
+    }
+}
+
+/// The volume whose gain on the decibel curve is nearest `percent` of
+/// full (0 to 100; above it counts as 100): an old linear volume put where
+/// it sounds the same. 80 gives 97, 35 gives 85. On the straight line an
+/// old linear volume is the same number.
 #[must_use]
 pub fn position_of_linear(percent: u8) -> u8 {
     let percent = percent.min(100);
@@ -122,6 +151,32 @@ mod tests {
         assert_eq!(position_of_linear(0), 0);
         assert_eq!(position_of_linear(100), 100);
         assert_eq!(position_of_linear(250), 100);
+    }
+
+    #[test]
+    fn on_the_straight_line_each_volume_is_that_percent_of_full() {
+        assert_eq!(linear(0), Gain::SILENT);
+        assert_eq!(linear(1).get(), 41);
+        assert_eq!(linear(20).get(), 819);
+        assert_eq!(linear(100), Gain::FULL);
+        assert_eq!(linear(250), Gain::FULL);
+        let mut last = Gain::SILENT;
+        for v in 0..=100_u8 {
+            let gain = linear(v);
+            let want = f64::from(v) / 100.0 * f64::from(Gain::UNIT);
+            assert!((f64::from(gain.get()) - want).abs() <= 0.5, "volume {v}");
+            assert!(gain >= last, "volume {v} went down");
+            last = gain;
+        }
+    }
+
+    #[test]
+    fn each_curve_gives_its_own_gain() {
+        for v in 0..=101_u8 {
+            assert_eq!(gain_on(VolumeCurve::Decibels, v), loudness(v));
+            assert_eq!(gain_on(VolumeCurve::Linear, v), linear(v));
+        }
+        assert_eq!(gain_on(VolumeCurve::default(), 20), loudness(20));
     }
 
     #[test]
