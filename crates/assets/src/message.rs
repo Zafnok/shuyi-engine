@@ -516,8 +516,8 @@ impl<'a> Message<'a> {
     /// [`walk`](Self::walk), each value lent rather than given
     /// ([`ToArg::with_arg_ref`]): a select compares a text value, or a
     /// number's digits written on the stack, and copies nothing, so a
-    /// walk on text, characters and integers allocates nothing (ticket
-    /// 2268). A `#` of a number too big for an `i64` is handed out as
+    /// walk on text, characters and integers allocates nothing. A `#` of
+    /// a number too big for an `i64` is handed out as
     /// [`Piece::Text`] of its digits, as `walk` hands it.
     ///
     /// ```

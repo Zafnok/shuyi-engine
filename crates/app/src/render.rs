@@ -21,8 +21,8 @@
 //!
 //! A picture's pixels come from `pixels`: a PNG decoded by macroquad, any
 //! other file by the formats of `Formats::standard()`, those whose feature
-//! of `shuyi-assets` the game turns on (JPEG, WebP, QOI, JPEG XL; ticket
-//! 2234). The font atlas stays a PNG.
+//! of `shuyi-assets` the game turns on (JPEG, WebP, QOI, JPEG XL). The
+//! font atlas stays a PNG.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};

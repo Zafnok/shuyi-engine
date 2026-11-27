@@ -14,8 +14,7 @@
 //! game registers. Its pixels are the [`Image`] kind, which `Png` reads
 //! with the `png` feature. A game that draws through `shuyi-app` needs
 //! none for a PNG: the platform decodes a PNG's pixels when it uploads the
-//! picture, and any other picture's with [`Formats::standard`] (ticket
-//! 2234).
+//! picture, and any other picture's with [`Formats::standard`].
 //!
 //! JPEG, WebP, QOI and JPEG XL are formats of both kinds too, each behind
 //! its own feature (`jpeg`, `webp`, `qoi`, `jpeg-xl`):

@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3538"]
 nick_input: none
-completed:
+completed: 2026-11-26
 ---
 
 # 3543 — The rustdoc process check reads a reference wrapped across two doc lines, and the ten left outside shuyi-ui are rewritten
@@ -104,23 +104,23 @@ No public type or function changes; the API listing stays the same.
 
 ## Acceptance criteria
 
-- [ ] `process_words` on `/// before ticket\n/// 2234 after` returns
+- [x] `process_words` on `/// before ticket\n/// 2234 after` returns
       `(1, "ticket 2234")`; on `//! the (game\n//! ADR-0019) said` returns
       `(1, "game ADR")`.
-- [ ] `process_words` returns nothing for `/// a ticket\n// 2234` (the
+- [x] `process_words` returns nothing for `/// a ticket\n// 2234` (the
       second line isn't a doc line), for `/// a ticket\n\n/// 2234`
       (a line between), and for `/// a ticket\n/// 223x`.
-- [ ] A word wholly on one line is reported once, not again by the join
+- [x] A word wholly on one line is reported once, not again by the join
       (`/// ticket 2234\n/// more` returns one word).
-- [ ] None of the ten lines of the table names a ticket, a game ticket
+- [x] None of the ten lines of the table names a ticket, a game ticket
       or a game ADR, on one line or across two, and
       `cargo xtask check-links` passes on the whole workspace.
-- [ ] No file outside `crates/xtask/src/links.rs` changes but in its
+- [x] No file outside `crates/xtask/src/links.rs` changes but in its
       doc comments.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -134,5 +134,22 @@ No public type or function changes; the API listing stays the same.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `process_words` (`crates/xtask/src/links.rs`) now reads a word split
+  across two consecutive doc lines: the first line's last word and the
+  second's text, joined by one space, run through the same matcher
+  (`process_matches`, factored out of the loop), keeping only matches
+  that start in the tail and end in the head. It reports the first
+  line's number. Three unit tests cover the ticket's cases, plus an
+  indented pair, a `////` second line, an empty `///` first line and a
+  `Nick` ending a line.
+- The new check found eleven references, the table's ten and one it
+  missed: `crates/app/src/storage/desktop.rs:1` (`ticket` / `3310,
+  ADR-0109`). Each ticket number was dropped (the sentence stood without
+  it; the ADR beside it stays), and `cues.rs`'s `game ADR-0019` became
+  the reason in plain words. Only doc comments changed outside
+  `crates/xtask`.
+- No break: no public item changes.
+- Book: none, no public API or chapter's subject changes; the change is
+  to `xtask`'s check and doc comments' wording.
+- Skills: none, no schema, template, format or problem code changes.
+- Guides: none, no direction, module or move is added.

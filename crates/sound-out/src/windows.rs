@@ -54,8 +54,8 @@ pub(crate) struct Stats {
 }
 
 /// Tells when a callback finds the device's buffer empty: the device has played all
-/// of it, and nothing more, since the callback before, so a gap is heard (ticket
-/// 3089). CPAL asks each time for the buffer's room, which is all of it only at the
+/// of it, and nothing more, since the callback before, so a gap is heard. CPAL asks
+/// each time for the buffer's room, which is all of it only at the
 /// first callback and after it ran dry: at its pace a callback finds about one
 /// period's room.
 #[derive(Debug, Default)]
