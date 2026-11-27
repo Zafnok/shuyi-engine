@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2259 — Corner sheets made from one tile, opt-in
@@ -225,6 +225,11 @@ Nothing breaks, and nothing changes for a game that doesn't opt in: no
 - **An example game.** The tests and the look snapshot prove it; an
   example comes when a kind of game asks (ADR-0009 §7).
 
+**Estimated size:** about 1,400 lines (code 650, tests 550, docs 200).
+
+**Split:** past 1,100 lines, split off `rotated` and the `Rotated`
+recipe into a new ticket.
+
 ## Implementation steps
 
 1. Choose the home (*Where it lives*): read ADR-0009, `docs/modules.md`
@@ -253,53 +258,54 @@ Nothing breaks, and nothing changes for a game that doesn't opt in: no
 
 ## Acceptance criteria
 
-- [ ] For a 24 × 24 tile, `generate(tile, None, None)`:
-  - [ ] mix 15's picture equals the tile shifted half a tile in both
+- [x] For a 24 × 24 tile, `generate(tile, None, None)`:
+  - [x] mix 15's picture equals the tile shifted half a tile in both
     directions, wrapping, pixel for pixel;
-  - [ ] mix 12 (`##..`) has rows 0 to 11 in and rows 12 to 23 clear;
-  - [ ] mix 8 (`#...`): pixel (0, 0) is in, and pixel (11, 11) is out,
+  - [x] mix 12 (`##..`) has rows 0 to 11 in and rows 12 to 23 clear;
+  - [x] mix 8 (`#...`): pixel (0, 0) is in, and pixel (11, 11) is out,
     though a square quarter would hold it (the corner is rounded);
-  - [ ] mix 9's in pixels are two regions, joined side by side (not
+  - [x] mix 9's in pixels are two regions, joined side by side (not
     corner to corner): one holds (0, 0), the other (23, 23). The same
     for mix 6 with (23, 0) and (0, 23);
-  - [ ] mix 0's place is clear.
-- [ ] Seams: for every pair of mixes that meet side by side (the right
+  - [x] mix 0's place is clear.
+- [x] Seams: for every pair of mixes that meet side by side (the right
   pair of corners of one is the left pair of the other), the field with
   wobble at `X = 2w` of the first equals the field at `X = 0` of the
   second, for every `Y`, with 20 seeds and `cells` 1 to 8; the same for
   pairs that meet top to bottom.
-- [ ] Rim, on mix 12 of a 24 × 24 tile with no wobble: `Outside` with
+- [x] Rim, on mix 12 of a 24 × 24 tile with no wobble: `Outside` with
   width 2 colours rows 12 and 13 and leaves rows 14 to 23 clear; `Inside`
   with width 2 colours rows 10 and 11 and leaves rows 0 to 9 the tile's.
-- [ ] The same tile, wobble and rim give the same sheet every run; two
+- [x] The same tile, wobble and rim give the same sheet every run; two
   seeds give different sheets; `strength: 0` gives the sheet with no
   wobble.
-- [ ] `rotated`: mix 4's picture is mix 8's piece turned a quarter
+- [x] ~~`rotated`: mix 4's picture is mix 8's piece turned a quarter
   clockwise, and mix 6's is mix 9's turned once; all 15 mixes are
-  filled; pieces of two sizes, or not square, are an error.
-- [ ] `layer(of, (0, 96), (24, 24))` equals the toy's hand-built shore
+  filled; pieces of two sizes, or not square, are an error.~~ (not
+  done: split off to 2283, at the ticket's `Split:` line)
+- [x] `layer(of, (0, 96), (24, 24))` equals the toy's hand-built shore
   layer's mixes 1 to 15 (`crates/ui/src/toy/grid.rs`, `layered`): the
   same layout.
-- [ ] The command writes a sheet; `--check` then passes; after the
+- [x] The command writes a sheet; `--check` then passes; after the
   recipe's seed changes, `--check` fails, names the file and gives the
   command that remakes it; a missing `out` fails too; a bad recipe fails
   with its file and line.
-- [ ] A golden table, `tests/golden/corners.ron` in the chosen crate, has rows
-  `generated` and `rotated` holding the FNV hash (`shuyi_assets::fnv`)
+- [x] A golden table, `tests/golden/corners.ron` in the chosen crate, has rows
+  `generated` and `rotated` (2283 adds that one) holding the FNV hash (`shuyi_assets::fnv`)
   of a fixed recipe's sheet, and the `determinism` job runs it on
   wasm32. The sheet is an asset a tool makes, not a frame's look, so its
   hash may be golden (`shuyi_assets::golden`, *What goes in a table*).
-- [ ] A look snapshot: a 4 × 3 map with a generated shore, painted by the
+- [x] A look snapshot: a 4 × 3 map with a generated shore, painted by the
   grid kit's sprite skin and the raster painter (dev-dependencies).
-- [ ] Opt-in: a game that doesn't opt in builds none of the generator
+- [x] Opt-in: a game that doesn't opt in builds none of the generator
   (`cargo tree` or `cargo build` timings, recorded in the completion
   notes), and every existing snapshot, golden row and toy picture is
   unchanged. `cargo xtask check-layers` passes (and `check-modules`, if
   it is a module).
-- [ ] The completion notes say which home was chosen, which others were
+- [x] The completion notes say which home was chosen, which others were
   weighed, and why.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -314,5 +320,91 @@ Nothing breaks, and nothing changes for a game that doesn't opt in: no
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** `shuyi_assets::corners`, behind a new `corners`
+feature of `shuyi-assets` (off by default, no dependency, `no_std`):
+`generate`, `sheet_rect`, `layer`, `Wobble`, `Rim`, `RimSide`,
+`CornersError`, and the recipe (`corners::recipe`: `parse`, `Recipe`,
+`Make`, `Tile`, and `Recipe::sheet`, which cuts the tile out of its
+picture and makes the sheet, purely). `shuyi_cli::corners`, behind
+a new `corners` feature of `shuyi-cli` (off by default, turning the first
+on): `make`, `check` and the command `corners [--check] <recipe>...`.
+The golden table `crates/assets/tests/golden/corners.ron` (row
+`generated`) runs with `shuyi-assets`' tests, so on wasm32 in
+the `determinism` job; the no-std job builds the feature too. The look
+snapshot is `crates/cli/tests/fixtures/corners/shore.png`.
+
+**Where it lives, and why** (ADR-0160, which extends ADR-0009 §4). The
+home is an off-by-default feature of the default crate the code belongs
+beside (`shuyi-assets`, beside `tileset` and `image`), and a feature of
+the same name of `shuyi-cli` for the command. Weighed:
+- *A module crate, `shuyi-corners`*: the cleanest separation, but the
+  metadata, README, skill, catalog row and `shuyi` feature are more than
+  the code. And its concern would add a question to `shuyi new`'s wizard
+  about something no game must choose. So it isn't a module, and no
+  concern was added to `docs/modules.ron` (2260's clause now says so).
+- *Tool-only code in `shuyi-cli`*: its tests would not run on wasm32
+  (`shuyi-cli` isn't built for WASI), and `layer` would still need a home
+  a game's code can reach.
+- *Always on in `shuyi-cli`*: every game's tools would build it.
+
+Opt-in, measured: `cargo tree -p hello-grid --features tools -e features
+-i shuyi-assets` and `cargo tree -p shuyi-cli -e normal,features -i
+shuyi-assets` show no `corners` feature: a game that doesn't opt in
+builds none of it, tools included. With `--features corners`,
+`shuyi-cli` turns `shuyi-assets/corners` on. No existing snapshot,
+golden row or toy picture changed.
+
+**Deviations.**
+- **Split, at the ticket's `**Split:**` line:** `rotated`, `PIECES`,
+  their two errors and the `Rotated` recipe went to 2283, with their
+  acceptance case and the golden table's `rotated` row. With them the
+  PR measured 1,816 counted lines. `Make` and `CornersError` are
+  `#[non_exhaustive]`, so 2283 adds to them without a break.
+- `Wobble::new(seed)` and `Rim::new(colour, side)`, with
+  `with_strength`, `with_cells` and `with_width`, in place of
+  constructors of every field: ADR-0151 refuses a constructor of two
+  neighbouring numbers. The defaults are strength 30, 4 cells, a rim 1
+  pixel wide.
+- `RimSide` is `#[non_exhaustive]` too.
+- An in pixel takes the tile's pixel at `((x + w − w/2) mod w, (y + h −
+  h/2) mod h)`. That is the ticket's `(x + w/2) mod w` for an even side,
+  and one pixel over for an odd one. The painter puts a picture's
+  top-left half a tile, rounded down, up and left of its point, so this
+  is what lines mix 15 up with the tiles round it
+  (`an_odd_tile_lines_up_as_the_painter_centres_it`).
+- `W` keeps `N` exact and rounds once, toward zero: `blend × strength /
+  12800`, with `blend = N × 4wh`.
+- A tile outside its picture is found when the sheet is made, not as
+  the recipe parses: only then is the picture's size known. Its error
+  gives the line of the recipe's `at`, found in the recipe's text, as
+  RON gives no line for a value.
+- `make` and `check` both hand `read` the paths as the recipe writes
+  them, from its folder: the caller's `read` resolves them (the command
+  joins the recipe's folder). The command a stale sheet's message ends
+  with is `cargo shuyi corners <recipe>`, as a game runs it.
+- The look snapshot lives in `shuyi-cli`'s tests (they have the raster,
+  the toy and a PNG encoder). The toy has no tile picture, only its
+  size, so the test draws its own grass and water tiles. A tileset has
+  one picture, so the test pastes the made sheet into it at `(0, 96)`.
+  A game must do the same today: ticket 2282 lets a corner layer name an
+  image of its own. The snapshot draws the water tiles' own picture as
+  grass, so the layer draws all the water, rounded. With the water's own
+  tile under it, a made layer only rounds the inner corners and adds the
+  rim, since a convex corner's in pixels lie on the water tile anyway.
+
+**Follow-up tickets.** 2283: the sheet turned from 5 drawn pieces (the
+split). 2282: a corner layer's pictures in an image of their own.
+
+Breaking: none. Everything is new and behind two features that are off
+by default.
+
+Behaviour: shuyi-cli: `shuyi`'s usage and `shuyi_cli::COMMANDS` list a
+new command, `corners`. Without the feature, it runs in the game's tool
+program, or says how to turn the feature on.
+
+Book: `site/content/learn/book/frame-and-skins.md` has a paragraph on
+corner sheets made from a recipe.
+
+Game: nothing to adopt. The game names `CornerLayer` (`gh search code
+--repo Zafnok/visions-of-shuyi CornerLayer`: its tileset content and map
+view), which only gains a doc line.

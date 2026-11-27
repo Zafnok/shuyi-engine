@@ -45,6 +45,12 @@ mp3 = ["dep:nanomp3"]
 # `sfx::SfxDef`, the formats `SfxDefRon` and `SfxRon`, and ten presets.
 # No dependency and no `std`. A game turns it on in its own `Cargo.toml`.
 sfx = []
+# `corners`: a terrain's 15 corner pictures made from its one tile, at tool
+# time and in integers (ticket 2259, ADR-0160): `corners::generate`, the
+# sheet's layout (`corners::layer`) and its recipe. No dependency and no `std`. A game
+# turns it on through `shuyi-cli`'s `corners` feature, its tools'; and here
+# too only if it builds the layer with `corners::layer` as it runs.
+corners = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -81,6 +87,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx", "corners"] }
 # The heap counter `tests/lang_load.rs` reads (ticket 2266).
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

@@ -111,11 +111,12 @@ None.
   and the reasons for it go in the completion notes and the ADR below.
 
   If the choice is a module and it answers a concern in
-  `docs/modules.ron`: **Either order with 2259:** if 2259 is done and
-  added a `pictures` concern ("Pictures made from data",
-  `alternatives: false`), add this answer and its catalog row there; if
-  not, add that concern with its `drawn` answer (`by: "default"`,
-  `ready`) and this one, or no concern at all if this isn't a module.
+  `docs/modules.ron`: 2259 (done) added no concern, as it isn't a module
+  (it is a feature of `shuyi-assets` and `shuyi-cli`, ADR-0160, a home
+  to weigh here too). Add a `pictures` concern ("Pictures made from
+  data", `alternatives: false`) with its `drawn` answer (`by:
+  "default"`, `ready`) and this one, and its catalog row; or no concern
+  at all if this isn't a module.
 - **The format**, `no_std` with `alloc` if its home allows it, as
   ADR-0007 asks:
   - `PartsDef`, the file as written; `PartsRon`, its format (id

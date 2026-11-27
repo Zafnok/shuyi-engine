@@ -205,6 +205,10 @@ pub enum Layer {
 /// tile-sized picture with no offset is centred on its point. It is
 /// drawn only inside the tiles it covers that are drawn, on the map and
 /// not of a terrain in [`skip`](Self::skip).
+///
+/// Its pictures are drawn by hand, or made from the terrain's one tile at
+/// tool time: the module `corners`, behind this crate's `corners`
+/// feature, off by default.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CornerLayer {

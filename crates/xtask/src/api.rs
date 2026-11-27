@@ -135,6 +135,7 @@ pub const API_CRATES: &[ApiCrate] = &[
             "flac",
             "mp3",
             "sfx",
+            "corners",
         ]),
     },
     ApiCrate {
@@ -161,7 +162,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     },
     ApiCrate {
         name: "shuyi-cli",
-        features: Features::Only(&["toy", "jis"]),
+        features: Features::Only(&["toy", "jis", "corners"]),
     },
     ApiCrate {
         name: "shuyi",
