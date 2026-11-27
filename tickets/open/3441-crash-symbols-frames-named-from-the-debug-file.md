@@ -1,5 +1,5 @@
 ---
-id: "3438"
+id: "3441"
 title: "shuyi crash --symbols: a crash report's frames named from the debug file kept for its release"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3438 — `shuyi crash --symbols`
+# 3441 — `shuyi crash --symbols`
 
 ## Context
 

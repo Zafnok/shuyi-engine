@@ -85,7 +85,7 @@ the `engine`, `game` and `target` versions, the `frame`, the `top_screen`, the
 `log`, std's `backtrace`, and `has_record`: whether the report holds the game's
 record, which `replay --crash` replays. A file that can't be read is `SH3004`,
 one that isn't a crash report `SH3018`. Its frames, named from the build's debug
-file, are still to come (ticket 3438); until then they are read by hand, as
+file, are still to come (ticket 3441); until then they are read by hand, as
 below.
 
 ## Reading the frames

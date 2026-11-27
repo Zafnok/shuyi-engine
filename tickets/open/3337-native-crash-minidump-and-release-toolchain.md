@@ -46,7 +46,7 @@ What there is (read 2026-11-23):
   can't be a storage key; it goes in a folder beside the keys, as the
   logs do.
 - **2520** (done): `shuyi crash` reads a report
-  (`crates/cli/src/contract/crash.rs`). **3438** (open) names its
+  (`crates/cli/src/contract/crash.rs`). **3441** (open) names its
   frames from the build's debug file with `addr2line`, which reads
   DWARF only. Its *Out* leaves Windows PDB files out "until one asks".
 - **The Windows toolchain.** Nick's machine builds with GNU and has no
@@ -187,7 +187,7 @@ MSVC.
   Windows stays `x86_64-pc-windows-gnu`, or may be built
   `x86_64-pc-windows-msvc` on CI's runners, or either at the game's
   choice. It weighs, with what this ticket found:
-  - what reads each one's crash: 3438's `addr2line` reads DWARF only
+  - what reads each one's crash: 3441's `addr2line` reads DWARF only
     (a PDB would need another reader, such as the `pdb` crate), and a
     minidump of a GNU build has no symbols WinDbg or Visual Studio
     reads;

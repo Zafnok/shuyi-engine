@@ -327,16 +327,16 @@ None.
 - [x] ~~A `shuyi-cli` test finds an `#[inline(never)]` function of its
       own test binary in the symbol table, and `crash --symbols <the test
       binary>` names an offset a few bytes into it with the function, its
-      file and a line inside it.~~ (not done: `--symbols` moved to 3438 by
+      file and a line inside it.~~ (not done: `--symbols` moved to 3441 by
       **Size**, with this criterion)
 - [x] ~~An offset outside every function is counted in `limits`, not an
-      error.~~ (not done: moved to 3438 with `--symbols`)
+      error.~~ (not done: moved to 3441 with `--symbols`)
 - [x] ~~A report with no `frames` reads, and `limits` says why there are
-      none.~~ (not done: moved to 3438 with `CrashOutput.frames`; a report
+      none.~~ (not done: moved to 3441 with `CrashOutput.frames`; a report
       older than its fields reads here)
 - [x] ~~On Linux and Windows GNU, a `shuyi-cli` test names a frame of a
       report the hook wrote in a test binary (2598's frames) with
-      `addr2line`'s `Loader` over that binary.~~ (not done: moved to 3438
+      `addr2line`'s `Loader` over that binary.~~ (not done: moved to 3441
       with `--symbols`)
 - [x] `replay --crash` through a test game whose `GameTools::replay`
       runs `turns` over rules that panic on one command: a report whose
@@ -353,7 +353,7 @@ None.
       a second record exits with 2.
 - [x] The PR description has step 7's answer and the size difference;
       ~~its frames named in `shuyi_app` and hello-grid~~ (not done: the
-      named frames are 3438's step 5)
+      named frames are 3441's step 5)
 - [x] The schemas have their line in `versions.json`, and
       `contract::VERSION` rose only for a break (`cargo xtask contract`
       passes).
@@ -421,23 +421,23 @@ None.
 **Step 4, the size.** `crash` without `--symbols`, the panic in `turns`
 and `replay --crash`, with their tests, came to about 1,150 counted
 lines (`cargo xtask pr-size`, schemas aside), against the 350 at which
-**Size** sends `--symbols` on. So `--symbols` went to **3438**
+**Size** sends `--symbols` on. So `--symbols` went to **3441**
 (`shuyi crash --symbols`, After MVP, `blocked_by: ["2520"]`), written in
 this PR from this ticket's bullets: the lookup with `addr2line`,
 `NamedFrame`, `CrashOutput.frames` with its schema, the limits on frames,
 the debug file's docs, and step 7's named frames. The lines of 3012 and
-3047 that named 2520's debug file now name 3438; 3050 is no longer open.
+3047 that named 2520's debug file now name 3441; 3050 is no longer open.
 The PR would split cleanly between `crash` and the panic caught in
 `turns` with `replay --crash`; it stayed one, under 1,500 lines.
 
 **Deviations.**
 
-- With `--symbols` the acceptance criteria on frames went to 3438 and
+- With `--symbols` the acceptance criteria on frames went to 3441 and
   stay unticked here: the symbol-table test, the offset outside every
   function, a report with no frames (its limit is about the frames
   `CrashOutput` no longer carries), the frame named from a binary's own
   stack, and step 7's named frames.
-- 3438's frame test takes its own stack with `backtrace` (a
+- 3441's frame test takes its own stack with `backtrace` (a
   dev-dependency at most) instead of 2598's hook: `shuyi-cli` may never
   depend on `shuyi-app` (`tools/layers.ron`), and its tests may hold no
   `unsafe` (`unsafe_code = "forbid"`).
@@ -454,7 +454,7 @@ The PR would split cleanly between `crash` and the panic caught in
   and four steps in *The schemas*; fixed to 62, line 84 and five steps.
 - 3060, 3071 and 3337 were open: 3060's and 3337's clauses on 2520 now
   say what holds (**From 2520 (done)**); 3071's `object` clause moved to
-  3438, which writes the other side.
+  3441, which writes the other side.
 
 **Step 7 (manual, on `main` at `03ac186e`, Windows GNU).** hello-grid's
 debug build, `SHUYI_PANIC_AT_FRAME=30`, exited with 101 and wrote
@@ -468,7 +468,7 @@ there was no stage to record. With a bot try's record (from `playtest
 --json`) put into a copy of that report, `replay --crash` ran it in
 hello-grid's tool program: 23 steps, "the replay played to its end
 without a panic", the rules-only limit, exit 0. The frames named with
-`--symbols` are 3438's step 5.
+`--symbols` are 3441's step 5.
 
 Breaking: none. The new fields are on `#[non_exhaustive]` types
 (`ReplayInput`, `ReplayStep`, `ReplayOutput`), `Op` is

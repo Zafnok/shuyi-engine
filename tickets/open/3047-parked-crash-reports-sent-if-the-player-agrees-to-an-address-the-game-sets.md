@@ -39,7 +39,7 @@ What Shuyi has and plans (read 2026-10-21):
   machine. A player who wants to help finds the file in the game's data
   folder and sends it by hand.
 - 2520 (done) reads a report (`shuyi crash`) and replays its record
-  (`replay --crash`); 3438 names its frames from the debug file.
+  (`replay --crash`); 3441 names its frames from the debug file.
 - 2601 (parked) makes HTTP requests a platform capability. A screen, or
   `App`, queues an `HttpRequest` in `Ctx::http` (an `HttpQueue`);
   `App`'s `step` (`crates/platform/src/app.rs`) hands it to
@@ -219,7 +219,7 @@ record).
 - A server or a service of the engine's own.
 - A vendor's SDK (Sentry's crates and others), and formats of a
   service's own API. A follow-up ticket if Nick picks one.
-- Uploading debug files (3438's debug file) anywhere.
+- Uploading debug files (3441's debug file) anywhere.
 - Analytics or telemetry of any kind (a game's own opt-in events are
   2608, parked).
 - Minidumps (3337 writes them on Windows, opt-in, in `crash-dumps/`):
