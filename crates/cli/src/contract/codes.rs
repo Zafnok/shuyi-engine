@@ -131,6 +131,12 @@ pub const BUILD_RUNNING: Code = Code("SH3016");
 /// `other-volume`: `seed-target`'s two worktrees are on different
 /// volumes, which a hard link can't cross.
 pub const OTHER_VOLUME: Code = Code("SH3017");
+/// `crash-report`: `crash` or `replay --crash` was given a file that
+/// doesn't read as a crash report.
+pub const CRASH_REPORT: Code = Code("SH3018");
+/// `no-crash-record`: `replay --crash` was given a crash report that
+/// holds no record of the game's play.
+pub const NO_CRASH_RECORD: Code = Code("SH3019");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -649,6 +655,23 @@ pub static TABLE: &[Entry] = &[
         "SH3017",
         "The two worktrees are on different volumes",
         "skip the seed: the new worktree builds from nothing, as it would have without it"
+    ),
+    row!(
+        CRASH_REPORT,
+        "crash-report",
+        Operation,
+        "SH3018",
+        "The file isn't a crash report",
+        "give the `crash-<when>.ron` file the game wrote, whole: the message says what didn't read"
+    ),
+    row!(
+        NO_CRASH_RECORD,
+        "no-crash-record",
+        Operation,
+        "SH3019",
+        "The crash report holds no record of the game's play",
+        "read the report with `shuyi crash`; to replay the next crash, give `Start` a \
+         `crash_record` (and `with_record_in_release` in a release build)"
     ),
 ];
 

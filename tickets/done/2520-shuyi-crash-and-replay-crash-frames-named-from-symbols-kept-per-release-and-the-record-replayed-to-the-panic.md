@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3046"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2520 — `shuyi crash` and `replay --crash`
@@ -38,9 +38,10 @@ What Shuyi has and plans (read 2026-10-21):
   (`crates/cli/src/game.rs`), and `shuyi` runs that program with
   `cargo run`. A panic inside `TurnRules::apply` ends the tool program
   with no answer. `replay` runs one record twice, or two side by side.
-- **The contract** is at `VERSION` 4 (`crates/cli/src/contract.rs`,
-  line 52), its schemas in `crates/cli/schemas/`, and `docs/contract.md`
-  (*The schemas*) says how to change them in four steps. `doctor` and
+- **The contract** is at `VERSION` 62 (`crates/cli/src/contract.rs`,
+  line 84; re-read 2026-11-26), its schemas in `crates/cli/schemas/`,
+  and `docs/contract.md` (*The schemas*) says how to change them in five
+  steps. `doctor` and
   `schema` run in `shuyi` itself, without a game (`without_project` in
   `crates/cli/src/contract/cli.rs`).
 - **Test builds carry line tables:** `[profile.dev] debug =
@@ -323,44 +324,41 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A `shuyi-cli` test, compiled only on Linux and Windows GNU
-      (`cfg(any(target_os = "linux", all(windows, target_env = "gnu")))`,
-      where test builds carry DWARF), finds an `#[inline(never)]`
-      function of its own test binary by a name unique to the test in
-      the symbol table (`object`
-      0.37, a dev-dependency with `default-features = false` and the
-      feature `read`). It writes a report whose offset is a few bytes
-      into that function (its symbol's `address()` minus
-      `relative_address_base()`, plus 4), and `crash --symbols <the test
-      binary>` names that offset with the function, its file and a line
-      inside it.
-- [ ] An offset outside every function is counted in `limits`, not an
-      error.
-- [ ] A report with no `frames` reads, and `limits` says why there are
-      none.
-- [ ] On Linux and Windows GNU, a `shuyi-cli` test names a frame of a
+- [x] ~~A `shuyi-cli` test finds an `#[inline(never)]` function of its
+      own test binary in the symbol table, and `crash --symbols <the test
+      binary>` names an offset a few bytes into it with the function, its
+      file and a line inside it.~~ (not done: `--symbols` moved to 3441 by
+      **Size**, with this criterion)
+- [x] ~~An offset outside every function is counted in `limits`, not an
+      error.~~ (not done: moved to 3441 with `--symbols`)
+- [x] ~~A report with no `frames` reads, and `limits` says why there are
+      none.~~ (not done: moved to 3441 with `CrashOutput.frames`; a report
+      older than its fields reads here)
+- [x] ~~On Linux and Windows GNU, a `shuyi-cli` test names a frame of a
       report the hook wrote in a test binary (2598's frames) with
-      `addr2line`'s `Loader` over that binary.
-- [ ] `replay --crash` through a test game whose `GameTools::replay`
+      `addr2line`'s `Loader` over that binary.~~ (not done: moved to 3441
+      with `--symbols`)
+- [x] `replay --crash` through a test game whose `GameTools::replay`
       runs `turns` over rules that panic on one command: a report whose
       record panics at step 3, with the place the replay gives, answers
       `ok: false`, `step: 3` and `same_place: true`; with another line
       in the report, `same_place: false`; with the rules fixed, `ok:
       true` and the rules-only line in `limits`.
-- [ ] `same_place` matches `src\rules.rs:9:5` with
+- [x] `same_place` matches `src\rules.rs:9:5` with
       `/cargo/git/checkouts/x/1/src/rules.rs:9:5`, and not with
       `src/rules.rs:10:5`.
-- [ ] `replay` on a record that panics answers `ok: false` with the
+- [x] `replay` on a record that panics answers `ok: false` with the
       panicking step instead of ending the program.
-- [ ] A report with no record fails with the reason, and `--crash` with
+- [x] A report with no record fails with the reason, and `--crash` with
       a second record exits with 2.
-- [ ] The PR description has step 7's answer, its frames named in
-      `shuyi_app` and hello-grid, and the size difference.
-- [ ] The schemas have their line in `versions.json`, and
+- [x] The PR description has step 7's answer and the size difference;
+      ~~its frames named in `shuyi_app` and hello-grid~~ (not done: the
+      named frames are 3441's step 5)
+- [x] The schemas have their line in `versions.json`, and
       `contract::VERSION` rose only for a break (`cargo xtask contract`
       passes).
-- [ ] `cargo deny check` passes with no change to `deny.toml`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo deny check` passes with no change to `deny.toml`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -375,5 +373,132 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi crash <report>` (`Op::Crash`, `crates/cli/src/contract/crash.rs`):
+  a report read in `shuyi` itself, an arm of `without_project`, the MCP
+  server's `crash` tool, a help line. `CrashInput { report }`;
+  `CrashOutput` holds the report's message, place, `fatal`, thread, time,
+  versions, frame, top screen, log, std's backtrace and `has_record`.
+  `read_report` is shared with `replay --crash`.
+- `turns` catches a panic (`crates/cli/src/contract/replay.rs`): each
+  `apply` runs in `catch_unwind`, under a panic hook installed once
+  (`Once`) over the one that was there. It keeps a quiet panic's
+  `file:line:column` in a thread-local and passes every other panic on.
+  The step gets `panic: Option<PanicAt>`, its hash is the state the
+  panic left, the run stops, and `outcome` is `None`. `replay` without
+  `--crash` on such a record is `ok: false` with the limit "the rules
+  panicked at step N of <record>: <message>"; `replay::text` shows it.
+- `replay --crash <report>`: `ReplayInput::crash`, the record a report
+  holds run once through `GameTools::replay` and the stamp check, and
+  `ReplayOutput::crash: Option<CrashReplay>` (`reported`, `replayed`,
+  `step`, `same_place`, with `replay::same_place` comparing the last
+  three parts of the paths). `ok` is "plays to its end without a
+  panic"; the rules-only line goes in `limits` when it does.
+- Two problem codes with their pages: `SH3018` (`crash-report`, a file
+  that isn't a crash report) and `SH3019` (`no-crash-record`).
+- `docs/contract.md`'s table (`crash`, `replay --crash`, the panic in
+  `replay`), `docs/crash-reports.md` (*Reading a report*, *Replaying
+  it*), the `shuyi-debug-replay` skill's crash path (read, reproduce,
+  fix until `ok: true`), the README's operations.
+- Tests: `crash` (reads, an old report, unreadable and not a report, the
+  arguments, the answer against its schema with a small checker of the
+  JSON Schema the contract uses); `turns` stopping at a panic with its
+  message and place; the quiet hook passing another thread's panic on;
+  `same_place`; `replay` on a panicking record; `replay --crash` through
+  the fake game's `turns` over rules that panic on command 9 (step 3,
+  `same_place` true, false with another line, `ok: true` with the rules
+  fixed) and its refusals (`SH3019`, `SH0001` exit 2, `SH3018`, `SH3004`,
+  `SH3002`, `SH3007` and `--any-stamp`); the exit codes through the
+  command line; hello-grid's stamp test refusing a crash report whose
+  record has other content (`SH3007`) and replaying it with
+  `--any-stamp`.
+- Schemas: `crash.input.json` and `crash.output.json` new,
+  `replay.input.json` and `replay.output.json` regenerated, a line in
+  `versions.json`. `cargo xtask contract` finds no break, so `VERSION`
+  stays 62 (ADR-0150).
+
+**Step 4, the size.** `crash` without `--symbols`, the panic in `turns`
+and `replay --crash`, with their tests, came to about 1,150 counted
+lines (`cargo xtask pr-size`, schemas aside), against the 350 at which
+**Size** sends `--symbols` on. So `--symbols` went to **3441**
+(`shuyi crash --symbols`, After MVP, `blocked_by: ["2520"]`), written in
+this PR from this ticket's bullets: the lookup with `addr2line`,
+`NamedFrame`, `CrashOutput.frames` with its schema, the limits on frames,
+the debug file's docs, and step 7's named frames. The lines of 3012 and
+3047 that named 2520's debug file now name 3441; 3050 is no longer open.
+The PR would split cleanly between `crash` and the panic caught in
+`turns` with `replay --crash`; it stayed one, under 1,500 lines.
+
+**Deviations.**
+
+- With `--symbols` the acceptance criteria on frames went to 3441 and
+  stay unticked here: the symbol-table test, the offset outside every
+  function, a report with no frames (its limit is about the frames
+  `CrashOutput` no longer carries), the frame named from a binary's own
+  stack, and step 7's named frames.
+- 3441's frame test takes its own stack with `backtrace` (a
+  dev-dependency at most) instead of 2598's hook: `shuyi-cli` may never
+  depend on `shuyi-app` (`tools/layers.ron`), and its tests may hold no
+  `unsafe` (`unsafe_code = "forbid"`).
+- `CrashOutput` also has `fatal`, which `CrashReport` gained after the
+  ticket was written (ADR-0083).
+- `ReplayStep::new(step, command, hash)` was added, so the engine's own
+  code builds a step with its new field in one place (`turns`, `ticks`,
+  the fake game).
+- `crash` reads its report from the working folder, inside a project
+  too: `main_with` gives `without_project` the working folder before it
+  looks for a project, as for `sfx` and `attach`, and a path typed in a
+  shell means that folder.
+- The ticket was 36 days old: its Context named `VERSION` 4 at line 52
+  and four steps in *The schemas*; fixed to 62, line 84 and five steps.
+- 3060, 3071 and 3337 were open: 3060's and 3337's clauses on 2520 now
+  say what holds (**From 2520 (done)**); 3071's `object` clause moved to
+  3441, which writes the other side.
+
+**Step 7 (manual, on `main` at `03ac186e`, Windows GNU).** hello-grid's
+debug build, `SHUYI_PANIC_AT_FRAME=30`, exited with 101 and wrote
+`crash-1795755373932.ron`. `cargo shuyi crash` read it: "a panic on
+purpose (SHUYI_PANIC_AT_FRAME) at crates\app\src\lib.rs:706:9", thread
+main, ended the game, engine 0.1.0, game 0.1.0, windows x86_64 debug,
+frame 30, top screen title, no record of play, then std's backtrace and
+the log. `cargo shuyi replay --crash` refused it with `SH3019`: the
+window build has no `--stage`, and at frame 30 the title was on top, so
+there was no stage to record. With a bot try's record (from `playtest
+--json`) put into a copy of that report, `replay --crash` ran it in
+hello-grid's tool program: 23 steps, "the replay played to its end
+without a panic", the rules-only limit, exit 0. The frames named with
+`--symbols` are 3441's step 5.
+
+Breaking: none. The new fields are on `#[non_exhaustive]` types
+(`ReplayInput`, `ReplayStep`, `ReplayOutput`), `Op` is
+`#[non_exhaustive]` with `Op::ALL` a slice, and the new types
+(`CrashInput`, `CrashOutput`, `PanicAt`, `CrashReplay`) are
+`#[non_exhaustive]` with constructors (ADR-0039).
+
+Behaviour: shuyi-cli: `replay` on a record whose rules panic answers
+`ok: false` with the step's `panic` and a limit naming the step, where
+the game's tool program used to end with no answer (`SH3005`).
+
+Behaviour: shuyi-cli: `replay::turns` installs a panic hook once per
+process, over the hook that was there: a panic inside a step of `turns`
+prints nothing and is caught; every other panic goes to the old hook as
+before.
+
+Behaviour: shuyi-cli: `replay`'s usage gains a second line (`replay
+--crash <report>`), and its wrong-argument error reads "one or two
+records, or --crash and one crash report".
+
+Behaviour: shuyi-cli: two new problem codes, `SH3018` (`crash-report`)
+and `SH3019` (`no-crash-record`).
+
+Book: none, the book's `replay` (box-pusher, step 9) still holds as it
+is; the crash path is `docs/crash-reports.md`'s, which the docs map
+names for crash reports.
+
+Game: nothing to adopt, the game's tools call `ReplayInput::new` and
+read `steps` and `refused` (`gh search code --repo Zafnok/visions-of-shuyi
+ReplayInput`, `ReplayStep`, `ReplayOutput`: one file,
+`crates/tools/src/game_tools/tests.rs`, at the pin `96eb097c`), and
+none of its records panic. A game that wants `replay --crash` runs it on
+a report its `crash_record` filled, with no code change.

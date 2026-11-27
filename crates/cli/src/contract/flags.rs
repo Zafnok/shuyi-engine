@@ -13,7 +13,7 @@
 //! each flag it names, to check that the parser takes it.
 
 use super::{
-    Op, add, attach, autobalance, bake, check, docs, doctor, explain, export, import, lint,
+    Op, add, attach, autobalance, bake, check, crash, docs, doctor, explain, export, import, lint,
     modules, new, playtest, replay, run, sfx,
 };
 
@@ -157,6 +157,7 @@ pub(crate) fn usage(op: Op) -> String {
         Op::Add => add::usage(command),
         Op::Run | Op::Scene => run::usage(command, op, &[]),
         Op::Replay => replay::usage(command),
+        Op::Crash => crash::usage(command),
         Op::Playtest => playtest::usage(command, &[]),
         Op::Autobalance => autobalance::usage(command, &[]),
         Op::Import => import::usage(command),

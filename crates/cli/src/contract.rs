@@ -15,7 +15,8 @@
 //! | `add <module>` | a module turned on: its feature of `shuyi` in `Cargo.toml`, its skill copied, what it is for, an alternative already on | [`add`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds; with `--perf`, the frames' times | [`run`], [`perf`] |
 //! | `scene` | the scene or stage on screen after a script; with `--path` one value of its data, with `--shape` its shape | [`run`] |
-//! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
+//! | `replay <record>` | a state hash per step, and the first step where two runs differ; with `--crash`, a crash report's record replayed to its panic | [`replay`] |
+//! | `crash <report>` | a crash report read, with no game: the panic, the versions, the frames as offsets, the log | [`crash`] |
 //! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands (none: a plain bot run); each try's commands and record for `replay`, each bot's outcomes counted and the spread of its numbers | [`playtest`] |
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
@@ -48,6 +49,7 @@ pub mod bake;
 pub mod check;
 pub mod cli;
 pub mod codes;
+pub mod crash;
 pub mod docs;
 pub mod doctor;
 pub mod explain;
@@ -139,9 +141,11 @@ pub enum Op {
     Stop,
     /// A sound effect from a preset or a file.
     Sfx,
-    /// The engine's docs searched. Last, so the variants before it keep
-    /// their places.
+    /// The engine's docs searched.
     Docs,
+    /// A crash report read. Last, so the variants before it keep their
+    /// places.
+    Crash,
 }
 
 impl Op {
@@ -156,6 +160,7 @@ impl Op {
         Op::Run,
         Op::Scene,
         Op::Replay,
+        Op::Crash,
         Op::Playtest,
         Op::Autobalance,
         Op::Import,
@@ -193,6 +198,7 @@ impl Op {
             Op::Run => "run",
             Op::Scene => "scene",
             Op::Replay => "replay",
+            Op::Crash => "crash",
             Op::Playtest => "playtest",
             Op::Autobalance => "autobalance",
             Op::Import => "import",
@@ -473,6 +479,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(op, name),
         (Op::Scene, true) => pair::<SceneInput, run::SceneOutput>(op, name),
         (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(op, name),
+        (Op::Crash, _) => pair::<crash::CrashInput, crash::CrashOutput>(op, name),
         (Op::Playtest, _) => {
             pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(op, name)
         }

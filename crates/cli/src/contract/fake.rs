@@ -26,7 +26,7 @@ use shuyi_core::{ContentHash, Knob, Made};
 use super::autobalance::AutobalanceInput;
 use super::perf::PerfRead;
 use super::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
-use super::replay::{Record, ReplayRun, ReplayStep};
+use super::replay::{Record, ReplayRun, ReplayStep, turns};
 use super::session::{Dropped, Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{
@@ -207,6 +207,40 @@ pub fn stamp(engine: &str, game: &str, content: ContentHash) -> Made {
     made
 }
 
+/// A counter's rules that panic on command 9, unless fixed (the second
+/// field): what a `turns` record of the [`Fake`] runs, `turns 1,1,9`.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Brittle(pub u32, pub bool);
+
+/// The line of [`Brittle`]'s panic, for the tests that read its place.
+pub const BRITTLE_LINE: u32 = line!() + 14;
+
+impl shuyi_core::TurnRules for Brittle {
+    type Command = u32;
+    type Event = u32;
+    type Error = String;
+    type Outcome = u32;
+
+    fn check(&self, _: &u32) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn apply(&mut self, add: &u32) -> Result<Vec<u32>, String> {
+        self.0 += add.min(&1);
+        assert!(*add != 9 || self.1, "nine is too many");
+        self.0 += add.saturating_sub(1);
+        Ok(vec![self.0])
+    }
+
+    fn legal_commands(&self) -> Vec<u32> {
+        vec![1, 9]
+    }
+
+    fn outcome(&self) -> Option<u32> {
+        (self.0 >= 10).then_some(self.0)
+    }
+}
+
 /// A game whose tools answer what the test sets.
 pub struct Fake {
     /// `check`'s answer.
@@ -217,6 +251,9 @@ pub struct Fake {
     pub replay: Result<(), String>,
     /// This build's stamp, or none.
     pub made: Option<Made>,
+    /// Whether its rules are fixed: a `turns` record's command 9 then
+    /// adds 9 instead of panicking ([`Brittle`]).
+    pub fixed: bool,
     /// Its playtest, or why its plan doesn't load.
     pub playtest: Result<FakePlaytest, String>,
     /// The inputs its playtest plans were asked for with, in turn.
@@ -262,6 +299,7 @@ impl Default for Fake {
             session: Ok(FakeSession::on("stage", "map")),
             replay: Ok(()),
             made: None,
+            fixed: false,
             playtest: Ok(FakePlaytest::default()),
             planned: Mutex::new(Vec::new()),
             balance: Ok(FakeBalance::default()),
@@ -425,6 +463,12 @@ impl GameTools for Fake {
     /// its stamp ([`stamp`]).
     fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
         self.replay.clone()?;
+        if let Some(commands) = record.text.strip_prefix("turns ") {
+            let commands: Vec<u32> = (commands.split(','))
+                .map(|c| c.trim().parse().map_err(|e| format!("{c}: {e}")))
+                .collect::<Result<_, String>>()?;
+            return turns(&record.file, Brittle(0, self.fixed), &commands);
+        }
         let mut lines = record.text.lines().peekable();
         let made = lines.next_if(|line| line.starts_with("made ")).map(|line| {
             let parts: Vec<&str> = line.split(' ').collect();
@@ -437,12 +481,12 @@ impl GameTools for Fake {
         });
         let steps = (0..)
             .zip(lines)
-            .map(|(step, line)| ReplayStep {
-                step,
-                command: (step > 0).then(|| format!("Step{step}")),
-                hash: line.to_owned(),
-                events: vec!["Moved".to_owned()],
-                refused: (line == "refused").then(|| "no".to_owned()),
+            .map(|(step, line)| {
+                let mut done =
+                    ReplayStep::new(step, (step > 0).then(|| format!("Step{step}")), line);
+                done.events = vec!["Moved".to_owned()];
+                done.refused = (line == "refused").then(|| "no".to_owned());
+                done
             })
             .collect();
         Ok(ReplayRun {

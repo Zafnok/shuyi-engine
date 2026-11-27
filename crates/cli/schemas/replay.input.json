@@ -9,6 +9,11 @@
       "type": "boolean",
       "default": false
     },
+    "crash": {
+      "description": "`record` names a crash report (`--crash`): the game's record it\nholds is run once, and passes if it plays to its end without a\npanic. Takes no [`other`](Self::other).",
+      "type": "boolean",
+      "default": false
+    },
     "other": {
       "description": "A second record to run beside it; without one, the record is run\ntwice.",
       "type": [
