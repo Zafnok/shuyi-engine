@@ -10,7 +10,7 @@ use shuyi::assets::Formats;
 use shuyi::assets::format::AssetKind;
 use shuyi::assets::hot::Hot;
 use shuyi::assets::ron::Ron;
-use shuyi::prelude::{Bundle, ContentError, *};
+use shuyi::prelude::*;
 
 // ANCHOR: kind
 /// The garden's plan: a kind of asset of the game's own, plain data.

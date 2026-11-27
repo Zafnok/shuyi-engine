@@ -6,7 +6,7 @@ use std::path::Path;
 
 use shuyi::app::run_dialogue_preview;
 use shuyi::assets::dialogue::{DialogueLimits, NoDirective, NoTokens, SceneRules, Tokens};
-use shuyi::prelude::{Rect, *};
+use shuyi::prelude::*;
 use shuyi::ui::dialogue::preview::{Play, PreviewGame, PreviewScreen, Showing};
 use shuyi::ui::dialogue::text_box::glyph::{self, BoxPlace};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView};
