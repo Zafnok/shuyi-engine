@@ -8,6 +8,7 @@ use shuyi_ui::frame::glyph_buffer::Cell;
 use shuyi_ui::input::{Chord, Key};
 
 use super::*;
+use crate::audio::CopyId;
 use crate::platform::Look;
 
 fn command(cue: &str, command: fn(String) -> MusicCommand) -> MusicCommand {
@@ -234,8 +235,12 @@ fn the_speaker_pauses_what_plays_and_mutes_on_suspend_with_its_clock_running() {
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
     assert!(s.gains().is_empty(), "none before a frame");
-    let click = SoundRequest::sound("click", 1.0);
-    let requests = [click];
+    let click = SoundRequest::sound("click", 1.0).with_copy(CopyId::new(2));
+    // A copy cut comes with the frame's other requests.
+    let cut = SoundRequest::StopCopy {
+        copy: CopyId::new(1),
+    };
+    let requests = [cut, click];
     let music = [command("a", start)];
     let Full(groups, full) = Full::new();
     let gains = full

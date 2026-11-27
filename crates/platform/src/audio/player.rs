@@ -14,7 +14,10 @@
 //!
 //! A sound started with a handle (`SoundRequest::Start`) is one playback
 //! the player keeps by its id, so that one copy stops alone and its volume
-//! follows the requests and its cue's gain.
+//! follows the requests and its cue's gain. So is each copy of a sound cue
+//! the cue rules counted (`SoundRequest::Sound`'s `copy`, ADR-0139 §4), kept
+//! by its [`CopyId`] until `SoundRequest::StopCopy` stops it alone or its
+//! file's length has passed: a copy of unknown length keeps nothing.
 //!
 //! **Holding a sound** (ADR-0056). A sound paused under a menu
 //! (`SoundRequest::PauseSounds`), and everything sounding while the system
@@ -39,7 +42,7 @@ use shuyi_assets::audio::{AudioManifest, Files, LoopRegion, MusicCue, decode_to_
 use shuyi_ui::audio::{Gain, Gains, GroupGains, MusicCommand, SharedSamples, SoundGroups, SoundId};
 
 use self::voice::Voices;
-use super::{Audio, AudioFrame, SoundRequest};
+use super::{Audio, AudioFrame, CopyId, SoundRequest};
 use crate::alloc_prelude::*;
 use crate::platform::Millis;
 
@@ -352,6 +355,10 @@ pub struct Player<B: Backend> {
     gains: KeptGains,
     /// The sounds started with a handle and not stopped.
     handled: BTreeMap<SoundId, Handled<B>>,
+    /// The copies of sound cues the cue rules counted, until they are
+    /// stopped or their length has passed: each one's playback and when it
+    /// ends, on [`play`](Self::play)'s clock.
+    copies: BTreeMap<CopyId, (B::Playing, f64)>,
     /// Whether the system suspended the game: everything is held.
     suspended: bool,
     /// What the backend's provided methods have said.
@@ -512,6 +519,7 @@ impl<B: Backend> Player<B> {
             warnings,
             gains: KeptGains::full(),
             handled: BTreeMap::new(),
+            copies: BTreeMap::new(),
             suspended: false,
             provided: Provided::default(),
             now: None,
@@ -635,6 +643,8 @@ impl<B: Backend> Player<B> {
         now: f64,
     ) {
         self.now = Some(now);
+        // A copy whose length has passed gives its playback back.
+        self.copies.retain(|_, (_, ends)| *ends > now);
         if !self.suspended {
             self.release_clocks(now);
         }
@@ -699,11 +709,19 @@ impl<B: Backend> Player<B> {
                 volume,
                 variant,
                 cue_volume,
+                copy,
             } => {
                 // A looped cue played this way (a bug the debug build
                 // catches) plays once: nothing could stop it.
                 let picked = Picked::new(*variant, *cue_volume, *volume);
-                self.play_sound(backend, cue, picked, false);
+                if let Some((playing, _)) = self.play_sound(backend, cue, picked, false) {
+                    self.keep_copy(*copy, cue, *variant, playing);
+                }
+            }
+            SoundRequest::StopCopy { copy } => {
+                if let Some((playing, _)) = self.copies.remove(copy) {
+                    backend.stop_playing(playing);
+                }
             }
             SoundRequest::Start {
                 id,
@@ -736,6 +754,21 @@ impl<B: Backend> Player<B> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Keeps `playing`, file `variant` of `cue`, as the copy `copy` until
+    /// its length has passed: nothing for a copy no rules counted or whose
+    /// length is unknown.
+    fn keep_copy(&mut self, copy: CopyId, cue: &str, variant: usize, playing: B::Playing) {
+        let length = self
+            .manifest
+            .sounds
+            .get(cue)
+            .and_then(|def| def.length_ms(variant));
+        if let (false, Some(length)) = (copy == CopyId::NONE, length.filter(|&ms| ms > 0)) {
+            let ends = self.now.unwrap_or(0.0) + f64::from(length) / 1000.0;
+            self.copies.insert(copy, (playing, ends));
         }
     }
 
@@ -1346,7 +1379,9 @@ mod tests {
                 CreditRef::Own,
             )
         };
-        m.sounds.insert("beep".into(), sound(&["sfx/beep.wav"], 50));
+        let mut beep = sound(&["sfx/beep.wav"], 50);
+        beep.lengths_ms = vec![Some(500)];
+        m.sounds.insert("beep".into(), beep);
         let rain = sound(&["sfx/beep.wav"], 50).with_looped(true);
         m.sounds.insert("rain".into(), rain);
         let steps = ["sfx/step_1.wav", "sfx/step_2.wav", "sfx/step_3.wav"];
@@ -1472,6 +1507,38 @@ mod tests {
         queue.stop_sound(second, 0);
         audio.hear(&mut fake, &queue.take(), &[], 0.0);
         assert!(fake.calls().is_empty(), "a stopped id is gone");
+    }
+
+    /// Of two copies of one file, a `StopCopy` stops the one it names; a
+    /// copy whose length has passed gives its playback back.
+    #[test]
+    fn a_copy_stops_alone_and_one_whose_length_has_passed_is_let_go() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        let copy = |n| SoundRequest::sound("beep", 1.0).with_copy(CopyId::new(n));
+        let stop = |n| SoundRequest::StopCopy {
+            copy: CopyId::new(n),
+        };
+        audio.play(&mut fake, &[copy(1), copy(2)], &[], 0.0);
+        assert_eq!(fake.calls(), ["play wav100 1.00", "play wav100 1.00"]);
+        audio.play(&mut fake, &[stop(2)], &[], 0.1);
+        assert_eq!(fake.calls(), ["stop #2"], "copy 1 plays on");
+        assert_eq!(
+            audio.copies.keys().copied().collect::<Vec<_>>(),
+            [CopyId::new(1)]
+        );
+        // At its 500 ms copy 1 has ended: a stop of it stops nothing.
+        audio.play(&mut fake, &[stop(1)], &[], 0.5);
+        assert!(fake.calls().is_empty());
+        assert!(audio.copies.is_empty());
+        // A copy no rules counted, one of unknown length, and a copy never
+        // played keep and stop nothing.
+        let step = SoundRequest::sound("step", 1.0).with_copy(CopyId::new(4));
+        let asked = [SoundRequest::sound("beep", 1.0), step, stop(0), stop(9)];
+        audio.play(&mut fake, &asked, &[], 1.0);
+        assert_eq!(fake.calls(), ["play wav100 1.00", "play wav200 1.00"]);
+        assert!(audio.copies.is_empty());
     }
 
     #[test]
@@ -2313,6 +2380,7 @@ mod tests {
             volume: 1.0,
             variant: 0,
             cue_volume: 100,
+            copy: CopyId::NONE,
         }];
         let half = levels(50, 50, 50);
         let frame = AudioFrame {

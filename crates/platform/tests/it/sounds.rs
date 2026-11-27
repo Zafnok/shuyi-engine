@@ -3,7 +3,7 @@
 //! the headless backend's `Speaker` holds them as playing until they
 //! stop, and the audio while the system suspends the game.
 
-use shuyi_assets::audio::CueRules;
+use shuyi_assets::audio::{CueRules, WhenFull};
 use shuyi_platform::SystemEvent;
 use shuyi_platform::audio::cues::DropWhy;
 use shuyi_platform::harness::Harness;
@@ -226,6 +226,38 @@ fn a_click_inside_its_cues_gap_is_asked_for_and_dropped() {
     let mut h = clicking(0);
     h.keys("f f f");
     assert_eq!(h.sounds(), ["click", "click"]);
+    assert_eq!(h.dropped_sounds().len(), 0);
+}
+
+/// The toy's home, its `click` one copy at most, 500 ms long.
+fn one_click() -> Harness<Toy> {
+    let mut ctx = toy::ctx();
+    if let Some(click) = ctx.game.audio.sounds.get_mut("click") {
+        click.rules = CueRules::DEFAULT.with_max_copies(Some(1), WhenFull::Skip);
+        click.lengths_ms = vec![Some(500)];
+    }
+    let stack = ScreenStack::new(Box::new(Home::default()));
+    Harness::new(Game::with_stack(ctx, stack, GameHooks::default()))
+}
+
+/// Two clicks 100 ms apart: the first still sounds, so the cue rules drop
+/// the second as over the cue's copies; past its 500 ms, one sounds again.
+#[test]
+fn a_click_while_its_one_copy_sounds_is_asked_for_and_dropped() {
+    let mut h = one_click();
+    // Confirm opens the menu; Confirm there clicks.
+    h.keys("f").clear_audio().keys("f").wait(0.1).keys("f");
+    assert_eq!(h.sounds(), ["click", "click"]);
+    let dropped = h.dropped_sounds();
+    let got: Vec<_> = dropped
+        .iter()
+        .map(|(_, d)| (d.cue.as_str(), d.why))
+        .collect();
+    assert_eq!(got, [("click", DropWhy::Copies)]);
+    let heard = h.platform().speaker().requests().len();
+    assert_eq!(heard, 0, "the last frame sent the device nothing");
+    h.clear_audio().wait(0.5).keys("f");
+    assert_eq!(h.sounds(), ["click"]);
     assert_eq!(h.dropped_sounds().len(), 0);
 }
 

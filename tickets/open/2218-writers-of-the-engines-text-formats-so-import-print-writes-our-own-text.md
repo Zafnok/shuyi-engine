@@ -66,12 +66,12 @@ None.
   2345's RON has them (`pick`, `volume_min` written bare, `min_gap_ms`),
   each only when it isn't the default, and the round trip covers a cue
   with rules.
-- **Either order with 2378:** if 2378 is done, the `AudioManifestRon`
-  writer also writes a cue's `max_copies` (bare), `when_full` and
-  `priority`, and the manifest's `max_voices` (bare), each only when it
-  isn't the default, and never a cue's `lengths_ms` (measured, never
-  written); the round trip covers a cue and a manifest with them. If
-  not, nothing to do (2378 adds them to this writer).
+- **From 2378 (done):** the `AudioManifestRon` writer also writes a
+  cue's `max_copies` (bare), `when_full` and `priority`, and the
+  manifest's `max_voices` (bare), each only when it isn't the default
+  (`CueRules::DEFAULT`: no cap, `Skip`, priority 128; `max_voices: None`),
+  and never a cue's `lengths_ms` (measured, never written); the round
+  trip covers a cue and a manifest with them.
 - **Either order with 2363:** if 2363 is done, the `AudioManifestRon`
   writer writes a cue's `falloff` when it has one (its `curve` by its
   `Ease` name) and leaves it out when it is `None`, and the round trip

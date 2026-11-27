@@ -1,21 +1,30 @@
 //! The cue rules at run time (ADR-0139): which file each play of a sound
-//! cue plays, at what volume, and which plays are dropped, decided once in
-//! [`App`](crate::App) before the device, so every backend plays the same.
+//! cue plays, at what volume, and which plays are dropped or cut, decided
+//! once in [`App`](crate::App) before the device, so every backend plays the
+//! same.
 //!
 //! [`Cues`] turns a frame's [`AudioRequest`]s into [`SoundRequest`]s, in
 //! order. Each play of a sound goes through its cue's [`CueRules`]: first
-//! its gap, then its file and its volume. A play dropped draws nothing from
-//! the variant picker, so the plays that sound are the same with it or
-//! without it. Time is the frame's, in whole milliseconds, and the picker is
-//! a `SplitMix64` of its own, apart from the simulation's RNG: what plays
-//! never changes the game, and the same seed and requests give the same
-//! plays on every port.
+//! its gap, then its cue's copy cap, then the manifest's voices; then it
+//! picks its file and its volume, and gets its [`CopyId`]. A play dropped
+//! draws nothing from the variant picker, so the plays that sound are the
+//! same with it or without it. Time is the frame's, in whole milliseconds,
+//! and the picker is a `SplitMix64` of its own, apart from the simulation's
+//! RNG: what plays never changes the game, and the same seed and requests
+//! give the same plays on every port.
+//!
+//! **Copies.** A play that sounds is a copy of its cue until its start plus
+//! its file's length ([`SoundCue::length_ms`]); one whose length is unknown
+//! ends at once, so it never holds a copy or a voice. A copy cut to make
+//! room is stopped alone ([`SoundRequest::StopCopy`], before the new play)
+//! and reported as [`DropWhy::Cut`]. Music, voice clips and sounds started
+//! with a handle don't count.
 
 use alloc::collections::BTreeMap;
 
 use crate::alloc_prelude::*;
 
-use shuyi_assets::audio::{AudioManifest, CueRules, Pick};
+use shuyi_assets::audio::{AudioManifest, CueRules, Pick, SoundCue, WhenFull};
 use shuyi_assets::voice::ClipVariant;
 use shuyi_ui::audio::{AudioRequest, splitmix64};
 
@@ -26,20 +35,51 @@ use crate::platform::Millis;
 /// picks from the same seed ("cues-rng" in ASCII).
 const SALT: u64 = 0x6375_6573_2D72_6E67;
 
-/// The cue rules' state: what each cue played last, and the picker.
+/// The cue rules' state: what each cue played last, the copies sounding,
+/// and the picker.
 #[derive(Debug)]
 pub struct Cues {
     rng: VariantRng,
     /// Each cue that has played, by id.
     cues: BTreeMap<String, Played>,
+    /// The copies sounding, oldest first.
+    sounding: Vec<Sounding>,
+    /// The last copy's id.
+    last_copy: u64,
+    /// The latest frame's time: a clock that goes backwards counts as no
+    /// time passing for the copies.
+    clock: Millis,
 }
 
-/// A play the cue rules dropped: its cue and why. A view (ADR-0039, kind
-/// 3): read its fields.
+/// One play of a sound cue that sounded, as the cue rules count it
+/// ([`SoundRequest::Sound`]'s `copy`): a backend stops it alone with
+/// [`SoundRequest::StopCopy`]. Ids rise from 1 in the order the plays
+/// sounded, so a lower one is older. A plain value (ADR-0039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, serde::Serialize)]
+pub struct CopyId(u64);
+
+impl CopyId {
+    /// No copy: a sound no [`Cues`] counted, such as one built with
+    /// [`SoundRequest::sound`] alone. A backend keeps nothing for it.
+    pub const NONE: Self = Self(0);
+
+    /// The copy numbered `n` (0 is [`NONE`](Self::NONE)).
+    pub const fn new(n: u64) -> Self {
+        Self(n)
+    }
+
+    /// Its number.
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+/// A play the cue rules dropped or cut: its cue and why. A view (ADR-0039,
+/// kind 3): read its fields.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
 pub struct DroppedSound {
-    /// The sound cue.
+    /// The sound cue: for [`DropWhy::Cut`], the cut copy's.
     pub cue: String,
     /// Why it was dropped.
     pub why: DropWhy,
@@ -52,15 +92,39 @@ pub enum DropWhy {
     /// Less than its cue's `min_gap_ms` after the cue's last play that
     /// sounded.
     Gap,
+    /// Its cue's `max_copies` copies sounded, and its `when_full` is
+    /// `Skip`.
+    Copies,
+    /// The manifest's `max_voices` copies sounded, each of a higher
+    /// priority than its own.
+    Voices,
+    /// A copy that was sounding, cut to make room for a new play: by its
+    /// cue's `StopOldest`, or by the voice rule.
+    Cut,
 }
 
 impl DropWhy {
-    /// Its name in the tool contract's answers: `gap`.
+    /// Its name in the tool contract's answers: `gap`, `copies`, `voices`
+    /// or `cut`.
     pub const fn word(self) -> &'static str {
         match self {
             Self::Gap => "gap",
+            Self::Copies => "copies",
+            Self::Voices => "voices",
+            Self::Cut => "cut",
         }
     }
+}
+
+/// A copy sounding.
+#[derive(Debug)]
+struct Sounding {
+    copy: CopyId,
+    cue: String,
+    priority: u8,
+    started: Millis,
+    /// When its file's length has passed.
+    ends: Millis,
 }
 
 /// What one cue has played.
@@ -124,6 +188,12 @@ impl Played {
     }
 }
 
+/// Where a frame's requests go: the device's, and the drops.
+struct Out<'a> {
+    requests: &'a mut Vec<SoundRequest>,
+    dropped: &'a mut Vec<DroppedSound>,
+}
+
 impl Cues {
     /// No cue played yet, the picker seeded from `seed` (the game's
     /// `ctx.music_seed`).
@@ -131,6 +201,9 @@ impl Cues {
         Self {
             rng: VariantRng::new(splitmix64(seed ^ SALT)),
             cues: BTreeMap::new(),
+            sounding: Vec::new(),
+            last_copy: 0,
+            clock: Millis(0),
         }
     }
 
@@ -138,12 +211,14 @@ impl Cues {
     /// gets, in order, added to `out`: each sound played or started with
     /// its file and volume picked by its cue's rules in `manifest`, every
     /// other request as [`SoundRequest::from_request`] makes it. A play its
-    /// rules drop goes to `dropped` instead.
+    /// rules drop goes to `dropped` instead, and so does each copy cut to
+    /// make room for one, after its [`SoundRequest::StopCopy`] in `out`.
     ///
     /// A cue the manifest lacks, or one with no files, goes through with
     /// file 0 at volume 0 (the device warns of it, or plays a sound the
-    /// game added as it is). A sound started with a handle is never
-    /// dropped and starts no gap: the game stops it itself.
+    /// game added as it is), and holds no copy. A sound started with a
+    /// handle is never dropped, starts no gap and holds no copy or voice:
+    /// the game stops it itself.
     pub fn apply<V: ClipVariant>(
         &mut self,
         manifest: &AudioManifest,
@@ -152,58 +227,142 @@ impl Cues {
         out: &mut Vec<SoundRequest>,
         dropped: &mut Vec<DroppedSound>,
     ) {
+        self.clock = self.clock.max(now);
+        let clock = self.clock;
+        self.sounding.retain(|copy| copy.ends > clock);
+        let mut out = Out {
+            requests: out,
+            dropped,
+        };
         for request in asked {
             match request {
                 AudioRequest::PlaySound { cue, volume, .. } => {
-                    match self.pick(manifest, now, cue, true) {
-                        Ok((file, level)) => {
-                            out.push(
-                                SoundRequest::sound(cue.clone(), *volume).with_pick(file, level),
-                            );
-                        }
-                        Err(why) => dropped.push(DroppedSound {
-                            cue: cue.clone(),
-                            why,
-                        }),
-                    }
+                    self.play(manifest, now, cue, *volume, &mut out);
                 }
                 AudioRequest::StartSound { id, cue, volume } => {
-                    let (file, level) = self.pick(manifest, now, cue, false).unwrap_or((0, 0));
-                    out.push(SoundRequest::start(*id, cue.clone(), *volume).with_pick(file, level));
+                    let def = manifest.sounds.get(cue.as_str());
+                    let (file, level) = self.draw(def, cue);
+                    let start = SoundRequest::start(*id, cue.clone(), *volume);
+                    out.requests.push(start.with_pick(file, level));
                 }
-                other => out.extend(SoundRequest::from_request(other)),
+                other => out.requests.extend(SoundRequest::from_request(other)),
             }
         }
     }
 
-    /// The file and volume of a play of `cue` at `now`, or why it is
-    /// dropped; a play `gapped` is held to the cue's gap and starts it.
-    fn pick(
+    /// One play of `cue` at `now`: dropped, or sounding (after the copies
+    /// cut to make room for it).
+    fn play(
         &mut self,
         manifest: &AudioManifest,
         now: Millis,
         cue: &str,
-        gapped: bool,
-    ) -> Result<(usize, u8), DropWhy> {
-        let Some(def) = manifest.sounds.get(cue).filter(|def| !def.files.is_empty()) else {
-            return Ok((0, 0));
+        volume: f32,
+        out: &mut Out<'_>,
+    ) {
+        let def = manifest.sounds.get(cue).filter(|def| !def.files.is_empty());
+        let drop = |out: &mut Out<'_>, why| {
+            out.dropped.push(DroppedSound {
+                cue: cue.to_owned(),
+                why,
+            });
+        };
+        if let Some(def) = def {
+            let sounded = self.cues.get(cue).and_then(|played| played.sounded);
+            if too_soon(def.rules, sounded, now) {
+                return drop(out, DropWhy::Gap);
+            }
+            if let Err(why) = self.make_room(cue, def.rules, manifest.max_voices, out) {
+                return drop(out, why);
+            }
+        }
+        let (file, level) = self.draw(def, cue);
+        self.last_copy += 1;
+        let copy = CopyId(self.last_copy);
+        if let Some(def) = def {
+            if let Some(played) = self.cues.get_mut(cue) {
+                played.sounded = Some(now);
+            }
+            if let Some(length) = def.length_ms(file).filter(|&ms| ms > 0) {
+                self.sounding.push(Sounding {
+                    copy,
+                    cue: cue.to_owned(),
+                    priority: def.rules.priority,
+                    started: self.clock,
+                    ends: Millis(self.clock.0.saturating_add(u64::from(length))),
+                });
+            }
+        }
+        let sound = SoundRequest::sound(cue, volume).with_pick(file, level);
+        out.requests.push(sound.with_copy(copy));
+    }
+
+    /// Makes room for a play of `cue` by `rules` under `max_voices`, cutting
+    /// a copy if its rules say so, or says why it is dropped.
+    fn make_room(
+        &mut self,
+        cue: &str,
+        rules: CueRules,
+        max_voices: Option<u16>,
+        out: &mut Out<'_>,
+    ) -> Result<(), DropWhy> {
+        if let Some(max) = rules.max_copies {
+            let copies = self.sounding.iter().filter(|copy| copy.cue == cue).count();
+            if copies >= usize::from(max) {
+                let oldest = self
+                    .sounding
+                    .iter()
+                    .position(|copy| copy.cue == cue)
+                    .filter(|_| rules.when_full == WhenFull::StopOldest);
+                // `Skip`, a rule a later engine adds, and a cap of 0
+                // (refused in a file) drop it.
+                let oldest = oldest.ok_or(DropWhy::Copies)?;
+                self.cut(oldest, out);
+            }
+        }
+        if let Some(max) = max_voices
+            && self.sounding.len() >= usize::from(max)
+        {
+            // The lowest priority, the oldest of those, ties to the lower id.
+            let lowest = self
+                .sounding
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, copy)| (copy.priority, copy.started, copy.copy))
+                .filter(|(_, copy)| copy.priority <= rules.priority)
+                .map(|(at, _)| at);
+            self.cut(lowest.ok_or(DropWhy::Voices)?, out);
+        }
+        Ok(())
+    }
+
+    /// Cuts the copy sounding at `at`: stopped alone, and reported.
+    fn cut(&mut self, at: usize, out: &mut Out<'_>) {
+        let copy = self.sounding.remove(at);
+        out.requests
+            .push(SoundRequest::StopCopy { copy: copy.copy });
+        out.dropped.push(DroppedSound {
+            cue: copy.cue,
+            why: DropWhy::Cut,
+        });
+    }
+
+    /// The file and volume a play of `cue`, `def` in the manifest, picks:
+    /// file 0 at volume 0 for a cue the manifest lacks or with no files.
+    fn draw(&mut self, def: Option<&SoundCue>, cue: &str) -> (usize, u8) {
+        let Some(def) = def.filter(|def| !def.files.is_empty()) else {
+            return (0, 0);
         };
         let rules = def.rules;
         if !self.cues.contains_key(cue) {
             self.cues.insert(cue.to_owned(), Played::default());
         }
         let Some(played) = self.cues.get_mut(cue) else {
-            return Ok((0, 0));
+            return (0, 0);
         };
-        if gapped && too_soon(rules, played.sounded, now) {
-            return Err(DropWhy::Gap);
-        }
         let file = played.pick(rules.pick, def.files.len(), &mut self.rng);
         let level = volume(def.volume, rules.volume_min, &mut self.rng);
-        if gapped {
-            played.sounded = Some(now);
-        }
-        Ok((file, level))
+        (file, level)
     }
 }
 

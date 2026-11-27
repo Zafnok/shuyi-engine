@@ -120,6 +120,13 @@ pub struct AudioManifest {
     /// The ducking rules (ADR-0099), in the file's order: a group lowered
     /// while a voice plays. None by default, and nothing is lowered.
     pub ducks: Vec<DuckRule>,
+    /// At most this many copies of all sound cues sound at once (ADR-0139
+    /// §4): a play past it takes the voice of the copy with the lowest
+    /// [`priority`](CueRules::priority), if that is at most its own, and is
+    /// dropped otherwise. `None` (the file's default) is no limit. Never 0.
+    /// Music, voice clips and sounds started with a handle don't count.
+    #[serde(default)]
+    pub max_voices: Option<u16>,
 }
 
 impl AudioManifest {
@@ -295,11 +302,13 @@ impl SoundCue {
 /// ```ron
 /// (id: "step", files: ["sfx/step_1.ogg", "sfx/step_2.ogg", "sfx/step_3.ogg"],
 ///  volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
+/// (id: "hit", files: ["sfx/hit_1.wav", "sfx/hit_2.wav"], volume: 80,
+///  credit: Own, max_copies: 3, when_full: StopOldest, priority: 200),
 /// ```
 ///
 /// Config (ADR-0039, kind 2): start from [`CueRules::DEFAULT`] and change
 /// it with the `with_` methods.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct CueRules {
     /// How each play picks its file ([`Pick::Random`] by default).
@@ -311,15 +320,46 @@ pub struct CueRules {
     /// A play less than this many milliseconds after the cue's last play
     /// that sounded is dropped (0, the default: none is).
     pub min_gap_ms: u32,
+    /// At most this many copies of the cue sound at once, each until its
+    /// file's length has passed ([`SoundCue::lengths_ms`]); `None` (the
+    /// default) is no cap. Never 0.
+    #[serde(default)]
+    pub max_copies: Option<u8>,
+    /// What a play does when `max_copies` copies sound ([`WhenFull::Skip`]
+    /// by default: it is dropped).
+    #[serde(default)]
+    pub when_full: WhenFull,
+    /// Which copies lose their voice when the manifest's `max_voices` sound:
+    /// higher wins (128 by default).
+    #[serde(default = "default_priority")]
+    pub priority: u8,
+}
+
+/// A cue's priority when it names none: the middle.
+pub const DEFAULT_PRIORITY: u8 = 128;
+
+/// [`DEFAULT_PRIORITY`], for serde.
+const fn default_priority() -> u8 {
+    DEFAULT_PRIORITY
+}
+
+impl Default for CueRules {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
 }
 
 impl CueRules {
     /// The rules of a cue that names none: a file at random, at the cue's
-    /// volume, with no gap. Equal to `CueRules::default()`, for a `const`.
+    /// volume, with no gap, no cap on its copies, and the middle priority.
+    /// Equal to `CueRules::default()`, for a `const`.
     pub const DEFAULT: Self = Self {
         pick: Pick::Random,
         volume_min: None,
         min_gap_ms: 0,
+        max_copies: None,
+        when_full: WhenFull::Skip,
+        priority: DEFAULT_PRIORITY,
     };
 
     /// The same rules, picking files as `pick` says.
@@ -344,6 +384,37 @@ impl CueRules {
         self.min_gap_ms = min_gap_ms;
         self
     }
+
+    /// The same rules, at most `max_copies` copies sounding at once
+    /// (`None`: no cap), and `when_full` saying what a play past it does.
+    #[must_use]
+    pub const fn with_max_copies(mut self, max_copies: Option<u8>, when_full: WhenFull) -> Self {
+        self.max_copies = max_copies;
+        self.when_full = when_full;
+        self
+    }
+
+    /// The same rules, at `priority` against the other cues' copies for a
+    /// voice (higher wins).
+    #[must_use]
+    pub const fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+}
+
+/// What a play of a cue does when [`CueRules::max_copies`] of its copies
+/// sound already. A later engine may add a rule, so a `match` keeps a `_`
+/// arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum WhenFull {
+    /// The new play is dropped.
+    #[default]
+    Skip,
+    /// The cue's oldest copy is cut and the new one plays: a footstep with
+    /// `max_copies: 1` restarts.
+    StopOldest,
 }
 
 /// How a sound cue picks the file each play plays. A cue of one file plays
@@ -554,6 +625,8 @@ struct RawFile {
     groups: Vec<groups::RawGroup>,
     #[serde(default)]
     ducks: Vec<groups::RawDuck>,
+    #[serde(default)]
+    max_voices: Option<u16>,
     sounds: Vec<RawSound>,
     music: Vec<RawMusic>,
     pools: Vec<RawPool>,
@@ -579,6 +652,12 @@ struct RawSound {
     volume_min: Option<u8>,
     #[serde(default)]
     min_gap_ms: u32,
+    #[serde(default)]
+    max_copies: Option<u8>,
+    #[serde(default)]
+    when_full: WhenFull,
+    #[serde(default = "default_priority")]
+    priority: u8,
 }
 
 #[derive(Deserialize)]
@@ -920,9 +999,16 @@ pub fn from_source(
             music_fade_ms: raw.music_fade_ms,
             music_fade_in_ms: raw.music_fade_in_ms,
             music_overlap: raw.music_overlap,
+            max_voices: raw.max_voices,
             ..AudioManifest::default()
         },
     };
+    if raw.max_voices == Some(0) {
+        check.err_at(
+            "max_voices:",
+            "max_voices is 0: leave it out for no limit".into(),
+        );
+    }
     check.groups(raw.groups);
     check.ducks(raw.ducks);
     for c in raw.credits {
@@ -964,6 +1050,16 @@ impl Check<'_> {
                 Some(l) => e.at(l, None),
                 None => e,
             });
+    }
+
+    /// Records a problem at the first line that has `key` (one of the
+    /// file's own fields), or with no line.
+    fn err_at(&mut self, key: &str, message: String) {
+        let e = ContentError::new(self.file, message);
+        self.errors.push(match line_of(self.source, key) {
+            Some(l) => e.at(l, None),
+            None => e,
+        });
     }
 
     fn new_cue(&mut self, id: &str) {
@@ -1035,10 +1131,19 @@ impl Check<'_> {
                             self.err(&id, format!("sound \"{id}\": {path}: {why}"));
                         }
                         length = sound_length_ms(f, &bytes);
+                        let counted = s.max_copies.is_some() || self.manifest.max_voices.is_some();
+                        if length.is_none() && counted {
+                            let why = "its length can't be measured, and max_copies or max_voices counts its copies";
+                            self.err(&id, format!("sound \"{id}\": {path}: {why}"));
+                        }
                     }
                 }
             }
             lengths_ms.push(length);
+        }
+        if s.max_copies == Some(0) {
+            let why = "max_copies is 0: leave it out for no cap";
+            self.err(&id, format!("sound \"{id}\": {why}"));
         }
         self.volume(&id, s.volume);
         if let Some(min) = s.volume_min.filter(|&min| min > s.volume) {
@@ -1052,6 +1157,9 @@ impl Check<'_> {
             pick: s.pick,
             volume_min: s.volume_min,
             min_gap_ms: s.min_gap_ms,
+            max_copies: s.max_copies,
+            when_full: s.when_full,
+            priority: s.priority,
         };
         let entry = SoundCue {
             files: s.files,
@@ -1565,6 +1673,106 @@ pub(crate) mod tests {
             let got = m.map(|m| m.sounds.get("footfall").map(|s| s.rules.pick));
             assert_eq!(got, Ok(Some(pick)), "{word}");
         }
+    }
+
+    /// Every file good and measured: a WAV of 100 ms.
+    fn measured_files() -> Files<'static> {
+        reading(
+            &|p: &str| {
+                Some(Cow::Owned(if has_extension(p, &["wav"]) {
+                    wav_of_frames(2, SAMPLE_RATE, 4_410)
+                } else {
+                    good(p)
+                }))
+            },
+            Some(&|f: &str| Some(Cow::Owned(good(f)))),
+        )
+    }
+
+    /// `FULL` with `fields` on its `footfall` (2 s OGGs, so their lengths
+    /// are measured) and `top` at the top of the file.
+    fn capped(fields: &str, top: &str) -> String {
+        FULL.replace("volume: 60,", &format!("volume: 60, {fields}"))
+            .replace("music_fade_ms: 250,", &format!("music_fade_ms: 250, {top}"))
+    }
+
+    /// The copy cap, `when_full` and the priority are flat on the sound,
+    /// and `max_voices` at the top, the two `Option`s bare.
+    #[test]
+    fn a_cues_copy_cap_and_priority_and_the_voice_limit_are_read_bare() {
+        let source = capped(
+            "max_copies: 3, when_full: StopOldest, priority: 200,",
+            "max_voices: 12,",
+        );
+        let m = from_source("a.ron", &source, &measured_files());
+        let m = m.unwrap_or_default();
+        let want = CueRules::DEFAULT
+            .with_max_copies(Some(3), WhenFull::StopOldest)
+            .with_priority(200);
+        assert_eq!(m.sounds.get("footfall").map(|s| s.rules), Some(want));
+        assert_eq!(
+            (want.max_copies, want.when_full, want.priority),
+            (Some(3), WhenFull::StopOldest, 200)
+        );
+        assert_eq!(m.max_voices, Some(12));
+        // Left out, each is its default.
+        let m = from_source("a.ron", FULL, &all_files()).unwrap_or_default();
+        assert_eq!(m.max_voices, None);
+        let rules = m
+            .sounds
+            .get("footfall")
+            .map(|s| s.rules)
+            .unwrap_or_default();
+        assert_eq!(
+            (rules.max_copies, rules.when_full, rules.priority),
+            (None, WhenFull::Skip, 128)
+        );
+        let m = from_source("a.ron", &capped("when_full: Skip,", ""), &all_files());
+        let got = m.map(|m| m.sounds.get("footfall").map(|s| s.rules.when_full));
+        assert_eq!(got, Ok(Some(WhenFull::Skip)));
+    }
+
+    #[test]
+    fn a_cap_or_a_voice_limit_of_zero_is_refused_at_its_line() {
+        assert_eq!(
+            errors(&capped("max_copies: 0,", "")),
+            ["a.ron:5: sound \"footfall\": max_copies is 0: leave it out for no cap"]
+        );
+        let source = FULL.replace(
+            "music_fade_ms: 250,",
+            "music_fade_ms: 250,\n    max_voices: 0,",
+        );
+        let measured = measured_files();
+        assert_eq!(
+            errors_with(&source, &measured),
+            ["a.ron:3: max_voices is 0: leave it out for no limit"]
+        );
+        let lowest = capped("max_copies: 1, priority: 0,", "max_voices: 1,");
+        assert_eq!(errors_with(&lowest, &measured), Vec::<String>::new());
+    }
+
+    /// `FULL`'s `ui_tick` is a WAV with no `data` chunk: its length can't be
+    /// told, which only matters when its copies are counted.
+    #[test]
+    fn a_counted_cue_whose_file_cant_be_measured_is_refused_at_its_line() {
+        let tick = "volume: 100, credit: Own";
+        let why = "a.ron:4: sound \"ui_tick\": base/audio/sfx/ui_tick.wav: its length can't be \
+                   measured, and max_copies or max_voices counts its copies";
+        assert_eq!(
+            errors(FULL),
+            Vec::<String>::new(),
+            "nothing counts its copies"
+        );
+        let source = FULL.replace(tick, &format!("{tick}, max_copies: 2"));
+        assert_eq!(errors(&source), [why]);
+        let source = FULL.replace("music_fade_ms: 250,", "music_fade_ms: 250, max_voices: 8,");
+        assert_eq!(errors(&source), [why]);
+        // A file left out of the build isn't read, so isn't measured.
+        let files = Files {
+            sound_left_out: &|p: &str| p == "sfx/ui_tick.wav",
+            ..all_files()
+        };
+        assert_eq!(errors_with(&source, &files), Vec::<String>::new());
     }
 
     #[test]

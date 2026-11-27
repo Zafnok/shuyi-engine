@@ -171,6 +171,38 @@ mod toy {
         Headless::new(Harness::new(toy::game_on(ctx)))
     }
 
+    /// The toy, its `click` one copy at most, 500 milliseconds long: a
+    /// click while the last still sounds is dropped as over its copies.
+    #[test]
+    fn run_lists_a_play_over_its_cues_copies() {
+        use crate::contract::run::run_output;
+        use shuyi_assets::audio::{CueRules, WhenFull};
+
+        let mut ctx = toy::ctx();
+        if let Some(click) = ctx.game.audio.sounds.get_mut("click") {
+            click.rules = CueRules::DEFAULT.with_max_copies(Some(1), WhenFull::Skip);
+            click.lengths_ms = vec![Some(500)];
+        }
+        let mut s = Headless::new(Harness::new(toy::game_on(ctx)));
+        // Confirm opens the menu; Confirm there clicks, twice 100 ms apart.
+        let steps = vec![
+            Step::Keys("f f".into()),
+            Step::Wait(0.1),
+            Step::Keys("f".into()),
+        ];
+        s.play(&Script::new(steps));
+        let (out, _) = run_output(&s);
+        assert_eq!(out.sounds.len(), 2, "{:?}", out.sounds);
+        let whys: Vec<_> = out
+            .dropped
+            .iter()
+            .map(|d| (d.cue.as_str(), d.why.as_str()))
+            .collect();
+        assert_eq!(whys, [("click", "copies")]);
+        let json = serde_json::to_value(&out).unwrap();
+        assert_eq!(json["dropped"][0]["why"], "copies");
+    }
+
     #[test]
     fn run_lists_the_plays_the_cue_rules_dropped() {
         use crate::contract::run::{RunOutput, run_output};

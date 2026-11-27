@@ -7,6 +7,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use shuyi_assets::audio::{AudioManifest, CreditRef, MusicCue, SoundCue};
+use shuyi_platform::audio::CopyId;
 use shuyi_platform::audio::player::{Backend, Player};
 use shuyi_platform::{Audio, AudioFrame, Millis, SoundRequest};
 use shuyi_ui::audio::groups::SFX;
@@ -212,6 +213,37 @@ fn a_handles_sample_player_stops_alone_and_an_old_handle_does_nothing() {
         1,
         "the new sound plays on"
     );
+}
+
+/// Of two copies of one sound the cue rules counted, a `StopCopy` stops the
+/// sample player of the one it names, and the other plays on.
+#[test]
+fn a_copy_cut_stops_its_sample_player_alone() {
+    let mut m = manifest();
+    if let Some(click) = m.sounds.get_mut("click") {
+        click.lengths_ms = vec![Some(500)];
+    }
+    let sdk = sdk();
+    let mut speaker = Speaker::new(sdk.clone());
+    let mut player = player(&mut speaker, m);
+    let copy = |n, volume| sound("click", volume).with_copy(CopyId::new(n));
+    player.play(&mut speaker, &[copy(1, 1.0), copy(2, 0.5)], &[], 0.0);
+    assert_eq!(sdk.sounding_samples().len(), 2);
+    let cut = SoundRequest::StopCopy {
+        copy: CopyId::new(1),
+    };
+    player.play(&mut speaker, &[cut], &[], 0.1);
+    assert_eq!(
+        sdk.sounding_samples(),
+        [("audio/sfx/click".to_owned(), 0.25)],
+        "copy 2 plays on"
+    );
+    // Past its length, copy 2 holds no player: its stop stops nothing.
+    let after = SoundRequest::StopCopy {
+        copy: CopyId::new(2),
+    };
+    player.play(&mut speaker, &[after], &[], 0.6);
+    assert_eq!(sdk.sounding_samples().len(), 1);
 }
 
 #[test]

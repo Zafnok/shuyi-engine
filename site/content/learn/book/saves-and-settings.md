@@ -134,6 +134,17 @@ sees the drops (`h.dropped_sounds()`), as an agent does in `run`'s answer (`drop
  volume: 60, credit: Own, pick: NoRepeat, volume_min: 45, min_gap_ms: 60),
 ```
 
+A play lasts as long as its file, which the engine measures. `max_copies` caps how many
+plays of one sound are heard at once: past it a new play is skipped, or with `when_full:
+StopOldest` it cuts the oldest, so a footstep restarts. `max_voices`, at the top of the
+file, caps all sounds at once, and a new play then takes the place of the one with the
+lowest `priority` (128 unless it says), if that is no higher than its own:
+
+```ron
+(id: "hit", files: ["sfx/hit_1.wav", "sfx/hit_2.wav"], volume: 80,
+ credit: Own, max_copies: 3, when_full: StopOldest, priority: 200),
+```
+
 The game's options screen shows the group's volume with a row of its own, named by its
 id: `ctx.volume("ambience")` reads it, and `ctx.preview_volume("ambience", v)` sets it.
 `ctx.settings()` reads them, and `ctx.change_settings` changes them and saves them in

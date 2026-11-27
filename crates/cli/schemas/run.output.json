@@ -125,7 +125,7 @@
           "minimum": 0
         },
         "why": {
-          "description": "Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`\nafter its last play that sounded.",
+          "description": "Why it was dropped: `gap`, a play less than its cue's `min_gap_ms`\nafter its last play that sounded; `copies`, one while its cue's\n`max_copies` copies sounded; `voices`, one while the manifest's\n`max_voices` copies sounded, each of a higher priority; or `cut`, a\ncopy that was sounding, stopped to make room for another play (the\ncue is the cut copy's). A later engine may add a word.",
           "type": "string"
         }
       },

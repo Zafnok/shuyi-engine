@@ -200,7 +200,10 @@ export bakes each file the game's `GameTools::audio` names, OGG Vorbis or WAV at
 44,100 Hz, to mono IMA ADPCM, about 22 KB a second:
 
 - **sounds** are in memory all the game, in `audio/` in the `.pdx`, and eight
-  play at once: a ninth stops one of them, each in turn;
+  play at once: a ninth stops one of them, each in turn. Give the manifest
+  `max_voices: 8` and the cue rules choose which plays lose first, by their
+  priority ([`formats.md`](../formats.md)); a copy they cut stops its own
+  sample player alone, and the others play on;
 - **music** streams from `music/`, each track on a file player of its own, so
   a crossfade has two.
 
