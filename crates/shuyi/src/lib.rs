@@ -9,7 +9,9 @@
 //!   window, and with its feature, on by default; a game on a device without
 //!   `std` turns the default features off);
 //! - [`prelude`]: what a game on the short path names, with
-//!   [`run_game`](prelude::run_game);
+//!   [`run_game`](prelude::run_game), and its domains (ADR-0161):
+//!   `prelude::grid`, `prelude::text`, `prelude::audio` and
+//!   `prelude::test`; the rules' is `core::prelude`;
 //! - [`files!`]: a folder of the game's files, embedded in the program
 //!   (with `std`);
 //! - [`enabled_modules`]: the [`Module`] of each module turned on, which
@@ -49,7 +51,8 @@ use shuyi_ui::GameData;
 use shuyi_ui::module::Module;
 
 /// What a game on the short path names (ADR-0036): `shuyi-platform`'s
-/// prelude, and [`run_game`](shuyi_app::run_game), which runs it from a
+/// prelude, with its `grid`, `text`, `audio` and `test` domains
+/// (ADR-0161), and [`run_game`](shuyi_app::run_game), which runs it from a
 /// plain `main`.
 pub mod prelude {
     #[cfg(all(feature = "app", not(target_os = "wasi")))]

@@ -152,6 +152,27 @@ build running in its window instead, and `frame_png` then gives the real window'
 
 The server tells the agent to call `docs` before it guesses a name.
 
+## Which prelude to import
+
+A name an agent guesses is likeliest found through a prelude, one per domain:
+
+| Code | Import |
+| --- | --- |
+| A screen, a game's start | `use shuyi::prelude::*;` (the short path's names and `run_game`) |
+| A screen that shows a map | `use shuyi::prelude::grid::*;` (the camera, cursor, skins and scene, `GridMap`) |
+| A screen that writes words | `use shuyi::prelude::text::*;` (styled text, the font, the languages) |
+| Sound | `use shuyi::prelude::audio::*;` (the audio manifest and its cues) |
+| A game's tests | `use shuyi::prelude::test::*;` (the `Harness`, the playtest's checks) |
+| The rules crate | `use shuyi_core::prelude::*;` (the RNG, `TurnRules`, `TickSim`, `Pos`, the bots), or `shuyi::core::prelude` from the game's crate |
+| The tool program and its tests | `use shuyi_cli::prelude::*;` (`GameTools`, `BasicTools`, the contract's operations) |
+
+The template, the examples, the book's snippets and the skills' worked examples import through these
+alone, but for a few modules named by their path for one job: dialogue (`shuyi::ui::dialogue`),
+cinematics, menus, settings, storage and the debug menu. `tools/imports.ron` in the engine's repository
+lists each with why, and `cargo xtask check-imports` holds that code to it. The rules' `Grid` (the
+board) and the grid kit's (the screen's layout) share a name: a file that globs both preludes names
+one by its path.
+
 ## The API as text
 
 Beside each crate's API docs is its API as plain text, a file an agent reads or searches whole:

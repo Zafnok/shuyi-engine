@@ -41,6 +41,8 @@ compile round.
 - The precedent for a rename: 2226 kept `Lang::english` one release as a
   `#[deprecated]` alias of `source_text`, with one `#[expect(deprecated)]`
   test per alias, and needed no `Breaking:` line.
+- Its milestone, After MVP, is one of the audit's that 3528 asks Nick
+  about: a rename after the release is a deprecation games see.
 
 **The game** (pin `50472bbc`, `gh search code --repo
 Zafnok/visions-of-shuyi`): `print_centred` in 8 files
