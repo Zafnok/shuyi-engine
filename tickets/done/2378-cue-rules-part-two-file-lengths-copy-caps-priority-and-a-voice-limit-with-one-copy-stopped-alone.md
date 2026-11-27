@@ -342,8 +342,8 @@ What was done:
   `max_copies: 0` (at the cue's line), `max_voices: 0` (at its own line),
   and a file read whose length can't be measured, of a cue with
   `max_copies` or in a manifest with `max_voices` (naming the cue and the
-  file, at the cue's line). `pack::VERSION` is 26 (the ticket said 23
-  would become the next; other tickets had taken it to 25 since), with
+  file, at the cue's line). `pack::VERSION` is 27 (the ticket said 23
+  would become the next; other tickets had taken it to 26 since), with
   the pack's snapshots and the golden table blessed.
 - **`Cues`** (`crates/platform/src/audio/cues.rs`): `CopyId` (a plain
   `Copy`, `Ord` value from 1; `CopyId::NONE` is 0, a sound no rules
@@ -432,13 +432,13 @@ no `CueRules` or `max_voices`, so its manifests load unchanged.
 
 Game: nothing to adopt, but in the pin move itself: its manifests name no new field and its sound test still compiles; the pin move rebakes its pack and blesses `crates/ui/tests/it/sessions/quick_battle.session.ron` again, as the `Breaking:` lines say, and its Playdate front end (game#1170, open) runs on `shuyi-playdate`, whose shared player stops a cut copy itself.
 
-Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form holds its copy cap, its rule when full and its priority, and the manifest's its voice limit, so a baked pack is of version 26; a pack baked before is refused, so a game bakes again with `shuyi bake`.
+Breaking: shuyi-assets: `pack::VERSION` and `formats.ron` "audio manifest: audio-manifest": a sound cue's binary form holds its copy cap, its rule when full and its priority, and the manifest's its voice limit, so a baked pack is of version 27; a pack baked before is refused, so a game bakes again with `shuyi bake`.
 
 ```migration
 since: 0.1.0
-what: The pack format is version 26, its sound cues with their copy caps and priorities and the audio manifest with its voice limit; a pack of version 25 is refused.
-old: "pack::VERSION == 25"
-new: "pack::VERSION == 26"
+what: The pack format is version 27, its sound cues with their copy caps and priorities and the audio manifest with its voice limit; a pack of version 26 is refused.
+old: "pack::VERSION == 26"
+new: "pack::VERSION == 27"
 before: |
   cargo shuyi bake   # with the engine before 2378
 after: |
