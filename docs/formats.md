@@ -699,7 +699,7 @@ manifest names it like any sound file:
 ### Part sets (the `parts` feature)
 
 A part set makes a picture for each of a game's many generated people,
-creatures or things, from parts drawn once (ticket 2260, ADR-0163):
+creatures or things, from parts drawn once (ticket 2260, ADR-0165):
 behind the `parts` feature of `shuyi-assets` (the file and the roll;
 the painting, a feature of `shuyi-ui`, is ticket 2284's). No
 dependency, and it builds without `std`. Hand-drawn pictures stay the

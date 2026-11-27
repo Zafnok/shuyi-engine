@@ -337,9 +337,9 @@ by side, and two kinds). The golden table
 `determinism` job; the `no-std` job builds the feature
 (`--features sfx,corners,parts`). Docs: `docs/formats.md` (a row in the
 table of formats a game registers, and a section, *Part sets*), the
-module's rustdoc, the `shuyi-import-art` skill, ADR-0163.
+module's rustdoc, the `shuyi-import-art` skill, ADR-0165.
 
-**Where it lives, and why** (ADR-0163, which amends ADR-0160 §5). The
+**Where it lives, and why** (ADR-0165, which amends ADR-0160 §5). The
 home is an off-by-default `parts` feature of `shuyi-assets`, beside
 `image`, `palette` and `picture_set`, for the format and the roll; and,
 decided here and built in 2284, a `parts` feature of `shuyi-ui` for the
