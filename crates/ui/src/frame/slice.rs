@@ -84,8 +84,10 @@ fn fill(
     let (Ok(down), Ok(across)) = (usize::try_from(th), usize::try_from(tw)) else {
         return;
     };
-    for ty in (y + r0 * th..sy1).step_by(down) {
-        for tx in (x + c0 * tw..sx1).step_by(across) {
+    let skipped = |n: i64| usize::try_from(n).unwrap_or(usize::MAX);
+    // From the area's corner, skipping the tiles before what `within` shows.
+    for ty in (y..sy1).step_by(down).skip(skipped(r0)) {
+        for tx in (x..sx1).step_by(across).skip(skipped(c0)) {
             let clip = rect64(tx, ty, tw, th).and_then(|d| d.intersect(&seen).map(|c| (d, c)));
             if let Some((dest, clip)) = clip {
                 out.push(Sprite { dest, clip, ..base });

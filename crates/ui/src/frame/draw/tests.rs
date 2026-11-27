@@ -325,10 +325,13 @@ fn a_frames_border_blanks_only_the_border_cells() {
     assert_eq!(row(&buf, 2), ". ... ..");
     assert_eq!(row(&buf, 4), ".     ..");
     assert_eq!(row(&buf, 5), "........");
-    // The frame shows over every border cell: the bottom-right one too.
-    let corner = Rect::new(5 * 8, 4 * 16, 8, 16);
+    // The frame shows over every border cell: the bottom-right one, and
+    // the right and bottom ones beside the inside.
     let sprites = buf.sprites();
-    assert!(sprites.iter().any(|s| s.clip.intersect(&corner).is_some()));
+    let shown = |x, y| sprites.iter().any(|s| s.clip.contains(x, y));
+    assert!(shown(5 * 8 + 4, 4 * 16 + 8), "the bottom-right corner");
+    assert!(shown(5 * 8 + 4, 2 * 16 + 8), "the right edge");
+    assert!(shown(3 * 8 + 4, 4 * 16 + 8), "the bottom edge");
 }
 
 #[test]

@@ -112,6 +112,30 @@ fn tiled_edges_repeat_from_the_corner_and_cut_the_last() {
 }
 
 #[test]
+fn tiles_are_their_part_times_the_zoom_and_keep_to_their_grid() {
+    let tiled = slice()
+        .with_zoom(2)
+        .with_edges(EdgeFill::Tile)
+        .with_centre(CentreFill::Tile);
+    // Seen from (100, 100) on: the tiles before it are skipped, the rest
+    // laid from the middle's corner (6, 4) in steps of 10 by 12.
+    let within = Rect::new(100, 100, 30, 30);
+    let got = nine_slice_sprites(&tiled, Rect::new(0, 0, 400, 400), within, Layer::Under);
+    let middle: Vec<_> = got
+        .iter()
+        .filter(|s| s.src == Rect::new(7, 4, 5, 6))
+        .collect();
+    assert_ne!(middle.len(), 0);
+    for s in &middle {
+        assert_eq!((s.dest.w, s.dest.h), (10, 12));
+        assert_eq!(((s.dest.x - 6) % 10, (s.dest.y - 4) % 12), (0, 0), "{s:?}");
+    }
+    let first = middle.iter().map(|s| (s.dest.y, s.dest.x)).min().unwrap();
+    assert_eq!(first, (100, 96));
+    assert!(middle.iter().any(|s| s.clip.contains(100, 100)));
+}
+
+#[test]
 fn a_tiled_middle_makes_only_the_tiles_within_shows() {
     let tiled = slice().with_centre(CentreFill::Tile);
     let within = Rect::new(100, 100, 7, 5);
