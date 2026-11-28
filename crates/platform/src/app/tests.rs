@@ -17,7 +17,7 @@ use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
 use shuyi_ui::perf::{FrameRecord, HeapCounts, PerfClock};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
-use shuyi_ui::storage::MemoryStorage;
+use shuyi_ui::storage::{FaultyStorage, MemoryStorage};
 use shuyi_ui::system_keyboard::TextAsk;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
 use shuyi_ui::{GameHooks, IdleMotion, Keyboard};
@@ -325,20 +325,20 @@ fn the_game_is_shown_with_its_look_and_its_background() {
         |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
     );
     let mut app = App::new(start);
-    let mut p = RecordLook::default();
-    let _ = app.frame(&mut p.headless, Millis(0));
+    let (mut p, looks) = record_look();
+    let _ = app.frame(&mut p, Millis(0));
     let _ = app.frame(&mut p, Millis(16));
-    assert_eq!(p.looked, Some(true));
+    assert_eq!(looks.borrow().looked, Some(true));
     let ctx = running(&app).ctx();
     let background = ctx.game.blank_cell(&ctx.palette).bg;
     assert!(matches!(
-        p.headless.last_frame(),
+        p.last_frame(),
         Some(Presented::Game { background: shown, .. }) if *shown == background
     ));
     // A running App a test made has no look.
     let mut app = App::running(toy::game());
     let _ = app.frame(&mut p, Millis(0));
-    assert_eq!(p.looked, Some(false));
+    assert_eq!(looks.borrow().looked, Some(false));
 }
 
 #[test]
@@ -349,64 +349,37 @@ fn the_card_and_the_game_ask_for_the_games_scale() {
         |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
     );
     let mut app = App::new(start);
-    let mut p = RecordLook::default();
+    let (mut p, looks) = record_look();
     let _ = app.frame(&mut p, Millis(0));
     // The card, before the player's settings are read: the toy's default.
-    assert!(matches!(p.headless.last_frame(), Some(Presented::Card(_))));
-    assert_eq!(p.scales, [ScaleMode::Fit]);
+    assert!(matches!(p.last_frame(), Some(Presented::Card(_))));
+    assert_eq!(looks.borrow().scales, [ScaleMode::Fit]);
     let _ = app.frame(&mut p, Millis(16));
-    assert!(matches!(
-        p.headless.last_frame(),
-        Some(Presented::Game { .. })
-    ));
-    assert_eq!(p.scales.last(), Some(&ScaleMode::Fit));
+    assert!(matches!(p.last_frame(), Some(Presented::Game { .. })));
+    assert_eq!(looks.borrow().scales.last(), Some(&ScaleMode::Fit));
 }
 
-/// A headless backend that notes whether the game's frames came with
-/// their look, and each frame's scale.
-#[derive(Default)]
-struct RecordLook {
-    headless: HeadlessPlatform,
+/// Whether the game's frames came with their look, and each frame's
+/// scale.
+#[derive(Debug, Default)]
+struct Looks {
     looked: Option<bool>,
     scales: Vec<ScaleMode>,
 }
 
-impl Platform for RecordLook {
-    fn display(&self) -> DisplayInfo {
-        self.headless.display()
-    }
-
-    fn present(&mut self, frame: &Frame<'_>) {
+/// A headless backend that notes the [`Looks`] of the frames it is shown.
+fn record_look() -> (HeadlessPlatform, Rc<RefCell<Looks>>) {
+    let looks = Rc::new(RefCell::new(Looks::default()));
+    let kept = Rc::clone(&looks);
+    let mut p = HeadlessPlatform::new();
+    p.set_present_hook(Some(Box::new(move |frame: &Frame<'_>| {
+        let mut looks = kept.borrow_mut();
         if let Show::Game { look, .. } = frame.show {
-            self.looked = Some(look.is_some());
+            looks.looked = Some(look.is_some());
         }
-        self.scales.push(frame.scale);
-        self.headless.present(frame);
-    }
-
-    fn poll_input(&mut self, out: &mut Vec<RawInputEvent>) {
-        self.headless.poll_input(out);
-    }
-
-    fn system_events(&mut self, out: &mut Vec<SystemEvent>) {
-        self.headless.system_events(out);
-    }
-
-    fn storage(&mut self) -> Box<dyn Storage> {
-        self.headless.storage()
-    }
-
-    fn facts(&self) -> PlatformFacts {
-        self.headless.facts()
-    }
-
-    fn audio(&mut self) -> &mut dyn crate::audio::Audio {
-        self.headless.audio()
-    }
-
-    fn text_input(&mut self) -> Option<&mut dyn TextInput> {
-        self.headless.text_input()
-    }
+        looks.scales.push(frame.scale);
+    })));
+    (p, looks)
 }
 
 #[test]
@@ -503,27 +476,8 @@ fn by_default_the_setup_waits_for_a_key_on_a_keyboard() {
     assert_eq!(ctx.key_prompt, KeyPrompt::Waiting);
 }
 
-/// A storage two games share, one after the other.
-#[derive(Debug, Clone, Default)]
-struct Shared(Rc<RefCell<MemoryStorage>>);
-
-impl Storage for Shared {
-    fn read(&self, key: &str) -> Result<Option<String>, shuyi_ui::storage::StorageError> {
-        self.0.borrow().read(key)
-    }
-    fn write(&mut self, key: &str, value: &str) -> Result<(), shuyi_ui::storage::StorageError> {
-        self.0.borrow_mut().write(key, value)
-    }
-    fn delete(&mut self, key: &str) -> Result<(), shuyi_ui::storage::StorageError> {
-        self.0.borrow_mut().delete(key)
-    }
-    fn list(&self) -> Result<Vec<String>, shuyi_ui::storage::StorageError> {
-        self.0.borrow().list()
-    }
-}
-
 /// A game loaded on `storage`: the last crash its setup gave, and the app.
-fn loaded_on(storage: &Shared) -> (Option<crash::LastCrash>, App<Toy>) {
+fn loaded_on(storage: &FaultyStorage) -> (Option<crash::LastCrash>, App<Toy>) {
     let heard = Rc::new(RefCell::new(None));
     let kept = Rc::clone(&heard);
     let start = Start::new(
@@ -546,11 +500,12 @@ fn loaded_on(storage: &Shared) -> (Option<crash::LastCrash>, App<Toy>) {
 
 #[test]
 fn the_newer_crash_is_offered_at_the_first_load_and_not_again() {
-    let storage = Shared::default();
+    // A storage two games share, one after the other.
+    let storage = FaultyStorage::new();
     for (when, message) in [(100, "older"), (200, "newer")] {
         let text = crash::CrashReport::new(when, message).to_text();
         let key = crash::crash_key(when);
-        storage.0.borrow_mut().write(&key, &text).unwrap();
+        storage.clone().write(&key, &text).unwrap();
     }
     let (last, app) = loaded_on(&storage);
     let last = last.unwrap();

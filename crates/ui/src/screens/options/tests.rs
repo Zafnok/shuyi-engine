@@ -13,7 +13,7 @@ use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
 use crate::frame_cap::FrameCap;
 use crate::settings::{SETTINGS_KEY, Settings};
-use crate::storage::{Storage, StorageError};
+use crate::storage::{FaultyStorage, Storage};
 use crate::toy::{self, Action, LEFT_HANDED, Prefs, Theme, Toy, ToyCtx, ctx};
 use core::sync::atomic::{AtomicU8, Ordering::Relaxed};
 use shuyi_assets::lang::LangCode;
@@ -757,27 +757,16 @@ fn the_frame_rate_row_steps_through_the_games_caps() {
 }
 
 /// A storage that reads nothing and can't be written.
-#[derive(Debug)]
-struct ReadOnly;
-
-impl Storage for ReadOnly {
-    fn read(&self, _: &str) -> Result<Option<String>, StorageError> {
-        Ok(None)
-    }
-    fn write(&mut self, _: &str, _: &str) -> Result<(), StorageError> {
-        Err(StorageError::Backend("full".into()))
-    }
-    fn delete(&mut self, _: &str) -> Result<(), StorageError> {
-        Err(StorageError::Backend("full".into()))
-    }
-    fn list(&self) -> Result<Vec<String>, StorageError> {
-        Ok(Vec::new())
-    }
+fn read_only() -> FaultyStorage {
+    FaultyStorage::new()
+        .failing_writes()
+        .failing_deletes()
+        .with_error("full")
 }
 
 #[test]
 fn a_failed_save_keeps_the_change_says_so_and_stays() {
-    let mut c = ctx().with_storage(Box::new(ReadOnly));
+    let mut c = ctx().with_storage(Box::new(read_only()));
     // A change isn't saved yet, so it says nothing.
     let mut s = screen();
     press(&mut s, &mut c, &[Action::CursorRight]);

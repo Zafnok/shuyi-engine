@@ -62,6 +62,18 @@ None.
 - `forward_scripts!` (`#[macro_export]`, documented in the `harness`
   module).
 - The 5 copies of `fn row` above use `row_text`.
+- **From 3258 (done):** the redundancy sweep counted 12 copies in
+  `crates/ui`, all to replace: `fn row` in `debug/tests.rs`,
+  `debug/camera/tests.rs`, `dialogue/text_box/glyph/tests.rs`,
+  `frame/draw/tests.rs`, `frame/glyph_buffer.rs` (its tests),
+  `widgets/ask/tests.rs`, `widgets/menu/glyph.rs`,
+  `screens/profiles/glyph.rs` and `widgets/name_entry/tests.rs` (the
+  last two trim: keep `.trim()` at their call sites), `fn text` in
+  `screens/key_bindings/glyph/tests.rs` and
+  `screens/layout_picker/glyph.rs`, and `fn glyphs` in
+  `frame/glyph_buffer/caps_tests.rs`. 3258 tried it, and the ui's tests
+  passed unchanged with `row_text` as step 1 defines it; it left the
+  change here to keep its PR near 1,000 counted lines.
 - `site/content/learn/book/testing.md` (*The Harness*) and
   `skills/shuyi-test/SKILL.md`: the readers, and that a test of what
   happened reads a view, the readers being for looks and end-to-end

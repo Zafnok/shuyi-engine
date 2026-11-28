@@ -1,79 +1,45 @@
 //! A game that turns key caps on (ticket 3215): its frame draws them, and
 //! a one-bit screen doesn't unless the style says.
 
-use shuyi_assets::audio::AudioManifest;
-use shuyi_assets::keymap::KeymapDef;
-use shuyi_assets::lang::Lang;
-use shuyi_assets::palette::PaletteDef;
-
 use super::*;
 use crate::frame::GlyphStyle;
 use crate::frame::color::{KEY_BG, Palette};
-use crate::frame::console::ConsoleSpec;
 use crate::frame::key_cap::KeyCapStyle;
 use crate::platform_facts::ScreenColor;
 use crate::screen::Transition;
 use crate::screens::print_centred_styled;
 use crate::text::StyledText;
-use crate::toy::{Action, Prefs, Theme, Toy, Voice};
+use crate::toy::{Action, Toy};
+
+/// `{Move}` is the cursor keys too, as a game may name them.
+fn move_is_the_cursor_keys(
+    name: &str,
+    keys: crate::input::help_keys::HelpKeys<'_, Action>,
+) -> Option<String> {
+    if name == "Move" {
+        return Some(crate::input::help_keys::cursor_keys_name(keys));
+    }
+    crate::text::key_text(name, keys)
+}
 
 /// The toy, with key caps in `style`.
-#[derive(Debug)]
-struct Capped(Toy, Option<KeyCapStyle>);
-
-impl GameData for Capped {
-    type Action = Action;
-    type Colors = EngineColor;
-    type Voice = Voice;
-    type Settings = Prefs;
-    fn lang(&self) -> &Lang {
-        self.0.lang()
-    }
-    fn keymap_def(&self) -> &KeymapDef<Action> {
-        self.0.keymap_def()
-    }
-    fn audio_manifest(&self) -> &AudioManifest {
-        self.0.audio_manifest()
-    }
-    fn palette_def(&self) -> &PaletteDef {
-        self.0.palette_def()
-    }
-    fn console(&self) -> ConsoleSpec {
-        self.0.console()
-    }
-    fn theme_def(&self, theme: Theme) -> Option<&PaletteDef> {
-        self.0.theme_def(theme)
-    }
-    fn voice_variant(&self) -> Voice {
-        Voice::Only
-    }
-    fn key_caps(&self) -> Option<KeyCapStyle> {
-        self.1
-    }
-    /// `{Move}` is the cursor keys too, as a game may name them.
-    fn key_text(
-        &self,
-        name: &str,
-        keys: crate::input::help_keys::HelpKeys<'_, Action>,
-    ) -> Option<String> {
-        if name == "Move" {
-            return Some(crate::input::help_keys::cursor_keys_name(keys));
-        }
-        crate::text::key_text(name, keys)
-    }
+fn capped(style: Option<KeyCapStyle>) -> Toy {
+    Toy::new()
+        .with_key_caps(style)
+        .with_key_text(move_is_the_cursor_keys)
 }
 
 /// A help line at the bottom, centred as the engine's screens print one.
 struct Help;
 
-impl Screen<Capped> for Help {
+impl Screen<Toy> for Help {
     fn name(&self) -> &'static str {
         "help"
     }
-    fn update(&mut self, _: &mut Ctx<Capped>, _: &FrameInput<Action>) -> Transition<Capped> {
+    fn update(&mut self, _: &mut Ctx<Toy>, _: &FrameInput<Action>) -> Transition<Toy> {
         Transition::None
     }
-    fn draw(&self, ctx: &Ctx<Capped>, buf: &mut GlyphBuffer) {
+    fn draw(&self, ctx: &Ctx<Toy>, buf: &mut GlyphBuffer) {
         let mut help = StyledText::new();
         help.push_key("f").push_plain(" select");
         let text = ctx.palette.engine(EngineColor::Text);
@@ -86,14 +52,14 @@ impl Screen<Capped> for Help {
 /// line: `arrows move · f select`.
 struct CursorHelp;
 
-impl Screen<Capped> for CursorHelp {
+impl Screen<Toy> for CursorHelp {
     fn name(&self) -> &'static str {
         "cursor help"
     }
-    fn update(&mut self, _: &mut Ctx<Capped>, _: &FrameInput<Action>) -> Transition<Capped> {
+    fn update(&mut self, _: &mut Ctx<Toy>, _: &FrameInput<Action>) -> Transition<Toy> {
         Transition::None
     }
-    fn draw(&self, ctx: &Ctx<Capped>, buf: &mut GlyphBuffer) {
+    fn draw(&self, ctx: &Ctx<Toy>, buf: &mut GlyphBuffer) {
         let keys = ctx.help_keys();
         let mut help = crate::input::help_keys::cursor_keys_styled(keys);
         help.push_plain(" move · ")
@@ -105,16 +71,12 @@ impl Screen<Capped> for CursorHelp {
     }
 }
 
-fn game(style: Option<KeyCapStyle>, one_bit: bool) -> Game<Capped> {
+fn game(style: Option<KeyCapStyle>, one_bit: bool) -> Game<Toy> {
     game_on(style, one_bit, Box::new(Help))
 }
 
-fn game_on(
-    style: Option<KeyCapStyle>,
-    one_bit: bool,
-    screen: Box<dyn Screen<Capped>>,
-) -> Game<Capped> {
-    let mut ctx = Ctx::new(Capped(Toy::new(), style)).unwrap();
+fn game_on(style: Option<KeyCapStyle>, one_bit: bool, screen: Box<dyn Screen<Toy>>) -> Game<Toy> {
+    let mut ctx = Ctx::new(capped(style)).unwrap();
     ctx.use_layout(crate::toy::RIGHT_HANDED);
     let mut boxed = ctx.game.palette_def().clone();
     boxed.colors.insert(KEY_BG.to_owned(), [74, 64, 46]);
