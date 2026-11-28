@@ -184,6 +184,12 @@ fn buffer(c: &ToyCtx, spec: ConsoleSpec) -> GlyphBuffer {
     GlyphBuffer::with_spec(spec, Cell::new(' ', black, black))
 }
 
+/// Row `y` of `buf`, trimmed.
+fn row(buf: &GlyphBuffer, y: i32) -> String {
+    let glyphs = (0..i32::from(buf.width())).map(|x| buf.get(x, y).map_or(' ', |c| c.glyph));
+    glyphs.collect::<String>().trim().to_owned()
+}
+
 #[test]
 fn the_typing_box_shows_the_name_with_a_cursor_and_the_hint() {
     let c = ctx();
@@ -195,17 +201,9 @@ fn the_typing_box_shows_the_name_with_a_cursor_and_the_hint() {
         Rect::new(1, 1, 38, glyph::TYPING_HEIGHT),
         &view,
     );
-    assert!(
-        buf.row_text(1).trim().starts_with("╔═ Name ═"),
-        "{}",
-        buf.row_text(1).trim()
-    );
-    assert!(buf.row_text(3).trim().contains("Mei_"));
-    assert!(
-        buf.row_text(5)
-            .trim()
-            .contains("Type a name on your keyboard.")
-    );
+    assert!(row(&buf, 1).starts_with("╔═ Name ═"), "{}", row(&buf, 1));
+    assert!(row(&buf, 3).contains("Mei_"));
+    assert!(row(&buf, 5).contains("Type a name on your keyboard."));
 }
 
 #[test]

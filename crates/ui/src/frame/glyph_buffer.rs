@@ -985,17 +985,6 @@ impl GlyphBuffer {
         self.index(x, y).map(|i| &self.cells[i])
     }
 
-    /// The glyphs of row `y`, one character a cell from the left, or an
-    /// empty string if `y` is out of bounds. For a test or a tool that
-    /// reads what a row says; a trailing space is kept.
-    #[must_use]
-    pub fn row_text(&self, y: i32) -> String {
-        (0..i32::from(self.width()))
-            .filter_map(|x| self.get(x, y))
-            .map(|cell| cell.glyph)
-            .collect()
-    }
-
     /// Mutable access to the cell at `(x, y)`, or `None` if out of bounds.
     fn get_mut(&mut self, x: i32, y: i32) -> Option<&mut Cell> {
         self.index(x, y).map(|i| &mut self.cells[i])
@@ -1385,19 +1374,15 @@ mod tests {
         GlyphBuffer::new(w, h, BLANK)
     }
 
-    fn glyph(b: &GlyphBuffer, x: i32, y: i32) -> char {
-        b.get(x, y).unwrap().glyph
+    /// The glyphs of row `y` as a string.
+    fn row(b: &GlyphBuffer, y: i32) -> String {
+        (0..i32::from(b.width()))
+            .map(|x| b.get(x, y).unwrap().glyph)
+            .collect()
     }
 
-    #[test]
-    fn a_rows_text_is_its_glyphs_and_a_row_out_of_bounds_has_none() {
-        let mut b = buf(4, 2);
-        b.set(0, 1, Cell::new('a', FG, BG));
-        b.set(2, 1, Cell::new('b', FG, BG));
-        assert_eq!(b.row_text(1), "a b ");
-        assert_eq!(b.row_text(0), "    ");
-        assert_eq!(b.row_text(2), "");
-        assert_eq!(b.row_text(-1), "");
+    fn glyph(b: &GlyphBuffer, x: i32, y: i32) -> char {
+        b.get(x, y).unwrap().glyph
     }
 
     #[test]
@@ -1492,18 +1477,18 @@ mod tests {
     fn print_writes_and_counts() {
         let mut b = buf(5, 2);
         assert_eq!(b.print(1, 1, "abc", RED, BLUE), 3);
-        assert_eq!(b.row_text(1), " abc ");
+        assert_eq!(row(&b, 1), " abc ");
         assert_eq!(b.get(1, 1), Some(&Cell::new('a', RED, BLUE)));
-        assert_eq!(b.row_text(0), "     ");
+        assert_eq!(row(&b, 0), "     ");
     }
 
     #[test]
     fn print_clips_right_left_and_rows() {
         let mut b = buf(5, 2);
         assert_eq!(b.print(3, 0, "wxyz", RED, BG), 2);
-        assert_eq!(b.row_text(0), "   wx");
+        assert_eq!(row(&b, 0), "   wx");
         assert_eq!(b.print(-2, 1, "abcd", RED, BG), 2);
-        assert_eq!(b.row_text(1), "cd   ");
+        assert_eq!(row(&b, 1), "cd   ");
         let before = b.clone();
         assert_eq!(b.print(0, 2, "abc", RED, BG), 0);
         assert_eq!(b.print(0, -1, "abc", RED, BG), 0);
@@ -1517,7 +1502,7 @@ mod tests {
     fn a_no_break_space_is_printed_as_a_space() {
         let mut b = buf(5, 1);
         assert_eq!(b.print(0, 0, "a\u{a0}b", RED, BG), 3);
-        assert_eq!(b.row_text(0), "a b  ");
+        assert_eq!(row(&b, 0), "a b  ");
         assert_eq!(glyph(&b, 1, 0), ' ');
     }
 
@@ -1525,7 +1510,7 @@ mod tests {
     fn print_one_char_per_cell() {
         let mut b = buf(4, 1);
         assert_eq!(b.print(0, 0, "é♣≈", RED, BG), 3);
-        assert_eq!(b.row_text(0), "é♣≈ ");
+        assert_eq!(row(&b, 0), "é♣≈ ");
     }
 
     /// A `w × h` buffer where `あ` and `い` are wide.
@@ -1727,44 +1712,44 @@ mod tests {
         let mut b = buf(4, 3);
         let c = Cell::new('#', RED, BLUE);
         b.fill_rect(Rect::new(1, 1, 2, 1), c);
-        assert_eq!(b.row_text(0), "    ");
-        assert_eq!(b.row_text(1), " ## ");
-        assert_eq!(b.row_text(2), "    ");
+        assert_eq!(row(&b, 0), "    ");
+        assert_eq!(row(&b, 1), " ## ");
+        assert_eq!(row(&b, 2), "    ");
         b.fill_rect(Rect::new(-1, -1, 2, 2), c);
-        assert_eq!(b.row_text(0), "#   ");
+        assert_eq!(row(&b, 0), "#   ");
         b.fill_rect(Rect::new(3, 2, 10, 10), c);
-        assert_eq!(b.row_text(2), "   #");
+        assert_eq!(row(&b, 2), "   #");
     }
 
     #[test]
     fn draw_box_single_and_double() {
         let mut b = buf(5, 4);
         b.draw_box(Rect::new(0, 0, 5, 4), BoxStyle::Single, RED, BLUE);
-        assert_eq!(b.row_text(0), "┌───┐");
-        assert_eq!(b.row_text(1), "│   │");
-        assert_eq!(b.row_text(2), "│   │");
-        assert_eq!(b.row_text(3), "└───┘");
+        assert_eq!(row(&b, 0), "┌───┐");
+        assert_eq!(row(&b, 1), "│   │");
+        assert_eq!(row(&b, 2), "│   │");
+        assert_eq!(row(&b, 3), "└───┘");
         assert_eq!(b.get(0, 0), Some(&Cell::new('┌', RED, BLUE)));
         assert_eq!(b.get(1, 1), Some(&BLANK));
         let mut b = buf(4, 3);
         b.draw_box(Rect::new(1, 0, 3, 3), BoxStyle::Double, RED, BLUE);
-        assert_eq!(b.row_text(0), " ╔═╗");
-        assert_eq!(b.row_text(1), " ║ ║");
-        assert_eq!(b.row_text(2), " ╚═╝");
+        assert_eq!(row(&b, 0), " ╔═╗");
+        assert_eq!(row(&b, 1), " ║ ║");
+        assert_eq!(row(&b, 2), " ╚═╝");
     }
 
     #[test]
     fn draw_box_clipped_keeps_corners_of_real_rect() {
         let mut b = buf(3, 3);
         b.draw_box(Rect::new(-1, -1, 3, 3), BoxStyle::Single, RED, BLUE);
-        assert_eq!(b.row_text(0), " │ ");
-        assert_eq!(b.row_text(1), "─┘ ");
-        assert_eq!(b.row_text(2), "   ");
+        assert_eq!(row(&b, 0), " │ ");
+        assert_eq!(row(&b, 1), "─┘ ");
+        assert_eq!(row(&b, 2), "   ");
         let mut b = buf(3, 3);
         b.draw_box(Rect::new(1, 1, 5, 5), BoxStyle::Double, RED, BLUE);
-        assert_eq!(b.row_text(0), "   ");
-        assert_eq!(b.row_text(1), " ╔═");
-        assert_eq!(b.row_text(2), " ║ ");
+        assert_eq!(row(&b, 0), "   ");
+        assert_eq!(row(&b, 1), " ╔═");
+        assert_eq!(row(&b, 2), " ║ ");
     }
 
     #[test]
@@ -1793,7 +1778,7 @@ mod tests {
             ['┌', '│', '└']
         );
         b.draw_box(Rect::new(0, 0, 3, 1), BoxStyle::Single, RED, BLUE);
-        assert_eq!(b.row_text(0), "┌─┐");
+        assert_eq!(row(&b, 0), "┌─┐");
     }
 
     #[test]
@@ -1828,18 +1813,18 @@ mod tests {
         src.print(0, 1, "cd", RED, BLUE);
         let mut b = buf(3, 3);
         b.blit(&src, 1, 1);
-        assert_eq!(b.row_text(0), "   ");
-        assert_eq!(b.row_text(1), " ab");
-        assert_eq!(b.row_text(2), " cd");
+        assert_eq!(row(&b, 0), "   ");
+        assert_eq!(row(&b, 1), " ab");
+        assert_eq!(row(&b, 2), " cd");
         assert_eq!(b.get(1, 1), Some(&Cell::new('a', RED, BLUE)));
         let mut b = buf(3, 3);
         b.blit(&src, -1, -1);
-        assert_eq!(b.row_text(0), "d  ");
-        assert_eq!(b.row_text(1), "   ");
+        assert_eq!(row(&b, 0), "d  ");
+        assert_eq!(row(&b, 1), "   ");
         let mut b = buf(3, 3);
         b.blit(&src, 2, 0);
-        assert_eq!(b.row_text(0), "  a");
-        assert_eq!(b.row_text(1), "  c");
+        assert_eq!(row(&b, 0), "  a");
+        assert_eq!(row(&b, 1), "  c");
         let before = b.clone();
         b.blit(&src, i32::MAX, i32::MIN);
         b.blit(&src, 3, 0);

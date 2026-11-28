@@ -7,6 +7,15 @@ use crate::prelude::*;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
+/// [`Storage::read`], in [`FaultyStorage`]'s set of failing operations.
+const READ: u8 = 1;
+/// [`Storage::write`].
+const WRITE: u8 = 2;
+/// [`Storage::delete`].
+const DELETE: u8 = 4;
+/// [`Storage::list`].
+const LIST: u8 = 8;
+
 /// A [`MemoryStorage`] that fails the operations it is told to, for
 /// tests.
 ///
@@ -33,11 +42,9 @@ pub struct FaultyStorage {
     memory: Rc<RefCell<MemoryStorage>>,
     /// The text of every failure.
     error: String,
-    /// Which operations fail every time.
-    reads: bool,
-    writes: bool,
-    deletes: bool,
-    lists: bool,
+    /// Which operations fail every time: a set of [`READ`], [`WRITE`],
+    /// [`DELETE`] and [`LIST`].
+    failing: u8,
     /// A key every read, write and delete of fails.
     key: Option<String>,
     /// How many more writes succeed before every write fails.
@@ -67,10 +74,7 @@ impl FaultyStorage {
         Self {
             memory: Rc::new(RefCell::new(memory)),
             error: "down".to_owned(),
-            reads: false,
-            writes: false,
-            deletes: false,
-            lists: false,
+            failing: 0,
             key: None,
             budget: None,
             fail_at: None,
@@ -94,27 +98,34 @@ impl FaultyStorage {
     }
 
     /// Every read fails.
-    pub fn failing_reads(mut self) -> Self {
-        self.reads = true;
-        self
+    pub fn failing_reads(self) -> Self {
+        self.failing_op(READ)
     }
 
     /// Every write fails.
-    pub fn failing_writes(mut self) -> Self {
-        self.writes = true;
-        self
+    pub fn failing_writes(self) -> Self {
+        self.failing_op(WRITE)
     }
 
     /// Every delete fails.
-    pub fn failing_deletes(mut self) -> Self {
-        self.deletes = true;
-        self
+    pub fn failing_deletes(self) -> Self {
+        self.failing_op(DELETE)
     }
 
     /// Every list fails.
-    pub fn failing_lists(mut self) -> Self {
-        self.lists = true;
+    pub fn failing_lists(self) -> Self {
+        self.failing_op(LIST)
+    }
+
+    /// `op` fails every time.
+    fn failing_op(mut self, op: u8) -> Self {
+        self.failing |= op;
         self
+    }
+
+    /// Whether `op` fails every time.
+    fn fails(&self, op: u8) -> bool {
+        self.failing & op != 0
     }
 
     /// Every read, write and delete of `key` fails; the other keys work.
@@ -163,7 +174,7 @@ impl FaultyStorage {
 
 impl Storage for FaultyStorage {
     fn read(&self, key: &str) -> Result<Option<String>, StorageError> {
-        if self.reads || self.fails_key(key) {
+        if self.fails(READ) || self.fails_key(key) {
             return Err(self.fail());
         }
         self.memory.borrow().read(key)
@@ -171,7 +182,7 @@ impl Storage for FaultyStorage {
 
     fn write(&mut self, key: &str, value: &str) -> Result<(), StorageError> {
         self.tried += 1;
-        if self.writes || self.fails_key(key) || self.fail_at == Some(self.tried) {
+        if self.fails(WRITE) || self.fails_key(key) || self.fail_at == Some(self.tried) {
             return Err(self.fail());
         }
         if let Some(left) = &mut self.budget {
@@ -187,14 +198,14 @@ impl Storage for FaultyStorage {
     }
 
     fn delete(&mut self, key: &str) -> Result<(), StorageError> {
-        if self.deletes || self.fails_key(key) {
+        if self.fails(DELETE) || self.fails_key(key) {
             return Err(self.fail());
         }
         self.memory.borrow_mut().delete(key)
     }
 
     fn list(&self) -> Result<Vec<String>, StorageError> {
-        if self.lists {
+        if self.fails(LIST) {
             return Err(self.fail());
         }
         self.memory.borrow().list()

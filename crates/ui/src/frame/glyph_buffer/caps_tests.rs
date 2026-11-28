@@ -54,6 +54,12 @@ fn hint(parts: &[(&str, bool)]) -> StyledText {
     text
 }
 
+fn glyphs(buf: &GlyphBuffer, y: i32) -> String {
+    (0..i32::from(buf.width()))
+        .filter_map(|x| buf.get(x, y).map(|c| c.glyph))
+        .collect()
+}
+
 #[test]
 fn a_key_is_a_capital_in_bold_moved_into_its_box_with_a_cell_of_room() {
     let mut buf = capped(12);
@@ -61,7 +67,7 @@ fn a_key_is_a_capital_in_bold_moved_into_its_box_with_a_cell_of_room() {
     assert_eq!(buf.widths().key_cap_cells(), Some(1));
     assert_eq!(text.width(buf.widths()), 9);
     assert_eq!(buf.print_styled(0, 0, &text, colors), 9);
-    assert_eq!(buf.row_text(0), "F  select   ");
+    assert_eq!(glyphs(&buf, 0), "F  select   ");
     assert_eq!(text.plain(), "f select");
     // The key's colour, on the plain text's background: the box is drawn
     // under the glyphs, the cells keep the line's.
@@ -92,7 +98,7 @@ fn a_cap_followed_by_a_full_stop_or_a_comma_leaves_their_cells_alone() {
         // this buffer, so print it in a wider one.
         let mut wide = capped(8);
         wide.print_styled(0, 1, &hint(&[("Enter", true), (mark, false)]), colors);
-        assert_eq!(wide.row_text(1), format!("Enter {mark} "));
+        assert_eq!(glyphs(&wide, 1), format!("Enter {mark} "));
         let cell = PxRect::new(6 * 8, 16, 8, 16);
         for item in wide.items() {
             assert!(
@@ -110,7 +116,7 @@ fn a_cap_one_cell_short_of_its_room_has_no_box() {
     // `f` at the last column: its name fits, its extra cell doesn't.
     let mut buf = capped(4);
     buf.print_styled(3, 0, &hint(&[("f", true)]), colors);
-    assert_eq!(buf.row_text(0), "   F");
+    assert_eq!(glyphs(&buf, 0), "   F");
     assert_eq!(buf.items().len(), 0);
     assert_eq!(buf.glyph_style(3, 0), GlyphStyle::PLAIN);
     // At the column before, it fits.
@@ -152,12 +158,12 @@ fn a_cap_the_edge_cuts_has_no_box_and_its_glyphs_are_plain() {
     let mut buf = capped(4);
     let written = buf.print_styled(2, 0, &hint(&[("Space", true)]), colors);
     assert_eq!(written, 2);
-    assert_eq!(buf.row_text(0), "  Sp");
+    assert_eq!(glyphs(&buf, 0), "  Sp");
     assert_eq!(buf.items().len(), 0);
     assert!(buf.glyph_styles().next().is_none());
     let mut left = capped(4);
     left.print_styled(-1, 0, &hint(&[("f", true), ("x", false)]), colors);
-    assert_eq!(left.row_text(0), " x  ");
+    assert_eq!(glyphs(&left, 0), " x  ");
     assert_eq!(left.items().len(), 0);
 }
 
@@ -283,7 +289,7 @@ fn the_arrow_keys_are_the_picture_in_the_cells_it_takes() {
     let text = arrows_hint();
     assert_eq!(text.width(buf.widths()), 8);
     assert_eq!(buf.print_styled(1, 1, &text, colors), 8);
-    assert_eq!(buf.row_text(1), ".    move...");
+    assert_eq!(glyphs(&buf, 1), ".    move...");
     // Blank on the plain text's background, the picture over them.
     assert_eq!(*buf.get(1, 1).unwrap(), Cell::new(' ', FG, BG));
     let (image, src) = arrows_image();
@@ -320,13 +326,13 @@ fn without_a_picture_the_arrows_are_a_cap_and_without_caps_text() {
     assert_eq!(buf.widths().arrows_cells(), None);
     let text = arrows_hint();
     assert_eq!(buf.print_styled(0, 0, &text, colors), 12);
-    assert_eq!(buf.row_text(0), "arrows  move");
+    assert_eq!(glyphs(&buf, 0), "arrows  move");
     assert!(buf.sprites().is_empty() && !buf.overlays().is_empty());
     let mut buf = pictured(12);
     buf.set_key_caps(None);
     assert_eq!(buf.widths().arrows_cells(), None);
     assert_eq!(buf.print_styled(0, 0, &text, colors), 11);
-    assert_eq!(buf.row_text(0), "arrows move.");
+    assert_eq!(glyphs(&buf, 0), "arrows move.");
     assert_eq!(buf.items(), []);
 }
 

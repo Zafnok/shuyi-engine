@@ -176,6 +176,12 @@ mod tests {
         buf
     }
 
+    /// Row `y` of `buf`, trimmed.
+    fn row(buf: &GlyphBuffer, y: i32) -> String {
+        let glyphs = (0..i32::from(buf.width())).map(|x| buf.get(x, y).map_or(' ', |c| c.glyph));
+        glyphs.collect::<String>().trim().to_owned()
+    }
+
     fn profile(label: &str, current: bool, focused: bool) -> RowView {
         RowView {
             kind: RowKind::Profile(ProfileId::FIRST),
@@ -217,32 +223,21 @@ mod tests {
             add,
         ]);
         let buf = painted(&c, &v);
-        assert!(buf.row_text(PANEL_Y).trim().starts_with("┌─ Profile ─"));
-        let first = buf.row_text(PANEL_Y + 2);
-        let first = first.trim();
+        assert!(row(&buf, PANEL_Y).starts_with("┌─ Profile ─"));
+        let first = row(&buf, PANEL_Y + 2);
         assert_eq!(first, format!("│   {:<20}in use{:>10}", "Player 1", "│"));
-        assert!(buf.row_text(PANEL_Y + 3).trim().starts_with("│   Mei "));
-        assert_eq!(
-            buf.row_text(PANEL_Y + 4).trim(),
-            buf.row_text(PANEL_Y + 1).trim()
-        );
-        assert!(
-            buf.row_text(PANEL_Y + 5)
-                .trim()
-                .starts_with("│   Add a profile")
-        );
+        assert!(row(&buf, PANEL_Y + 3).starts_with("│   Mei "));
+        assert_eq!(row(&buf, PANEL_Y + 4), row(&buf, PANEL_Y + 1));
+        assert!(row(&buf, PANEL_Y + 5).starts_with("│   Add a profile"));
         // The add row that does nothing is dim; the focused row is lit.
         let label_x = PANEL_X + LABEL_DX;
         let dim = c.palette.engine(EngineColor::TextDim);
         assert_eq!(buf.get(label_x, PANEL_Y + 5).map(|c| c.fg), Some(dim));
         let bar = c.palette.engine(EngineColor::Focus);
         assert_eq!(buf.get(label_x, PANEL_Y + 3).map(|c| c.bg), Some(bar));
-        assert_eq!(
-            buf.row_text(PANEL_Y + 6).trim(),
-            buf.row_text(PANEL_Y + 1).trim()
-        );
-        assert!(buf.row_text(PANEL_Y + 7).trim().starts_with('└'));
-        assert_eq!(buf.row_text(31).trim(), "help");
+        assert_eq!(row(&buf, PANEL_Y + 6), row(&buf, PANEL_Y + 1));
+        assert!(row(&buf, PANEL_Y + 7).starts_with('└'));
+        assert_eq!(row(&buf, 31), "help");
     }
 
     #[test]
@@ -252,12 +247,9 @@ mod tests {
         v.message = Some("There can be at most 8 profiles.".to_owned());
         let buf = painted(&c, &v);
         let bottom = PANEL_Y + 5;
-        assert!(buf.row_text(bottom).trim().starts_with('└'));
-        assert_eq!(buf.row_text(bottom + 1).trim(), "");
-        assert_eq!(
-            buf.row_text(bottom + 2).trim(),
-            "There can be at most 8 profiles."
-        );
+        assert!(row(&buf, bottom).starts_with('└'));
+        assert_eq!(row(&buf, bottom + 1), "");
+        assert_eq!(row(&buf, bottom + 2), "There can be at most 8 profiles.");
     }
 
     #[test]
@@ -279,8 +271,8 @@ mod tests {
         });
         let buf = painted(&c, &v);
         let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
-        assert!(buf.row_text(top + 2).trim().contains("║ Delete Mei?  ║"));
-        assert!(buf.row_text(top + 3).trim().contains("║  Yes     No  ║"));
+        assert!(row(&buf, top + 2).contains("║ Delete Mei?  ║"));
+        assert!(row(&buf, top + 3).contains("║  Yes     No  ║"));
     }
 
     #[test]
@@ -297,13 +289,9 @@ mod tests {
         });
         let buf = painted(&c, &v);
         let top = (i32::from(PC.rows) - 6) / 2;
-        assert!(
-            buf.row_text(top).trim().contains("╔═ Mei ═"),
-            "{}",
-            buf.row_text(top).trim()
-        );
-        assert!(buf.row_text(top + 2).trim().contains("║  Rename  ║"));
-        assert!(buf.row_text(top + 3).trim().contains("║  Delete  ║"));
+        assert!(row(&buf, top).contains("╔═ Mei ═"), "{}", row(&buf, top));
+        assert!(row(&buf, top + 2).contains("║  Rename  ║"));
+        assert!(row(&buf, top + 3).contains("║  Delete  ║"));
         let bar = c.palette.engine(EngineColor::Focus);
         let lit: String = (0..i32::from(PC.cols))
             .filter_map(|x| buf.get(x, top + 2))
@@ -317,9 +305,9 @@ mod tests {
         }
         let buf = painted(&c, &v);
         assert!(
-            buf.row_text(top).trim().contains("╔═ Abcdefghijkl ═══╗"),
+            row(&buf, top).contains("╔═ Abcdefghijkl ═══╗"),
             "{}",
-            buf.row_text(top).trim()
+            row(&buf, top)
         );
     }
 }

@@ -17,6 +17,12 @@ fn frame(actions: &[Action]) -> FrameInput {
     FrameInput::new(actions.to_vec(), 0.0, vec![])
 }
 
+fn row(buf: &GlyphBuffer, y: i32) -> String {
+    (0..i32::from(buf.width()))
+        .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
+        .collect()
+}
+
 #[test]
 fn the_hint_names_the_key_only_with_debug_tools() {
     let mut c = ctx();
@@ -46,7 +52,7 @@ fn the_hint_is_right_aligned_and_skipped_over_text() {
     let mut buf = empty_row();
     buf.print(0, 0, "0123456789", black, black);
     glyph::paint_hint(&c.palette, "F2 debug", &mut buf, 0);
-    assert_eq!(buf.row_text(0), "0123456789 F2 debug ");
+    assert_eq!(row(&buf, 0), "0123456789 F2 debug ");
     assert_eq!(
         buf.get(11, 0).unwrap().fg,
         c.palette.engine(EngineColor::TextDim)
@@ -56,13 +62,13 @@ fn the_hint_is_right_aligned_and_skipped_over_text() {
         let mut buf = empty_row();
         buf.print(0, 0, end, black, black);
         glyph::paint_hint(&c.palette, "F2 debug", &mut buf, 0);
-        assert_eq!(buf.row_text(0).trim_end(), end);
+        assert_eq!(row(&buf, 0).trim_end(), end);
     }
     // Text after the hint's cells (the right margin) doesn't matter.
     let mut buf = empty_row();
     buf.print(19, 0, "x", black, black);
     glyph::paint_hint(&c.palette, "F2 debug", &mut buf, 0);
-    assert_eq!(buf.row_text(0), "           F2 debugx");
+    assert_eq!(row(&buf, 0), "           F2 debugx");
 }
 
 /// Two tools: one that opens the gallery, one that counts its runs and
@@ -203,14 +209,14 @@ fn the_view_is_the_title_the_tools_and_the_help() {
     let spec = crate::frame::console::ConsoleSpec::text(40, 20);
     let mut drawn = GlyphBuffer::with_spec(spec, Cell::new('x', black, black));
     m.draw(&c, &mut drawn);
-    assert_eq!(drawn.row_text(9).trim(), "Debug tools");
+    assert_eq!(row(&drawn, 9).trim(), "Debug tools");
     assert!(
-        drawn.row_text(12).contains("│ Gallery    │"),
+        row(&drawn, 12).contains("│ Gallery    │"),
         "{}",
-        drawn.row_text(12)
+        row(&drawn, 12)
     );
-    assert_eq!(drawn.row_text(19).trim(), view.help);
-    let got = drawn.row_text(0);
+    assert_eq!(row(&drawn, 19).trim(), view.help);
+    let got = row(&drawn, 0);
     assert!(got.trim().is_empty(), "{got:?}");
 }
 
@@ -236,10 +242,10 @@ fn the_debug_view_with_no_channel_offered_says_so_and_closes_on_cancel() {
     let spec = crate::frame::console::ConsoleSpec::text(40, 20);
     let mut drawn = GlyphBuffer::with_spec(spec, Cell::new('x', black, black));
     s.draw(&c, &mut drawn);
-    assert_eq!(drawn.row_text(10).trim(), "Game running · F3 pause");
+    assert_eq!(row(&drawn, 10).trim(), "Game running · F3 pause");
     // The menu's box from the next row, and the line under it.
-    assert_eq!(drawn.row_text(12).trim(), "│ Slow motion   1x │");
-    assert_eq!(drawn.row_text(15).trim(), "No screen offers a channel yet");
+    assert_eq!(row(&drawn, 12).trim(), "│ Slow motion   1x │");
+    assert_eq!(row(&drawn, 15).trim(), "No screen offers a channel yet");
     // Slow motion is the one row: Confirm moves it on.
     assert!(matches!(
         s.update(&mut c, &frame(&[Confirm])),
@@ -340,7 +346,7 @@ fn the_sampler_shows_every_glyph_and_colour_and_the_games_panels() {
     let spec = crate::frame::console::ConsoleSpec::text(100, 32);
     let b = glyph::sampler(spec, &c.palette, &glyphs, panels);
     assert_eq!((b.width(), b.height()), (100, 32));
-    assert_eq!(b.row_text(0).trim(), format!("Glyphs ({})", glyphs.len()));
+    assert_eq!(row(&b, 0).trim(), format!("Glyphs ({})", glyphs.len()));
     let bottom = glyph::palette_top(&glyphs);
     assert_eq!(bottom, 3, "two rows of glyphs");
     let row_end = 2 + 2 * i32::try_from(glyph::GLYPHS_PER_ROW).unwrap();
@@ -350,7 +356,7 @@ fn the_sampler_shows_every_glyph_and_colour_and_the_games_panels() {
         .collect();
     let expected: String = glyphs.iter().collect();
     assert!(shown.starts_with(&expected), "{shown}");
-    assert!(b.row_text(bottom).starts_with(" Palette ("));
+    assert!(row(&b, bottom).starts_with(" Palette ("));
     for (name, rgb) in c.palette.iter() {
         let found = (bottom..32).any(|y| {
             (0..100).any(|x| {
@@ -365,8 +371,8 @@ fn the_sampler_shows_every_glyph_and_colour_and_the_games_panels() {
         top,
         glyph::panels_top_for(c.palette.iter().count(), &glyphs)
     );
-    assert!(b.row_text(top - 1).starts_with(" The quick brown fox"));
-    assert!(b.row_text(top).starts_with(" ####"));
+    assert!(row(&b, top - 1).starts_with(" The quick brown fox"));
+    assert!(row(&b, top).starts_with(" ####"));
     // Five swatch columns: ten colours take two rows.
     assert_eq!(glyph::panels_top_for(10, &glyphs), bottom + 4);
     assert_eq!(glyph::panels_top_for(11, &glyphs), bottom + 5);
@@ -429,8 +435,7 @@ fn the_swatches_go_five_to_a_row_with_their_names_cut() {
         .unwrap();
     let at = i32::try_from(at).unwrap();
     let (x, y) = (1 + at % 5 * 19 + 3, top + at / 5);
-    let shown: String = b
-        .row_text(y)
+    let shown: String = row(&b, y)
         .chars()
         .skip(usize::try_from(x).unwrap())
         .take(16)

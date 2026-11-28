@@ -10,11 +10,18 @@ const BLANK: Cell = Cell::new('.', WHITE, BLUE);
 const FULL: Cell = Cell::new('█', RED, BLUE);
 const EMPTY: Cell = Cell::new('░', WHITE, BLUE);
 
+/// The glyphs of row `y` of `buf`.
+fn row(buf: &GlyphBuffer, y: i32) -> String {
+    (0..i32::from(buf.width()))
+        .map(|x| buf.get(x, y).unwrap().glyph)
+        .collect()
+}
+
 /// A 10-cell meter showing `filled` of `of`.
 fn meter(filled: u32, of: u32) -> String {
     let mut buf = GlyphBuffer::new(10, 1, BLANK);
     buf.meter(buf.bounds(), filled, of, FULL, EMPTY);
-    buf.row_text(0)
+    row(&buf, 0)
 }
 
 #[test]
@@ -42,16 +49,16 @@ fn a_meter_rounds_half_up_and_clamps() {
 fn a_meter_keeps_its_cells_colours_and_fills_every_row() {
     let mut buf = GlyphBuffer::new(4, 3, BLANK);
     buf.meter(Rect::new(0, 1, 4, 2), 1, 2, FULL, EMPTY);
-    assert_eq!(buf.row_text(0), "....");
-    assert_eq!(buf.row_text(1), "██░░");
-    assert_eq!(buf.row_text(2), "██░░");
+    assert_eq!(row(&buf, 0), "....");
+    assert_eq!(row(&buf, 1), "██░░");
+    assert_eq!(row(&buf, 2), "██░░");
     assert_eq!(buf.get(0, 1), Some(&FULL));
     assert_eq!(buf.get(3, 2), Some(&EMPTY));
     // Narrower than its row: the rest of the row is untouched.
     buf.meter(Rect::new(1, 0, 2, 1), 1, 4, FULL, EMPTY);
-    assert_eq!(buf.row_text(0), ".█░.");
+    assert_eq!(row(&buf, 0), ".█░.");
     buf.meter(Rect::new(0, 0, 0, 1), 1, 2, FULL, EMPTY);
-    assert_eq!(buf.row_text(0), ".█░.");
+    assert_eq!(row(&buf, 0), ".█░.");
 }
 
 #[test]
@@ -76,9 +83,9 @@ fn a_panel_clears_frames_and_sets_its_title_in_the_top_border() {
     let mut buf = GlyphBuffer::new(12, 4, BLANK);
     let look = PanelLook::new(BoxStyle::Double, WHITE, BLUE).with_title(RED);
     buf.panel(buf.bounds(), &look, Some("Shop"));
-    assert_eq!(buf.row_text(0), "╔═ Shop ═══╗");
-    assert_eq!(buf.row_text(1), "║          ║");
-    assert_eq!(buf.row_text(3), "╚══════════╝");
+    assert_eq!(row(&buf, 0), "╔═ Shop ═══╗");
+    assert_eq!(row(&buf, 1), "║          ║");
+    assert_eq!(row(&buf, 3), "╚══════════╝");
     assert_eq!(buf.get(3, 0), Some(&Cell::new('S', RED, BLUE)));
     assert_eq!(buf.get(1, 0), Some(&Cell::new('═', WHITE, BLUE)));
     assert_eq!(buf.get(5, 2), Some(&Cell::new(' ', WHITE, BLUE)));
@@ -93,29 +100,29 @@ fn a_title_longer_than_the_panel_is_cut() {
     let mut buf = GlyphBuffer::new(12, 3, BLANK);
     let look = PanelLook::new(BoxStyle::Single, WHITE, BLUE);
     buf.panel(buf.bounds(), &look, Some("Pause menu"));
-    assert_eq!(buf.row_text(0), "┌─ Pause… ─┐");
+    assert_eq!(row(&buf, 0), "┌─ Pause… ─┐");
     // Too narrow for a cell of title: the border alone.
     let mut buf = GlyphBuffer::new(6, 3, BLANK);
     buf.panel(buf.bounds(), &look, Some("Shop"));
-    assert_eq!(buf.row_text(0), "┌────┐");
+    assert_eq!(row(&buf, 0), "┌────┐");
     buf.panel(buf.bounds(), &look, None);
-    assert_eq!(buf.row_text(0), "┌────┐");
+    assert_eq!(row(&buf, 0), "┌────┐");
 }
 
 #[test]
 fn centring_an_odd_and_an_even_width() {
     let mut buf = GlyphBuffer::new(7, 1, BLANK);
     buf.print_centred(buf.bounds(), "abc", RED);
-    assert_eq!(buf.row_text(0), "..abc..");
+    assert_eq!(row(&buf, 0), "..abc..");
     let mut buf = GlyphBuffer::new(7, 1, BLANK);
     buf.print_centred(buf.bounds(), "ab", RED);
-    assert_eq!(buf.row_text(0), "..ab...");
+    assert_eq!(row(&buf, 0), "..ab...");
     let mut buf = GlyphBuffer::new(8, 1, BLANK);
     buf.print_centred(buf.bounds(), "abc", RED);
-    assert_eq!(buf.row_text(0), "..abc...");
+    assert_eq!(row(&buf, 0), "..abc...");
     let mut buf = GlyphBuffer::new(8, 1, BLANK);
     buf.print_centred(buf.bounds(), "ab", RED);
-    assert_eq!(buf.row_text(0), "...ab...");
+    assert_eq!(row(&buf, 0), "...ab...");
 }
 
 #[test]
@@ -123,7 +130,7 @@ fn centring_in_a_rectangle_cuts_and_keeps_the_background() {
     let mut buf = GlyphBuffer::new(8, 4, BLANK);
     let written = buf.print_centred(Rect::new(2, 0, 4, 4), "abcdef", RED);
     assert_eq!(written, 4);
-    assert_eq!(buf.row_text(1), "..abc…..");
+    assert_eq!(row(&buf, 1), "..abc…..");
     assert_eq!(buf.get(2, 1), Some(&Cell::new('a', RED, BLUE)));
     assert_eq!(buf.print_centred(Rect::new(0, 0, 0, 1), "a", RED), 0);
     // Five rows: the third; two: the first.
@@ -154,10 +161,10 @@ fn wide_text_is_centred_and_cut_by_its_cells() {
 fn printing_cut_to_a_width() {
     let mut buf = GlyphBuffer::new(8, 1, BLANK);
     assert_eq!(buf.print_cut(1, 0, 4, "Escape", RED), 4);
-    assert_eq!(buf.row_text(0), ".Esc…...");
+    assert_eq!(row(&buf, 0), ".Esc…...");
     assert_eq!(buf.get(1, 0), Some(&Cell::new('E', RED, BLUE)));
     buf.print_cut(0, 0, 8, "Enter", RED);
-    assert_eq!(buf.row_text(0), "Enter...");
+    assert_eq!(row(&buf, 0), "Enter...");
 }
 
 /// A 24×24 frame cut 10 on every side, and a 33×32 plate with 16-pixel
@@ -201,9 +208,9 @@ fn framed(outset: u16, title: Option<&str>) -> GlyphBuffer {
 #[test]
 fn a_framed_panel_draws_no_lines_and_keeps_its_cells() {
     let buf = framed(0, Some("Shop"));
-    assert_eq!(buf.row_text(3), "..   Shop   ....");
-    assert_eq!(buf.row_text(4), "..          ....");
-    assert_eq!(buf.row_text(7), "..          ....");
+    assert_eq!(row(&buf, 3), "..   Shop   ....");
+    assert_eq!(row(&buf, 4), "..          ....");
+    assert_eq!(row(&buf, 7), "..          ....");
     assert_eq!(buf.get(2, 4), Some(&Cell::new(' ', WHITE, BLUE)));
     assert_eq!(buf.get(5, 3), Some(&Cell::new('S', RED, BLUE)));
 }
@@ -266,7 +273,7 @@ fn a_plate_without_a_frame_and_a_frame_without_a_title() {
         PanelLook::new(BoxStyle::Single, WHITE, BLUE).with_plate(Some(TitlePlate::new(plate)));
     let mut buf = GlyphBuffer::new(12, 3, BLANK);
     buf.panel(buf.bounds(), &look, Some("Shop"));
-    assert_eq!(buf.row_text(0), "┌─ Shop ───┐");
+    assert_eq!(row(&buf, 0), "┌─ Shop ───┐");
     assert_eq!(buf.sprites().len(), 3);
     buf.panel(buf.bounds(), &look, None);
     assert_eq!(buf.sprites().len(), 0, "the fill cut the old plate away");
@@ -279,7 +286,7 @@ fn a_one_cell_panel_with_a_frame_draws_its_corners() {
         PanelLook::new(BoxStyle::Single, WHITE, BLUE).with_frame(Some(PanelFrame::new(frame)));
     let mut buf = GlyphBuffer::new(4, 2, BLANK);
     buf.panel(Rect::new(1, 0, 1, 1), &look, Some("A long title"));
-    assert_eq!(buf.row_text(0), ". ..");
+    assert_eq!(row(&buf, 0), ". ..");
     let sprites = buf.sprites();
     // An 8×16 cell: corners cut to 4 + 4 across and 8 + 8 down, no edges.
     assert_eq!(sprites.len(), 4, "{sprites:?}");
@@ -313,11 +320,11 @@ fn a_frames_border_blanks_only_the_border_cells() {
     let mut buf = GlyphBuffer::new(8, 6, BLANK);
     // Only the border: the inside keeps what was there.
     buf.panel_border(Rect::new(1, 1, 5, 4), &look);
-    assert_eq!(buf.row_text(0), "........");
-    assert_eq!(buf.row_text(1), ".     ..");
-    assert_eq!(buf.row_text(2), ". ... ..");
-    assert_eq!(buf.row_text(4), ".     ..");
-    assert_eq!(buf.row_text(5), "........");
+    assert_eq!(row(&buf, 0), "........");
+    assert_eq!(row(&buf, 1), ".     ..");
+    assert_eq!(row(&buf, 2), ". ... ..");
+    assert_eq!(row(&buf, 4), ".     ..");
+    assert_eq!(row(&buf, 5), "........");
     // The frame shows over every border cell: the bottom-right one, and
     // the right and bottom ones beside the inside.
     let sprites = buf.sprites();

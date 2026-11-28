@@ -295,9 +295,12 @@ and follow the MVP.
    `shuyi_ui::frame::raster::test_card`) at eight angles,
    flipped each way, and turned around a corner pivot, in `dest`s of
    16 × 16 and 32 × 32.
-   - In `crates/cli/src/frame_png/tests.rs`, check hand-worked pixels
+   - In `crates/ui/src/frame/raster/tests.rs`, check hand-worked pixels
      at angles 64 and 128 at scales 1 and 2, as
-     `matches_a_hand_checked_frame` does. Look at the picture once
+     `matches_a_hand_checked_frame` does. **Either order with 3261:** if
+     3261 is done, the cli's copy of that test is gone and these checks
+     go in ui's alone; if not, write them in ui's too (3261 then drops
+     the cli's copy). Look at the picture once
      (save it from a scratch test), then keep only the checks.
    - In `shuyi-ui`, commit the scene's `insta` snapshot.
    - Add angles, pivots and `flip_y` to the 1-bit `Thing` generator
