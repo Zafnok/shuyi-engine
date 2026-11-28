@@ -32,6 +32,8 @@ shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
 # `shuyi_cli::worktrees`, which a game's `cargo shuyi` shares (tickets 2078
 # and 2076).
 shuyi-cli = { path = "../cli" }
+# `tutorial-steps`: the walk of a step's folder (ticket 2858).
+shuyi-embed.workspace = true
 
 [dev-dependencies]
 # `llms`'s snapshots of the fixture site.

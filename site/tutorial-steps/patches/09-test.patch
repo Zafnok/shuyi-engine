@@ -1,0 +1,556 @@
+diff --git 08-polish/crates/game/files/audio.ron 09-test/crates/game/files/audio.ron
+--- 08-polish/crates/game/files/audio.ron
++++ 09-test/crates/game/files/audio.ron
+@@ -10,10 +10,8 @@
+         (id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
+         (id: "ui_cancel", files: ["sfx/cancel.sfx.ron"], volume: 80, credit: Own),
+         (id: "ui_cursor", files: ["sfx/cursor.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
+-        // ANCHOR: board
+         (id: "push", files: ["sfx/push.sfx.ron"], volume: 80, credit: Own),
+         (id: "win", files: ["sfx/win.sfx.ron"], volume: 80, credit: Own),
+-        // ANCHOR_END: board
+     ],
+     music: [],
+     pools: [],
+diff --git 08-polish/crates/game/src/board.rs 09-test/crates/game/src/board.rs
+--- 08-polish/crates/game/src/board.rs
++++ 09-test/crates/game/src/board.rs
+@@ -264,12 +264,10 @@ impl Screen<Data> for Board {
+     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+         for &action in &input.actions {
+             match action {
+-                // ANCHOR: steps
+                 Action::Up => self.send(ctx, Command::Step(Dir::Up)),
+                 Action::Down => self.send(ctx, Command::Step(Dir::Down)),
+                 Action::Left => self.send(ctx, Command::Step(Dir::Left)),
+                 Action::Right => self.send(ctx, Command::Step(Dir::Right)),
+-                // ANCHOR_END: steps
+                 Action::Undo => self.undo(),
+                 // ANCHOR: won
+                 Action::Confirm if self.puzzle.outcome().is_some() => {
+@@ -292,11 +290,9 @@ impl Screen<Data> for Board {
+         buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
+         let view = self.view(ctx);
+         buf.print(1, 0, &view.name, c(EngineColor::Highlight), bg);
+-        // ANCHOR: draw_moves
+         let width = i32::try_from(view.moves.chars().count()).unwrap_or(0);
+         let right = i32::from(buf.width()) - width - 1;
+         buf.print(right, 0, &view.moves, c(EngineColor::Text), bg);
+-        // ANCHOR_END: draw_moves
+         let last = i32::from(buf.height()) - 1;
+         buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
+         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
+diff --git 08-polish/crates/game/src/levels.rs 09-test/crates/game/src/levels.rs
+--- 08-polish/crates/game/src/levels.rs
++++ 09-test/crates/game/src/levels.rs
+@@ -91,11 +91,9 @@ impl Screen<Data> for LevelMenu {
+                 Some(MenuEvent::Chosen(Choice::Level(n))) => {
+                     return Transition::Push(Box::new(Board::new(ctx, n)));
+                 }
+-                // ANCHOR: chosen
+                 Some(MenuEvent::Chosen(Choice::Options)) => {
+                     return Transition::Push(Box::new(OptionsScreen::new(option_rows)));
+                 }
+-                // ANCHOR_END: chosen
+                 Some(MenuEvent::Cancelled) => return Transition::Pop,
+                 None => {}
+             }
+diff --git 08-polish/crates/game/src/lib.rs 09-test/crates/game/src/lib.rs
+--- 08-polish/crates/game/src/lib.rs
++++ 09-test/crates/game/src/lib.rs
+@@ -17,6 +17,10 @@ pub mod progress;
+ pub mod rules;
+ pub mod stages;
+ pub mod title;
++// ANCHOR: tools
++#[cfg(feature = "tools")]
++pub mod tools;
++// ANCHOR_END: tools
+ 
+ use std::sync::OnceLock;
+ 
+diff --git 08-polish/crates/game/src/options.rs 09-test/crates/game/src/options.rs
+--- 08-polish/crates/game/src/options.rs
++++ 09-test/crates/game/src/options.rs
+@@ -1,14 +1,12 @@
+ //! The options: the engine's screen, with the rows the game wants, and the
+ //! engine's Key bindings screen, where the player rebinds every action.
+ 
+-// ANCHOR: uses
+ use shuyi::prelude::*;
+ use shuyi::ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
+ use shuyi::ui::screens::options::{self, OptionRow, RowAction, RowValue};
+ 
+ use crate::Data;
+ use crate::action::Action;
+-// ANCHOR_END: uses
+ 
+ // ANCHOR: rows
+ /// The Key bindings screen's rows: every action must keep a key.
+diff --git 08-polish/crates/game/src/rules.rs 09-test/crates/game/src/rules.rs
+--- 08-polish/crates/game/src/rules.rs
++++ 09-test/crates/game/src/rules.rs
+@@ -5,6 +5,7 @@ use core::fmt;
+ use std::collections::BTreeSet;
+ 
+ use serde::{Deserialize, Serialize};
++use shuyi::core::Sides;
+ use shuyi::core::{Dir, Grid, Pos, TerrainId, TurnRules};
+ 
+ use crate::level::{Feature, Level, TARGET, WALL};
+@@ -19,6 +20,8 @@ pub struct Puzzle {
+     player: Pos,
+     /// Where the boxes are.
+     boxes: BTreeSet<Pos>,
++    /// The commands applied so far, plus one.
++    turn: u32,
+ }
+ // ANCHOR_END: state
+ 
+@@ -91,6 +94,7 @@ impl Puzzle {
+             tiles: level.tiles.clone(),
+             player,
+             boxes,
++            turn: 1,
+         };
+         let targets = puzzle.targets().len();
+         if puzzle.boxes.is_empty() || puzzle.boxes.len() != targets {
+@@ -169,6 +173,7 @@ impl TurnRules for Puzzle {
+         }
+         // ANCHOR_END: push_apply
+         self.player = to;
++        self.turn += 1;
+         events.push(Event::Walked(to));
+         Ok(events)
+     }
+@@ -189,3 +194,16 @@ impl TurnRules for Puzzle {
+     // ANCHOR_END: outcome
+ }
+ // ANCHOR_END: rules
++
++// ANCHOR: sides
++/// Who moves, for the bots: the puzzle has one player, so its side is `()`.
++impl Sides for Puzzle {
++    type Side = ();
++
++    fn side_to_move(&self) {}
++
++    fn turn(&self) -> u32 {
++        self.turn
++    }
++}
++// ANCHOR_END: sides
+diff --git 08-polish/crates/game/src/stages.rs 09-test/crates/game/src/stages.rs
+--- 08-polish/crates/game/src/stages.rs
++++ 09-test/crates/game/src/stages.rs
+@@ -42,7 +42,6 @@ pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
+     Some(Box::new(LevelMenu::new(ctx)))
+ }
+ 
+-// ANCHOR: screens
+ /// Every screen the game can show past the title, for the check that its
+ /// controls fit each target.
+ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+@@ -53,10 +52,11 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+         Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)),
+     ]
+ }
+-// ANCHOR_END: screens
+ 
+-/// The game's tools: the engine's, for a game on the short path.
++// ANCHOR: tools
++/// The game's tools: the engine's, and its scene, bot and replay on top.
+ #[cfg(feature = "tools")]
+-pub fn tools() -> shuyi_cli::BasicTools<crate::action::Action, Own> {
+-    shuyi_cli::BasicTools::new(crate::game())
++pub fn tools() -> crate::tools::Tools {
++    crate::tools::Tools::new(crate::game())
+ }
++// ANCHOR_END: tools
+diff --git 09-test/crates/game/src/tools.rs 09-test/crates/game/src/tools.rs
+new file mode 100644
+--- /dev/null
++++ 09-test/crates/game/src/tools.rs
+@@ -0,0 +1,222 @@
++//! The game's tools: `BasicTools` has no scene, bot or replay, so this
++//! `GameTools` adds them and calls `BasicTools` for the rest.
++//! `examples/tools.rs` runs them, and the tests use them too.
++
++use serde::{Deserialize, Serialize};
++use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
++use shuyi::core::bots::{Bot, play};
++use shuyi::core::{Dir, Limits, Made, Solve, TurnRules, solve};
++use shuyi::platform::harness::Harness;
++use shuyi::prelude::*;
++use shuyi::ui::input::fit::Controls;
++use shuyi_cli::contract::playtest::PlaytestInput;
++use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
++use shuyi_cli::contract::session::{Headless, Scene, Session};
++use shuyi_cli::frame_png::{Script, Shot};
++use shuyi_cli::serde_json::json;
++use shuyi_cli::{BasicTools, GameArg, GameLang, GameOption, GameTools, PlaytestPlan};
++
++use crate::action::Action;
++use crate::board::{Board, Terrain};
++use crate::rules::{Command, Puzzle};
++use crate::stages::Own;
++use crate::{Data, made};
++
++// ANCHOR: bot
++/// A bot that plays a shortest line that wins the level, found by the
++/// engine's level solver (`shuyi::core::search`). The puzzle has no luck,
++/// so the line wins every try.
++#[derive(Debug, Clone)]
++pub struct LineBot {
++    /// The steps left, last first.
++    steps: Vec<Command>,
++}
++
++impl LineBot {
++    /// The bot that plays a shortest line from `puzzle`'s start.
++    ///
++    /// # Errors
++    ///
++    /// The level can't be won (the puzzle lists every step it allows, so
++    /// that is a proof), the search stopped at its limit, or the rules
++    /// refused a step they listed.
++    pub fn new(puzzle: &Puzzle) -> Result<Self, String> {
++        // The puzzle counts its turns, so no state repeats and the search
++        // keeps more than the default's 100 000: level 5 takes 165 280.
++        let limits = Limits::DEFAULT.with_states(1_000_000);
++        let found = solve(puzzle, |_| true, limits).map_err(|e| e.to_string())?;
++        match found {
++            Solve::Solved { mut commands, .. } => {
++                commands.reverse();
++                Ok(Self { steps: commands })
++            }
++            Solve::Exhausted { states } => Err(format!(
++                "the level can't be won: every line among {states} states was tried"
++            )),
++            Solve::LimitReached { states } => Err(format!(
++                "the level isn't proved winnable: the search stopped at {states} states"
++            )),
++        }
++    }
++}
++
++impl Bot<Puzzle> for LineBot {
++    fn choose(&mut self, puzzle: &Puzzle) -> Command {
++        // A line played out with no win steps wherever it can: the play's
++        // turn limit ends it.
++        let legal = || puzzle.legal_commands().first().copied();
++        self.steps
++            .pop()
++            .or_else(legal)
++            .unwrap_or(Command::Step(Dir::Up))
++    }
++}
++// ANCHOR_END: bot
++
++// ANCHOR: record
++/// A record of a level: which one and the commands sent to its rules, and
++/// what made it. The game's record format for `replay`.
++#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
++#[serde(deny_unknown_fields)]
++pub struct LevelRecord {
++    /// The level, counted from 0.
++    pub level: usize,
++    /// The commands, in order.
++    pub commands: Vec<Command>,
++    /// What made it ([`crate::made`]); a record without one still reads.
++    #[serde(default)]
++    pub made: Option<Made>,
++}
++// ANCHOR_END: record
++
++// ANCHOR: scene
++/// The board's scene in `h`: its map, and what a program asks of it.
++pub fn scene(h: &Harness<Data>) -> Result<Scene, String> {
++    let board = h
++        .screen::<Board>()
++        .ok_or_else(|| format!("no level is open (the top screen is `{}`)", h.top_screen()))?;
++    let map = board.scene(Board::view_tiles());
++    let mut scene = Scene::new("board", "grid map", map.to_text(&Terrain));
++    scene.data = json!({
++        "level": board.level,
++        "moves": board.history.len(),
++        "won": board.puzzle.outcome().is_some(),
++    });
++    Ok(scene)
++}
++// ANCHOR_END: scene
++
++/// The game's tools: the engine's, and the board's on top.
++#[derive(Debug, Clone, Copy)]
++pub struct Tools {
++    game: BasicGame<Action, Own>,
++}
++
++impl Tools {
++    /// The tools of `game`.
++    pub fn new(game: BasicGame<Action, Own>) -> Self {
++        Self { game }
++    }
++
++    /// The engine's tools for the game.
++    fn basic(&self) -> BasicTools<Action, Own> {
++        BasicTools::new(self.game)
++    }
++
++    /// The puzzle of level `level`, counted from 0.
++    fn puzzle(&self, level: usize) -> Result<Puzzle, String> {
++        let data = self.game.data().map_err(|errors| {
++            let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
++            lines.join("\n")
++        })?;
++        let file = data.own.levels.get(level);
++        Puzzle::new(file.ok_or(format!("no level {level}"))?)
++    }
++}
++
++impl GameTools for Tools {
++    fn frame(
++        &self,
++        options: &[GameArg],
++        script: &Script,
++        scale: Option<u32>,
++    ) -> Result<Shot, String> {
++        self.basic().frame(options, script, scale)
++    }
++
++    fn frame_options(&self) -> &[GameOption] {
++        &[]
++    }
++
++    fn lang(&self) -> Result<GameLang, String> {
++        self.basic().lang()
++    }
++
++    fn check(&self) -> Result<Vec<ContentError>, String> {
++        self.basic().check()
++    }
++
++    fn session(&self, _: &[GameArg]) -> Result<Box<dyn Session>, String> {
++        let session = Headless::new(self.game.harness())
++            .with_scene(scene)
++            .with_picture(|h, scale| BasicTools::<Action, Own>::picture(h, scale.unwrap_or(1)));
++        Ok(Box::new(session))
++    }
++
++    fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
++        let parsed: LevelRecord =
++            ron::from_str(&record.text).map_err(|e| format!("{}: {e}", record.file))?;
++        let mut run = turns(&record.file, self.puzzle(parsed.level)?, &parsed.commands)?;
++        run.made = parsed.made;
++        Ok(run)
++    }
++
++    /// [`crate::made`]: `replay` refuses a record another build made.
++    fn made(&self) -> Option<Made> {
++        Some(made())
++    }
++
++    // ANCHOR: bots
++    /// The bots' run: one bot, `line`, playing level 1's line, the same
++    /// every try as the rules have no luck, and no checks to judge it.
++    /// Each try keeps its record, for `replay`.
++    fn playtest_plan(
++        &self,
++        _stage: Option<&str>,
++        _input: &PlaytestInput,
++    ) -> Result<PlaytestPlan, String> {
++        let puzzle = self.puzzle(0)?;
++        let bot = LineBot::new(&puzzle)?;
++        Ok(PlaytestPlan::new(
++            "level 1, played by its line",
++            vec![("line".to_owned(), None)],
++            Box::new(|_| Vec::new()),
++            Box::new(move |_, seed, turns| {
++                let (mut puzzle, mut bot) = (puzzle.clone(), bot.clone());
++                let report =
++                    play(&mut puzzle, &mut [((), &mut bot)], turns).map_err(|e| e.to_string())?;
++                let tried = Tried {
++                    seed,
++                    outcome: report.outcome.map(|o| format!("{o:?}")),
++                    turns: report.turns,
++                    measures: Measures::new(),
++                };
++                let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
++                let record = LevelRecord {
++                    level: 0,
++                    commands: report.commands,
++                    made: Some(made()),
++                };
++                let mut one = PlayedTry::new(tried, commands);
++                one.record = ron::to_string(&record).ok();
++                Ok(one)
++            }),
++        ))
++    }
++    // ANCHOR_END: bots
++
++    /// Its keymap and every screen it can show.
++    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
++        self.basic().controls()
++    }
++}
+diff --git 09-test/crates/game/tests/frames/level1.txt 09-test/crates/game/tests/frames/level1.txt
+new file mode 100644
+--- /dev/null
++++ 09-test/crates/game/tests/frames/level1.txt
+@@ -0,0 +1,58 @@
++ First push                            Moves: 0 
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓                  
++                ▓▓          ▓▓                  
++                ▓▓  @ []  <>▓▓                  
++                ▓▓          ▓▓                  
++                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓                  
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++                                                
++ arrows walk · u undo · Backspace levels        
++--- colours ---
++abbbbbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaacccccccca
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaddddddddddddddaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaddeeeeeeeeeeddaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaddeefeggeebbddaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaddeeeeeeeeeeddaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaddddddddddddddaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaa
++--- legend ---
++a = fg:panel bg:panel
++b = fg:highlight bg:panel
++c = fg:text bg:panel
++d = fg:border bg:wall_bg
++e = fg:floor_fg bg:panel
++f = fg:bright bg:panel
++g = fg:box bg:panel
++h = fg:text_dim bg:panel
+diff --git 09-test/crates/game/tests/tools.rs 09-test/crates/game/tests/tools.rs
+new file mode 100644
+--- /dev/null
++++ 09-test/crates/game/tests/tools.rs
+@@ -0,0 +1,92 @@
++//! The game through its tools (the tool contract): a bot that solves level
++//! 1, a replay, what a program reads of the scene and a frame kept in the
++//! repository. Key names here are the Harness's test-script names, input
++//! to a test, not game code.
++
++use std::path::Path;
++
++use game::level;
++use game::rules::{Command, Puzzle};
++use game::tools::{LevelRecord, LineBot};
++use shuyi::core::Dir;
++use shuyi::core::bots::play;
++use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
++use shuyi_cli::contract::replay::{ReplayInput, replay};
++use shuyi_cli::contract::run::{RunInput, keys, scene};
++
++// ANCHOR: test_bot
++/// The level solver proves every level winnable, and the line it finds
++/// wins it.
++#[test]
++fn every_level_is_proved_winnable_and_its_line_wins_it() {
++    let bundle = game::game().bundle();
++    for (n, file) in level::read_all(&bundle).unwrap().iter().enumerate() {
++        let mut puzzle = Puzzle::new(file).unwrap();
++        let mut bot = LineBot::new(&puzzle).unwrap_or_else(|e| panic!("level {}: {e}", n + 1));
++        let report = play(&mut puzzle, &mut [((), &mut bot)], 500).unwrap();
++        assert!(report.outcome.is_some(), "level {}", n + 1);
++    }
++}
++
++#[test]
++fn the_playtest_tool_wins_level_one() {
++    let mut input = PlaytestInput::default();
++    input.tries = Some(3);
++    let answer = playtest(&game::stages::tools(), &input);
++    assert!(answer.ok, "{answer:?}");
++    let line = &answer.result.as_ref().unwrap()[0].entrants[0];
++    assert_eq!(line.outcomes.get("Won"), Some(&3), "{line:?}");
++}
++// ANCHOR_END: test_bot
++
++// ANCHOR: test_replay
++#[test]
++fn a_record_replays_with_a_hash_at_every_step() {
++    let dir = std::env::temp_dir().join(format!("box-pusher-{}", std::process::id()));
++    std::fs::create_dir_all(&dir).unwrap();
++    let record = LevelRecord {
++        level: 0,
++        commands: vec![Command::Step(Dir::Right), Command::Step(Dir::Right)],
++        made: Some(game::made()),
++    };
++    std::fs::write(dir.join("one.ron"), ron::to_string(&record).unwrap()).unwrap();
++    let answer = replay(&game::stages::tools(), &dir, &ReplayInput::new("one.ron"));
++    std::fs::remove_dir_all(&dir).unwrap();
++    assert!(answer.ok, "{answer:?}");
++}
++// ANCHOR_END: test_replay
++
++// ANCHOR: test_scene
++#[test]
++fn the_scene_says_the_moves_and_whether_it_is_won() {
++    let tools = game::stages::tools();
++    let mut input = RunInput::default();
++    input.script = keys("Enter Enter Right");
++    let answer = scene(&tools, &input);
++    let data = &answer.result.as_ref().unwrap().scene.as_ref().unwrap().data;
++    assert_eq!(data["moves"], 1, "{data}");
++    assert_eq!(data["won"], false, "{data}");
++    input.script = keys("Enter Enter Right Right");
++    let answer = scene(&tools, &input);
++    let data = &answer.result.as_ref().unwrap().scene.as_ref().unwrap().data;
++    assert_eq!(data["moves"], 2, "{data}");
++    assert_eq!(data["won"], true, "{data}");
++}
++// ANCHOR_END: test_scene
++
++// ANCHOR: test_frame
++/// Compares the first level's frame with the file kept beside this test;
++/// `UPDATE_FRAMES=1` writes it, to read before keeping it.
++#[test]
++fn the_first_level_looks_as_it_did() {
++    let mut h = game::game().harness();
++    h.keys("Enter Enter");
++    let frame = h.snapshot();
++    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/frames/level1.txt");
++    if std::env::var_os("UPDATE_FRAMES").is_some() {
++        std::fs::write(&file, &frame).unwrap();
++    }
++    let kept = std::fs::read_to_string(&file).unwrap().replace('\r', "");
++    assert_eq!(frame, kept);
++}
++// ANCHOR_END: test_frame

@@ -38,6 +38,7 @@
 //! - `cargo xtask site-data --site <dir>`
 //! - `cargo xtask tutorial-tries [--check] [<name>...]`
 //! - `cargo xtask exercises [--copy] [<step>...]`
+//! - `cargo xtask tutorial-steps (--write | --check | --record <NN> | --locks)`
 //! - `cargo xtask golden --bless`
 //! - `cargo xtask seed-target --into <worktree>`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
@@ -86,6 +87,7 @@ mod tickets;
 mod toolchain;
 mod tries;
 mod trim;
+mod tutorial_steps;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -353,6 +355,14 @@ usage:
       binary (ticket 2828, ADR-0117), and check them: each page's exercises
       against its step's checks, and in each copy fmt, Clippy and the checks'
       tests. With --copy, only make the copies, for the steps' web builds.
+  cargo xtask tutorial-steps (--write | --check | --record <NN> | --locks)
+      The book's project's steps from their source (ticket 2858, ADR-0168):
+      site/tutorial/01-new/, then site/tutorial-steps/patches/<step>.patch
+      applied in turn, each step's Cargo.lock from site/tutorial-steps/locks/.
+      --write makes the folders 02 to 10; --check fails on a folder that
+      differs, naming its first file; --record NN writes the patches of step
+      NN and the step after it from the folders as edited; --locks keeps the
+      steps' locks after a refresh.
   cargo xtask golden --bless
       Write the golden tables (shuyi_assets::golden, ticket 2116): run every
       test with `golden` in its name with SHUYI_BLESS=1, write each table a
@@ -456,6 +466,7 @@ fn main() -> ExitCode {
         Some("site-data") => site_data(&root, &args[1..]),
         Some("tutorial-tries") => tutorial_tries(&root, &args[1..]),
         Some("exercises") => exercises(&root, &args[1..]),
+        Some("tutorial-steps") => tutorial_steps(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
         Some("seed-target") => seed_target(&root, &args[1..]),
@@ -988,6 +999,14 @@ fn exercises(root: &Path, args: &[String]) -> ExitCode {
         return ExitCode::FAILURE;
     };
     report("exercises", &exercises::run(root, &options), &[])
+}
+
+fn tutorial_steps(root: &Path, args: &[String]) -> ExitCode {
+    let Some(mode) = tutorial_steps::Mode::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    report("tutorial-steps", &tutorial_steps::run(root, &mode), &[])
 }
 
 fn tutorial_tries(root: &Path, args: &[String]) -> ExitCode {

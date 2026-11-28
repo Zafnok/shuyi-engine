@@ -23,8 +23,11 @@ it; read the map.
    names its row in the map's
    [*People making games*](../../../docs/README.md#people-making-games-and-their-agents)
    table; the row, not this list, says what to write:
-   - a template change → the book's project too (`site/tutorial/`):
-     row *How to make a whole game on the engine, from nothing*;
+   - a template change → the book's project too (`site/tutorial/`),
+     made once in `01-new` and carried to the other steps by
+     `cargo xtask tutorial-steps --write` (a change to one step: edit its
+     folder, then `--record NN`): row *How to make a whole game on the
+     engine, from nothing*;
    - a contract op or field → the MCP tool's description and input
      (`description` in `crates/cli/src/mcp.rs`): row *The tool contract*;
    - a format → the skill that teaches it (`skills/shuyi-import-art/`

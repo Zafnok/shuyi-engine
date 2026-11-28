@@ -148,12 +148,28 @@ pub fn classify(path: &str) -> Kind {
 
 /// The files a tool writes (`Do not edit` at their top): the agents' skill
 /// loaders (`scripts/sync-agent-skills.ps1`), a font's atlas (`cargo shuyi
-/// font-atlas`) and a game's identity (`cargo shuyi app-info`, outside the
-/// engine's own crates).
+/// font-atlas`), a game's identity (`cargo shuyi app-info`, outside the
+/// engine's own crates), and the book's project's steps after the first
+/// (`cargo xtask tutorial-steps --write`, ticket 2858).
 fn is_generated(path: &str, name: &str) -> bool {
     path.starts_with(".agents/skills/")
         || path.ends_with("/font/atlas.ron")
         || (name == "app_info.rs" && !path.starts_with("crates/"))
+        || is_made_step(path)
+}
+
+/// Whether `path` is in a step of the book's project that its source makes:
+/// `site/tutorial/NN-<name>/` past `01`. The first step, the patches and the
+/// locks (`site/tutorial-steps/`) are written by hand.
+fn is_made_step(path: &str) -> bool {
+    let Some((step, _)) = path
+        .strip_prefix("site/tutorial/")
+        .and_then(|rest| rest.split_once('/'))
+    else {
+        return false;
+    };
+    let bytes = step.as_bytes();
+    bytes.len() > 3 && bytes[2] == b'-' && step[..2].parse::<u8>().is_ok_and(|number| number >= 2)
 }
 
 /// Each file's added plus removed lines from `git diff --numstat -z`;

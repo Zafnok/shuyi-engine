@@ -1,6 +1,6 @@
 # ADR-0126: The code pad: a Codespace of the book's project, prebuilt once, with a command for an exercise's check, and no build server
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0168 (the step folders it opens are made from `01-new` and a patch each)
 - **Date:** 2026-11-17
 - **Related tickets:** 2916; 2837 and 2838 (they build it), 2094 (the dev
   container's first boot); 2905 (hot reload of code), 2528 (`shuyi web

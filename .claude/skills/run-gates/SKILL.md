@@ -487,17 +487,46 @@ holds, and that `shuyi lint` finds what breaks the game's code (both on the
 Each step in `site/tutorial/` is a whole game with its own `Cargo.lock`
 and a path dependency on the engine's crates. CI builds and tests each
 with `--locked`, then fails if the job changed a file of the step
-(ticket 2062). So **a change to the engine's dependencies** (a crate
-added, removed or moved, an engine crate's version) refreshes the ten
-locks in the same PR, without moving anything else in them. The local
-`tutorial locks` gate (ticket 2073) finds a stale lock in seconds: it runs
-`cargo metadata --locked` in each step when the diff touches a `Cargo.toml`
-or `Cargo.lock` under `crates/`, the root's, or `site/tutorial/`, and fails
-naming the step. Building and testing the steps stays CI's.
+(ticket 2062).
+
+**Steps 02 to 10 are made, not written** (ticket 2858, ADR-0168):
+`01-new` is written by hand, each later step is the one before it plus
+its patch, `site/tutorial-steps/patches/<step>.patch`, and each step's
+`Cargo.lock` is its group's, in `site/tutorial-steps/locks/`. The
+`tutorial steps` gate (`--fast`, and CI's `tickets` job) fails on a folder
+that isn't what they make, naming the file. To change a step:
+
+- **a change every step shares** (how a game starts, the template's
+  files): make it in `site/tutorial/01-new/`, then
+  `cargo xtask tutorial-steps --write`; it reaches each later step that
+  has the lines;
+- **a change to one step**: edit its folder, then
+  `cargo xtask tutorial-steps --record NN` (its number); that writes its
+  patch and the next step's, so the next step stays as it was. To carry
+  the edit on, edit the later folders too and record each;
+- when an edit changes lines a later patch reads, `--write` makes the
+  steps before it and stops there, naming the patch: make the edit in that
+  step's folder too (and in each later one that should have it), then
+  `--record` its number, and `--write` again.
+
+```bash
+cargo xtask tutorial-steps --record 05   # after editing site/tutorial/05-undo/
+cargo xtask tutorial-steps --check
+```
+
+**A change to the engine's dependencies** (a crate added, removed or
+moved, an engine crate's version) refreshes the locks in the same PR,
+without moving anything else in them, and keeps them with `--locks`. The
+local `tutorial locks` gate (ticket 2073) finds a stale lock in seconds:
+it runs `cargo metadata --locked` in each step when the diff touches a
+`Cargo.toml` or `Cargo.lock` under `crates/`, the root's,
+`site/tutorial/` or `site/tutorial-steps/`, and fails naming the step.
+Building and testing the steps stays CI's.
 
 ```bash
 for step in site/tutorial/*/; do (cd "$step" && cargo metadata --format-version 1 > /dev/null); done
-git status --short site/tutorial
+cargo xtask tutorial-steps --locks
+git status --short site/tutorial site/tutorial-steps
 ```
 
 To run one step as CI does, from its folder:
