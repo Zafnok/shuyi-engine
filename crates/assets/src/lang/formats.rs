@@ -11,7 +11,7 @@ use super::{
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
 use crate::font::{CellWidths, FontAtlasDef};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat, join};
 use crate::import_settings::is_settings_file;
 
 impl AssetKind for LangPack {
@@ -128,28 +128,19 @@ impl core::fmt::Debug for LangPackRon {
     }
 }
 
-impl Format for LangPackRon {
+impl TextFormat for LangPackRon {
     type Asset = LangPack;
 
     fn id(&self) -> &'static str {
         "lang-pack"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        info: &str,
         cx: &DecodeCx<'_>,
     ) -> Result<LangPack, Vec<ContentError>> {
-        let info = text(file, bytes)?;
         let dir = file.dir();
         let (languages, code) = dir.rsplit_once('/').unwrap_or(("", dir));
         let source = &self.source.code;

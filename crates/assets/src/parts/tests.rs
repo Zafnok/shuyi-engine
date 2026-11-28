@@ -4,7 +4,7 @@ use proptest::prelude::*;
 use shuyi_core::state_hash;
 
 use crate::format::builtin_tests::{bytes, edited};
-use crate::format::{Format, Formats};
+use crate::format::{Format, Formats, TEXT_MAX_BYTES};
 use crate::image::Png;
 
 /// The ticket's example, completed with the parts it names.
@@ -117,9 +117,9 @@ fn the_example_file_loads() {
 
 #[test]
 fn the_format_is_parts_and_reads_part_sets() {
-    assert_eq!(PartsRon.id(), "parts");
-    assert_eq!(PartsRon.extensions(), ["ron"]);
-    assert_eq!(PartsRon.max_bytes(), TEXT_MAX_BYTES);
+    assert_eq!(Format::id(&PartsRon), "parts");
+    assert_eq!(Format::extensions(&PartsRon), ["ron"]);
+    assert_eq!(Format::max_bytes(&PartsRon), TEXT_MAX_BYTES);
     assert_eq!(<PartsDef as AssetKind>::NAME, "part set");
     let mut formats = Formats::new();
     formats.register(PartsRon).unwrap();

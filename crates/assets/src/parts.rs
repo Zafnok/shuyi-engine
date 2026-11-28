@@ -83,7 +83,7 @@ use shuyi_core::rng::SimRng;
 
 use crate::error::{ContentError, codes};
 use crate::fnv::Hasher;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat, join};
 use crate::image::{Image, ImageId, ImageInfo, ImageRect, ImageTable};
 use crate::palette::parse_hex;
 use crate::ron::parse_ron_implicit_some;
@@ -342,28 +342,19 @@ impl PartsDef {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PartsRon;
 
-impl Format for PartsRon {
+impl TextFormat for PartsRon {
     type Asset = PartsDef;
 
     fn id(&self) -> &'static str {
         "parts"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        source: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<PartsDef, Vec<ContentError>> {
-        let source = text(file, bytes)?;
         PartsDef::from_source(file.shown(), source)
     }
 }

@@ -15,7 +15,7 @@ use super::{
     CornerLayer, Layer, Look, MIX_IN, MIX_OUT, MIXES, TerrainTiles, TileLayer, mix_name, parse_mix,
 };
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::grid_map::DEFAULT_TILES;
 use crate::image::{ImageId, ImageInfo, ImageRect, ImageTable};
 use crate::ron::parse_ron;
@@ -655,29 +655,21 @@ impl TerrainTilesRon {
     }
 }
 
-impl Format for TerrainTilesRon {
+impl TextFormat for TerrainTilesRon {
     type Asset = TerrainTilesDef;
 
     fn id(&self) -> &'static str {
         "terrain-tiles"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<TerrainTilesDef, Vec<ContentError>> {
         let shown = file.shown();
-        let def: TerrainTilesDef = parse_ron(shown, text(file, bytes)?).map_err(|e| vec![e])?;
+        let def: TerrainTilesDef = parse_ron(shown, text).map_err(|e| vec![e])?;
         let problems = def.problems(&self.rules);
         if problems.is_empty() {
             Ok(def)

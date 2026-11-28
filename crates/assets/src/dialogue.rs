@@ -70,7 +70,7 @@ pub use parse::{Lines, ParsedScene, PartLines, bad_id, char_problem, is_id, pars
 pub use present::{Present, TextBoxAt};
 
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 
 /// How much text a game's dialogue box and reply menu hold: the limits the
 /// checks keep a script to, counted in cells ([`text_width`]).
@@ -439,7 +439,7 @@ impl<D> fmt::Debug for Dlg<D> {
     }
 }
 
-impl<D: Directive + 'static> Format for Dlg<D> {
+impl<D: Directive + 'static> TextFormat for Dlg<D> {
     type Asset = DialogueFile<D>;
 
     fn id(&self) -> &'static str {
@@ -450,17 +450,13 @@ impl<D: Directive + 'static> Format for Dlg<D> {
         &["dlg"]
     }
 
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<DialogueFile<D>, Vec<ContentError>> {
-        let (scenes, errors) = parse_dlg(file.shown(), text(file, bytes)?);
+        let (scenes, errors) = parse_dlg(file.shown(), text);
         if errors.is_empty() {
             Ok(DialogueFile { scenes })
         } else {

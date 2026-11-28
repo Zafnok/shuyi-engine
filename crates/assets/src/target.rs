@@ -16,7 +16,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::keymap::Button;
 use crate::ron::parse_ron_implicit_some;
 
@@ -29,28 +29,20 @@ impl AssetKind for TargetProfile {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TargetRon;
 
-impl Format for TargetRon {
+impl TextFormat for TargetRon {
     type Asset = TargetProfile;
 
     fn id(&self) -> &'static str {
         "target-ron"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<TargetProfile, Vec<ContentError>> {
-        TargetProfile::from_source(file.shown(), file.stem(), text(file, bytes)?)
+        TargetProfile::from_source(file.shown(), file.stem(), text)
     }
 }
 
@@ -501,7 +493,7 @@ pub(crate) mod tests {
     use proptest::prelude::*;
 
     use super::*;
-    use crate::format::Formats;
+    use crate::format::{Format, Formats, TEXT_MAX_BYTES};
 
     /// A whole profile, with `extra` added to its display.
     pub(crate) fn profile(id: &str, display_extra: &str) -> String {
@@ -670,7 +662,7 @@ pub(crate) mod tests {
             &DecodeCx::new(),
         );
         assert_eq!(p.map(|p| p.id), Ok("small".to_owned()));
-        assert_eq!(TargetRon.max_bytes(), TEXT_MAX_BYTES);
+        assert_eq!(Format::max_bytes(&TargetRon), TEXT_MAX_BYTES);
     }
 
     proptest! {

@@ -18,7 +18,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::ron::parse_ron;
 
 pub mod action_set;
@@ -818,28 +818,20 @@ impl<A> fmt::Debug for KeymapRon<A> {
     }
 }
 
-impl<A: ActionSet> Format for KeymapRon<A> {
+impl<A: ActionSet> TextFormat for KeymapRon<A> {
     type Asset = KeymapDef<A>;
 
     fn id(&self) -> &'static str {
         "keymap"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<KeymapDef<A>, Vec<ContentError>> {
-        KeymapDef::from_source(file.shown(), text(file, bytes)?)
+        KeymapDef::from_source(file.shown(), text)
     }
 }
 

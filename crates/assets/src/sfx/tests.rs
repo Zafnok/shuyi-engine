@@ -10,6 +10,7 @@ use shuyi_core::state_hash;
 
 use super::*;
 use crate::audio::{decode_to_wav, format_problem, playable};
+use crate::format::TEXT_MAX_BYTES;
 
 /// A square at 441 hz (100 samples a cycle), 100 ms, held at full volume.
 fn plain(wave: Wave) -> SfxDef {
@@ -572,11 +573,11 @@ fn the_two_formats_read_a_file_and_the_sound_one_only_a_sound_effects_name() {
     // Through the registry, by its extension.
     // Both read RON text, up to the text formats' limit.
     assert_eq!(
-        (SfxDefRon.extensions(), SfxRon.extensions()),
+        (Format::extensions(&SfxDefRon), SfxRon.extensions()),
         (&["ron"][..], &["ron"][..])
     );
     assert_eq!(
-        (SfxDefRon.max_bytes(), SfxRon.max_bytes()),
+        (Format::max_bytes(&SfxDefRon), SfxRon.max_bytes()),
         (TEXT_MAX_BYTES, TEXT_MAX_BYTES)
     );
     let formats = crate::format::Formats::standard();

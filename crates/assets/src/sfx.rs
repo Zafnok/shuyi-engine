@@ -34,7 +34,7 @@ use shuyi_core::SimRng;
 
 use crate::audio::{MAX_VOLUME, SAMPLE_RATE, Sound, pcm16_wav};
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Encode, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Encode, Format, TextFormat};
 use crate::ron::parse_ron_implicit_some;
 
 /// The longest a sound may be, in milliseconds: `attack_ms`, `hold_ms`
@@ -581,28 +581,20 @@ pub fn is_sfx_name(name: &str) -> bool {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SfxDefRon;
 
-impl Format for SfxDefRon {
+impl TextFormat for SfxDefRon {
     type Asset = SfxDef;
 
     fn id(&self) -> &'static str {
         "sfx"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<SfxDef, Vec<ContentError>> {
-        from_source(file.shown(), text(file, bytes)?)
+        from_source(file.shown(), text)
     }
 }
 
@@ -631,7 +623,7 @@ impl Format for SfxRon {
     }
 
     fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
+        Format::max_bytes(&SfxDefRon)
     }
 
     fn decode(

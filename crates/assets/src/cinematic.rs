@@ -40,7 +40,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::audio::AudioManifest;
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::ron::parse_ron;
 
 impl<S: 'static, P: 'static> AssetKind for CinematicFile<S, P> {
@@ -72,28 +72,22 @@ impl<S, P> fmt::Debug for CinematicRon<S, P> {
     }
 }
 
-impl<S: DeserializeOwned + 'static, P: DeserializeOwned + 'static> Format for CinematicRon<S, P> {
+impl<S: DeserializeOwned + 'static, P: DeserializeOwned + 'static> TextFormat
+    for CinematicRon<S, P>
+{
     type Asset = CinematicFile<S, P>;
 
     fn id(&self) -> &'static str {
         "cinematic"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<CinematicFile<S, P>, Vec<ContentError>> {
-        parse(file.shown(), text(file, bytes)?).map_err(|e| vec![e])
+        parse(file.shown(), text).map_err(|e| vec![e])
     }
 }
 

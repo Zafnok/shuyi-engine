@@ -129,7 +129,12 @@ fn check_binary_rows(rows: &mut Rows) {
     rows.format(&Dithered, "a.png", &picture, None);
     rows.format(&Wav, "a.wav", &wav(1, rate, 1), None);
     rows.format(&OggVorbis, "a.ogg", &ogg(2, rate), None);
-    rows.format(&OggVorbisTrack, "a.ogg", &ogg_file(rate, 88_200), None);
+    rows.format(
+        &OggVorbisTrack::default(),
+        "a.ogg",
+        &ogg_file(rate, 88_200),
+        None,
+    );
     // Ticket 2203's formats, on their fixtures: the lossy ones for the
     // pictures but QOI, so a decoder's rounding is pinned.
     rows.format(&JpegInfo, "a.jpg", JPEG, None);
@@ -141,9 +146,9 @@ fn check_binary_rows(rows: &mut Rows) {
     rows.format(&JpegXlInfo, "a.jxl", JPEG_XL, None);
     rows.format(&JpegXl, "a.jxl", JPEG_XL, None);
     rows.format(&Flac, "a.flac", FLAC, None);
-    rows.format(&FlacTrack, "a.flac", FLAC, None);
+    rows.format(&FlacTrack::default(), "a.flac", FLAC, None);
     rows.format(&Mp3, "a.mp3", MP3, None);
-    rows.format(&Mp3Track, "a.mp3", MP3, None);
+    rows.format(&Mp3Track::default(), "a.mp3", MP3, None);
     let coin = crate::sfx::preset_source("coin")
         .unwrap_or_default()
         .as_bytes();

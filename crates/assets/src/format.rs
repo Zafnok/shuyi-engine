@@ -124,6 +124,116 @@ pub trait Format: Send + Sync + 'static {
     ) -> Result<Self::Asset, Vec<ContentError>>;
 }
 
+/// A text file format: a [`Format`] whose file is UTF-8 text. It says its
+/// id and reads the text; the [`Format`] it is checks the bytes are UTF-8
+/// first (a file that isn't gets [`codes::NOT_TEXT`]). Its extensions are
+/// `ron` and its limit [`TEXT_MAX_BYTES`] unless it says otherwise.
+///
+/// These are methods, not constants, so a format can choose them when it
+/// is made ([`Ron`](crate::ron::Ron) takes its id and extensions).
+///
+/// ```
+/// use shuyi_assets::format::{AssetKind, AssetPath, DecodeCx, Format, TextFormat};
+/// use shuyi_assets::ContentError;
+///
+/// /// A file of words, one a line.
+/// #[derive(Debug, PartialEq)]
+/// struct Words(Vec<String>);
+///
+/// impl AssetKind for Words {
+///     const NAME: &str = "words";
+/// }
+///
+/// /// Words in a `.txt` file (`words`).
+/// struct WordsTxt;
+///
+/// impl TextFormat for WordsTxt {
+///     type Asset = Words;
+///
+///     fn id(&self) -> &'static str {
+///         "words"
+///     }
+///
+///     fn extensions(&self) -> &'static [&'static str] {
+///         &["txt"]
+///     }
+///
+///     fn read(
+///         &self,
+///         _file: &AssetPath,
+///         text: &str,
+///         _cx: &DecodeCx<'_>,
+///     ) -> Result<Words, Vec<ContentError>> {
+///         Ok(Words(text.lines().map(str::to_owned).collect()))
+///     }
+/// }
+///
+/// let file = AssetPath::new("words.txt");
+/// let cx = DecodeCx::default();
+/// let words = WordsTxt.decode(&file, b"one\ntwo", &cx);
+/// assert_eq!(words, Ok(Words(vec!["one".into(), "two".into()])));
+/// assert!(WordsTxt.decode(&file, b"\xff", &cx).is_err());
+/// ```
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a text format: it doesn't implement `TextFormat`",
+    label = "write `impl TextFormat for {Self}`",
+    note = "a text format names its `Asset` kind and writes `id` and `read`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/assets-and-formats/"
+)]
+pub trait TextFormat: Send + Sync + 'static {
+    /// The kind it reads.
+    type Asset: AssetKind;
+
+    /// Stable id, as [`Format::id`].
+    fn id(&self) -> &'static str;
+
+    /// File extensions it claims, as [`Format::extensions`]: `ron` unless
+    /// it says.
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    /// The most bytes it reads, as [`Format::max_bytes`]:
+    /// [`TEXT_MAX_BYTES`] unless it says.
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    /// The asset in `text`, the file `file`'s UTF-8 text. Every problem
+    /// found, each with file and place; never a panic.
+    fn read(
+        &self,
+        file: &AssetPath,
+        text: &str,
+        cx: &DecodeCx<'_>,
+    ) -> Result<Self::Asset, Vec<ContentError>>;
+}
+
+impl<T: TextFormat> Format for T {
+    type Asset = T::Asset;
+
+    fn id(&self) -> &'static str {
+        TextFormat::id(self)
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        TextFormat::extensions(self)
+    }
+
+    fn max_bytes(&self) -> usize {
+        TextFormat::max_bytes(self)
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        cx: &DecodeCx<'_>,
+    ) -> Result<T::Asset, Vec<ContentError>> {
+        self.read(file, text(file, bytes)?, cx)
+    }
+}
+
 /// A format that can also write its kind: what tools and an optimized
 /// format derived from a source (ADR-0007 §4) use.
 pub trait Encode: Format {
@@ -671,7 +781,7 @@ impl Formats {
         self.register(bitmap::dither::Dithered)?;
         self.register(audio::Wav)?;
         self.register(audio::OggVorbis)?;
-        self.register(audio::OggVorbisTrack)?;
+        self.register(audio::OggVorbisTrack::default())?;
         // The picture and sound formats whose feature is on (ticket 2203).
         #[cfg(feature = "jpeg")]
         {
@@ -696,12 +806,12 @@ impl Formats {
         #[cfg(feature = "flac")]
         {
             self.register(crate::audio::Flac)?;
-            self.register(crate::audio::FlacTrack)?;
+            self.register(crate::audio::FlacTrack::default())?;
         }
         #[cfg(feature = "mp3")]
         {
             self.register(crate::audio::Mp3)?;
-            self.register(crate::audio::Mp3Track)?;
+            self.register(crate::audio::Mp3Track::default())?;
         }
         // Sound effects, as numbers and as the sound they render to (ticket
         // 2225).

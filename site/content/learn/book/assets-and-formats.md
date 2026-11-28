@@ -315,7 +315,10 @@ are matched, and what two mods changing one row do, is your game's to decide.
 
 A file format the engine lacks is a **plugin**, something you add without changing the
 engine: a type that implements `Format` (its id, the extensions it claims, an optional
-sniff of its first bytes, a size limit, and `decode`), registered beside the others. It
+sniff of its first bytes, a size limit, and `decode`), registered beside the others. A
+format of text with no magic bytes, like most RON files, implements `TextFormat` instead:
+its id and `read`, which gets the file as text already checked to be UTF-8, with
+extensions `ron` and the text formats' 4 MiB limit unless it says otherwise. It
 never panics on a broken file, says every problem rather than the first, and reads the
 same bytes into the same asset on every platform. The engine's [formats
 page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md) walks through

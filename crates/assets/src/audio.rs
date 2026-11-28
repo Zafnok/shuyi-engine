@@ -64,7 +64,8 @@ use crate::ron::parse_ron_implicit_some;
 
 pub use decode::{MAX_DECODED_BYTES, decode_to_wav, pcm16_wav, track_length_ms};
 pub use formats::{
-    AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
+    AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Track,
+    TrackSound, Wav,
 };
 #[cfg(feature = "flac")]
 pub use formats::{Flac, FlacTrack};

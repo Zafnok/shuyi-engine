@@ -1,4 +1,5 @@
 use super::*;
+use crate::format::{Format, TEXT_MAX_BYTES};
 
 /// Every pattern: each base, plain and inverted.
 fn every_pattern() -> Vec<Pattern> {
@@ -248,9 +249,9 @@ fn the_format_reads_a_map_as_from_source_does() {
     let file = AssetPath::new("skin/palette@onebit.ron");
     let read = PatternMapRon.decode(&file, MAP.as_bytes(), &DecodeCx::new());
     assert_eq!(read, PatternMapDef::from_source(file.shown(), MAP));
-    assert_eq!(PatternMapRon.id(), "pattern-map");
-    assert_eq!(PatternMapRon.extensions(), ["ron"]);
-    assert_eq!(PatternMapRon.max_bytes(), TEXT_MAX_BYTES);
+    assert_eq!(Format::id(&PatternMapRon), "pattern-map");
+    assert_eq!(Format::extensions(&PatternMapRon), ["ron"]);
+    assert_eq!(Format::max_bytes(&PatternMapRon), TEXT_MAX_BYTES);
     assert!(
         PatternMapRon
             .decode(&file, &[0xff], &DecodeCx::new())

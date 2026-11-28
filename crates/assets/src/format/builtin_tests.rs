@@ -368,7 +368,12 @@ fn every_built_in_has_its_id_extensions_and_limit() {
     named(&OneBitInfo, "one-bit", &[], bitmap::MAX_BYTES);
     named(&Wav, "wav", &["wav"], MAX_SOUND_BYTES);
     named(&OggVorbis, "ogg-vorbis", &["ogg"], MAX_SOUND_BYTES);
-    named(&OggVorbisTrack, "ogg-vorbis", &["ogg"], MAX_SOUND_BYTES);
+    named(
+        &OggVorbisTrack::default(),
+        "ogg-vorbis",
+        &["ogg"],
+        MAX_SOUND_BYTES,
+    );
     named(
         &AudioManifestRon,
         "audio-manifest",
@@ -433,7 +438,7 @@ fn the_binary_formats_know_their_magic_bytes() {
             OneBitInfo.sniff(bytes),
             Wav.sniff(bytes),
             OggVorbis.sniff(bytes),
-            OggVorbisTrack.sniff(bytes),
+            OggVorbisTrack::default().sniff(bytes),
         ];
         let expected = [is_png, is_png, is_bits, is_wav, is_ogg, is_ogg];
         assert_eq!(sniffed, expected, "{bytes:?}");
@@ -605,7 +610,7 @@ fn wav_and_ogg_read_a_sounds_header_as_the_manifest_check_does() {
 fn a_music_track_is_a_whole_ogg_vorbis_file_whose_last_page_gives_its_length() {
     let rate = audio::SAMPLE_RATE;
     assert_eq!(
-        alone(&OggVorbisTrack, "a.ogg", &ogg_file(rate, 88_200)),
+        alone(&OggVorbisTrack::default(), "a.ogg", &ogg_file(rate, 88_200)),
         Ok(MusicTrack {
             channels: 2,
             sample_rate: rate,
@@ -613,15 +618,15 @@ fn a_music_track_is_a_whole_ogg_vorbis_file_whose_last_page_gives_its_length() {
         })
     );
     assert_eq!(
-        shown(alone(&OggVorbisTrack, "a.ogg", &ogg(2, rate))),
+        shown(alone(&OggVorbisTrack::default(), "a.ogg", &ogg(2, rate))),
         ["a.ogg: its length can't be read (no last Ogg page)"]
     );
     assert_eq!(
-        shown(alone(&OggVorbisTrack, "a.ogg", &ogg(3, rate))),
+        shown(alone(&OggVorbisTrack::default(), "a.ogg", &ogg(3, rate))),
         ["a.ogg: 3 channels; must be mono or stereo"]
     );
     assert_eq!(
-        shown(alone(&OggVorbisTrack, "a.ogg", b"OggS")),
+        shown(alone(&OggVorbisTrack::default(), "a.ogg", b"OggS")),
         ["a.ogg: not an OGG Vorbis file"]
     );
     // Through the registry, which keeps the format to its limit.
@@ -1462,7 +1467,7 @@ proptest! {
         for bytes in [&random, &riff, &fmt, &oggs, &pages] {
             decodes(&Wav, "a.wav", bytes);
             decodes(&OggVorbis, "a.ogg", bytes);
-            decodes(&OggVorbisTrack, "a.ogg", bytes);
+            decodes(&OggVorbisTrack::default(), "a.ogg", bytes);
         }
     }
 
@@ -1489,9 +1494,9 @@ proptest! {
             decodes(&JpegXlInfo, "a.jxl", bytes);
             decodes(&JpegXl, "a.jxl", bytes);
             decodes(&Flac, "a.flac", bytes);
-            decodes(&FlacTrack, "a.flac", bytes);
+            decodes(&FlacTrack::default(), "a.flac", bytes);
             decodes(&Mp3, "a.mp3", bytes);
-            decodes(&Mp3Track, "a.mp3", bytes);
+            decodes(&Mp3Track::default(), "a.mp3", bytes);
             let file = AssetPath::new("a");
             let _ = standard.decode::<Image>(&file, bytes, &cx);
             let _ = standard.decode::<MusicTrack>(&file, bytes, &cx);

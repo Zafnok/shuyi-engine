@@ -5,6 +5,7 @@
 use proptest::prelude::*;
 
 use super::*;
+use crate::format::Format;
 use crate::format::builtin_tests::bundle;
 use crate::target::{TargetProfile, TargetRon};
 

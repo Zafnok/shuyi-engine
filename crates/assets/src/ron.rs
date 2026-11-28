@@ -9,7 +9,7 @@ use serde::de::{DeserializeOwned, DeserializeSeed};
 
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 
 /// A RON file of a kind serde reads (`ron`, `.ron`, unless
 /// [`Ron::named`] says), read as [`parse_ron`] says: a game's data table,
@@ -51,7 +51,7 @@ impl<T> fmt::Debug for Ron<T> {
     }
 }
 
-impl<T: AssetKind + DeserializeOwned> Format for Ron<T> {
+impl<T: AssetKind + DeserializeOwned> TextFormat for Ron<T> {
     type Asset = T;
 
     fn id(&self) -> &'static str {
@@ -62,17 +62,13 @@ impl<T: AssetKind + DeserializeOwned> Format for Ron<T> {
         self.extensions
     }
 
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<T, Vec<ContentError>> {
-        parse_ron(file.shown(), text(file, bytes)?).map_err(|e| vec![e])
+        parse_ron(file.shown(), text).map_err(|e| vec![e])
     }
 }
 

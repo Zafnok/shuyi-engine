@@ -124,6 +124,13 @@ The standard ones, in `Formats::standard()`:
 | dialogue | `dialogue::DialogueFile` (a file's scenes) | `dialogue::Dlg` | `dlg` | `dlg` | none | 4 MiB |
 | atlas | `atlas::Atlas` (pages and a table of sprites) | `atlas::AtlasRon` (an `atlas.ron`: every image of a folder, packed) | `atlas` | `ron` | none | 4 MiB |
 
+A music track's format is its sound's, read through `audio::Track<F>`
+(`OggVorbisTrack` is `Track<OggVorbis>`, a value `Track(OggVorbis)` or
+`OggVorbisTrack::default()`): the same id, extensions, magic bytes and
+limit, and a sound that must say its length. A game's own sound format
+reads tracks too once it implements `audio::TrackSound`, whose
+`NO_LENGTH` is what a file without a length is told.
+
 With a feature of `shuyi-assets` on, `Formats::standard()` has its
 formats too ([below](#formats-behind-a-feature)):
 
@@ -940,6 +947,13 @@ impl Format for TxtImg {
     }
 }
 ```
+
+A text format with no magic bytes (most RON files) implements
+`format::TextFormat` instead and is a `Format` through it: its `id` and
+`read(file, text, cx)`, which gets the file's text already checked to be
+UTF-8 (`SH2002` otherwise). Its extensions are `ron` and its limit
+`TEXT_MAX_BYTES` unless it says otherwise, as the engine's own text
+formats do. `txtimg` sniffs its first bytes, so it stays a `Format`.
 
 - **Errors** name `file.shown()`, the name the bundle shows the file by,
   with a line and column when there is one, and say what is wrong in

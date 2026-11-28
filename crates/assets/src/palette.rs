@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use alloc::collections::BTreeMap;
 
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::ron::parse_ron;
 
 impl AssetKind for PaletteDef {
@@ -32,28 +32,19 @@ impl PaletteRon {
     }
 }
 
-impl Format for PaletteRon {
+impl TextFormat for PaletteRon {
     type Asset = PaletteDef;
 
     fn id(&self) -> &'static str {
         "palette"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        source: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<PaletteDef, Vec<ContentError>> {
-        let source = text(file, bytes)?;
         let required: Vec<&str> = self.required.iter().map(String::as_str).collect();
         PaletteDef::from_source(file.shown(), source, &required)
     }

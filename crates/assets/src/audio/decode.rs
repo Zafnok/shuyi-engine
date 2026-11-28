@@ -82,11 +82,19 @@ type Readers = (
 );
 
 #[cfg(feature = "flac")]
-const FLAC: Readers = (Some(&super::Flac), Some(&super::FlacTrack), Some(flac_wav));
+const FLAC: Readers = (
+    Some(&super::Flac),
+    Some(&super::Track(super::Flac)),
+    Some(flac_wav),
+);
 #[cfg(not(feature = "flac"))]
 const FLAC: Readers = (None, None, None);
 #[cfg(feature = "mp3")]
-const MP3: Readers = (Some(&super::Mp3), Some(&super::Mp3Track), Some(mp3_wav));
+const MP3: Readers = (
+    Some(&super::Mp3),
+    Some(&super::Track(super::Mp3)),
+    Some(mp3_wav),
+);
 #[cfg(not(feature = "mp3"))]
 const MP3: Readers = (None, None, None);
 
