@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
-status: todo
+status: done
 blocked_by: ["2612", "2613", "2620"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2614 — Tick rooms: a server-authoritative room with bots in empty seats
@@ -172,29 +172,33 @@ and the room's tests, and 2790's `blocked_by` gains the new ticket.
 
 ## Acceptance criteria
 
-- [ ] Three `RoomClient`s and one `Room` of `Dots` over a `MemoryNetwork`
+- [x] ~~Three `RoomClient`s and one `Room` of `Dots` over a `MemoryNetwork`
       with delay, and loss, duplicates and reordering on (Reliable
       channel): every client's hash equals the room's at every check,
-      across 10 rounds.
-- [ ] A client that joins mid-round reaches the room's state (equal
-      `hash()`) after applying its catch-up, and its next check passes.
-- [ ] A `leave`, or `5 * STEPS_PER_SECOND` steps of silence, makes the
+      across 10 rounds.~~ (not done: split off to 2621 with `RoomClient`)
+- [x] ~~A client that joins mid-round reaches the room's state (equal
+      `hash()`) after applying its catch-up, and its next check passes.~~
+      (the client's half split off to 2621; the room's half is here: a
+      mid-round catch-up, and a `Resync`'s, replayed from its
+      `RoundStart` equals the room's sim)
+- [x] A `leave`, or `5 * STEPS_PER_SECOND` steps of silence, makes the
       seat `Bot` at the next step; a join takes the lowest bot seat
       whose rider is alive; with none alive it is `Watching` until the
       next round, then seated.
-- [ ] Joining a room whose seats are all humans or watchers is `Full`.
-- [ ] Rounds restart after `PAUSE_STEPS` with wins counted; a round at
+- [x] Joining a room whose seats are all humans or watchers is `Full`.
+- [x] Rounds restart after `PAUSE_STEPS` with wins counted; a round at
       `MAX_ROUND_STEPS` ends as a `Draw`.
-- [ ] A client whose sim is deliberately corrupted sends `Resync` and is
-      equal again after the catch-up.
-- [ ] A catch-up never holds more than `MAX_ROUND_STEPS` inputs.
-- [ ] Two quick presses between two steps are both applied, on two
+- [x] ~~A client whose sim is deliberately corrupted sends `Resync` and is
+      equal again after the catch-up.~~ (not done: split off to 2621; the
+      room's answer to a `Resync` is tested here)
+- [x] A catch-up never holds more than `MAX_ROUND_STEPS` inputs.
+- [x] Two quick presses between two steps are both applied, on two
       steps.
-- [ ] No float arithmetic in `shuyi-net`; `cargo xtask check-layers`
+- [x] No float arithmetic in `shuyi-net`; `cargo xtask check-layers`
       passes.
-- [ ] The completion notes have a `Book:` line naming 2854 and a
+- [x] The completion notes have a `Book:` line naming 2854 and a
       `Skills:` line naming 2855.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -208,3 +212,114 @@ and the room's tests, and 2790's `blocked_by` gains the new ticket.
   equality; `Resync`; bot takeover timing; round restart and wins.
 
 ## Completion notes
+
+**What was done.** `shuyi_net::room`, the server's side of a tick room
+(ADR-0155), pure:
+
+- `crates/net/src/room.rs`: `RoomGame` (its `SEATS`, checked at compile
+  time to be 1 to `MAX_SEATS`, with `STEPS_PER_SECOND` at least 1, where
+  `Room::new` and `Frame::decode` name the check), `RoundEnd`, `Joined`,
+  `Seat` (`Human(PeerId)` or `Bot`), `SeatKind` (the same without the
+  peer, for clients), `Full`, and `HASH_EVERY` (15).
+- `room/host.rs`: `Room` (`new`, `join`, `leave`, `receive`, `step`,
+  `place`, `seats`, `sim`, `wins`, `stats`, `game`), `Outbox` and
+  `RoomStats`. Seats, the input latch, silence, rounds with their pause,
+  the catch-up and the roster, as the Scope says.
+- `room/wire.rs`: `PROTOCOL` (1), `Frame`, `ClientMsg`, `Roster`,
+  `RoundStart`, `WireError`, each message's `encode` and a `decode` that
+  never panics. Frames take the first bytes `0x01`–`0x06`, client
+  messages `0x80`–`0x83`.
+- `room/testing.rs`: `Dots`, behind the new `testing` feature (off by
+  default; the crate's tests turn it on through a dev-dependency on
+  itself): eight dots on 16 by 16, 15 steps a second, rounds of at most
+  600 steps, a pause of 3; a bot that turns and goes out at random.
+- Tests: the wire's round trips, each `WireError` and its text, 100,000
+  seeded random strings and 100,000 mutations of valid messages, with
+  every string that decodes encoding back to the same bytes; 16 room
+  tests, among them a churn of 20,000 seeded joins, leaves, messages and
+  steps that checks the seats' books after each.
+- The crate doc names `room`; `crates/net/README.md` says what the rooms
+  are, cost and how to start one.
+- The API gate lists `shuyi-net` with its `testing` feature, as it lists
+  the other crates' `toy` (`crates/xtask/src/api.rs` and its test's
+  table): `Dots` is public to other crates' tests.
+
+**The split.** At about 2,300 counted lines without the client, the
+ticket's own split rule moved `RoomClient`, its tests and the
+integration tests over `MemoryNetwork` (steps 4 and part of 5, the first
+and the client's half of the second and sixth criteria) to **2621**. Its
+Context holds what a client reads from the room, as built here. 2615 and
+2790 (and 1147, parked) gain 2621 in `blocked_by`; 2789, 2529, 2550,
+2854 and 2855 name 2621 for the client.
+
+**Deviations.**
+
+- `Frame::Roster` carries the receiver's own `place` beside the roster:
+  with `Roster { seats }` alone, a watcher had no way to learn the seat
+  the next round gives it. `wire::Roster` itself holds no peer id.
+- A peer's messages reach the room through `Room::receive(peer,
+  ClientMsg)`, which the Scope didn't name; it takes them decoded, so
+  2615's director can read its own (`Hello`, `Play`) first.
+- `join` takes no outbox (the Scope's signature), so the catch-up goes
+  out at the room's next `step`, before that step's frame; a `Resync`'s
+  too, once however often it is asked.
+- A silent watcher is dropped after the same five seconds of steps as a
+  seat: otherwise it held a place for ever.
+- A third press or release waiting between two steps is dropped (the
+  Scope said at most 2, not which go), and those waiting when a round
+  ends are dropped when the next one starts; the held set stays.
+- `RoundOver.winner` is `Option<usize>` (none for a draw), not a
+  `RoundEnd`, which can't be `Going` there. Wins are a `u32` a seat.
+  `RoundStart.wins`, in a catch-up too, are the wins so far, so a peer
+  that joins between rounds sees the last one counted.
+- The room cuts each list of a seat's input to 255 actions before it
+  steps the sim with it, so the sim and the clients agree when an input
+  holds more than the byte form does. What a game's actions allow is
+  2622's.
+- `WireError`'s variants are `Short`, `Overlong`, `UnknownTag`,
+  `NoSuchSeat`, `TooManySeats`, `CatchUp`, `BadInput` and `BadField`. A
+  step's inputs cut short read as `BadInput`: 2612's `TickInput::decode`
+  doesn't tell short from malformed.
+- `Dots` has eight seats, as 2615's rooms of eight need. Its
+  `new_round` reads only the seed (the room draws a new one each
+  round), each cell and heading a draw of its own.
+- **CI's mutants** (first run, 29 missed) asked for tests of two
+  watchers at once, a watcher's silence carried into its seat, a winner
+  past the seats, `Outbox::clear`, the round's seed, the seat and roster
+  bytes, and `Dots`' own rules; and two lines changed so no mutant of
+  them is equivalent: a round's seed adds its halves, and a roster's
+  byte sums its humans' bits, where `|` and `^` gave the same.
+
+**Follow-up tickets.** 2621 (the client, above). 2622: a client's
+`Input` may hold up to 255 ids a list, and the room repeats a seat's
+held set in every step to every peer, so the room should keep a seat's
+input to the game's actions.
+
+**Found along the way.** 2285: CI's `determinism` job on this PR's
+commit `7697f3ed` hit a panic in `jxl-frame` on wasm32 (a JPEG XL
+frame whose section sizes add past 32 bits), through `shuyi-assets`'
+random property test; nothing of this ticket's.
+
+**Handovers.** 2615 gets a **From 2614 (done)** list of what a director
+calls on a room; its wire step no longer adds `Leave`, which is here,
+and its outbox clause is settled (`room::Outbox`).
+
+**The game.** No break and no `Behaviour:` line: `shuyi-net` only gains
+a module and a feature off by default. At the game's pin (`10cbb98b`),
+`gh search code --repo Zafnok/visions-of-shuyi 'shuyi_net'` and
+`'RoomGame'` find nothing.
+
+Book: none, 2854 writes the book's chapter on online play (rooms, bots,
+quick play) once trails plays online; this adds the room's server side
+only, which no chapter teaches yet.
+
+Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
+play; this changes no schema, template, format or problem code.
+
+Size: 2,720 counted lines (2,331 before the tests CI's mutation testing
+asked for), the ticket's own split point: `RoomClient` and
+the tests over `MemoryNetwork` went to 2621. What is left lands
+together: the wire's frames are what `Room::step` writes and nothing
+else makes them, so the wire alone would be a codec of frames no code
+writes, and the room's tests read every frame through the wire's round
+trip; `Dots` is what both test with.

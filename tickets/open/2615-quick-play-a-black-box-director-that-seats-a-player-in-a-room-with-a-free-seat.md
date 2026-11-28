@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2614"]
+blocked_by: ["2614", "2621"]
 nick_input: none
 completed:
 ---
@@ -29,10 +29,26 @@ seats are ridden by bots, and players drop in and out of them (2614).
 - **ADR-0155** (written by 2613) is the sync model this rests on: an
   authoritative server runs each room's `TickSim` headless and
   broadcasts the resolved inputs.
-- **2614** builds the room this ticket directs: `RoomGame`, the sans-IO
-  `Room` with seats that are `Human(peer)` or `Bot`, `RoomClient`, the
-  `room::wire` codec and its `PROTOCOL`, and the test game
-  `room::testing::Dots`.
+- **2614** built the room this ticket directs, in `crates/net/src/room/`:
+  `RoomGame`, the sans-IO `Room` with seats that are `Seat::Human(peer)`
+  or `Seat::Bot`, the `room::wire` codec and its `PROTOCOL`, and the test
+  game `room::testing::Dots` (eight seats, behind the `testing`
+  feature). **2621** builds `RoomClient`, which the integration test
+  below drives.
+- **From 2614 (done):** what the director calls on a room.
+  - `Room::join(peer) -> Result<Joined, Full>` (`Joined::Seat(n)` or
+    `Joined::Watching`); `Room::leave(peer)`; `Room::receive(peer,
+    ClientMsg)` takes a message the director decoded; `Room::place(peer)`.
+  - A room takes another human while `stats().humans +
+    stats().watchers` is under `G::SEATS` (`RoomStats`, `Copy`).
+  - A peer silent for `5 * STEPS_PER_SECOND` steps is out of the room
+    when `Room::step` returns, and listed in `Outbox::drop` for the host
+    to close.
+  - `room::wire` already has `ClientMsg::Leave` (byte `0x83`): step 1
+    adds `Hello`, `Welcome`, `Play` and `Refused`. Frames take the bytes
+    `0x01`–`0x06` and client messages `0x80`–`0x83`.
+    `Frame::decode::<G>` reads a game's seats and longest round;
+    `ClientMsg::decode` takes no game.
 - **2613** builds `Transport`, `PeerId`, `NetEvent` and `MemoryNetwork`,
   and **2620** its seeded faults.
 - **2616** (blocked by this ticket) puts a director behind WebSocket,
@@ -99,8 +115,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
     disconnect from 2613's `NetEvent`.
   - `step(&mut self, out: &mut Outbox)`: steps every open room once, in
     room id order, and collects what each peer is sent. The outbox is
-    the one 2614's `Room::step` writes into; if 2614 names it
-    differently, use 2614's.
+    `room::Outbox`, the one `Room::step` writes into (2614).
   - `stats(&self) -> DirectorStats`: `rooms`, `humans`, `bots`, `peers`
     (connected, seated or not), `refused` (a count each of
     `OtherBuild`, `Busy`, `Protocol` and flood disconnects since the
@@ -143,7 +158,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
   Past `msgs_per_second` the director stops reading that peer, sends it
   nothing more, frees its seat, and asks the transport to close it (the
   disconnect 2613's `Transport` offers). The count goes in `refused`.
-- **Wire:** `Hello`, `Welcome`, `Play`, `Leave` and `Refused` are added
+- **Wire:** `Hello`, `Welcome`, `Play` and `Refused` are added
   to 2614's `room::wire` codec, in its byte form (no serde, as 2612
   gives `SeatInput` one), and `PROTOCOL` goes up by one. `Made` is
   encoded as three length-prefixed fields (the engine's version and the
@@ -175,7 +190,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
 ## Implementation steps
 
 1. In `crates/net/src/room/wire.rs` (2614's), add `Hello`, `Welcome`,
-   `Play`, `Leave` and `Refused` with `Refusal`, the byte form of `Made`,
+   `Play` and `Refused` with `Refusal`, the byte form of `Made`,
    and bump `PROTOCOL`. Add them to the round-trip and fuzz tests.
 2. Add `crates/net/src/director.rs` (with `director/tests.rs`):
    `DirectorConfig`, `DirectorStats`, the per-peer handshake states and
@@ -242,7 +257,7 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
   invariants checked after every operation.
 - Property: the new wire messages round-trip, and any byte string
   decodes to a message or an error, never a panic.
-- Integration: 80 `RoomClient`s (2614) over `MemoryNetwork` follow
+- Integration: 80 `RoomClient`s (2621) over `MemoryNetwork` follow
   their rooms, and each client's hash equals its room's at every hash
   step.
 

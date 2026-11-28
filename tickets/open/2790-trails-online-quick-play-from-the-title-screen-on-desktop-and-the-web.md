@@ -6,7 +6,7 @@ milestone: "Engine: examples"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2789", "2617", "1142"]
+blocked_by: ["2789", "2617", "1142", "2621"]
 nick_input: none
 completed:
 ---
@@ -25,7 +25,7 @@ What it builds on:
 - **Trails** (2788): `Round`, the bots, the screens and the skin.
   **`trails-server`** (2789): `impl RoomGame for Trails` behind the
   `room` feature, and the server binary.
-- **`RoomClient`** (2614): follows a room from its `Step` frames, keeps
+- **`RoomClient`** (2621): follows a room from its `Step` frames, keeps
   a jitter buffer of one to two steps, steps its own copy of the
   deterministic `Round` with exactly the server's inputs, checks the
   server's hash every 15 steps, and asks for a catch-up on a mismatch.
@@ -131,7 +131,7 @@ docs 70).
 
 ## Implementation steps
 
-1. Read 2614's `RoomClient` and wire, 2615's handshake, 2617's native
+1. Read 2621's `RoomClient`, 2614's wire, 2615's handshake, 2617's native
    client and 1142's web transport, and 2788's screens and skin.
 2. `Online`, the state machine, and its tests over `MemoryNetwork`
    with seeded loss and delay.

@@ -1859,7 +1859,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
     ("shuyi-embed", &[]),
     ("shuyi-embed-macros", &[]),
     ("shuyi-script", &[]),
-    ("shuyi-net", &[]),
+    ("shuyi-net", &["testing"]),
 ];
 
 /// The features a crate's manifest has that its check leaves out, each for

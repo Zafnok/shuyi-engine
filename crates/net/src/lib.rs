@@ -66,12 +66,19 @@
 //! assert!(lost > 0);
 //! assert_eq!(server.stats().messages_in() + lost, 100 + client.stats().duplicated());
 //! ```
+//!
+//! [`room`] runs a fixed-tick game online: a [`room::Room`] on the server
+//! seats players and bots, steps the real sim, and sends every step's
+//! inputs, encoded by [`room::wire`], so each client steps its own copy
+//! with exactly those. A game gives it its rules through
+//! [`room::RoomGame`].
 #![forbid(unsafe_code)]
 // No floats anywhere: delivery is in whole steps, chances in per mille.
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 mod faults;
 mod memory;
+pub mod room;
 mod transport;
 
 pub use faults::Faults;

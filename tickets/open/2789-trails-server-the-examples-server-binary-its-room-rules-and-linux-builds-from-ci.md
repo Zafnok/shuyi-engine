@@ -143,7 +143,7 @@ None.
       are the ones `Round` plays from the same seeds.
 - [ ] An integration test starts `shuyi_server::run` on `127.0.0.1:0`
       with `Trails`, connects a WebSocket test client that sends
-      `Hello` and `Play`, follows 300 steps through `RoomClient`, and
+      `Hello` and `Play`, follows 300 steps through `RoomClient` (2621), and
       every hash the server sends matches the client's sim; it runs on
       Linux and on Windows GNU.
 - [ ] A client whose `Made` differs is refused with `OtherBuild`.

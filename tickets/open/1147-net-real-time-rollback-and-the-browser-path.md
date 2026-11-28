@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["1125", "1140", "2604", "2614"]
+blocked_by: ["1125", "1140", "2604", "2614", "2621"]
 nick_input: none
 completed:
 ---
@@ -42,7 +42,7 @@ doesn't cover:
 
 - rollback for 2–4 peers (GGRS against our own, with 2604's costs);
 - **client-side prediction of the player's own rider**, with
-  interpolation, as a named follow-up for trails: on top of 2614's
+  interpolation, as a named follow-up for trails: on top of 2621's
   `RoomClient`, predicting the local seat's input and re-simulating
   from the last confirmed step when the server's input differs (the
   same resimulate window as rollback);
@@ -85,7 +85,7 @@ None.
    on, since `rewind_to` alone hands on no event of a step that runs
    again.
 1b. **Own-rider prediction over 2614's rooms.** Spike predicting the
-   local seat in `RoomClient` (repeat the local input, re-simulate from
+   local seat in 2621's `RoomClient` (repeat the local input, re-simulate from
    the last confirmed `Step` when the server's differs), on 2614's
    `room::testing::Dots` at 100 ms of delay, and measure the input delay it saves
    against the jitter buffer alone. The ADR says whether it ships, and

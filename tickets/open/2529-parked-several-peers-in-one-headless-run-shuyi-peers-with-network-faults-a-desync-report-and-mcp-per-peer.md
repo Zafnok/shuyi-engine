@@ -52,7 +52,7 @@ What is planned:
   `LockstepSession` with desync detection, on 2613's crate. Only Rust
   tests reach them.
 - 2614 and 2615 (unparked with 2613): a server-authoritative tick
-  `Room` with bots in empty seats, its `RoomClient`, and a quick-play
+  `Room` with bots in empty seats, 2621's `RoomClient`, and a quick-play
   `Director`, all sans-IO over any `Transport`, with a state hash every
   15 steps checked by each client.
 - 1145 (parked): two Harness `hello-grid` games and a relay in one
@@ -232,7 +232,7 @@ None.
     list gains `ui`, `platform` and `cli`;
   - `crates/net/README.md` names the feature.
 - **Rooms in a run (2614, 2615).** Peers in one headless run may also
-  be the `RoomClient`s of a tick game, with 2614's `Room` (or 2615's
+  be the `RoomClient`s (2621) of a tick game, with 2614's `Room` (or 2615's
   `Director`) on one more endpoint of the same `MemoryNetwork`, so an
   agent checks a room game such as trails (2789) the way it checks
   lockstep. The desync report reuses the room's hash check: each

@@ -17,6 +17,12 @@ workspace = true
 answers = [{ concern = "online", answer = "server" }]
 serves = ["fixed-ticks"]
 
+[features]
+# `testing`: `room::testing::Dots`, a tiny room game for the tests of
+# rooms and what is built on them (the director, a server). Off by
+# default: a game builds none of it.
+testing = []
+
 [dependencies]
 # The faults draw from the core's `SimRng` (without `std`, as the
 # workspace names it). No outside crate: the crate is pure (ADR-0155).
@@ -24,3 +30,6 @@ shuyi-core = { workspace = true }
 
 [dev-dependencies]
 proptest.workspace = true
+# `room::testing::Dots` for the integration tests in tests/ and the docs'
+# examples.
+shuyi-net = { path = ".", features = ["testing"] }

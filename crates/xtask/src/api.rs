@@ -201,10 +201,11 @@ pub const API_CRATES: &[ApiCrate] = &[
         name: "shuyi-script",
         features: Features::Only(&[]),
     },
-    // The transport and the in-memory network (ADR-0155) have no feature.
+    // The transport, the in-memory network and the rooms (ADR-0155), with
+    // `testing`'s room game, which other crates' tests build on.
     ApiCrate {
         name: "shuyi-net",
-        features: Features::Only(&[]),
+        features: Features::Only(&["testing"]),
     },
 ];
 
