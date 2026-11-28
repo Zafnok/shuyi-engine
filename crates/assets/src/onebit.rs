@@ -34,7 +34,7 @@ use core::fmt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::palette::{PaletteDef, format_hex};
 use crate::ron::parse_ron_implicit_some;
 
@@ -470,28 +470,20 @@ impl PatternMapDef {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PatternMapRon;
 
-impl Format for PatternMapRon {
+impl TextFormat for PatternMapRon {
     type Asset = PatternMapDef;
 
     fn id(&self) -> &'static str {
         "pattern-map"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<PatternMapDef, Vec<ContentError>> {
-        PatternMapDef::from_source(file.shown(), text(file, bytes)?)
+        PatternMapDef::from_source(file.shown(), text)
     }
 }
 

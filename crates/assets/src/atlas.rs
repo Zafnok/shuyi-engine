@@ -54,7 +54,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, Formats, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Formats, TextFormat};
 use crate::image::{Image, ImageRect, MAX_SIDE};
 use crate::ron::parse_ron;
 
@@ -503,29 +503,21 @@ fn pixel_formats() -> Formats {
     formats
 }
 
-impl Format for AtlasRon {
+impl TextFormat for AtlasRon {
     type Asset = Atlas;
 
     fn id(&self) -> &'static str {
         "atlas"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         cx: &DecodeCx<'_>,
     ) -> Result<Atlas, Vec<ContentError>> {
         let error = |message: String| vec![ContentError::new(file.shown(), message)];
-        let spec: AtlasSpec = parse_ron(file.shown(), text(file, bytes)?).map_err(|e| vec![e])?;
+        let spec: AtlasSpec = parse_ron(file.shown(), text).map_err(|e| vec![e])?;
         let Some(bundle) = cx.bundle else {
             return Err(error(format!(
                 "its images in {} can't be read without the bundle",

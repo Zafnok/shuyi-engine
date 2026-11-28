@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::audio::{self, AudioManifest};
 use crate::error::{ContentError, line_of};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::ron::parse_ron;
 
 impl AssetKind for CreditsFile {
@@ -50,32 +50,24 @@ impl Default for CreditsRon {
     }
 }
 
-impl Format for CreditsRon {
+impl TextFormat for CreditsRon {
     type Asset = CreditsFile;
 
     fn id(&self) -> &'static str {
         "credits"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<CreditsFile, Vec<ContentError>> {
         let places = Places {
             audio_manifest: &self.audio_manifest,
             private_root: &self.private_root,
         };
-        from_source(file.shown(), text(file, bytes)?, &places)
+        from_source(file.shown(), text, &places)
     }
 }
 

@@ -1,5 +1,6 @@
 use super::*;
 use crate::error::Code;
+use crate::format::Format;
 use crate::format::builtin_tests::{
     TERRAIN_TILES as FARM, TILE_LOOKS as LOOKS, TILE_RULES as RULES,
     terrain_tiles_images as images, tile_terrains as terrains,

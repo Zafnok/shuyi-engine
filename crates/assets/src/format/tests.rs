@@ -1177,3 +1177,135 @@ fn the_walkers_over_a_folder_skip_settings_files() {
     assert!(only_the_png(ImageTable::load(images, &[])));
     assert!(only_the_png(ImageTable::load_with(images, &formats, &[])));
 }
+
+/// A text format that keeps every default of [`TextFormat`]: `.ron`, at
+/// most [`TEXT_MAX_BYTES`], read as the word in it.
+struct Spelled;
+
+impl TextFormat for Spelled {
+    type Asset = Word;
+
+    fn id(&self) -> &'static str {
+        "spelled"
+    }
+
+    fn read(
+        &self,
+        _file: &AssetPath,
+        text: &str,
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Word, Vec<ContentError>> {
+        Ok(Word(text.trim().to_owned()))
+    }
+}
+
+#[test]
+fn a_text_format_is_a_format_that_reads_utf8_ron_up_to_the_text_limit() {
+    assert_eq!(Format::id(&Spelled), "spelled");
+    assert_eq!(Format::extensions(&Spelled), ["ron"]);
+    assert_eq!(Format::max_bytes(&Spelled), TEXT_MAX_BYTES);
+    assert!(!Spelled.sniff(b"word"));
+    let file = AssetPath::new("words/a.ron").shown_as("base/words/a.ron");
+    let cx = DecodeCx::new();
+    assert_eq!(
+        Spelled.decode(&file, b" word\n", &cx),
+        Ok(Word("word".into()))
+    );
+    // Bytes that aren't UTF-8 never reach `read`.
+    let not_text = Spelled.decode(&file, b"w\xffrd", &cx).unwrap_err();
+    assert_eq!(not_text.len(), 1);
+    assert_eq!(not_text[0].file, "base/words/a.ron");
+    assert_eq!(not_text[0].message, "file is not valid UTF-8");
+    assert_eq!(not_text[0].code, Some(codes::NOT_TEXT));
+    // A file past the limit is refused before it is read.
+    let big = vec![b'a'; TEXT_MAX_BYTES + 1];
+    let too_big = decode_with(&Spelled, &file, &big, &cx).unwrap_err();
+    assert_eq!(too_big[0].code, Some(codes::TOO_BIG));
+    let at_limit = decode_with(&Spelled, &file, &big[1..], &cx);
+    assert_eq!(at_limit.map(|word| word.0.len()), Ok(TEXT_MAX_BYTES));
+    // Through the registry, found by its extension.
+    let mut formats = Formats::new();
+    assert_eq!(formats.register(Spelled), Ok(()));
+    assert_eq!(
+        formats.decode::<Word>(&file, b"word", &cx),
+        Ok(Word("word".into()))
+    );
+}
+
+/// A made-up sound format: `TONE` then the length in milliseconds, if
+/// any, as one byte.
+struct Tone;
+
+impl Format for Tone {
+    type Asset = crate::audio::Sound;
+
+    fn id(&self) -> &'static str {
+        "tone"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["tone"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        bytes.starts_with(b"TONE")
+    }
+
+    fn max_bytes(&self) -> usize {
+        5
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<crate::audio::Sound, Vec<ContentError>> {
+        let Some(rest) = bytes.strip_prefix(b"TONE") else {
+            return Err(vec![ContentError::new(file.shown(), "not a tone")]);
+        };
+        let length = rest.first().map(|&ms| u32::from(ms));
+        Ok(crate::audio::Sound::mono(crate::audio::SAMPLE_RATE).with_length_ms(length))
+    }
+}
+
+impl crate::audio::TrackSound for Tone {
+    const NO_LENGTH: &str = "a tone with no length";
+}
+
+#[test]
+fn a_track_is_its_sound_format_with_a_length() {
+    use crate::audio::{MusicTrack, SAMPLE_RATE, Track};
+    let track = Track(Tone);
+    assert_eq!(track.id(), "tone");
+    assert_eq!(track.extensions(), ["tone"]);
+    assert_eq!(track.max_bytes(), 5);
+    assert!(track.sniff(b"TONE"));
+    assert!(!track.sniff(b"WAVE"));
+    let file = AssetPath::new("music/a.tone");
+    let cx = DecodeCx::new();
+    assert_eq!(
+        track.decode(&file, b"TONE\x07", &cx),
+        Ok(MusicTrack {
+            channels: 1,
+            sample_rate: SAMPLE_RATE,
+            length_ms: 7,
+        })
+    );
+    let refused = |bytes: &[u8]| {
+        track.decode(&file, bytes, &cx).map_err(|errors| {
+            errors
+                .into_iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+        })
+    };
+    assert_eq!(
+        refused(b"TONE"),
+        Err(vec!["music/a.tone: a tone with no length".to_owned()])
+    );
+    assert_eq!(
+        refused(b"WAVE"),
+        Err(vec!["music/a.tone: not a tone".to_owned()])
+    );
+}

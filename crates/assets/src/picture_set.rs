@@ -96,7 +96,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat, join};
 use crate::image::{ImageId, ImageInfo, ImageTable};
 use crate::ron::parse_ron;
 
@@ -279,28 +279,19 @@ impl PictureSetRon {
     }
 }
 
-impl Format for PictureSetRon {
+impl TextFormat for PictureSetRon {
     type Asset = PictureSetDef;
 
     fn id(&self) -> &'static str {
         "picture-set"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        source: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<PictureSetDef, Vec<ContentError>> {
-        let source = text(file, bytes)?;
         PictureSetDef::from_source(file.shown(), file.stem(), source, &self.rules)
     }
 }

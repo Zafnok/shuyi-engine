@@ -16,7 +16,7 @@ use super::{
     wav_format, wav_length_ms,
 };
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TextFormat, join};
 
 /// The most bytes a sound or music file may have: 64 MiB, six minutes of
 /// stereo WAV at [`SAMPLE_RATE`](super::SAMPLE_RATE).
@@ -183,28 +183,41 @@ impl Format for OggVorbis {
     }
 }
 
-/// OGG Vorbis (`ogg-vorbis`, `.ogg`), read for a music track: a whole
-/// file, whose last page gives its length ([`ogg_length_ms`]).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct OggVorbisTrack;
+impl TrackSound for OggVorbis {
+    const NO_LENGTH: &str = NO_LENGTH;
+}
 
-impl Format for OggVorbisTrack {
+/// A sound format read for a music track ([`Track`]): what a file whose
+/// length it can't read is told.
+pub trait TrackSound: Format<Asset = Sound> {
+    /// The error of a file whose length can't be read: a track must have
+    /// one.
+    const NO_LENGTH: &str;
+}
+
+/// The sound format `F` read for a music track: its id, extensions, magic
+/// bytes and limit, and a sound that must say its length
+/// ([`TrackSound::NO_LENGTH`] when it doesn't).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Track<F>(pub F);
+
+impl<F: TrackSound> Format for Track<F> {
     type Asset = MusicTrack;
 
     fn id(&self) -> &'static str {
-        "ogg-vorbis"
+        self.0.id()
     }
 
     fn extensions(&self) -> &'static [&'static str] {
-        &["ogg"]
+        self.0.extensions()
     }
 
     fn sniff(&self, bytes: &[u8]) -> bool {
-        bytes.starts_with(OGG_MAGIC)
+        self.0.sniff(bytes)
     }
 
     fn max_bytes(&self) -> usize {
-        MAX_SOUND_BYTES
+        self.0.max_bytes()
     }
 
     fn decode(
@@ -217,9 +230,9 @@ impl Format for OggVorbisTrack {
             channels,
             sample_rate,
             length_ms,
-        } = OggVorbis.decode(file, bytes, cx)?;
+        } = self.0.decode(file, bytes, cx)?;
         let length_ms =
-            length_ms.ok_or_else(|| vec![ContentError::new(file.shown(), NO_LENGTH)])?;
+            length_ms.ok_or_else(|| vec![ContentError::new(file.shown(), F::NO_LENGTH)])?;
         Ok(MusicTrack {
             channels,
             sample_rate,
@@ -228,24 +241,9 @@ impl Format for OggVorbisTrack {
     }
 }
 
-/// The track of `sound` (from the file `file`), `samples` samples a channel
-/// long if they are known; else `no_length` is the error.
-#[cfg(any(feature = "flac", feature = "mp3"))]
-fn track(
-    file: &AssetPath,
-    sound: Sound,
-    samples: Option<u64>,
-    no_length: &str,
-) -> Result<MusicTrack, Vec<ContentError>> {
-    let length_ms = samples
-        .and_then(|samples| samples_ms(samples, sound.sample_rate))
-        .ok_or_else(|| vec![ContentError::new(file.shown(), no_length)])?;
-    Ok(MusicTrack {
-        channels: sound.channels,
-        sample_rate: sound.sample_rate,
-        length_ms,
-    })
-}
+/// OGG Vorbis (`ogg-vorbis`, `.ogg`), read for a music track: a whole
+/// file, whose last page gives its length ([`ogg_length_ms`]).
+pub type OggVorbisTrack = Track<OggVorbis>;
 
 /// The first four bytes of every FLAC file.
 #[cfg(feature = "flac")]
@@ -305,43 +303,15 @@ impl Format for Flac {
     }
 }
 
+#[cfg(feature = "flac")]
+impl TrackSound for Flac {
+    const NO_LENGTH: &str = NO_FLAC_LENGTH;
+}
+
 /// FLAC (`flac`, `.flac`), read for a music track, with the `flac`
 /// feature: its `STREAMINFO`, whose sample count gives its length.
 #[cfg(feature = "flac")]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct FlacTrack;
-
-#[cfg(feature = "flac")]
-impl Format for FlacTrack {
-    type Asset = MusicTrack;
-
-    fn id(&self) -> &'static str {
-        "flac"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["flac"]
-    }
-
-    fn sniff(&self, bytes: &[u8]) -> bool {
-        bytes.starts_with(FLAC_MAGIC)
-    }
-
-    fn max_bytes(&self) -> usize {
-        MAX_SOUND_BYTES
-    }
-
-    fn decode(
-        &self,
-        file: &AssetPath,
-        bytes: &[u8],
-        cx: &DecodeCx<'_>,
-    ) -> Result<MusicTrack, Vec<ContentError>> {
-        let sound = Flac.decode(file, bytes, cx)?;
-        let samples = flac_format(bytes).and_then(|(_, _, samples)| samples);
-        track(file, sound, samples, NO_FLAC_LENGTH)
-    }
-}
+pub type FlacTrack = Track<Flac>;
 
 /// Whether `bytes` start as an MP3 file: an `ID3v2` tag, or a frame's sync
 /// (eleven bits set).
@@ -405,44 +375,16 @@ impl Format for Mp3 {
     }
 }
 
+#[cfg(feature = "mp3")]
+impl TrackSound for Mp3 {
+    const NO_LENGTH: &str = NO_MP3_LENGTH;
+}
+
 /// MP3 (`mp3`, `.mp3`), read for a music track, with the `mp3` feature:
 /// its first frame's header, and every frame for its length, without the
 /// silence its encoder added at the ends when its LAME tag says how much.
 #[cfg(feature = "mp3")]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Mp3Track;
-
-#[cfg(feature = "mp3")]
-impl Format for Mp3Track {
-    type Asset = MusicTrack;
-
-    fn id(&self) -> &'static str {
-        "mp3"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["mp3"]
-    }
-
-    fn sniff(&self, bytes: &[u8]) -> bool {
-        mp3_sniff(bytes)
-    }
-
-    fn max_bytes(&self) -> usize {
-        MAX_SOUND_BYTES
-    }
-
-    fn decode(
-        &self,
-        file: &AssetPath,
-        bytes: &[u8],
-        cx: &DecodeCx<'_>,
-    ) -> Result<MusicTrack, Vec<ContentError>> {
-        let sound = Mp3.decode(file, bytes, cx)?;
-        let samples = mp3_format(bytes, true).and_then(|(_, _, samples)| samples);
-        track(file, sound, samples, NO_MP3_LENGTH)
-    }
-}
+pub type Mp3Track = Track<Mp3>;
 
 impl AssetKind for AudioManifest {
     const NAME: &str = "audio manifest";
@@ -457,28 +399,19 @@ impl AssetKind for AudioManifest {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct AudioManifestRon;
 
-impl Format for AudioManifestRon {
+impl TextFormat for AudioManifestRon {
     type Asset = AudioManifest;
 
     fn id(&self) -> &'static str {
         "audio-manifest"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        source: &str,
         cx: &DecodeCx<'_>,
     ) -> Result<AudioManifest, Vec<ContentError>> {
-        let source = text(file, bytes)?;
         let path = |name: &str| join(file.dir(), name);
         let files = Files {
             sound: &|name| cx.bytes(&path(name)),

@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_core::{Grid, Pos};
 
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::ron::parse_ron;
 
 /// The line separating the RON header from the tile rows.
@@ -297,7 +297,7 @@ impl<T, F> fmt::Debug for MapText<T, F> {
     }
 }
 
-impl<T: Copy + Default + 'static, F: MapFeature + 'static> Format for MapText<T, F> {
+impl<T: Copy + Default + 'static, F: MapFeature + 'static> TextFormat for MapText<T, F> {
     type Asset = GridMap<T, F>;
 
     fn id(&self) -> &'static str {
@@ -308,22 +308,13 @@ impl<T: Copy + Default + 'static, F: MapFeature + 'static> Format for MapText<T,
         &["map"]
     }
 
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        text: &str,
         _cx: &DecodeCx<'_>,
     ) -> Result<GridMap<T, F>, Vec<ContentError>> {
-        parse(
-            file.shown(),
-            text(file, bytes)?,
-            &self.format,
-            &self.terrain,
-        )
+        parse(file.shown(), text, &self.format, &self.terrain)
     }
 }
 

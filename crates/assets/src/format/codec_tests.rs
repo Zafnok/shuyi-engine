@@ -98,9 +98,9 @@ fn each_codec_has_its_id_extensions_and_limit() {
     named(&JpegXl, "jpeg-xl", &["jxl"], MAX_PNG_BYTES);
     named(&JpegXlInfo, "jpeg-xl", &["jxl"], MAX_PNG_BYTES);
     named(&Flac, "flac", &["flac"], MAX_SOUND_BYTES);
-    named(&FlacTrack, "flac", &["flac"], MAX_SOUND_BYTES);
+    named(&FlacTrack::default(), "flac", &["flac"], MAX_SOUND_BYTES);
     named(&Mp3, "mp3", &["mp3"], MAX_SOUND_BYTES);
-    named(&Mp3Track, "mp3", &["mp3"], MAX_SOUND_BYTES);
+    named(&Mp3Track::default(), "mp3", &["mp3"], MAX_SOUND_BYTES);
 }
 
 #[test]
@@ -133,9 +133,9 @@ fn each_codec_knows_its_magic_bytes_and_no_other() {
             JpegXl.sniff(bytes),
             JpegXlInfo.sniff(bytes),
             Flac.sniff(bytes),
-            FlacTrack.sniff(bytes),
+            FlacTrack::default().sniff(bytes),
             Mp3.sniff(bytes),
-            Mp3Track.sniff(bytes),
+            Mp3Track::default().sniff(bytes),
         ]
     };
     for (i, bytes) in files.iter().enumerate() {
@@ -321,7 +321,7 @@ fn flac_reads_a_sounds_header_and_a_tracks_length() {
         sample_rate: 44_100,
         length_ms: 50,
     };
-    assert_eq!(alone(&FlacTrack, "a.flac", FLAC), Ok(track));
+    assert_eq!(alone(&FlacTrack::default(), "a.flac", FLAC), Ok(track));
     // STREAMINFO's body starts at byte 8: its sample rate is the 20 bits
     // from byte 18, then three of channels, five of bits a sample, and 36
     // of the sample count.
@@ -330,7 +330,10 @@ fn flac_reads_a_sounds_header_and_a_tracks_length() {
     fast[18..21].copy_from_slice(&rate.to_be_bytes()[1..]);
     let refused = ["a.flac: 48000 Hz; must be 44100 Hz"];
     assert_eq!(shown(alone(&Flac, "a.flac", &fast)), refused);
-    assert_eq!(shown(alone(&FlacTrack, "a.flac", &fast)), refused);
+    assert_eq!(
+        shown(alone(&FlacTrack::default(), "a.flac", &fast)),
+        refused
+    );
     // A count of 0 is unknown: a sound still, but no track.
     let mut unknown = FLAC.to_vec();
     unknown[21] &= 0xf0;
@@ -338,7 +341,7 @@ fn flac_reads_a_sounds_header_and_a_tracks_length() {
     assert_eq!(alone(&Flac, "a.flac", &unknown), Ok(Sound::stereo(44_100)));
     assert_eq!(crate::audio::sound_length_ms("a.flac", &unknown), None);
     assert_eq!(
-        shown(alone(&FlacTrack, "a.flac", &unknown)),
+        shown(alone(&FlacTrack::default(), "a.flac", &unknown)),
         ["a.flac: its length can't be read (its STREAMINFO has no sample count)"]
     );
 }
@@ -354,7 +357,7 @@ fn mp3_reads_a_sounds_header_and_a_tracks_length_without_the_encoders_padding() 
         sample_rate: 44_100,
         length_ms: 50,
     };
-    assert_eq!(alone(&Mp3Track, "a.mp3", MP3), Ok(track));
+    assert_eq!(alone(&Mp3Track::default(), "a.mp3", MP3), Ok(track));
     // Without the tag, every frame is walked: three of 1,152 samples.
     let untagged = MusicTrack {
         length_ms: 78,
@@ -362,9 +365,12 @@ fn mp3_reads_a_sounds_header_and_a_tracks_length_without_the_encoders_padding() 
     };
     let sound = Sound::mono(44_100).with_length_ms(Some(78));
     assert_eq!(alone(&Mp3, "a.mp3", MP3_UNTAGGED), Ok(sound));
-    assert_eq!(alone(&Mp3Track, "a.mp3", MP3_UNTAGGED), Ok(untagged));
     assert_eq!(
-        shown(alone(&Mp3Track, "a.mp3", b"\xff\xfb")),
+        alone(&Mp3Track::default(), "a.mp3", MP3_UNTAGGED),
+        Ok(untagged)
+    );
+    assert_eq!(
+        shown(alone(&Mp3Track::default(), "a.mp3", b"\xff\xfb")),
         ["a.mp3: not an MP3 file"]
     );
 }

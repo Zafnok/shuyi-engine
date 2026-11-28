@@ -149,11 +149,11 @@ fn a_tracks_length_is_read_by_its_format() {
         Some(2000)
     );
     assert_eq!(track_length_ms("a.ogg", FLAC), None);
-    let flac = read(&FlacTrack, "a.flac", FLAC).length_ms;
+    let flac = read(&FlacTrack::default(), "a.flac", FLAC).length_ms;
     assert_eq!(flac, 50);
     assert_eq!(track_length_ms("music/a.flac", FLAC), Some(flac));
     for mp3 in [MP3, MP3_UNTAGGED] {
-        let length = read(&Mp3Track, "a.mp3", mp3).length_ms;
+        let length = read(&Mp3Track::default(), "a.mp3", mp3).length_ms;
         assert_eq!(track_length_ms("a.mp3", mp3), Some(length));
     }
     assert_eq!(track_length_ms("a.mp3", b"junk"), None);

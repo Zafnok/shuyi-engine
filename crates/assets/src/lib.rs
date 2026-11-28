@@ -99,6 +99,6 @@ pub mod __embed {
     pub use shuyi_embed_macros::table;
 }
 pub use error::{ContentError, ContentErrors, line_of};
-pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits};
+pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits, TextFormat};
 pub use grid_map::{GridMap, MapFeature, MapFormat, MapLook};
 pub use ron::parse_ron;

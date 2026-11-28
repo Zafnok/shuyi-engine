@@ -28,7 +28,7 @@ use alloc::rc::Rc;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
-use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::format::{AssetKind, AssetPath, DecodeCx, TextFormat};
 use crate::image::png_size;
 use crate::lang::{Lang, LangCode, TextAt, TextPart};
 use crate::ron::parse_ron;
@@ -55,28 +55,19 @@ impl FontAtlasRon {
     }
 }
 
-impl Format for FontAtlasRon {
+impl TextFormat for FontAtlasRon {
     type Asset = FontAtlasDef;
 
     fn id(&self) -> &'static str {
         "font-atlas"
     }
 
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ron"]
-    }
-
-    fn max_bytes(&self) -> usize {
-        TEXT_MAX_BYTES
-    }
-
-    fn decode(
+    fn read(
         &self,
         file: &AssetPath,
-        bytes: &[u8],
+        source: &str,
         cx: &DecodeCx<'_>,
     ) -> Result<FontAtlasDef, Vec<ContentError>> {
-        let source = text(file, bytes)?;
         let png = file.with_extension("png");
         FontAtlasDef::from_source(
             file.shown(),
