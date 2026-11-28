@@ -104,6 +104,23 @@ fn a_colour_whose_red_is_a_key_but_not_grey_keeps_its_own() {
 }
 
 #[test]
+fn a_pixel_of_alpha_128_is_drawn_and_one_of_127_is_not() {
+    let (mut image, _, set) = faces();
+    let (ax, ay) = set.parts["head_round"].at;
+    // Pixel (3, 3) of the head, a skin pixel no later slot covers.
+    let i = ((ay + 3) * image.width + ax + 3) as usize * 4;
+    for (alpha, shown) in [
+        (DRAWN_ALPHA, [250, 200, 150, 255]),
+        (DRAWN_ALPHA - 1, [0, 0, 0, 0]),
+    ] {
+        image.rgba[i + 3] = alpha;
+        let mut out = Painted::rgba(8, 8);
+        paint(&set, &look(), |_| Some(&image), &mut out).unwrap();
+        assert_eq!(at(&out, 3, 3), shown);
+    }
+}
+
+#[test]
 fn painting_again_clears_what_was_painted() {
     let (image, _, set) = faces();
     let mut out = Painted::rgba(8, 8);
@@ -141,11 +158,14 @@ fn a_picture_of_the_wrong_size_or_kind_or_a_part_without_pixels_is_an_error() {
         missing.to_string(),
         "part \"head_round\": the pixels of parts/faces.png aren't there"
     );
-    let cut = Image::filled(40, 8, [0; 4]);
-    assert!(matches!(
-        paint(&set, &look(), |_| Some(&cut), &mut out),
-        Err(PaintError::NoPixels { .. })
-    ));
+    // Too narrow for the hair at x 40, or a row too short for every part
+    // (at y 0).
+    for cut in [Image::filled(40, 8, [0; 4]), Image::filled(56, 7, [0; 4])] {
+        assert!(matches!(
+            paint(&set, &look(), |_| Some(&cut), &mut out),
+            Err(PaintError::NoPixels { .. })
+        ));
+    }
     let mut other = look();
     other.parts[0] = Some("head_star".into());
     assert!(matches!(
