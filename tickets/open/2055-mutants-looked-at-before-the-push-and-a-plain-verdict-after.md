@@ -71,6 +71,11 @@ None.
 - Weakening the gate or adding `#[mutants::skip]` to pass it.
 - The game's workflow (game#0150 does it).
 
+**Either order with 3547:** if 3547 is done, `mutants.yml` is a
+workflow a game calls: put the verdict step in it so the game's call
+gets it too. If not, write it in `mutants.yml` as planned, and 3547
+keeps it in the called workflow.
+
 ## Implementation steps
 
 1. Confirm that `cargo mutants --list --in-diff FILE` runs no tests and

@@ -194,6 +194,38 @@ interval (`band 50–75% · 95% 40–58%` for 49 wins in 100): a bot is marked t
 only when the whole interval misses the band, and `~ maybe` when the share misses but the
 interval still reaches it. A `grid` game starts with one bot and no checks, a plain bot run.
 
+## Proving a level winnable
+
+A bot tells you how often a player wins. For a puzzle, you want more: that a level *can* be won
+at all. `shuyi_core::search::solve` tries every line of play, shortest first, until one reaches
+an outcome you ask for:
+
+{{ snippet(file="src/testing.rs", anchor="solve") }}
+
+`solve(&start, goal, limits)` takes the start, which outcomes count (`goal`), and how far to look
+(`Limits::DEFAULT` keeps 100 000 states, with no limit on a line's length). It answers one of three:
+
+- `Solve::Solved { commands, .. }`: a shortest line from the start that wins. Its commands,
+  applied to the start, win, so it doubles as a replay.
+- `Solve::Exhausted`: every line was tried, and none wins. That proves the level can't be won,
+  but only if `legal_commands` lists every command the game allows.
+- `Solve::LimitReached`: the search stopped at its limit first. It is never a pass. A state that
+  counts its turns, as the garden's does, is never the same as one of another turn, so a player
+  who can walk forever never runs out of new states, and a level with no win ends here, not in
+  `Exhausted`.
+
+An `Err` is a bug in the game, not in the level: a command its own `legal_commands` listed that
+`apply` refused.
+
+The garden has luck, and the search plays the state as it stands, its RNG included. So *a line
+is a line for that seed*: on another seed the same commands may wilt a seed and lose. That's
+right for a puzzle and its seed, and it says nothing about other seeds.
+
+{{ snippet(file="src/testing.rs", anchor="test_solve") }}
+
+A game proves its levels in its tools' `check`, so `cargo shuyi check` fails on a level that
+can't be won: a `grid` game's tools do, with a `ContentError` on the stage's map.
+
 ## Records and replays
 
 A player reports a bug, and you can't make it happen. If your game is deterministic, you

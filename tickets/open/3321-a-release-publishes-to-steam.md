@@ -60,6 +60,20 @@ built and tested by reading, and the real run is a ticket of its own
 - Tests in `crates/cli/src/contract/new/tests.rs` (read with
   `serde_norway`): the job runs only with its variable, after `release`,
   with no write permission, opens the sealed files, skips `*.debug`.
+- **Written once for every store** (the redundancy sweep of 2026-11-28:
+  3321, 3322 and 3323 had the same scaffold word for word):
+  - the `itch` job's download, *Open the sealed files* and
+    per-exporter unpack loop move into one composite action
+    (`.github/actions/store-packages/` in the template's base), which
+    `itch` and every store job call;
+  - the tests above are one table over the store jobs (name, variable,
+    exporters), so a store is a row;
+  - the docs get one *Publishing to a store* section with a paragraph
+    per store.
+- **Either order with 3322 and 3323:** if one of them is done, it wrote
+  the composite action, the table and the section, so this ticket uses
+  them and adds Steam's row and paragraph. If not, this ticket writes
+  them, and 3322 and 3323 add a row each.
 
 **Out (do not do):**
 - GOG (3322), the Epic Games Store (3323), `shuyi repos` asking (3410).

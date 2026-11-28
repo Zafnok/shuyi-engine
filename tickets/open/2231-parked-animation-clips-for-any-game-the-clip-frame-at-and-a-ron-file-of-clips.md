@@ -17,6 +17,8 @@ completed:
 
 ## Context
 
+> **From the game's sweep (game#1397, 2026-11-27):** a game now loops frames by time twice (Visions of Shuyi's `content/src/tileset/frames.rs` and `trees.rs`, about 35 lines of "frame at t ms" with a cycle and a phase). That is this ticket's `frame_at`. The game's tickets name 2359, which is blocked by this one.
+
 Found by the 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6
 and Unreal 5.8, and the 2D engines GameMaker, Defold and Construct 3.
 Each plays frame-by-frame sprite animation as a built-in:
@@ -269,6 +271,14 @@ None.
   function, naming neither `Arena` (1119) nor `shuyi-ecs`'s `World`
   (2904's ADR). A game keeps each thing's clip and start time in
   whichever store it uses.
+
+**A game asks** (the redundancy sweep of 2026-11-28): game#1333 (hit bursts) and game#1334 plan
+a sheet flipbook: frame sizes, frame times and an anchor read from the
+`.json` beside a sheet, and the frame at a time from the start. That is
+this ticket's `AnimationClip` and `frame_at`. The game's sweep game#1397
+notes the game already writes it twice (`content/src/tileset/frames.rs`
+and `trees.rs`). The strike-kind table stays the game's. Unparking is
+Nick's call.
 
 ## Implementation steps
 

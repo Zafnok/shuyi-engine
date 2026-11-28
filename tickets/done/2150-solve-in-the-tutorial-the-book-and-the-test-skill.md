@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2112"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2150 — The level solver in the tutorial, the book and the test skill
@@ -99,15 +99,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] No `files/lines/` in `site/tutorial/09-test` or `10-ship`; their
+- [x] No `files/lines/` in `site/tutorial/09-test` or `10-ship`; their
       bot's line comes from `solve`.
-- [ ] A test in each step proves every level winnable with `solve` and
+- [x] A test in each step proves every level winnable with `solve` and
       plays the line to a win.
-- [ ] `09-test.md` shows the call, and builds.
-- [ ] `skills/shuyi-test/SKILL.md` has the section; `check-skills`
+- [x] `09-test.md` shows the call, and builds.
+- [x] `skills/shuyi-test/SKILL.md` has the section; `check-skills`
       passes.
-- [ ] Chapter 8 has the section, its code a snippet CI builds and tests.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Chapter 8 has the section, its code a snippet CI builds and tests.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -116,5 +116,44 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **The tutorial.** In `09-test` and `10-ship`, `LineBot::new(puzzle:
+  &Puzzle)` takes its line from `solve` on the level's start, and the
+  files in `crates/game/files/lines/` are gone.
+  `every_levels_line_wins_it` became
+  `every_level_is_proved_winnable_and_its_line_wins_it`: `solve` finds
+  each level's line (a panic names the level and the answer when it
+  doesn't), and `play` plays it to a win. The playtest plan builds its
+  bot from level 1's puzzle.
+- **What `solve` answers on the five levels.** The tutorial's `Puzzle` is
+  already `Clone + Eq + Serialize`, and keeps `turn` in its state (step
+  9 adds it for `Sides::turn`). No undo history: that lives in the
+  board's screen, not in `Puzzle`. With the turn, no state repeats, and
+  `Limits::DEFAULT` stopped on level 5 (`LimitReached` at 100 000
+  states). Measured in a debug build: level 1, 6 states; level 2, 787;
+  level 3, 727; level 4, 35 937 (1.5 s); level 5, 165 280 (7.6 s), its
+  shortest line 30 steps (the hand-written line was 30 too). The turn
+  can't leave the state: `play` stops at its turn limit by reading
+  `Sides::turn`, so a puzzle without it would let a bot walk forever.
+  So `LineBot` searches with `Limits::DEFAULT.with_states(1_000_000)`,
+  and the page says why. The step's `tools` test runs in about 9 s.
+- **The page.** `09-test.md` shows the bot's `solve` call in place of the
+  line file, explains the three answers and the higher limit, drops
+  `files/lines/` from its table, and ticks the checklist's line on the
+  shortest way (both of its first check's first two answers are now
+  right). *See them catch something* now moves level 1's box against a
+  wall instead of cutting a line. `10-ship.md`'s "a level of your own"
+  no longer asks for `lines/6.ron`.
+- **The skill.** `skills/shuyi-test/SKILL.md` (1.5) has *Proving a level
+  winnable*: `solve` in `check`, a `ContentError` for `Exhausted` and
+  `LimitReached`, the tool's error for a `SolveError`, and what each
+  answer proves.
+- **The book.** Chapter 8 has *Proving a level winnable*, after *Bots*.
+  Its snippet (`site/snippets/src/testing.rs`, anchors `solve` and
+  `test_solve`) proves the garden of `rules.rs` winnable on seed 0 (14
+  commands, 1 181 states) and shows the same line not winning on seed 1,
+  and a garden with too few seeds ending in `LimitReached`, as the
+  garden counts its turns.
+- Deviations: the test was renamed, as it now proves more than a line
+  wins; the bot's limit is raised as above.
+
+Game: nothing to adopt, the tutorial, the book and a skill's text change, and no engine API.

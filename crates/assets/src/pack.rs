@@ -1334,7 +1334,7 @@ pub struct Packed<K>(PhantomData<fn() -> K>);
 
 impl<K> Packed<K> {
     /// The id of every kind's baked format.
-    pub const ID: &'static str = "baked";
+    pub const ID: &str = "baked";
 
     /// The format.
     pub const fn new() -> Self {

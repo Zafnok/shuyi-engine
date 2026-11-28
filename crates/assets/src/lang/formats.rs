@@ -15,7 +15,7 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join
 use crate::import_settings::is_settings_file;
 
 impl AssetKind for LangPack {
-    const NAME: &'static str = "language pack";
+    const NAME: &str = "language pack";
 }
 
 /// What a file a language doesn't have is told.

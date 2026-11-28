@@ -195,7 +195,7 @@ impl SfxDef {
 }
 
 impl AssetKind for SfxDef {
-    const NAME: &'static str = "sound effect";
+    const NAME: &str = "sound effect";
 }
 
 /// A `.sfx.ron` file as written: `to_hz`, `attack_ms`, `vibrato`, `step`

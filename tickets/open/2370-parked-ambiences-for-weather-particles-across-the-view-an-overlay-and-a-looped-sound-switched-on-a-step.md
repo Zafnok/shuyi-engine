@@ -126,6 +126,12 @@ None.
 guide shows an ambience over a light cycle. If not, nothing to do
 (2369's guide section shows the two together, by its own clause).
 
+**Either order with 3253** (a looping sound bed shared by the screens,
+from the game's sweep game#1397): if 3253 is done, `AmbienceSound` is
+built on 3253's `audio::SoundBed` (its fade in, crossfade and hush)
+instead of its own `stop_sound` and `start_sound` pair; if not, nothing
+to do (3253 builds `SoundBed` for this ticket to use).
+
 **Out (do not do):**
 - any rule of weather: what it changes, when it changes, its chances
   (the game's; 2114's named streams give it its own draws);

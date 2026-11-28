@@ -181,6 +181,13 @@ generated files and not counted.
 rule ids, `standing-rules.md`, the ticket lint's id check and the
 `ask-nick` change) into a new ticket, blocked by this one.
 
+**Either order with 2099 and 3513** (the redundancy sweep of 2026-11-28): a block between
+marker comments is read, compared and rewritten by
+`crates/xtask/src/generated.rs`, with its CRLF handling, its missing or
+misordered markers, and its `--write`/check convention. If 2099 or 3513
+is done, use it. If neither is, write `generated.rs` as 3513's Scope
+says, and they use it.
+
 ## Implementation steps
 
 1. `crates/xtask/src/adrs.rs` (new): parse each `docs/adr/NNNN-*.md`

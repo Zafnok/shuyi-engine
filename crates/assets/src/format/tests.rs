@@ -12,7 +12,7 @@ use crate::bundle::Layer;
 struct Word(String);
 
 impl AssetKind for Word {
-    const NAME: &'static str = "word";
+    const NAME: &str = "word";
 }
 
 /// A second kind, whose format claims an extension a word format claims.
@@ -20,7 +20,7 @@ impl AssetKind for Word {
 struct Number(u32);
 
 impl AssetKind for Number {
-    const NAME: &'static str = "number";
+    const NAME: &str = "number";
 }
 
 /// A word format: it claims `extensions`, sniffs files that start with
@@ -982,7 +982,7 @@ struct Mirror {
 }
 
 impl ImportSettings for Mirror {
-    const SECTION: &'static str = "mirror";
+    const SECTION: &str = "mirror";
 }
 
 /// A section with a field that has no default.
@@ -993,7 +993,7 @@ struct Strict {
 }
 
 impl ImportSettings for Strict {
-    const SECTION: &'static str = "strict";
+    const SECTION: &str = "strict";
 }
 
 /// A section that reads fields it doesn't have.
@@ -1002,7 +1002,7 @@ impl ImportSettings for Strict {
 struct Loose {}
 
 impl ImportSettings for Loose {
-    const SECTION: &'static str = "loose";
+    const SECTION: &str = "loose";
 }
 
 /// The same name as [`Mirror`].
@@ -1011,7 +1011,7 @@ impl ImportSettings for Loose {
 struct OtherMirror {}
 
 impl ImportSettings for OtherMirror {
-    const SECTION: &'static str = "mirror";
+    const SECTION: &str = "mirror";
 }
 
 #[test]

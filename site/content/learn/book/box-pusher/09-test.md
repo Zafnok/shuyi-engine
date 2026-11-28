@@ -26,7 +26,6 @@ by playing it*, and the same play always gives the same result.
 | `crates/game/src/stages.rs` | `tools()` returns them |
 | `crates/game/src/lib.rs` | `pub mod tools;`, only for the tools build |
 | `crates/game/src/rules.rs` | Counts its turns, for bots |
-| `crates/game/files/lines/1.ron` to `5.ron` | New: a winning line for each level |
 | `crates/game/tests/tools.rs` | New: tests through the tools |
 | `crates/game/tests/frames/level1.txt` | New: a frame kept as a file |
 
@@ -101,30 +100,35 @@ Then, in the same file:
 
 {{ snippet(step="09-test", file="crates/game/src/rules.rs", anchor="sides") }}
 
-This bot isn't clever. It plays a line kept in a file: one in `files/lines/` for each level, such as `files/lines/2.ron`:
-
-{{ snippet(step="09-test", file="crates/game/files/lines/2.ron", language="ron") }}
-
-Take the five from
-[this step's copy](https://github.com/Zafnok/shuyi-engine/tree/main/site/tutorial/09-test/crates/game/files/lines). Those
-are the winning moves for each level, written by hand. Here's the bot that plays one:
+This bot doesn't think while it plays. Before the first move, it asks the engine's level solver, `solve`, for the
+way through. `solve` tries every line of steps from the level's start, the shortest first, until one wins:
 
 {{ snippet(step="09-test", file="crates/game/src/tools.rs", anchor="bot") }}
 
-{% newcomer(to="rust", topic="reading a file, `.pop()` and `.or_else`") %}
-`Vec<Dir>` read straight from the file by `ron::from_str`, thanks to serde. `steps.reverse()` puts the last step
-first, because `.pop()` takes from the end of a list, and that's quick. `.or_else(legal)` says "or, if that gave `None`, try
-this".
+`solve` answers one of three. `Solve::Solved` holds a shortest winning line. `Solve::Exhausted` means every line was
+tried and none wins, and since `legal_commands` lists every step the puzzle allows, that proves the level can't be won.
+`Solve::LimitReached` means the search stopped at its limit first, `Limits::DEFAULT`'s 100 000 states, which proves
+nothing. The puzzle has no luck, so the line found wins every time it's played.
+
+{% newcomer(to="rust", topic="`match`, `.pop()` and `.or_else`") %}
+`match` picks the arm that fits the answer, and takes its fields out by name: `commands` and `states`. `commands.reverse()`
+puts the last step first, because `.pop()` takes from the end of a list, and that's quick. `.or_else(legal)` says "or, if
+that gave `None`, try this".
 {% end %}
 
 When the line is used up, the bot makes any legal step, and the turn limit will end the play.
+
+Why `with_states(1_000_000)`? Remember the turn you just added to the state. Two states the same but for their turn aren't
+equal, so the solver can't tell it has been somewhere before by another way, and it keeps far more states than there are
+places to stand. Level 5's line is 30 steps, and finding it takes 165 280 states, more than the default keeps. The turn
+stays, because `play` reads it to know when its turn limit is up, so the bot gets a higher limit instead.
 
 Why does this matter? Here's the test:
 
 {{ snippet(step="09-test", file="crates/game/tests/tools.rs", anchor="test_bot") }}
 
-It plays each level's line, and checks it wins. **So every level is proven winnable, every time you run your tests.** Edit a
-level so it can't be won, and this test fails, and says which one. For a puzzle game, that's the most valuable test there is.
+It asks `solve` for each level's line, plays it, and checks it wins. **So every level is proven winnable, every time you run
+your tests.** Edit a level so it can't be won, and this test fails, and says which one. For a puzzle game, that's the most valuable test there is.
 
 To run the bot by hand:
 
@@ -192,8 +196,8 @@ So test what happened through the state, as you've been doing, and keep a frame 
 ## See them catch something
 
 Change `'@'` to `'P'` in `Pieces`, as you tried back in step 2, and run `cargo test --workspace`. `the_first_level_looks_as_it_did`
-fails, and shows you the difference. Put it back. Now change one line of `files/lines/1.ron`, from `[Right, Right]` to `[Right]`, and
-run the tests: `every_levels_line_wins_it` fails, naming level 1. Put that back too.
+fails, and shows you the difference. Put it back. Now, in `levels/1.map`, move the box against the left wall, from `(3, 2)` to `(1, 2)`, and
+run the tests: `every_level_is_proved_winnable_and_its_line_wins_it` fails, naming level 1. Put that back too.
 
 That is the feeling you want. You can change anything, because if it breaks, you'll know within a few seconds.
 
@@ -207,17 +211,17 @@ In Rust: features and `#[cfg]`.
 In making games: bots, records and replays, hashes, and when a test should read the picture.
 {% end %}
 
-In Shuyi: `GameTools`, scenes for programs, `Bot` and `play`, `replay`, and `h.snapshot()`.
+In Shuyi: `GameTools`, scenes for programs, `Bot` and `play`, the level solver `solve`, `replay`, and `h.snapshot()`.
 
 [Chapter 8](@/learn/book/testing.md) has more on testing, and [chapter 10](@/learn/book/tools-for-agents.md) on the tools. Next: hand it out.
 
 ## Check yourself
 
 {% check() %}
-What does `every_levels_line_wins_it` prove each time it passes?
+What does `every_level_is_proved_winnable_and_its_line_wins_it` prove each time it passes?
 
-- [x] That every level can be won. — It plays each level's line with `LineBot` and checks it wins, so a level edited so it can't be won fails the test, naming it ([a bot](#a-bot)).
-- [ ] That the bot finds the shortest way through each level. — The bot isn't clever: it plays a line written by hand, kept in `files/lines/` ([a bot](#a-bot)).
+- [x] That every level can be won. — `solve` finds each level's line, and `LineBot` plays it and checks it wins, so a level edited so it can't be won fails the test, naming it ([a bot](#a-bot)).
+- [x] That the bot finds the shortest way through each level. — `solve` tries the shortest lines first, so the line `LineBot` plays is a shortest one ([a bot](#a-bot)).
 - [ ] That each level looks as it did. — That is `the_first_level_looks_as_it_did`, which compares a frame with a file ([a frame](#a-frame)).
 {% end %}
 

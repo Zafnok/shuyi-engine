@@ -195,7 +195,7 @@ impl EngineColor {
 )]
 pub trait ColorSet: Copy + 'static {
     /// Every color of the set, each at its [`index`](Self::index).
-    const ALL: &'static [Self];
+    const ALL: &[Self];
 
     /// The color's name in the palette.
     fn name(self) -> &'static str;
@@ -214,7 +214,7 @@ pub trait ColorSet: Copy + 'static {
 /// The engine's own colors as a set: for a palette with nothing more than
 /// the engine's names.
 impl ColorSet for EngineColor {
-    const ALL: &'static [Self] = EngineColor::ALL;
+    const ALL: &[Self] = EngineColor::ALL;
 
     fn name(self) -> &'static str {
         EngineColor::name(self)
@@ -447,7 +447,7 @@ pub(crate) mod tests {
     }
 
     impl ColorSet for Toy {
-        const ALL: &'static [Self] = &[Toy::Ink, Toy::Hero, Toy::Paper];
+        const ALL: &[Self] = &[Toy::Ink, Toy::Hero, Toy::Paper];
 
         fn name(self) -> &'static str {
             match self {

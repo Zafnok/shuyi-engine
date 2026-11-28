@@ -295,6 +295,11 @@ Visions of Shuyi.
   (3039);
 - saves bigger than `localStorage` holds, or IndexedDB (3033's Out).
 
+**Either order with 3452:** if 3452 is done, the new plugin's
+provides, version and load-order tests are one row in `web.rs`'s plugin
+table. If not, write them as the existing plugins' are, and 3452 turns
+them into a row.
+
 ## Implementation steps
 
 1. Read 3042's ADR and code, 2321's pacer, its web skip and `Pacing`,

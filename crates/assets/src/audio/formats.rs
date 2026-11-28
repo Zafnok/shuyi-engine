@@ -73,7 +73,7 @@ impl Sound {
 }
 
 impl AssetKind for Sound {
-    const NAME: &'static str = "sound";
+    const NAME: &str = "sound";
 }
 
 /// A music track's header, and how long it plays.
@@ -88,7 +88,7 @@ pub struct MusicTrack {
 }
 
 impl AssetKind for MusicTrack {
-    const NAME: &'static str = "music track";
+    const NAME: &str = "music track";
 }
 
 /// A sound of `(channels, rate)`, `length_ms` long, from the format of a
@@ -445,7 +445,7 @@ impl Format for Mp3Track {
 }
 
 impl AssetKind for AudioManifest {
-    const NAME: &'static str = "audio manifest";
+    const NAME: &str = "audio manifest";
 }
 
 /// The audio manifest (`audio-manifest`, `.ron`), checked as

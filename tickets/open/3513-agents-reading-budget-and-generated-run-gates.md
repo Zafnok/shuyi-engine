@@ -157,6 +157,16 @@ field, the generated table and the failure pointer) into a new ticket;
 this PR then keeps the budget, the check and the split skill, with the
 short `SKILL.md`'s table of gates written by hand.
 
+**Either order with 3548:** if 3548 is done, the run-gates skill's
+restated command blocks are already one-line pointers to `cargo xtask
+gates --list`, so generate only what is left. If not, nothing to do:
+this ticket's generated block replaces them, and 3548 trims only what
+remains.
+
+**Either order with 3516 and 2844:** if one of them is done, move its
+marker-block splice onto `generated.rs`. If not, nothing to do (they use
+`generated.rs`, their clauses say so).
+
 ## Implementation steps
 
 1. **The marker helper.** Settle the clause with 2099 above:

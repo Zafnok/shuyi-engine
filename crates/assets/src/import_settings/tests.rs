@@ -28,7 +28,7 @@ struct OneBit {
 }
 
 impl ImportSettings for OneBit {
-    const SECTION: &'static str = "onebit";
+    const SECTION: &str = "onebit";
 }
 
 /// The tests' `indexed` section.
@@ -39,7 +39,7 @@ struct Indexed {
 }
 
 impl ImportSettings for Indexed {
-    const SECTION: &'static str = "indexed";
+    const SECTION: &str = "indexed";
 }
 
 #[test]

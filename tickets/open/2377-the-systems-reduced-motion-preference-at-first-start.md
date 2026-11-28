@@ -218,6 +218,11 @@ None.
 - what `Reduced` does to shakes, flashes, transitions and idle motion:
   2340's.
 
+**Either order with 3452:** if 3452 is done, the new plugin's
+provides, version and load-order tests are one row in `web.rs`'s plugin
+table. If not, write them as the existing plugins' are, and 3452 turns
+them into a row.
+
 ## Implementation steps
 
 1. Read 2340's and 3053's results: `Motion` and `Settings::motion`

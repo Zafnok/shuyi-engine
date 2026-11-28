@@ -442,7 +442,7 @@ is done.
 | 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
 | 2112 (done) | A level solver: breadth-first search over any `TurnRules` game |
-| 2150 | The level solver in the tutorial, the book and the test skill (after 2112) |
+| 2150 (done) | The level solver in the tutorial, the book and the test skill (after 2112) |
 | 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
 
 **Data, saves and versions:**
@@ -959,7 +959,7 @@ parked below.
 | 2613 (done) | `shuyi-net`: the `Transport` trait and an in-memory network |
 | 2620 (done) | The in-memory network's seeded faults: loss, duplicates, reordering and delay |
 | 2614 (done) | Tick rooms: a server-authoritative room over TickSim with bots in empty seats |
-| 2621 | Room client: `RoomClient` follows a room's frames, checks its hash and resyncs |
+| 2621 (done) | Room client: `RoomClient` follows a room's frames, checks its hash and resyncs |
 | 2622 | Rooms keep a seat's input to its game's actions |
 | 2615 | Quick play: a black-box director that seats a player in a room with a free seat |
 | 2616 | `shuyi-server`: a director's rooms over WebSocket, with TLS, limits, health and a cost guard |

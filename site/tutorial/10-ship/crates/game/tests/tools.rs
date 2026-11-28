@@ -15,12 +15,14 @@ use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, scene};
 
 // ANCHOR: test_bot
+/// The level solver proves every level winnable, and the line it finds
+/// wins it.
 #[test]
-fn every_levels_line_wins_it() {
+fn every_level_is_proved_winnable_and_its_line_wins_it() {
     let bundle = game::game().bundle();
     for (n, file) in level::read_all(&bundle).unwrap().iter().enumerate() {
         let mut puzzle = Puzzle::new(file).unwrap();
-        let mut bot = LineBot::new(&bundle, n).unwrap();
+        let mut bot = LineBot::new(&puzzle).unwrap_or_else(|e| panic!("level {}: {e}", n + 1));
         let report = play(&mut puzzle, &mut [((), &mut bot)], 500).unwrap();
         assert!(report.outcome.is_some(), "level {}", n + 1);
     }

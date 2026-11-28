@@ -347,6 +347,11 @@ screens behave as before with no pointer.
   one widget takes the input at a time.
 - A new ADR: these are 2405's rules applied to more widgets.
 
+**Either order with 3260:** if 3260 is done, paint through
+`GlyphBuffer::panel`, `bar_label`, `Rect::centred_in` and `window_for`
+rather than at each screen's own copy. If not, change the sites as
+planned, and 3260 moves them onto the helpers.
+
 ## Implementation steps
 
 1. Read 2405 as it landed: its ADR, `frame/hit.rs`, `input/pointer.rs`,

@@ -194,6 +194,10 @@ new parked ticket blocked by this one; this PR then ships the assets,
 the frame fields, the snapshot words, the raster references and the
 setting.
 
+**Either order with 2326:** if 2326 is done, this ticket has nothing
+left to land; close it as its banner says. If not, nothing to do: 2326
+keeps only its GPU half on top of this ticket (its clause says so).
+
 ## Implementation steps
 
 1. Read 2326, 2327 and 2337; ADR-0002 §4, ADR-0007, ADR-0019, ADR-0039,

@@ -224,6 +224,15 @@ steps 2, 4 and 7) into a new ticket (After MVP, `33xx`); this ticket
 then measures the desktop only and the new one does the web's device
 run.
 
+**Shared with capture** (the redundancy sweep of 2026-11-28): `crates/app/src/capture.rs`'s
+plan request (an environment variable on native, a file beside the page
+on the web), its plan loading, `cannot_run`/`finish` and the prefix and
+done console protocol become one small plan-mode helper with the names
+as parameters. Measure and capture both use it.
+`tools/web-check/check.py`'s measure mode reuses capture's
+wait-for-done and console collection. The two modes stay separate
+features.
+
 ## Implementation steps
 
 1. **The plan.** In `shuyi-platform`, add the measure plan: script steps

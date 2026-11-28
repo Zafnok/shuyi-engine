@@ -21,7 +21,7 @@ use crate::keymap::Button;
 use crate::ron::parse_ron_implicit_some;
 
 impl AssetKind for TargetProfile {
-    const NAME: &'static str = "target profile";
+    const NAME: &str = "target profile";
 }
 
 /// A target profile file (`target-ron`, `.ron`), read and checked as

@@ -16,8 +16,10 @@ every client steps the same rules
 It serves fixed-tick games. Its `room` module is that room's server
 side: a `Room` seats players in a game's seats, rides the empty ones with
 the game's bot, steps the real sim and writes each step's inputs for
-every player, and `room::wire` is their bytes. The client that follows a
-room (2621), the quick-play director (2615) and the server (2616) are
+every player, and `room::wire` is their bytes. `RoomClient` is the
+client's side: it steps its own copy of the sim with those inputs behind a
+jitter buffer, checks the room's hash and asks for a catch-up when its copy
+differs. The quick-play director (2615) and the server (2616) are
 planned; lockstep, rollback and a referee are parked (1140–1150).
 
 ## What it is not for
@@ -47,8 +49,11 @@ planned; lockstep, rollback and a referee are parked (1140–1150).
   game has already; nothing outside the engine.
 
 - **The rooms** cost a game nothing until it builds one: `Room` is
-  generic over the game's `RoomGame`, and runs on the server. The
-  client's size in a game is measured with the client (2621).
+  generic over the game's `RoomGame`, and runs on the server. A client,
+  measured on 2026-11-27 with Hello, Grid building a `RoomClient<Dots>`,
+  handing it a frame and calling each of its methods, release builds:
+  **+19,299 bytes** of `.wasm` (4,038,862 → 4,058,161), `Dots`' own rules
+  included, which a game's rules take the place of.
   `room::testing::Dots`, a test game, is behind the `testing` feature,
   off by default.
 
@@ -149,6 +154,30 @@ for (peer, frame) in &out.frames {
 
 A peer the room lets go, silent for five seconds of steps, is in
 `out.drop`, for the host to close.
+
+A game follows the room with a `RoomClient`: it hands it each frame's
+bytes as they arrive, calls `advance` once a step of its own tick, and
+sends what the client gives it, on the `Reliable` channel too:
+
+```rust
+// `client`: a `RoomClient<G>`; `send`: the game's send to the server.
+match client.advance() {
+    Advance::Stepped(_) => {} // draw `client.sim()`, play `client.events()`
+    Advance::Resync(bytes) => send(&bytes), // a catch-up follows
+    _ => {} // the buffer fills, or the server closes
+}
+// An `Input` when the player's actions changed, else an `Alive` once a
+// second.
+if let Some(bytes) = client.input(&seat_input).or_else(|| client.alive()) {
+    send(&bytes);
+}
+```
+
+It starts stepping once 2 steps wait, and steps two at a time while more
+than 2 wait. A hash that differs from the room's, or a step missing, is
+`Advance::Resync`, and the catch-up the room sends back makes it equal
+again. `events()` holds what the last `advance`'s steps did, so a sound
+plays once.
 
 ## Beside its alternatives
 

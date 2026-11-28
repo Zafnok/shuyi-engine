@@ -173,6 +173,11 @@ forget path, the plugin's loss and restore events, a skipped draw while
 lost, and a console line on restore. The canvas check of the acceptance
 moves to the new ticket.
 
+**Either order with 3452:** if 3452 is done, the new plugin's
+provides, version and load-order tests are one row in `web.rs`'s plugin
+table. If not, write them as the existing plugins' are, and 3452 turns
+them into a row.
+
 ## Implementation steps
 
 1. In `render.rs`, keep the atlas PNG in `Renderer` (a `Cow<'static,

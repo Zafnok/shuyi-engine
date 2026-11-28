@@ -96,7 +96,7 @@ impl ImageInfo {
 }
 
 impl AssetKind for ImageInfo {
-    const NAME: &'static str = "image";
+    const NAME: &str = "image";
 }
 
 /// A texture: an image's pixels, four bytes each (red, green, blue, alpha),
@@ -144,7 +144,7 @@ impl Image {
 }
 
 impl AssetKind for Image {
-    const NAME: &'static str = "image pixels";
+    const NAME: &str = "image pixels";
 }
 
 /// The first eight bytes of every PNG file.

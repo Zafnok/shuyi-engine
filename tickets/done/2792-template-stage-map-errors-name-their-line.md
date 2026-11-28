@@ -13,6 +13,13 @@ completed: 2026-11-27
 
 # 2792 — The template stage's map errors name their file once, with its line
 
+**Done by 2773.** The redundancy sweep of 2026-11-28 found that 2773
+plans the same change: `parse_map` returns `Vec<ContentError>`, and
+`own` uses `bundle.display_path(MAP)`. 2773 is the larger ticket (it
+adds the codes, the golden file and the skills), and its acceptance
+criteria now hold this ticket's. 2773's PR moves this ticket to
+`done/`. Don't work it on its own.
+
 ## Context
 
 2269 (done, [ADR-0164](../../docs/adr/0164-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md))

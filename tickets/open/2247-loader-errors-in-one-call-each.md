@@ -64,6 +64,14 @@ None.
   `key` is absent and otherwise gives `duplicate(id)`.
 - `audio.rs`: `Check::err` on `Entries::err`, `new_cue` and `credit` on
   `duplicate`; their messages and lines unchanged, now coded `SH2009`.
+- **Every `match line_of(` site** (the redundancy sweep of 2026-11-28): `ContentError::near` is
+  used at all seven, not only in `audio.rs`. They are in `bundle.rs`,
+  `credits.rs`, `dialogue.rs`, `font.rs` and `format.rs` (two). Also add
+  `fn all_ok<T>(value, errors) -> Result<T, Vec<ContentError>>` for the
+  about 12 sites that end in `if errors.is_empty() { Ok(value) } else
+  { Err(errors) }`, and one `#[cfg(test)]` `messages()` for the five
+  test helpers that only flatten errors. Keep the order in which errors
+  are pushed. Not 2233's `all_or_errors`, which maps per-file results.
 - No API break (additions only). The game's PR that moves the pin
   follows this one (game#1223).
 

@@ -77,6 +77,12 @@
                 "image-webp",
                 "qoi",
                 "jxl-oxide",
+                // Parts of jxl-oxide, for a walk over a JPEG XL's frames
+                // before it decodes them (ticket 2285).
+                "jxl-bitstream",
+                "jxl-coding",
+                "jxl-color",
+                "jxl-oxide-common",
                 "claxon",
                 "nanomp3",
             ]),

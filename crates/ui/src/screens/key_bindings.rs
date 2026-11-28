@@ -303,7 +303,7 @@ impl<G: GameData> Clone for KeyBindingsScreen<G> {
 
 impl<G: GameData> KeyBindingsScreen<G> {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "key_bindings";
+    pub const NAME: &str = "key_bindings";
 
     /// The screen listing `rows`, for the layout in use (the keymap file's
     /// first if none is chosen yet), focused on the first action's first

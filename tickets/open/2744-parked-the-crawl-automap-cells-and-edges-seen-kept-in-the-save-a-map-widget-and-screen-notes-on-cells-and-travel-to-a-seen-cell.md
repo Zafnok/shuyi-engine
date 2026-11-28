@@ -106,6 +106,11 @@ None.
   widget's rows, and a map cursor walks a map (2354's Out says so of
   the tactics map's).
 
+**Either order with 2117:** if 2117 is done, route through
+`shuyi_core::path::search` (generic over the node and the cost, ties by
+the node's order) rather than writing a search here. If not, write the
+search here as generic, and 2117 moves it into `shuyi_core::path`.
+
 ## Implementation steps
 
 1. `Seen`, marking from the view, its compact form and tests.

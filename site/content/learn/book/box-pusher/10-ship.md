@@ -116,7 +116,7 @@ targets. You'll find all of these in the [glossary](@/learn/book/glossary.md).
 
 The best next step is to change this game until it's yours. In order of difficulty:
 
-1. **A level of your own.** Add `levels/6.map`, put it in `levels.ron`, and add `lines/6.ron`. The test will tell you if it can be won.
+1. **A level of your own.** Add `levels/6.map` and put it in `levels.ron`. The test will tell you if it can be won.
 2. **A new look.** Change the palette, and the characters in `TERRAIN_LOOKS` and `Pieces`, until it doesn't look like this project.
 3. **A new kind of tile.** Add ice, which keeps a box sliding, or a hole that a box fills in. You'll change `TERRAIN_NAMES`, `TERRAIN_LOOKS`, a
    level's legend and `apply`. The compiler will find the rest.

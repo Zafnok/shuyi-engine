@@ -178,6 +178,10 @@ None. Selling is 3018's question.
 - saves on retail-style cartridge memory;
 - measuring on a device (3026).
 
+**Either order with 3259:** if 3259 is done, the DS storage is a
+`FileOps` adapter over `shuyi_ui::storage::KeyFiles`. If not, write it
+in `FileStorage`'s order as planned, and 3259 moves it onto `KeyFiles`.
+
 ## Implementation steps
 
 1. Re-read `docs/targets/nds.md` and BlocksDS's docs at the chosen

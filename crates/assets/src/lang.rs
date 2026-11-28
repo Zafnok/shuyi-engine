@@ -303,7 +303,7 @@ pub struct MissingForms {
 pub struct English(pub BTreeMap<String, String>);
 
 impl AssetKind for English {
-    const NAME: &'static str = "english";
+    const NAME: &str = "english";
 }
 
 /// The source language's text and every pack.

@@ -75,7 +75,7 @@ pub enum PadKind {
 
 impl PadKind {
     /// Every kind. A slice, so a new kind doesn't change its type.
-    pub const ALL: &'static [PadKind] = &[
+    pub const ALL: &[PadKind] = &[
         Self::Xbox,
         Self::PlayStation,
         Self::PlayStation4,

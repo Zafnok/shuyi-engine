@@ -15,7 +15,7 @@ struct Table {
 }
 
 impl AssetKind for Table {
-    const NAME: &'static str = "table";
+    const NAME: &str = "table";
 }
 
 fn main() {

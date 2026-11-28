@@ -64,8 +64,9 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
      move `SEMVER_CHECKS` to the release that reads it.
 
    Run `cargo xtask api` once with the new pins.
-4. **Run the `run-gates` skill on Windows with the GNU host and MSYS2**,
-   as Nick's machine builds. CI's Windows leg builds with MSVC, so only
+4. **Run the full `cargo xtask gates` on Windows with the GNU host and
+   MSYS2**, as Nick's machine builds: the one change where the full run
+   is local (`run-gates`, *Before a push*). CI's Windows leg builds with MSVC, so only
    this run checks that the GNU link still works. The no-std build and the
    web build are part of it. A session that can't run on the GNU host says
    so in the PR, and the PR waits for that run.

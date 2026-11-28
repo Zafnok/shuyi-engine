@@ -162,6 +162,12 @@ so about 250 of them are written.
 **Split:** past 1,000 lines, split off step 5 (the links in the built
 pages and pages.yml) into a new ticket, and keep the check here.
 
+**Either order with 3450:** if 3450 is done, read and extend the
+Learn pages' shortcodes through `shuyi_cli::shortcodes`, not
+`contract/docs/corpus.rs` or `crates/xtask/src/llms.rs` alone. If not,
+change the readers as planned, and 3450 moves the change into
+`shortcodes`.
+
 ## Implementation steps
 
 1. Read `crates/xtask/src/api.rs` (`NIGHTLY`, how it installs and runs

@@ -176,7 +176,7 @@ pub struct Menu<T = ()> {
 impl<T> Menu<T> {
     /// What a menu reacts to ([`handle`](Self::handle)), for the screen
     /// that shows it to declare ([`Screen::actions`](crate::screen::Screen::actions)).
-    pub const ACTIONS: &'static [UiAction] = &[
+    pub const ACTIONS: &[UiAction] = &[
         UiAction::Up,
         UiAction::Down,
         UiAction::Confirm,

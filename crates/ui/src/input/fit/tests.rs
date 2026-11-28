@@ -22,7 +22,7 @@ enum Act {
 
 impl ActionSet for Act {
     type Group = ();
-    const ALL: &'static [Self] = &[
+    const ALL: &[Self] = &[
         Self::Up,
         Self::Down,
         Self::Left,
