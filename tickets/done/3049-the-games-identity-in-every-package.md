@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["3004", "3048", "3072"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 3049 — The game's identity in every package
@@ -289,27 +289,27 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi export windows` on the fixture, with the GNU toolchain,
+- [x] `shuyi export windows` on the fixture, with the GNU toolchain,
       gives an exe whose Explorer Details tab shows the name as its file
       description and product name, the version, and the icon (a
       screenshot in the PR), and CI's byte test passes, publisher
       included.
-- [ ] A version number or build over 65535 refuses `windows`, naming
+- [x] A version number or build over 65535 refuses `windows`, naming
       `app.version` or `app.build`.
-- [ ] On CI's macOS runner the `.app`'s Info.plist passes `plutil -lint`
+- [x] On CI's macOS runner the `.app`'s Info.plist passes `plutil -lint`
       and has the id as `CFBundleIdentifier`, and `iconutil` reads its
       `.icns`.
-- [ ] On CI's Linux runner `desktop-file-validate` passes on the
+- [x] On CI's Linux runner `desktop-file-validate` passes on the
       `.desktop` file, and the icons are at their hicolor paths.
-- [ ] `shuyi web` on the fixture writes `favicon.ico` and
+- [x] ~~`shuyi web` on the fixture writes `favicon.ico` and
       `apple-touch-icon.png` and links them. Without an icon it writes
       neither, and no `<link>`. Without `web.title` the page's title is
       `app.name`, escaped; with neither, `web` fails with the message
-      above.
-- [ ] A project without `app` exports as before, with the report's line.
-- [ ] `shuyi doctor` on a `windows-gnu` host without `windres` fails the
+      above.~~ (not done: split off to 3354 by the size rule)
+- [x] A project without `app` exports as before, with the report's line.
+- [x] `shuyi doctor` on a `windows-gnu` host without `windres` fails the
       `windres` check and says how to install it (with the fake probe).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -329,5 +329,111 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `crates/cli/src/export/identity.rs`: `Identity` (from the `app` part,
+  its icon and `icon_sizes` as paths from the root), `numbers` (65535 at
+  most, naming `app.version` or `app.build`), `short_version`,
+  `app_folder`, `icons` (the drawn picture for a side, else a downscale;
+  nothing above the source's side), `ico`, `rc`, `info_plist`, `icns`,
+  `desktop_entry` and `linux_files`.
+- `windows`: `app.ico` and a UTF-8 `app.rc` in
+  `target/shuyi-export/<base>/` (`ExportCx::work`), `windres
+  --codepage=65001 -O coff -i app.rc -o app.o` there
+  (`x86_64-w64-mingw32-windres` if it runs, else `windres`), and the
+  game's program built with `cargo rustc … -- -C link-arg=<app.o>`
+  (`ExportCx::rustc_args`). `Lune Café` shows right with the UTF-8
+  pragma and `--codepage=65001`: Windows' version API (what Explorer's
+  Details tab reads) gives `FileDescription` and `ProductName` "Lune
+  Café", `CompanyName` "Shuyi Engine", `FileVersion` and
+  `ProductVersion` "1.2.3", and the shell extracts the icon. No escaped
+  UTF-16 units were needed. Two exports give the same bytes (the
+  exposure report is equal).
+- `macos`: the `.app` is named after the name; `Info.plist` with the
+  identity, `Resources/AppIcon.icns` (a warning under 1024 px), written
+  before the signature. Without an `app` part the plist is 3004's.
+- `linux`: `share/applications/<id>.desktop` and the hicolor icons in
+  the `tar.gz`.
+- `shuyi doctor`: a `windres` check after `msys2-gcc` on `windows-gnu`.
+- A desktop export without an `app` part warns "no identity: shuyi.ron
+  has no `app`" (`TargetCheck::App`).
+- The fixture game Lune Café, `tools/export-check/lune-cafe` (a workspace
+  of its own, no dependency, its 1024 px icon checked against
+  `export::identity`'s `fixture_icon`), exported by
+  `tools/export-check/identity.sh` from `ci.sh` on each desktop leg; the
+  Windows leg runs the `#[ignore]`d `exported::` test in
+  `crates/cli/tests/it/`.
+- hello-grid (an `app` part, no icon): its Linux package gains its
+  desktop entry, its `.app` is `Hello, Grid.app` (`linux.txt`,
+  `macos.txt` and its `disclosure` list follow), and its exe gains its
+  version resource.
+
+Deviations:
+
+- **The web part is split off** to 3354, by this ticket's size rule: the
+  desktop part alone is about 1,490 counted lines. hello-grid's
+  `web.title` stays until 3354. The web criterion above is 3354's.
+- No Explorer screenshot: this session's shell has no desktop, and the
+  Properties dialog doesn't open from it. The PR shows what Windows'
+  version API reads from the exe and the icon Windows extracts from it,
+  the same data the Details tab shows.
+- `windres` and `cargo rustc` are tested by their arguments as pure
+  functions (`ExportCx::rustc_args`, `WINDRES_ARGS`, `windres`'s pick)
+  rather than through a fake runner; both run for real in the local
+  Windows export and in CI.
+- The `.rc` strings escape a backslash (doubled) as well as `"` (as
+  `""`), since a name with a backslash would otherwise start an escape;
+  the desktop entry doubles a backslash too. The desktop entry has
+  `Icon=` only with an icon.
+- `ExportCx::build` takes the object to link (`None` for none).
+- `app_info` gained `icon_file` and `sized_file`, the path-based halves
+  of `icon` and `sized_png`, which `identity::icons` calls.
+- 2565 isn't done, so `icons` decodes with `decode_png` through
+  `app_info`, and 2565's clause now says its move covers it.
+
+Follow-up tickets: 3354 (the web part).
+
+Game: game#1229, which moves the pin past this ticket and drops the
+game's own `winresource` build scripts. Its pin move must also rename
+`visions-of-shuyi.app/` to `Visions of Shuyi.app/` in the game's
+`disclosure` lists, `scripts/check-release-package.sh` (`$bin.app`) and
+`crates/tools/src/game_tools/tests.rs` (searched on 2026-11-27, the
+game pinned at `10cbb98b`: `gh search code --repo Zafnok/visions-of-shuyi
+'.app/Contents'` and `'winresource'`).
+
+Breaking: shuyi-cli: ExportCx::build: takes a third argument, the object
+to link into the program, `None` for none
+
+```migration
+since: 0.1.0
+what: ExportCx::build takes the object to link into the program as a third argument.
+old: ExportCx::build(&self, triple, keep_debug)
+new: ExportCx::build(&self, triple, keep_debug, link)
+before: |
+  let program = cx.build(triple, true)?;
+after: |
+  let program = cx.build(triple, true, None)?;
+find: ["cx.build(triple, true)"]
+```
+
+Behaviour: shuyi-cli: `export macos` of a game with an `app` part names
+its `.app` after `app.name` (`Visions of Shuyi.app`), not after the
+program, so a `disclosure` list or a script that names `<bin>.app/`
+changes
+
+Behaviour: shuyi-cli: `export windows` of a game with an `app` part
+links an icon and a version resource into the exe and needs binutils'
+`windres` (MSYS2's mingw-w64 GCC has it); a game that embeds its own
+resource too gets two
+
+Behaviour: shuyi-cli: `export linux` of a game with an `app` part ships
+`share/applications/<id>.desktop` and, with an icon, the hicolor icons
+in the `tar.gz`; `export macos` writes a full `Info.plist` and, with an
+icon, `AppIcon.icns`
+
+Behaviour: shuyi-cli: a desktop export of a game without an `app` part
+warns "no identity: shuyi.ron has no `app`" in `export-report.json`'s
+`warnings`
+
+Behaviour: shuyi-cli: `doctor` on a `windows-gnu` host has a `windres`
+check, which fails without `windres`

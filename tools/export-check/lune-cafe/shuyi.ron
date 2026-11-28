@@ -1,0 +1,20 @@
+// Lune Café, the fixture game of CI's `export` job (ticket 3049): who it is
+// in every desktop package, read back by `tools/export-check/identity.sh`.
+(
+    // Its name holds a letter outside ASCII, which the Windows version
+    // resource writes in UTF-16 and the macOS `.app` is named after.
+    app: (
+        name: "Lune Café",
+        id: "io.github.zafnok.shuyi-engine.lune-cafe",
+        version: "1.2.3",
+        build: 4,
+        publisher: "Shuyi Engine",
+        // 1024 pixels of flat squares, drawn by a test (`export::identity`'s
+        // `fixture_icon`), which checks this file is its picture.
+        icon: "icon.png",
+    ),
+    export: (package: "lune-cafe"),
+    targets: {
+        "desktop": (frame: (320, 240), scale: integer, text_px: 16),
+    },
+)

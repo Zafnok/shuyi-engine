@@ -12,9 +12,9 @@ tools are that system's. On another one, `export` says where it builds.
 
 | Target | Package | Built with | Runs on |
 | ------ | ------- | ---------- | ------- |
-| `windows` | `<game>-<version>-windows.zip`: the `.exe`, `NOTICES.txt`, `HOW-TO-OPEN.txt` | `x86_64-pc-windows-gnu`, linked by MSYS2's mingw-w64 GCC | 64-bit Windows 10 and 11 (Rust's support for this target); Windows on Arm runs it through Windows 11's Prism emulation, untested |
-| `linux` | `<game>-<version>-linux.tar.gz`: the program and `NOTICES.txt` | `x86_64-unknown-linux-gnu`, in the Steam Linux Runtime 3.0 ("sniper") SDK | 64-bit x86 Linux with glibc 2.31 or newer (Debian 11, Ubuntu 20.04, SteamOS 3 and later), with ALSA, libudev, X11 and OpenGL |
-| `macos` | `<game>-<version>-macos/`: `<game>.app`, `NOTICES.txt`, `HOW-TO-OPEN.txt` | `aarch64-apple-darwin` and `x86_64-apple-darwin`, joined by `lipo` into one program | Apple silicon and Intel Macs |
+| `windows` | `<game>-<version>-windows.zip`: the `.exe` (its icon and version inside), `NOTICES.txt`, `HOW-TO-OPEN.txt` | `x86_64-pc-windows-gnu`, linked by MSYS2's mingw-w64 GCC | 64-bit Windows 10 and 11 (Rust's support for this target); Windows on Arm runs it through Windows 11's Prism emulation, untested |
+| `linux` | `<game>-<version>-linux.tar.gz`: the program, `NOTICES.txt` and, with an `app` part, `share/` (its desktop entry and icons) | `x86_64-unknown-linux-gnu`, in the Steam Linux Runtime 3.0 ("sniper") SDK | 64-bit x86 Linux with glibc 2.31 or newer (Debian 11, Ubuntu 20.04, SteamOS 3 and later), with ALSA, libudev, X11 and OpenGL |
+| `macos` | `<game>-<version>-macos/`: the `.app` (named after the game), `NOTICES.txt`, `HOW-TO-OPEN.txt` | `aarch64-apple-darwin` and `x86_64-apple-darwin`, joined by `lipo` into one program | Apple silicon and Intel Macs |
 
 ## What each package holds
 
@@ -40,10 +40,52 @@ tools are that system's. On another one, `export` says where it builds.
   Windows, SmartScreen's More info, then Run anyway. On macOS 15 and
   later, open the app once, then System Settings > Privacy & Security >
   Open Anyway.
-- **On macOS**, the `.app` has a minimal `Info.plist` (its program and
-  its type) and an ad-hoc signature, made inside out: the program, then
-  the bundle. Apple silicon runs only signed code, and a bundle signed as
-  a whole is offered Open Anyway instead of being called damaged.
+- **On macOS**, the `.app` has an `Info.plist` and an ad-hoc signature,
+  made inside out: the program, then the bundle. Apple silicon runs only
+  signed code, and a bundle signed as a whole is offered Open Anyway
+  instead of being called damaged.
+
+## Who the game is
+
+Each desktop package says who the game is, from `shuyi.ron`'s `app` part
+(ticket 3049, `crates/cli/src/export/identity.rs`). Every size of the icon
+is the picture `app.icon_sizes` draws for it, else downscaled from
+`app.icon` ([ADR-0061](../adr/0061-a-games-icon-one-square-picture-downscaled-in-integers-by-the-tool-and-the-windows-icon-in-appinfo.md)).
+A project without an `app` part exports as before, and the report warns
+"no identity: shuyi.ron has no `app`".
+
+- **Windows:** the `.exe` carries the icon (16, 24, 32, 48, 64 and 256
+  pixels) and a version resource: `FILEVERSION` and `PRODUCTVERSION`
+  `major,minor,patch,build`, and the strings `CompanyName` (the
+  publisher, when it has one), `FileDescription` and `ProductName` (the
+  name), `FileVersion` and `ProductVersion` (the version),
+  `InternalName` and `OriginalFilename`. The export writes `app.ico`
+  and a UTF-8 `app.rc` in `target/shuyi-export/<package>/`, compiles
+  them with binutils' `windres` (`x86_64-w64-mingw32-windres` if found,
+  else `windres`; MSYS2's mingw-w64 GCC brings it, and `shuyi doctor`
+  checks it), and links the object into the game's program alone with
+  `cargo rustc … -- -C link-arg=<object>`: the game needs no build
+  script. A version number or build over 65535 refuses the export,
+  naming `app.version` or `app.build`.
+- **macOS:** the `.app` is named after the name (a `/` or `:` as `-`).
+  Its `Info.plist` has `CFBundleIdentifier` (the id), `CFBundleName` and
+  `CFBundleDisplayName` (the name), `CFBundleShortVersionString`
+  (`major.minor.patch`), `CFBundleVersion` (the build),
+  `CFBundleExecutable`, `CFBundleIconFile` (`AppIcon`, with an icon),
+  `NSHighResolutionCapable` and `LSApplicationCategoryType` (games).
+  `Contents/Resources/AppIcon.icns` holds the icon from 32 to 1024
+  pixels; an icon under 1024 leaves out the biggest, and the report
+  warns. Both are written before the signature, which covers them.
+- **Linux:** the `tar.gz` holds `share/applications/<id>.desktop` and
+  the icon at `share/icons/hicolor/<n>x<n>/apps/<id>.png` for 16, 32,
+  48, 64, 128, 256 and 512. A player who runs the program from its folder
+  needs neither. To see the game in the desktop's menu, they copy
+  `share/` into `~/.local/share`, and either put the program on their
+  `PATH` or set the entry's `Exec` to its full path.
+
+CI exports a fixture game, Lune Café (`tools/export-check/lune-cafe`,
+with an icon and a name outside ASCII), on each desktop leg and reads its
+identity back (`tools/export-check/identity.sh`).
 
 ## A release build
 

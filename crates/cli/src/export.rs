@@ -57,6 +57,7 @@
 pub mod archive;
 mod desktop;
 pub mod disclosure;
+pub mod identity;
 pub mod live_link;
 pub mod paths;
 pub mod playdate;
@@ -70,7 +71,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
-pub use self::desktop::SNIPER;
+pub use self::desktop::{SNIPER, windres};
 use self::disclosure::Shipped;
 use crate::contract::codes::{self, Code};
 use crate::contract::export::ExportInput;
@@ -673,13 +674,41 @@ impl ExportCx {
         paths::check_file(file, &self.needles()).map_err(ExportError::BuildPath)
     }
 
+    /// `cargo rustc`'s arguments for the program and `triple`, which link the
+    /// object `object` into the game's program alone: [`cargo_args`](
+    /// Self::cargo_args) with `rustc` for `build`, then `-- -C
+    /// link-arg=<object>`. The object is a file, not in an archive, so the
+    /// linker keeps it.
+    pub fn rustc_args(&self, triple: &str, object: &Path) -> Vec<String> {
+        let mut args = self.cargo_args(triple);
+        "rustc".clone_into(&mut args[0]);
+        args.extend(["--".to_owned(), "-C".to_owned()]);
+        args.push(format!("link-arg={}", object.display()));
+        args
+    }
+
+    /// The folder under Cargo's target folder where an export writes what
+    /// its build reads and never ships: `shuyi-export/<package's name>`.
+    pub fn work(&self) -> PathBuf {
+        self.target_dir.join("shuyi-export").join(self.base())
+    }
+
     /// Builds the program for `triple`, with its line tables kept and not
-    /// stripped if `keep_debug` and it is a release build, and returns the
-    /// program's path.
-    pub fn build(&self, triple: &str, keep_debug: bool) -> Result<PathBuf, ExportError> {
+    /// stripped if `keep_debug` and it is a release build, and with the
+    /// object `link` linked in if one is given ([`rustc_args`](
+    /// Self::rustc_args)), and returns the program's path.
+    pub fn build(
+        &self,
+        triple: &str,
+        keep_debug: bool,
+        link: Option<&Path>,
+    ) -> Result<PathBuf, ExportError> {
         installed(triple)?;
-        let args = self.cargo_args(triple);
-        no_debug_features(&args)?;
+        no_debug_features(&self.cargo_args(triple))?;
+        let args = match link {
+            Some(object) => self.rustc_args(triple, object),
+            None => self.cargo_args(triple),
+        };
         let mut cargo = Command::new(crate::cargo());
         cargo.args(&args).current_dir(&self.root);
         self.content_env(&mut cargo);
@@ -1321,10 +1350,23 @@ const SOURCE_DATE_EPOCH: &str = "315532800";
 
 /// Runs `program` with `args`, failing with `install` if it isn't there.
 fn tool(program: &str, args: &[&Path], install: &str) -> Result<(), ExportError> {
+    tool_in(None, program, args, install)
+}
+
+/// [`tool`], run in the folder `dir` if one is given.
+fn tool_in(
+    dir: Option<&Path>,
+    program: &str,
+    args: &[&Path],
+    install: &str,
+) -> Result<(), ExportError> {
     let mut command = Command::new(program);
     command
         .args(args)
         .env("SOURCE_DATE_EPOCH", SOURCE_DATE_EPOCH);
+    if let Some(dir) = dir {
+        command.current_dir(dir);
+    }
     let status = command.status().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             ExportError::MissingTool(format!("{program} isn't installed: {install}"))

@@ -67,7 +67,8 @@ Existing pieces this uses:
   and its plan, `examples/hello-grid/capture/frames.ron`. The packages
   already ship that plan: `tools/export-check/windows.txt` lists
   `{base}/capture/frames.ron`, and `macos.txt` lists
-  `{base}/hello-grid.app/Contents/Resources/capture/frames.ron`.
+  `{base}/Hello, Grid.app/Contents/Resources/capture/frames.ron` (the
+  `.app` is named after `app.name` since 3049).
 - `shuyi export --with <feature>` turns on a feature of the game's
   package for one build (`ExportInput::with`,
   `crates/cli/src/contract/export.rs`).

@@ -104,8 +104,9 @@ What is planned:
   sends the browser's log to the terminal through its `dev.js`. Its
   either-order clause with this ticket sends the page's state too.
 - 3039 (done) added `NOTICES.txt` beside the page, 3066 (done) added a
-  `rel="license"` link to it, and 3049 (After MVP) the game's icons and
-  title.
+  `rel="license"` link to it. 3049 (done) put the game's identity in the
+  desktop packages only; 3354 (After MVP) puts its icons and title in
+  the page.
 - 3043, 2522 and 2519 (After MVP) add `lifecycle.js`, `net.js` and
   `download.js` (since 3309, done, `player-files.js`) to `SHELL`;
   2349 (done) added `languages.js`.
@@ -310,7 +311,7 @@ None.
   counts those two (the `.wasm` is preloaded in `index.html`'s head; the
   pack's header and index are what `pack-file.js`'s `needs()` waits for),
   and the rest of the pack shows on the game's card (3316).
-- **Either order with 3049:** both change `index.html`; whichever
+- **Either order with 3354:** both change `index.html`; whichever
   lands later keeps the other's parts.
 - **From 3066 (done):** `index.html`'s `<head>` has
   `<link rel="license" href="NOTICES.txt">`; keep it beside this
@@ -367,7 +368,7 @@ None.
   and a pre-compressed file needs server headers;
 - a web app manifest, an offline service worker, or installing the game
   as an app: no game asks for it;
-- the page's icons and the game's identity in it (3049);
+- the page's icons and the game's identity in it (3354);
 - the panel in the game's own colours or picture: it uses the card's
   defaults; a follow-up if a game asks;
 - retrying a failed download by itself (the Reload button does it);
@@ -384,7 +385,7 @@ None.
 
 1. Read `crates/cli/web/` (the page, the README, the bundle's `load`
    and `init_webgl`), and `crates/cli/src/web.rs` with its tests. Check
-   whether 2019, 2519, 2522, 2528, 3043 and 3049 are done,
+   whether 2019, 2519, 2522, 2528, 3043 and 3354 are done,
    and read `index.html` and `SHELL` as they left them.
 2. Write `shell.js`, then the panel's markup and CSS and the last call
    in `index.html`.

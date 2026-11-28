@@ -8,6 +8,7 @@
 mod binary;
 mod docs;
 mod doctor;
+mod exported;
 mod mcp;
 mod modules;
 mod preview;
