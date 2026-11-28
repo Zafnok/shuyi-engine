@@ -164,6 +164,11 @@ None.
   by its line id, moves the witness's mouth, and stops the voice when
   the statement changes, on press and on present, as the story's screen
   does (fake audio test); if not, nothing to do (2730 does it).
+- **Either order with 3252** (auto-advance that waits for a voice clip,
+  from the game's sweep game#1397): if 3252 is done, "auto waits for
+  the voice" uses 3252's `auto::VoiceClip` (a clip never heard waited
+  for a moment, then counted as ended); if not, nothing to do (3252
+  builds it for this ticket to use).
 
 **Out (do not do):**
 - lip sync from phonemes, and any analysis at run time;

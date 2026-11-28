@@ -17,6 +17,8 @@ completed:
 
 ## Context
 
+> **From the game's sweep (game#1397, 2026-11-27):** a game now loops frames by time twice (Visions of Shuyi's `content/src/tileset/frames.rs` and `trees.rs`, about 35 lines of "frame at t ms" with a cycle and a phase). That is this ticket's `frame_at`. The game's tickets name 2359, which is blocked by this one.
+
 Found by the 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6
 and Unreal 5.8, and the 2D engines GameMaker, Defold and Construct 3.
 Each plays frame-by-frame sprite animation as a built-in:

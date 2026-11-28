@@ -15,6 +15,8 @@ completed:
 
 > **Parked** (Nick, 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): this is real-time work, so it waits until Visions of Shuyi launches, unless the game needs it first (a game ticket asks, through the game's `engine-change` skill, for animated terrain tiles or for unit idle and walk frames as data; then this ticket is unparked with 2231). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
+> **From the game's sweep (game#1397, 2026-11-27):** the game now has moving tiles of its own. Game tickets 1315 (flowing water and swaying trees) and 1378 (lamps) shipped them as `content/src/tileset/frames.rs` (about 240 production lines over `TerrainTiles`, `Look` and `ImageRect`), a looping frame clip in `content/src/tileset/trees.rs` (about 35), and about 60 lines in its sprite skin. Its follow-up, game 1357, is blocked by this ticket. So the line "No game ticket asks for moving tiles today" below is out of date, and this ticket's unpark condition is met. It stays parked until Nick unparks it.
+
 ## Context
 
 Found by the 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6
@@ -188,6 +190,10 @@ None.
   fixtures and snapshots), `UnitClips` goes to a follow-up ticket,
   parked like this one, and this PR keeps the moving tiles and the
   clock rule.
+
+- **Either order with 3250:** if 3250 is done, its `PieceLook::picture`
+  may come from this ticket's clip at the scene's clock; if not, nothing
+  to do (the game picks the frame).
 
 **Out (do not do):**
 - adding fields to `TerrainTiles` or `Look`;
