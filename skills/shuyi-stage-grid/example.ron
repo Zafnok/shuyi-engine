@@ -18,7 +18,10 @@ Example(
             Is("/result/errors/0/line", "12"),
             Is("/result/errors/0/column", "6"),
         ]),
-        Shuyi(args: ["check"], ok: false, expect: [Is("/result/errors/0/file", "stage.map")]),
+        Shuyi(args: ["check"], ok: false, expect: [
+            Is("/result/errors/0/file", "files/stage.map"),
+            Is("/result/errors/0/line", "12"),
+        ]),
         Edit(file: "crates/game/files/stage.map", find: "#.###X####.#", replace: "#.###.####.#"),
         // A second goal: the map reads, but the rules make no stage of it.
         Edit(file: "crates/game/files/stage.map", find: "#...####...#", replace: "#...####..>#"),

@@ -130,6 +130,11 @@
             why: "the map file a rules crate reads its board from: the rules crate depends on `shuyi-core` and `shuyi-assets`, not on `shuyi`, so the grid prelude is out of its reach and `shuyi-assets` has no prelude",
         ),
         (
+            path: "shuyi_assets::ContentError",
+            in: ["templates/shuyi-default/stages/top-down-grid/crates/rules"],
+            why: "the errors of that map file, each on its file and line, which its `parse_map` passes on as `grid_map::parse` made them: out of the preludes' reach as `grid_map` is (ticket 2792)",
+        ),
+        (
             path: "shuyi_assets::golden",
             in: ["examples/hello-grid/tests/golden.rs", "examples/snake/tests/golden.rs"],
             why: "the golden table, behind the assets' `golden` feature a game's golden test turns on",

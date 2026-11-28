@@ -10,6 +10,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+use shuyi_assets::ContentError;
 use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
 use shuyi_core::prelude::{Dir, Grid, Pos, RandomSource, Sides, SimRng, TerrainId, TurnRules};
 
@@ -44,12 +45,17 @@ impl MapFeature for Feature {}
 /// The `.map` format of a stage: one tile look, at most 32 tiles a side.
 pub const FORMAT: MapFormat<'static> = MapFormat::new(&[grid_map::DEFAULT_TILES], 32);
 
-/// Reads stage map `source` (errors name it `file`).
-pub fn parse_map(file: &str, source: &str) -> Result<GridMap<TerrainId, Feature>, String> {
-    grid_map::parse(file, source, &FORMAT, terrain_named).map_err(|errors| {
-        let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
-        errors.join("\n")
-    })
+/// Reads stage map `source`: its errors name it `file`, each with its
+/// line when it has one.
+///
+/// # Errors
+///
+/// Every problem of the map, as `grid_map::parse` finds them.
+pub fn parse_map(
+    file: &str,
+    source: &str,
+) -> Result<GridMap<TerrainId, Feature>, Vec<ContentError>> {
+    grid_map::parse(file, source, &FORMAT, terrain_named)
 }
 
 /// What you ask for.
@@ -316,7 +322,8 @@ mod tests {
         source.push_str(&features.join(", "));
         source.push_str(" })\n---\n");
         source.push_str(&tiles);
-        Stage::new(&parse_map("t.map", &source)?, seed)
+        let map = parse_map("t.map", &source).map_err(|errors| format!("{errors:?}"))?;
+        Stage::new(&map, seed)
     }
 
     const OPEN: &str = "#######\n#@...>#\n#.....#\n#...&.#\n#######";
