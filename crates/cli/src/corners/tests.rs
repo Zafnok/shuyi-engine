@@ -78,6 +78,41 @@ fn the_command_writes_a_sheet_that_check_then_passes() {
     fs::remove_dir_all(dir).unwrap();
 }
 
+/// A recipe of five 16-pixel pieces in a row of `terrain.png`'s first 80.
+const ROTATED: &str = r#"(
+    make: Rotated(
+        image: "tiles/terrain.png",
+        size: (16, 16),
+        pieces: [(0, 0), (16, 0), (32, 0), (48, 0), (64, 0)],
+    ),
+    out: "tiles/shore-corners.png",
+)
+"#;
+
+#[test]
+fn the_command_writes_a_rotated_sheet_that_check_then_passes() {
+    let (dir, file) = game("rotated", ROTATED);
+    // The game's picture is 48 pixels wide: widen it to hold the pieces.
+    let terrain = pattern(80, 24);
+    let png = encode_png(terrain.width, terrain.height, &terrain.rgba).unwrap();
+    fs::write(dir.join("art/tiles/terrain.png"), png).unwrap();
+    assert_eq!(main("shuyi", std::slice::from_ref(&file)), 0);
+    let out = dir.join("art/tiles/shore-corners.png");
+    let (w, h, rgba) = decode_png(&fs::read(&out).unwrap()).unwrap();
+    let recipe = recipe::parse(&file, ROTATED).unwrap();
+    let want = make(&recipe, beside(&file)).unwrap();
+    assert_eq!((w, h, rgba), (128, 32, want.rgba));
+    assert_eq!(main("shuyi", &["--check".to_owned(), file.clone()]), 0);
+    // Four pieces: the recipe's line of `pieces`.
+    fs::write(&file, ROTATED.replace(", (64, 0)]", "]")).unwrap();
+    let e = run_check(&file).unwrap_err();
+    assert!(
+        e.starts_with(&format!("{file}:5:")) && e.contains("not 4"),
+        "{e}"
+    );
+    fs::remove_dir_all(dir).unwrap();
+}
+
 #[test]
 fn a_stale_or_missing_sheet_fails_the_check_and_says_how_to_remake_it() {
     let (dir, file) = game("stale", RECIPE);

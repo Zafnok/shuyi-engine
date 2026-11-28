@@ -290,10 +290,12 @@ const GENERATED: &str = r##"(
 )
 "##;
 
-/// The picture the recipe above names: `terrain.png`, 48 × 24.
+/// The pictures the recipes name: `terrain.png`, 48 × 24, and
+/// `shore.png`, 80 × 16.
 fn pictures(path: &str) -> Result<Image, String> {
     match path {
         "tiles/terrain.png" => Ok(tile(48, 24)),
+        "tiles/shore.png" => Ok(tile(80, 16)),
         _ => Err("no such file".to_owned()),
     }
 }
@@ -313,7 +315,10 @@ fn a_recipe_is_read_and_makes_its_sheet() {
         tile: at,
         wobble,
         rim,
-    } = &recipe.make;
+    } = &recipe.make
+    else {
+        panic!("{:?}", recipe.make);
+    };
     assert_eq!((at.at, at.size), ((24, 0), (24, 24)));
     let foam = Rim::new([0xE8, 0xF4, 0xFF], RimSide::Outside).with_width(2);
     assert_eq!((*wobble, *rim), (Some(Wobble::new(7)), Some(foam)));
@@ -324,7 +329,9 @@ fn a_recipe_is_read_and_makes_its_sheet() {
     let bare =
         "(make: Generated(tile: (image: \"a.png\", at: (0, 0), size: (8, 8))), out: \"b.png\")";
     let bare = recipe::parse("bare.corners.ron", bare).unwrap();
-    let Make::Generated { wobble, rim, .. } = bare.make;
+    let Make::Generated { wobble, rim, .. } = bare.make else {
+        panic!("{:?}", bare.make);
+    };
     assert_eq!((wobble, rim), (None, None));
 }
 
@@ -378,5 +385,146 @@ fn hash(sheet: &Image) -> String {
 fn golden_a_recipes_sheet_is_the_same_on_every_platform() {
     let mut golden = crate::golden!("tests/golden/corners.ron");
     golden.check("generated", hash(&made(GENERATED).unwrap()));
+    golden.check("rotated", hash(&made(ROTATED).unwrap()));
     golden.assert();
+}
+
+/// `picture` turned a quarter clockwise `times` times, as the ticket's
+/// rule says: `(x, y)` to `(n − 1 − y, x)`.
+fn turned(picture: &Image, times: u32) -> Image {
+    (0..times).fold(picture.clone(), |p, _| turn(&p))
+}
+
+/// Five `n × n` pieces, each its own: `tile` shifted by the piece's place.
+fn five_pieces(n: u32) -> [Image; 5] {
+    let all = tile(n * 5, n);
+    core::array::from_fn(|i| crop(&all, (n * u32::try_from(i).unwrap(), 0), (n, n)))
+}
+
+#[test]
+fn a_quarter_turn_moves_the_corners_clockwise() {
+    let mut piece = Image::filled(3, 3, [0; 4]);
+    put(&mut piece, (0, 0), [1, 0, 0, 255]);
+    put(&mut piece, (2, 1), [2, 0, 0, 255]);
+    let once = turn(&piece);
+    // Top-left to top-right; the middle of the right side to the middle of
+    // the bottom.
+    assert_eq!(once.pixel(2, 0), Some([1, 0, 0, 255]));
+    assert_eq!(once.pixel(1, 2), Some([2, 0, 0, 255]));
+    assert_eq!(in_count(&once), 2);
+    // The mixes' bits: 8 to 4, 4 to 1, 1 to 2, 2 to 8.
+    assert_eq!([8, 4, 1, 2].map(turn_mix), [4, 1, 2, 8]);
+    assert_eq!([12, 5, 3, 10].map(turn_mix), [5, 3, 10, 12]);
+    assert_eq!([9, 6, 15, 0].map(turn_mix), [6, 9, 15, 0]);
+    assert_eq!([14, 13, 7, 11].map(turn_mix), [13, 7, 11, 14]);
+}
+
+#[test]
+fn a_rotated_sheet_turns_each_piece_into_its_mixes() {
+    let pieces = five_pieces(16);
+    let [one, two, across, three, four] = &pieces;
+    let sheet = rotated([one, two, across, three, four]).unwrap();
+    assert_eq!((sheet.width, sheet.height), (128, 32));
+    let at = |m| picture(&sheet, (16, 16), m);
+    // The pieces' own mixes are the pieces as drawn.
+    for (m, piece) in PIECES.into_iter().zip(&pieces) {
+        assert_eq!(at(m), *piece, "mix {m}");
+    }
+    // Mix 4 is mix 8 turned once, 1 twice, 2 three times; 6 is 9 turned.
+    assert_eq!(at(4), turned(one, 1));
+    assert_eq!(at(1), turned(one, 2));
+    assert_eq!(at(2), turned(one, 3));
+    assert_eq!(at(6), turned(across, 1));
+    assert_eq!([at(5), at(3), at(10)], [1, 2, 3].map(|t| turned(two, t)));
+    assert_eq!([at(13), at(7), at(11)], [1, 2, 3].map(|t| turned(three, t)));
+    // Every mix but 0 filled, 0 clear.
+    assert_eq!(in_count(&at(0)), 0);
+    for m in 1..16 {
+        assert_eq!(in_count(&at(m)), 256, "mix {m}");
+    }
+}
+
+#[test]
+fn rotated_pieces_must_be_square_of_one_size() {
+    let pieces = five_pieces(8);
+    let with = |i: usize, other: &Image| {
+        let mut all: [&Image; 5] = core::array::from_fn(|n| &pieces[n]);
+        all[i] = other;
+        rotated(all).err()
+    };
+    let small = tile(4, 4);
+    let size = |piece, size, first| CornersError::PieceSize { piece, size, first };
+    assert_eq!(with(3, &small), Some(size(3, (4, 4), (8, 8))));
+    let tall = tile(8, 9);
+    assert_eq!(with(1, &tall), Some(size(1, (8, 9), (8, 8))));
+    let not_square = |piece, size| CornersError::NotSquare { piece, size };
+    assert_eq!(rotated([&tall; 5]).err(), Some(not_square(0, (8, 9))));
+    let empty = tile(0, 0);
+    assert_eq!(with(0, &empty), Some(CornersError::Empty((0, 0))));
+    let large = tile(257, 257);
+    assert_eq!(with(0, &large), Some(CornersError::TooLarge((257, 257))));
+    assert_eq!(with(0, &pieces[0]), None);
+    let e = with(2, &small).unwrap().to_string();
+    assert_eq!(
+        e,
+        "piece 2 is (4, 4) pixels across and down, and the first is (8, 8)"
+    );
+}
+
+proptest! {
+    #[test]
+    fn four_quarter_turns_give_the_piece_back(n in 1..=24u32, seed in any::<u8>()) {
+        let mut piece = tile(n, n);
+        for byte in &mut piece.rgba {
+            *byte ^= seed;
+        }
+        prop_assert_eq!(turned(&piece, 4), piece);
+    }
+}
+
+const ROTATED: &str = r#"(
+    make: Rotated(
+        image: "tiles/shore.png",
+        size: (16, 16),
+        pieces: [(0, 0), (16, 0), (32, 0), (48, 0), (64, 0)],
+    ),
+    out: "tiles/shore-corners.png",
+)
+"#;
+
+#[test]
+fn a_rotated_recipe_makes_its_sheet() {
+    let recipe = recipe::parse("s.corners.ron", ROTATED).unwrap();
+    let Make::Rotated { size, pieces, .. } = &recipe.make else {
+        panic!("{:?}", recipe.make);
+    };
+    assert_eq!((*size, pieces[4]), ((16, 16), (64, 0)));
+    let pieces = five_pieces(16);
+    let [one, two, across, three, four] = &pieces;
+    let want = rotated([one, two, across, three, four]).unwrap();
+    assert_eq!(made(ROTATED), Ok(want));
+}
+
+#[test]
+fn a_bad_rotated_recipe_says_its_file_and_line() {
+    let bad = |from: &str, to: &str| made(&ROTATED.replace(from, to)).unwrap_err();
+    // Four pieces, and six.
+    let e = bad(", (64, 0)]", "]");
+    assert!(
+        e.starts_with("w.corners.ron:5:") && e.contains("5 places, not 4"),
+        "{e}"
+    );
+    let e = bad("(64, 0)]", "(64, 0), (0, 0)]");
+    assert!(
+        e.starts_with("w.corners.ron:5:") && e.contains("not 6"),
+        "{e}"
+    );
+    // A piece outside its picture: the line of `pieces`.
+    let e = bad("(64, 0)]", "(72, 0)]");
+    let outside =
+        "w.corners.ron:5: piece 4, 16×16 pixels at (72, 0), lies outside tiles/shore.png, 80×16";
+    assert!(e.starts_with(outside), "{e}");
+    // Pieces that aren't square.
+    let e = bad("size: (16, 16)", "size: (16, 8)");
+    assert!(e.starts_with("w.corners.ron: piece 0 is (16, 8)"), "{e}");
 }

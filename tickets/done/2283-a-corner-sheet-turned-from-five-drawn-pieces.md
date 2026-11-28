@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2283 — A corner sheet turned from 5 drawn pieces
@@ -81,18 +81,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `rotated`: mix 4's picture is mix 8's piece turned a quarter
+- [x] `rotated`: mix 4's picture is mix 8's piece turned a quarter
   clockwise, and mix 6's is mix 9's turned once; the 5 pieces' mixes are
   the pieces as drawn; all 15 mixes are filled and mix 0 is clear.
-- [ ] Pieces of two sizes, pieces not square, and an empty first piece
+- [x] Pieces of two sizes, pieces not square, and an empty first piece
   are each their error.
-- [ ] A `Rotated` recipe makes the sheet; 4 pieces, and a piece outside
+- [x] A `Rotated` recipe makes the sheet; 4 pieces, and a piece outside
   its picture, are errors with the recipe's file and line.
-- [ ] The golden table has a `rotated` row, run on wasm32 in the
+- [x] The golden table has a `rotated` row, run on wasm32 in the
   `determinism` job.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -102,3 +102,33 @@ None.
   `Rotated` recipe.
 
 ## Completion notes
+
+- `shuyi_assets::corners::rotated` and `PIECES` (`[8, 12, 9, 14, 15]`):
+  each piece's four quarter turns (`turn`, `turn_mix`, private) fill the
+  mixes not yet filled, so mix 15 and the 5 pieces' own mixes are the
+  pieces as drawn. `CornersError` gains `NotSquare { piece, size }` and
+  `PieceSize { piece, size, first }`; the first piece is checked as a tile
+  (`Empty`, `TooLarge`).
+- The recipe's `Make::Rotated { image, size, pieces }`: `pieces` reads a
+  RON list and refuses one not of 5 (RON's own error, at the list's line);
+  a piece outside its picture names the line of `pieces`, as a tile's
+  names its `at`'s. `Recipe::sheet` makes either; `shuyi_cli::corners`'
+  `make`, `check` and command are unchanged and tested on a `Rotated`
+  recipe.
+- Golden: a `rotated` row in `crates/assets/tests/golden/corners.ron`;
+  the test is a `shuyi-assets` unit test, which the `determinism` job runs
+  on wasm32.
+- Docs: the `corners` and `corners::recipe` module docs, the feature's
+  comment, `docs/formats.md`'s corner-layer paragraph, the book's
+  paragraph on corner sheets, and the `shuyi-import-art` skill.
+- Deviations: none. The ticket was written today, so its names were
+  current.
+- Game search: `gh search code --repo Zafnok/visions-of-shuyi
+  'corners::'` and `'CornersError'` find only the skill pack's copy; the
+  game builds no corner sheet yet.
+
+No break: `CornersError` and `Make` are `#[non_exhaustive]`, so the new
+variants are additions.
+
+Game: nothing to adopt, the game makes no corner sheet; its skill pack
+picks up the updated `shuyi-import-art` at its next pin bump.
