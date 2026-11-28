@@ -2005,7 +2005,7 @@ mod tests {
     }
 
     impl crate::import_settings::ImportSettings for Flip {
-        const SECTION: &'static str = "flip";
+        const SECTION: &str = "flip";
     }
 
     /// Settings in a folder, none beside the file.

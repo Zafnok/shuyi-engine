@@ -34,7 +34,7 @@ use crate::lang::{Lang, LangCode, TextAt, TextPart};
 use crate::ron::parse_ron;
 
 impl AssetKind for FontAtlasDef {
-    const NAME: &'static str = "font atlas";
+    const NAME: &str = "font atlas";
 }
 
 /// A font atlas's glyph map (`font-atlas`, `.ron`), checked as

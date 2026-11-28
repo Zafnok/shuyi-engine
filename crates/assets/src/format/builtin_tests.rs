@@ -273,7 +273,7 @@ pub(crate) struct Table {
 }
 
 impl AssetKind for Table {
-    const NAME: &'static str = "table";
+    const NAME: &str = "table";
 }
 
 /// The tests' dialogue rules: a ghost can't speak.
@@ -350,7 +350,7 @@ pub(crate) const TABLE: &str = "(rows: [1, 2])";
 /// The files the fuzzed files name: an atlas's picture, a manifest's
 /// sound, a pack's English and screen text.
 pub(crate) fn fixtures() -> &'static Bundle {
-    static FIXTURES: OnceLock<&'static Bundle> = OnceLock::new();
+    static FIXTURES: OnceLock<&Bundle> = OnceLock::new();
     FIXTURES.get_or_init(|| {
         bundle(vec![
             ("fonts/atlas.png", png_header(128, 16)),

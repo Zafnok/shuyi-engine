@@ -254,7 +254,7 @@ pub struct Atlas {
 }
 
 impl AssetKind for Atlas {
-    const NAME: &'static str = "atlas";
+    const NAME: &str = "atlas";
 }
 
 impl Atlas {

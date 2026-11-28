@@ -273,7 +273,7 @@ pub enum MusicLine {
 
 impl MusicLine {
     /// What follows `@music` for [`MusicLine::Stop`].
-    pub const STOP: &'static str = "stop";
+    pub const STOP: &str = "stop";
 
     /// What follows `@music` in a script: the cue id, or `stop`.
     pub fn arg(&self) -> &str {
@@ -411,7 +411,7 @@ pub struct DialogueFile<D = NoDirective> {
 }
 
 impl<D: 'static> AssetKind for DialogueFile<D> {
-    const NAME: &'static str = "dialogue";
+    const NAME: &str = "dialogue";
 }
 
 /// The `.dlg` format (`dlg`, `.dlg`) of a game whose own directives are

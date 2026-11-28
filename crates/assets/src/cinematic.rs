@@ -44,7 +44,7 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text
 use crate::ron::parse_ron;
 
 impl<S: 'static, P: 'static> AssetKind for CinematicFile<S, P> {
-    const NAME: &'static str = "cinematic";
+    const NAME: &str = "cinematic";
 }
 
 /// The cinematic file (`cinematic`, `.ron`) of a game whose shots are `S`

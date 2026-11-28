@@ -67,7 +67,7 @@ use crate::import_settings::{
 pub trait AssetKind: Sized + 'static {
     /// What messages call the kind, in lowercase words: `"image"`,
     /// `"palette"`.
-    const NAME: &'static str;
+    const NAME: &str;
 }
 
 /// The most bytes a format reads unless it says otherwise
