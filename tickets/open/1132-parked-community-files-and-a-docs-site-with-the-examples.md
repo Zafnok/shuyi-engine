@@ -13,7 +13,7 @@ completed:
 
 # 1132 — Community files and contribution policy
 
-> **Parked** (Nick, 2026-11-01: "for 1132 I will probably make it post-MVP if I get any traction otherwise park as well"): the release no longer waits for it, and outside pull requests stay closed. It comes back if the engine gets traction and Nick says so. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-11-01: "for 1132 I will probably make it post-MVP if I get any traction otherwise park as well"): the release no longer waits for it, and outside pull requests stay closed. It comes back if the engine gets traction and Nick says so: 2859 asks him for the number, and 2860 measures it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 

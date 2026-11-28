@@ -1006,6 +1006,26 @@ comes after the MVP. Hosted networking stays parked in the table below.
 | 2611 | The hosted preview's page, its load test and accessibility review, and a month's cost to host it, for Nick (after 2610) |
 | 2093 | Move the research scripts under `tools/research/` to a repository of their own and keep their reports (unparked 2026-11-25; done 2026-11-25) |
 
+### The launch: developers who try it for a weekend
+
+Nick, 2026-11-28: traction after the first release "without overpromising
+or getting heat", at little or no cost. A research pass and a heat check
+wrote these. Agents prepare facts, kits and checks; Nick writes and posts
+every post in his own words. Nobody is pitched or contacted.
+
+| Ticket | What |
+| ------ | ---- |
+| 2859 | Decide the launch: the channels, the agent-written disclosure, the held crate names, the listings, 7DRL, and what counts as traction |
+| 2860 | Traction as a number: stars, issues, views, clones and downloads, collected weekly from before the release |
+| 2861 | One honest page: today, not yet, how it is built, where it came from, contributions |
+| 2862 | No `shuyi` crate left at 0.0.0 after the release, and each crate's page says what it does (after 2005) |
+| 2863 | The demo: an uncut recording of an agent making an original grid puzzle, and the puzzle on the website (after 2005) |
+| 2864 | An itch.io tool page kit, for Nick to upload |
+| 2865 | The launch-day kit: a fact sheet, a FAQ and one checklist row per channel |
+| 2866 | The MCP server in the official MCP Registry from the release job, and the skill pack ready for the plugin directory (after 2005) |
+| 2867 | After the launch: the cadence with a stop rule per channel, and the material for Nick's technical post |
+| 2868 | Parked: enter 7DRL 2027 with a small original roguelike (if Nick says yes in 2859) |
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
