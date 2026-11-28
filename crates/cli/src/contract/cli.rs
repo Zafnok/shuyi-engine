@@ -114,7 +114,7 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
     let (json, args) = split_json(args);
     Some(match name {
         "new" => match new::questions::parse(&args) {
-            Ok((input, flags)) if flags.questions => print(
+            Ok((input, flags)) if input.questions => print(
                 json,
                 &new::questions::listed(cwd, input, &flags),
                 new::wizard::text,

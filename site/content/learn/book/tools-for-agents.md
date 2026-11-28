@@ -155,6 +155,12 @@ build running in its window instead, and `frame_png` then gives the real window'
 
 The server tells the agent to call `docs` before it guesses a name.
 
+Before it makes a game, an agent asks its person what the game is. `cargo shuyi new <dir> --questions
+--json`, or the `new` tool with `questions`, makes nothing and lists the wizard's questions for the
+answers given so far: each with its `id`, who asks it, its answers with their status (`ready`,
+`planned`, `parked`) and tickets, its `default`, its `flag`, and why it is `skipped` if it isn't asked.
+The agent asks each one, lists again as the answers change what is asked, then calls `new` with them.
+
 ## Which prelude to import
 
 A name an agent guesses is likeliest found through a prelude, one per domain:

@@ -517,11 +517,18 @@ pub fn schemas() -> Vec<SchemaFile> {
         "export.exposure.json".to_owned(),
         &schema_for!(crate::export::disclosure::ExposureReport),
     );
-    let questions = file(
+    ops.chain(session)
+        .chain([exposure, questions_schema()])
+        .collect()
+}
+
+/// The schema of `new --questions`' answer, `new.questions.json`: the
+/// MCP `new` tool's answer with `questions`.
+pub(crate) fn questions_schema() -> SchemaFile {
+    file(
         "new.questions.json".to_owned(),
         &names_its_op(schema_for!(Answer<new::wizard::Questions>), Op::New),
-    );
-    ops.chain(session).chain([exposure, questions]).collect()
+    )
 }
 
 /// The fingerprint of `files`: a hash of their names and texts, which

@@ -116,6 +116,21 @@ fn on_project_files(op: Op, input: Value, project: &Project) -> Value {
     }
 }
 
+/// `new`'s answer to `input`, from `cwd`: the game made, or with
+/// `questions` the questions, as the CLI's `--questions` lists them with no
+/// repository flag.
+fn new_answer(input: Value, cwd: &Path) -> Value {
+    match read::<new::NewInput>(input) {
+        Ok(i) if i.questions => to_json(&new::questions::listed(
+            cwd,
+            i,
+            &new::questions::Flags::default(),
+        )),
+        Ok(i) => to_json(&new::new(cwd, &i)),
+        Err(e) => failed(Op::New, codes::WRONG_ARGUMENTS, e),
+    }
+}
+
 /// The answer of the operation `op` (one of [`Op::ALL`]) to `input`, as
 /// JSON: with the game's tools `game` on `project` where it runs the
 /// game; `new` makes its folder from `cwd`, and `import` reads from the
@@ -141,7 +156,7 @@ pub fn one_off(
         (Some(game), Ok(project)) => f(game, project),
     };
     match op {
-        Op::New => answered(op, input, |i| new::new(cwd, &i)),
+        Op::New => new_answer(input, cwd),
         Op::Doctor => answered(op, input, |i| doctor::doctor(&doctor::ThisMachine, &i)),
         Op::Sfx => answered(op, input, |i| sfx::sfx(&i, cwd)),
         Op::Explain => answered(op, input, |i| explain::explain(&i)),

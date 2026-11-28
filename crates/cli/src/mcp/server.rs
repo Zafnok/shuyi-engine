@@ -1073,8 +1073,8 @@ impl<'a> Server<'a> {
 
     /// `arguments` of the tool of `op` (not a session tool, or `start`)
     /// with `project` made absolute from the session's folder, the folder
-    /// itself if left out, and `new`'s `dir` absolute too; and the root of
-    /// that project (the folder itself outside one).
+    /// itself if left out, and `new`'s `dir` and `answers` absolute too;
+    /// and the root of that project (the folder itself outside one).
     fn absolute(&self, op: Op, session: bool, arguments: Value) -> (Value, PathBuf) {
         let mut arguments = if arguments.is_null() {
             json!({})
@@ -1093,11 +1093,15 @@ impl<'a> Server<'a> {
                 }
                 arguments.insert("project".to_owned(), json!(at.display().to_string()));
             }
-            if op == Op::New
-                && let Some(Value::String(dir)) = arguments.get("dir")
-            {
-                let dir = folder.join(dir).display().to_string();
-                arguments.insert("dir".to_owned(), json!(dir));
+            if op == Op::New {
+                // Its folder and its answers file, from the session's
+                // folder, whichever server answers.
+                for field in ["dir", "answers"] {
+                    if let Some(Value::String(path)) = arguments.get(field) {
+                        let path = folder.join(path).display().to_string();
+                        arguments.insert(field.to_owned(), json!(path));
+                    }
+                }
             }
         }
         let root = project_root(&at);
