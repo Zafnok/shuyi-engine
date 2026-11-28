@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 
 use serde_norway::Value;
 
-use crate::{exercises, tries};
+use crate::{exercises, tries, tutorial_steps};
 
 /// Which of CI's filters a gate's job runs under: the output of
 /// `changes.yml` its `if:` reads, or none. The output is named, not a
@@ -159,12 +159,24 @@ impl Gate {
 pub const NOT_GATES: &[&str] = &["changes", "api-label", "ci-result"];
 
 /// Whether a changed path can make a tutorial step's lock stale: a
-/// manifest or lock of the engine's crates, the root's, or the steps.
+/// manifest or lock of the engine's crates, the root's, or the steps and
+/// their source (their locks are kept there).
 fn touches_tutorial_locks(path: &str) -> bool {
     let file = path.rsplit('/').next().unwrap_or(path);
     let manifest = file == "Cargo.toml" || file == "Cargo.lock";
     (manifest && (path.starts_with("crates/") || !path.contains('/')))
         || path.starts_with("site/tutorial/")
+        || under(path, tutorial_steps::SOURCE)
+}
+
+/// Whether a changed path can change what `cargo xtask tutorial-steps
+/// --check` finds (ticket 2858): a step's folder, its source (the patches
+/// and the locks), or the tool.
+fn touches_tutorial_steps(path: &str) -> bool {
+    [tutorial_steps::STEPS, tutorial_steps::SOURCE]
+        .iter()
+        .any(|dir| under(path, dir))
+        || xtask_module(path, &["tutorial_steps"])
 }
 
 /// What [`builds_a_game`] looks for, in words, for the summary's reasons.
@@ -296,6 +308,18 @@ pub const GATES: &[Gate] = &[
         .steps(&["cargo xtask check-imports"]),
     gate("skill loaders", "tickets", Filter::Always)
         .steps(&["pwsh -File scripts/sync-agent-skills.ps1 -Check"]),
+    // The book's project's steps as their source makes them (ticket 2858,
+    // ADR-0168): a few seconds of `git apply`.
+    gate("tutorial steps", "tickets", Filter::Always)
+        .fast(Fast::Yes)
+        .local(Local::When(
+            "nothing changed under site/tutorial/ or site/tutorial-steps/, nor the tool (xtask's tutorial_steps)",
+            touches_tutorial_steps,
+        ))
+        .hint(
+            "record a step's edit: cargo xtask tutorial-steps --record NN, or make the steps from the source again: --write (the run-gates skill, \"The tutorial's steps\")",
+        )
+        .steps(&["cargo xtask tutorial-steps --check"]),
     gate("tickets' checks", "tickets", Filter::Always).steps(&[
         "cargo xtask check-links",
         "cargo xtask changelog >null",
@@ -338,11 +362,11 @@ pub const GATES: &[Gate] = &[
     // would have to change (ticket 2073).
     gate("tutorial locks", "tutorial", CODE)
         .local(Local::When(
-            "nothing changed: no Cargo.toml or Cargo.lock under crates/, no root Cargo.toml or Cargo.lock, nothing under site/tutorial/",
+            "nothing changed: no Cargo.toml or Cargo.lock under crates/, no root Cargo.toml or Cargo.lock, nothing under site/tutorial/ or site/tutorial-steps/",
             touches_tutorial_locks,
         ))
         .hint(
-            "refresh the locks: for step in site/tutorial/*/; do (cd \"$step\" && cargo metadata --format-version 1 > /dev/null); done (the run-gates skill, \"The tutorial's steps\")",
+            "refresh the locks: for step in site/tutorial/*/; do (cd \"$step\" && cargo metadata --format-version 1 > /dev/null); done; cargo xtask tutorial-steps --locks (the run-gates skill, \"The tutorial's steps\")",
         )
         .steps(&[
         "site/tutorial/01-new: cargo metadata --locked --format-version 1 >null",

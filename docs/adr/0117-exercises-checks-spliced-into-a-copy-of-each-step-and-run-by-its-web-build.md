@@ -1,6 +1,6 @@
 # ADR-0117: Exercises: a task in a step's playground, checked by checks kept beside the step and compiled into the copy of it the site plays
 
-- **Status:** Accepted; extended by ADR-0126 (an exercise's check run as a command, for exercises that edit Rust)
+- **Status:** Accepted; extended by ADR-0126 (an exercise's check run as a command, for exercises that edit Rust); amended by ADR-0168 (the step folders it copies are made from `01-new` and a patch each)
 - **Date:** 2026-11-13
 - **Related tickets:** 2828, 2820, 2827, 3069, 2823
 - **Extends:** ADR-0090 §8 (what an exercise is, past where it sits)

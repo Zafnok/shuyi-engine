@@ -1,0 +1,498 @@
+diff --git 05-undo/crates/game/files/en.ron 06-levels/crates/game/files/en.ron
+--- 05-undo/crates/game/files/en.ron
++++ 06-levels/crates/game/files/en.ron
+@@ -16,7 +16,14 @@
+ 
+     // ANCHOR: board
+     // The board.
+-    "board.help": "{Cursor} walk · {Undo} undo · {Cancel} back",
+-    "board.help.won": "Solved! {Undo} undo · {Cancel} back",
++    "board.help": "{Cursor} walk · {Undo} undo · {Cancel} levels",
++    "board.help.won": "Solved! {Confirm} next · {Undo} undo · {Cancel} levels",
+     // ANCHOR_END: board
++
++    // ANCHOR: levels
++    // The level menu.
++    "levels.title": "Levels",
++    "levels.level": "Level {n}",
++    "levels.help": "{Cursor} move · {Confirm} choose · {Cancel} back",
++    // ANCHOR_END: levels
+ }
+diff --git 06-levels/crates/game/files/levels/2.map 06-levels/crates/game/files/levels/2.map
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/files/levels/2.map
+@@ -0,0 +1,14 @@
++// Level 2, in the engine's `.map` format.
++(
++    name: "Two rows",
++    legend: { '.': "floor", '#': "wall", 'o': "target" },
++    features: { (2, 2): Start, (3, 2): Box, (3, 4): Box },
++)
++---
++########
++#......#
++#....o.#
++#......#
++#....o.#
++#......#
++########
+diff --git 06-levels/crates/game/files/levels/3.map 06-levels/crates/game/files/levels/3.map
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/files/levels/3.map
+@@ -0,0 +1,13 @@
++// Level 3, in the engine's `.map` format.
++(
++    name: "Round the corner",
++    legend: { '.': "floor", '#': "wall", 'o': "target" },
++    features: { (2, 4): Start, (4, 3): Box },
++)
++---
++########
++#o.....#
++###.#..#
++#......#
++#......#
++########
+diff --git 06-levels/crates/game/files/levels/4.map 06-levels/crates/game/files/levels/4.map
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/files/levels/4.map
+@@ -0,0 +1,14 @@
++// Level 4, in the engine's `.map` format.
++(
++    name: "Side door",
++    legend: { '.': "floor", '#': "wall", 'o': "target" },
++    features: { (2, 5): Start, (2, 2): Box, (2, 4): Box },
++)
++---
++#########
++#...#...#
++#...#.o.#
++#......o#
++#...#...#
++#...#...#
++#########
+diff --git 06-levels/crates/game/files/levels/5.map 06-levels/crates/game/files/levels/5.map
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/files/levels/5.map
+@@ -0,0 +1,14 @@
++// Level 5, in the engine's `.map` format.
++(
++    name: "The yard",
++    legend: { '.': "floor", '#': "wall", 'o': "target" },
++    features: { (4, 5): Start, (2, 2): Box, (6, 2): Box, (2, 4): Box },
++)
++---
++#########
++#o..#..o#
++#.......#
++##.#.#.##
++#.....o.#
++#.......#
++#########
+diff --git 06-levels/crates/game/files/levels.ron 06-levels/crates/game/files/levels.ron
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/files/levels.ron
+@@ -0,0 +1,8 @@
++// The levels, in the order they are played.
++[
++    "levels/1.map",
++    "levels/2.map",
++    "levels/3.map",
++    "levels/4.map",
++    "levels/5.map",
++]
+diff --git 05-undo/crates/game/src/board.rs 06-levels/crates/game/src/board.rs
+--- 05-undo/crates/game/src/board.rs
++++ 06-levels/crates/game/src/board.rs
+@@ -16,6 +16,7 @@ use shuyi::ui::grid::{
+ use crate::Data;
+ use crate::action::Action;
+ use crate::level::TERRAIN_NAMES;
++use crate::levels::LevelWon;
+ use crate::rules::{Command, Puzzle};
+ 
+ // ANCHOR: skin
+@@ -138,6 +139,8 @@ pub struct BoardView {
+ /// The board screen.
+ #[derive(Debug)]
+ pub struct Board {
++    /// Which level, counted from 0.
++    pub level: usize,
+     /// The level's name.
+     name: String,
+     /// The rules' state.
+@@ -148,20 +151,24 @@ pub struct Board {
+ // ANCHOR_END: board
+ 
+ impl Board {
+-    /// The board on the game's level.
++    // ANCHOR: new
++    /// The board on level `level`.
+     ///
+     /// # Panics
+     ///
+-    /// If the level makes no puzzle, which loading it rules out.
+-    pub fn new(ctx: &Ctx<Data>) -> Self {
+-        let file = &ctx.game.own.level;
++    /// If that level isn't one, or makes no puzzle, which loading it rules
++    /// out for each level of the list.
++    pub fn new(ctx: &Ctx<Data>, level: usize) -> Self {
++        let file = &ctx.game.own.levels[level];
+         let puzzle = Puzzle::new(file).unwrap_or_else(|e| panic!("{e}"));
+         Self {
++            level,
+             name: file.name.clone(),
+             history: History::new(puzzle.clone()),
+             puzzle,
+         }
+     }
++    // ANCHOR_END: new
+ 
+     /// What the map shows, in a view of `view` tiles round the player.
+     pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {
+@@ -228,12 +235,10 @@ impl Screen<Data> for Board {
+         "board"
+     }
+ 
+-    // ANCHOR: actions
+     /// Every action of the game.
+     fn actions(&self) -> Option<Vec<Action>> {
+         Some(Action::ALL.to_vec())
+     }
+-    // ANCHOR_END: actions
+ 
+     // ANCHOR: update
+     fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+@@ -244,6 +249,11 @@ impl Screen<Data> for Board {
+                 Action::Left => self.send(Command::Step(Dir::Left)),
+                 Action::Right => self.send(Command::Step(Dir::Right)),
+                 Action::Undo => self.undo(),
++                // ANCHOR: won
++                Action::Confirm if self.puzzle.outcome().is_some() => {
++                    return Transition::pop_with(LevelWon(self.level));
++                }
++                // ANCHOR_END: won
+                 Action::Cancel => return Transition::Pop,
+                 Action::Confirm => {}
+             }
+diff --git 05-undo/crates/game/src/level.rs 06-levels/crates/game/src/level.rs
+--- 05-undo/crates/game/src/level.rs
++++ 06-levels/crates/game/src/level.rs
+@@ -3,7 +3,9 @@
+ 
+ use serde::{Deserialize, Serialize};
+ use shuyi::assets::Formats;
++use shuyi::assets::format::AssetKind;
+ use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat, MapText};
++use shuyi::assets::ron::Ron;
+ use shuyi::core::TerrainId;
+ use shuyi::prelude::*;
+ 
+@@ -51,6 +53,9 @@ pub fn formats() -> Formats {
+     let mut formats = Formats::standard();
+     // The first format of its kind: never refused.
+     let _ = formats.register(MapText::<TerrainId, Feature>::new(FORMAT, terrain_named));
++    // ANCHOR: register
++    let _ = formats.register(Ron::<LevelList>::new());
++    // ANCHOR_END: register
+     formats
+ }
+ 
+@@ -61,3 +66,33 @@ pub fn read(bundle: &Bundle, name: &str) -> Result<Level, Vec<ContentError>> {
+     Ok(level)
+ }
+ // ANCHOR_END: read
++
++// ANCHOR: list
++/// The level list: each level's file, in the order they are played.
++#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
++#[serde(transparent)]
++pub struct LevelList(pub Vec<String>);
++
++impl AssetKind for LevelList {
++    const NAME: &'static str = "level list";
++}
++
++/// Reads every level the list in `levels.ron` names.
++pub fn read_all(bundle: &Bundle) -> Result<Vec<Level>, Vec<ContentError>> {
++    // check-text: not player text, a file name
++    let list = formats().load::<LevelList>(bundle, "levels.ron")?;
++    let mut levels = Vec::new();
++    let mut errors = Vec::new();
++    for name in &list.0 {
++        match read(bundle, name) {
++            Ok(level) => levels.push(level),
++            Err(problems) => errors.extend(problems),
++        }
++    }
++    if errors.is_empty() {
++        Ok(levels)
++    } else {
++        Err(errors)
++    }
++}
++// ANCHOR_END: list
+diff --git 06-levels/crates/game/src/levels.rs 06-levels/crates/game/src/levels.rs
+new file mode 100644
+--- /dev/null
++++ 06-levels/crates/game/src/levels.rs
+@@ -0,0 +1,131 @@
++//! The level menu: every level of the list, chosen with the engine's
++//! [`Menu`]. A board that is won pops with a [`LevelWon`], and the menu
++//! moves on to the next level.
++
++// ANCHOR: uses
++use std::any::Any;
++
++use shuyi::prelude::*;
++use shuyi::ui::widgets::menu::glyph;
++use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
++
++use crate::Data;
++use crate::action::Action;
++use crate::board::Board;
++// ANCHOR_END: uses
++
++// ANCHOR: result
++/// What a won board hands the menu: the level it was on.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct LevelWon(pub usize);
++// ANCHOR_END: result
++
++// ANCHOR: choice
++/// What an item of the menu stands for.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum Choice {
++    /// Plays this level, counted from 0.
++    Level(usize),
++}
++// ANCHOR_END: choice
++
++// ANCHOR: struct
++/// The level menu.
++#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
++pub struct LevelMenu {
++    /// Which item has the focus.
++    pub focus: usize,
++}
++// ANCHOR_END: struct
++
++impl LevelMenu {
++    // ANCHOR: new
++    /// The menu, on the first level.
++    pub fn new() -> Self {
++        Self::default()
++    }
++    // ANCHOR_END: new
++
++    // ANCHOR: menu
++    /// The menu's items: a text key and a value each.
++    pub fn menu(&self, ctx: &Ctx<Data>) -> Menu<Choice> {
++        let levels = ctx.game.own.levels.len();
++        let items = (0..levels).map(|n| {
++            MenuItem::keyed("levels.level")
++                .with_arg("n", n + 1)
++                .with_value(Choice::Level(n))
++        });
++        Menu::new(items.collect()).focused(self.focus)
++    }
++    // ANCHOR_END: menu
++}
++
++impl Screen<Data> for LevelMenu {
++    // check-text: not player text, the screen's id
++    fn name(&self) -> &'static str {
++        "levels"
++    }
++
++    // ANCHOR: actions
++    /// Its menu's.
++    fn actions(&self) -> Option<Vec<Action>> {
++        let actions = Menu::<()>::ACTIONS.iter();
++        Some(actions.filter_map(|&ui| Action::for_ui(ui)).collect())
++    }
++    // ANCHOR_END: actions
++
++    // ANCHOR: update
++    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
++        let mut menu = self.menu(ctx);
++        for &action in &input.actions {
++            let event = menu.handle_with_sound(action, &mut ctx.audio);
++            self.focus = menu.focus();
++            match event {
++                Some(MenuEvent::Chosen(Choice::Level(n))) => {
++                    return Transition::Push(Box::new(Board::new(ctx, n)));
++                }
++                Some(MenuEvent::Cancelled) => return Transition::Pop,
++                None => {}
++            }
++        }
++        Transition::None
++    }
++    // ANCHOR_END: update
++
++    // ANCHOR: uncovered
++    /// A won board hands back its level: the menu moves on to the next.
++    fn uncovered(&mut self, ctx: &mut Ctx<Data>, result: Option<ScreenResult>) -> Transition<Data> {
++        if let Some(LevelWon(level)) = result.and_then(ScreenResult::take::<LevelWon>) {
++            let last = ctx.game.own.levels.len().saturating_sub(1);
++            self.focus = (level + 1).min(last);
++        }
++        Transition::None
++    }
++    // ANCHOR_END: uncovered
++
++    // ANCHOR: draw
++    fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
++        let c = |e| ctx.palette.engine(e);
++        let bg = c(EngineColor::Background);
++        buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
++        print_centred(
++            buf,
++            3,
++            ctx.text("levels.title"),
++            c(EngineColor::Highlight),
++            bg,
++        );
++        let view = self.menu(ctx).view();
++        let (width, _) = glyph::size(ctx, &view);
++        let x = (i32::from(buf.width()) - width).max(0) / 2;
++        glyph::paint(ctx, &view, buf, x, 6);
++        let help = ctx.text_with("levels.help", &[]);
++        let last = i32::from(buf.height()) - 1;
++        print_centred(buf, last, &help, c(EngineColor::TextDim), bg);
++    }
++    // ANCHOR_END: draw
++
++    fn as_any(&self) -> Option<&dyn Any> {
++        Some(self)
++    }
++}
+diff --git 05-undo/crates/game/src/lib.rs 06-levels/crates/game/src/lib.rs
+--- 05-undo/crates/game/src/lib.rs
++++ 06-levels/crates/game/src/lib.rs
+@@ -11,6 +11,7 @@ pub mod action;
+ pub mod app_info;
+ pub mod board;
+ pub mod level;
++pub mod levels;
+ pub mod rules;
+ pub mod stages;
+ pub mod title;
+diff --git 05-undo/crates/game/src/stages.rs 06-levels/crates/game/src/stages.rs
+--- 05-undo/crates/game/src/stages.rs
++++ 06-levels/crates/game/src/stages.rs
+@@ -7,6 +7,7 @@ use shuyi::prelude::*;
+ use crate::Data;
+ use crate::board::Board;
+ use crate::level::{self, Level};
++use crate::levels::LevelMenu;
+ 
+ /// The stages' ids, in order.
+ pub fn names() -> &'static [&'static str] {
+@@ -17,8 +18,8 @@ pub fn names() -> &'static [&'static str] {
+ /// The game's own part of its data.
+ #[derive(Debug)]
+ pub struct Own {
+-    /// The level.
+-    pub level: Level,
++    /// Every level, in the order they are played.
++    pub levels: Vec<Level>,
+     /// The lights a level may be in: none, so the default, which changes
+     /// nothing.
+     pub lights: Lighting,
+@@ -27,23 +28,27 @@ pub struct Own {
+ /// Reads the game's own part from its files.
+ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
+     Ok(Own {
+-        // check-text: not player text, a file name
+-        level: level::read(bundle, "levels/1.map")?,
++        levels: level::read_all(bundle)?,
+         lights: Lighting::default(),
+     })
+ }
+ // ANCHOR_END: own
+ 
+-/// What the title starts: the board.
++// ANCHOR: first
++/// What the title starts: the level menu.
+ pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
+-    Some(Box::new(Board::new(ctx)))
++    let _ = ctx;
++    Some(Box::new(LevelMenu::new()))
+ }
++// ANCHOR_END: first
+ 
++// ANCHOR: screens
+ /// Every screen the game can show past the title, for the check that its
+ /// controls fit each target.
+ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+-    vec![Box::new(Board::new(ctx))]
++    vec![Box::new(LevelMenu::new()), Box::new(Board::new(ctx, 0))]
+ }
++// ANCHOR_END: screens
+ 
+ /// The game's tools: the engine's, for a game on the short path.
+ #[cfg(feature = "tools")]
+diff --git 05-undo/crates/game/tests/board.rs 06-levels/crates/game/tests/board.rs
+--- 05-undo/crates/game/tests/board.rs
++++ 06-levels/crates/game/tests/board.rs
+@@ -3,17 +3,20 @@
+ //! names, input to a test, not game code.
+ 
+ use game::board::Board;
++use game::levels::LevelMenu;
+ use shuyi::core::Pos;
+ use shuyi::core::TurnRules;
+ use shuyi::platform::harness::Harness;
+ 
++// ANCHOR: on_board
+ /// The game on its first level.
+ fn on_board() -> Harness<game::Data> {
+     let mut h = game::game().harness();
+-    h.keys("Enter");
+-    assert_eq!(h.screens(), ["title", "board"]);
++    h.keys("Enter Enter");
++    assert_eq!(h.screens(), ["title", "levels", "board"]);
+     h
+ }
++// ANCHOR_END: on_board
+ 
+ fn board(h: &Harness<game::Data>) -> &Board {
+     h.screen::<Board>()
+@@ -78,3 +81,30 @@ fn undo_takes_back_a_push_and_nothing_before_the_start() {
+     assert_eq!(board(&h).puzzle, start);
+ }
+ // ANCHOR_END: test_undo
++
++// ANCHOR: test_result
++#[test]
++fn a_won_level_hands_its_result_to_the_menu() {
++    let mut h = on_board();
++    h.keys("Right Right Enter");
++    assert_eq!(h.screens(), ["title", "levels"]);
++    let menu = h.screen::<LevelMenu>().unwrap_or_else(|| panic!("no menu"));
++    assert_eq!(menu.focus, 1);
++    h.keys("Enter");
++    assert!(h.snapshot().contains("Two rows"), "{}", h.snapshot());
++}
++// ANCHOR_END: test_result
++
++#[test]
++fn confirm_does_nothing_on_a_level_not_won() {
++    let mut h = on_board();
++    h.keys("Enter");
++    assert_eq!(h.screens(), ["title", "levels", "board"]);
++}
++
++#[test]
++fn cancel_leaves_the_menu_for_the_title() {
++    let mut h = game::game().harness();
++    h.keys("Enter Backspace");
++    assert_eq!(h.screens(), ["title"]);
++}

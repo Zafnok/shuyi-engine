@@ -1,0 +1,753 @@
+diff --git 01-new/Cargo.toml 02-board/Cargo.toml
+--- 01-new/Cargo.toml
++++ 02-board/Cargo.toml
+@@ -21,6 +21,8 @@ shuyi-app = { path = "../../../crates/app" }
+ # The engine's assets, already under `shuyi`, named for the `sfx` feature
+ # (the game crate's).
+ shuyi-assets = { path = "../../../crates/assets" }
++# Its own part of the data, and its rules' state, are plain data.
++serde = { version = "1", default-features = false, features = ["derive", "std"] }
+ 
+ [workspace.lints.rust]
+ unsafe_code = "forbid"
+diff --git 01-new/crates/game/Cargo.toml 02-board/crates/game/Cargo.toml
+--- 01-new/crates/game/Cargo.toml
++++ 02-board/crates/game/Cargo.toml
+@@ -42,6 +42,7 @@ shuyi-app = { workspace = true, optional = true }
+ # `files/sfx/` are sound effects written as a few numbers (`.sfx.ron`),
+ # which the game renders as it loads them.
+ shuyi-assets = { workspace = true, features = ["sfx"] }
++serde.workspace = true
+ 
+ [package.metadata.cargo-machete]
+ # Named for their features (`link`, `sfx`), not their code.
+diff --git 01-new/crates/game/files/en.ron 02-board/crates/game/files/en.ron
+--- 01-new/crates/game/files/en.ron
++++ 02-board/crates/game/files/en.ron
+@@ -13,4 +13,9 @@
+     // Shown when the game has a stage to start.
+     "title.play": "{Confirm} play",
+     "title.help": "{Cancel} leave",
++
++    // ANCHOR: board
++    // The board.
++    "board.help": "{Cancel} back",
++    // ANCHOR_END: board
+ }
+diff --git 01-new/crates/game/files/keymap.ron 02-board/crates/game/files/keymap.ron
+--- 01-new/crates/game/files/keymap.ron
++++ 02-board/crates/game/files/keymap.ron
+@@ -7,7 +7,6 @@
+         (
+             id: "Arrows",
+             name: "layout.arrows",
+-            // ANCHOR: keys
+             keys: {
+                 // Held, they repeat.
+                 "Up": ["Up", "w"],
+@@ -17,7 +16,6 @@
+                 "Confirm": ["Enter", "Space", "z"],
+                 "Cancel": ["Backspace", "x"],
+             },
+-            // ANCHOR_END: keys
+         ),
+     ],
+     // The game starts in its one layout, so this table only fills the
+diff --git 02-board/crates/game/files/levels/1.map 02-board/crates/game/files/levels/1.map
+new file mode 100644
+--- /dev/null
++++ 02-board/crates/game/files/levels/1.map
+@@ -0,0 +1,12 @@
++// Level 1, in the engine's `.map` format.
++(
++    name: "First push",
++    legend: { '.': "floor", '#': "wall", 'o': "target" },
++    features: { (2, 2): Start, (3, 2): Box },
++)
++---
++#######
++#.....#
++#....o#
++#.....#
++#######
+diff --git 01-new/crates/game/files/palette.ron 02-board/crates/game/files/palette.ron
+--- 01-new/crates/game/files/palette.ron
++++ 02-board/crates/game/files/palette.ron
+@@ -12,4 +12,19 @@
+     "background": "#0a0a0e",
+     "accent": "#a0e07a",
+     "bright": "#ffffff",
++
++    // ANCHOR: game
++    // The game's.
++    "floor_fg": "#3a3a46",
++    "floor_bg": "#16161c",
++    "wall_fg": "#5a5a6e",
++    "wall_bg": "#26262e",
++    "target_fg": "#ffd75a",
++    "player": "#ffffff",
++    "box": "#c89a5a",
++    "box_home": "#a0e07a",
++    "path": "#5ac8ff",
++    "cursor": "#ffd75a",
++    "threat": "#ff7a5a",
++    // ANCHOR_END: game
+ }
+diff --git 02-board/crates/game/src/board.rs 02-board/crates/game/src/board.rs
+new file mode 100644
+--- /dev/null
++++ 02-board/crates/game/src/board.rs
+@@ -0,0 +1,259 @@
++//! The board: a level on the screen. What it shows is a [`MapScene`] the
++//! engine's glyph skin paints, and a [`BoardView`] of the lines round it.
++
++// ANCHOR: uses
++use std::any::Any;
++
++use shuyi::core::Pos;
++use shuyi::core::TerrainId;
++use shuyi::prelude::*;
++use shuyi::ui::frame::Palette;
++use shuyi::ui::grid::{
++    Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
++    Terrains, UnitPainter, WalkSpeeds, glyph,
++};
++
++use crate::Data;
++use crate::level::TERRAIN_NAMES;
++use crate::rules::Puzzle;
++// ANCHOR_END: uses
++
++// ANCHOR: skin
++// ANCHOR: area
++/// The cells a level is shown in: all but the top and bottom rows.
++pub const AREA: Rect = Rect::new(0, 1, 48, 22);
++// ANCHOR_END: area
++
++// ANCHOR: looks
++/// Each terrain's two glyphs and colors, by [`TerrainId`]: floor, wall,
++/// target.
++pub const TERRAIN_LOOKS: [([char; 2], &str, &str); 3] = [
++    ([' ', ' '], "floor_fg", "floor_bg"),
++    (['▓', '▓'], "wall_fg", "wall_bg"),
++    (['<', '>'], "target_fg", "floor_bg"),
++];
++// ANCHOR_END: looks
++
++// ANCHOR: terrains
++/// The terrains as the skin sees them.
++#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
++pub struct Terrain;
++
++impl Terrains for Terrain {
++    fn name(&self, id: TerrainId) -> Option<&str> {
++        TERRAIN_NAMES.get(usize::from(id.0)).copied()
++    }
++
++    fn glyphs(&self, id: TerrainId) -> Option<TerrainGlyphs<'_>> {
++        let &(glyphs, fg, bg) = TERRAIN_LOOKS.get(usize::from(id.0))?;
++        Some(TerrainGlyphs::new(glyphs, fg, bg))
++    }
++}
++// ANCHOR_END: terrains
++
++// ANCHOR: glyphs
++/// The glyph skin: two cells a tile.
++// check-text: not player text, the palette's names
++pub const GLYPHS: GlyphSkin = GlyphSkin::new(
++    MapColors::new("path", "cursor", "threat"),
++    WalkSpeeds::of(8.0),
++    0,
++);
++// ANCHOR_END: glyphs
++
++// ANCHOR: piece
++/// Which piece.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum Who {
++    /// The player.
++    Player,
++    /// The box with this number.
++    Box(usize),
++}
++
++/// A piece on the map, as the scene holds it.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct Piece {
++    /// Which piece.
++    pub who: Who,
++    /// The tile it is on.
++    pub pos: Pos,
++    /// Whether it is a box on a target.
++    pub home: bool,
++}
++
++impl MapUnit for Piece {
++    type Id = Who;
++
++    fn id(&self) -> Who {
++        self.who
++    }
++
++    fn pos(&self) -> Pos {
++        self.pos
++    }
++
++    fn text(&self) -> String {
++        let letter = if self.who == Who::Player { '@' } else { '#' };
++        format!("{letter} ({},{})", self.pos.x, self.pos.y)
++    }
++}
++// ANCHOR_END: piece
++
++// ANCHOR: pieces
++/// The pieces under the glyph skin: the player's letter over its tile, and
++/// a box over both of its tile's cells.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct Pieces<'a> {
++    /// The palette the colors are named in.
++    pub palette: &'a Palette,
++}
++
++impl UnitPainter<Piece> for Pieces<'_> {
++    fn paint(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
++        for piece in &scene.units {
++            let (glyphs, color) = match (piece.who, piece.home) {
++                (Who::Player, _) => (['@', ' '], "player"),
++                (Who::Box(_), false) => (['[', ']'], "box"),
++                (Who::Box(_), true) => (['[', ']'], "box_home"),
++            };
++            let fg = self
++                .palette
++                .lookup(color)
++                .unwrap_or_else(|| self.palette.engine(EngineColor::Text));
++            let Some((x, y)) = glyph::cell_of(grid, piece.pos) else {
++                continue;
++            };
++            for (x, glyph) in (x..).zip(glyphs) {
++                if glyph != ' '
++                    && let Some(&cell) = buf.get(x, y)
++                {
++                    buf.set(x, y, Cell { glyph, fg, ..cell });
++                }
++            }
++        }
++    }
++}
++// ANCHOR_END: pieces
++// ANCHOR_END: skin
++
++// ANCHOR: boardview
++/// What the lines round the map show.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct BoardView {
++    /// The level's name.
++    pub name: String,
++    /// The help line.
++    pub help: String,
++}
++// ANCHOR_END: boardview
++
++// ANCHOR: board
++/// The board screen.
++#[derive(Debug)]
++pub struct Board {
++    /// The level's name.
++    name: String,
++    /// The rules' state.
++    pub puzzle: Puzzle,
++}
++// ANCHOR_END: board
++
++impl Board {
++    // ANCHOR: new
++    /// The board on the game's level.
++    ///
++    /// # Panics
++    ///
++    /// If the level makes no puzzle, which loading it rules out.
++    pub fn new(ctx: &Ctx<Data>) -> Self {
++        let file = &ctx.game.own.level;
++        let puzzle = Puzzle::new(file).unwrap_or_else(|e| panic!("{e}"));
++        Self {
++            name: file.name.clone(),
++            puzzle,
++        }
++    }
++    // ANCHOR_END: new
++
++    // ANCHOR: scene
++    /// What the map shows, in a view of `view` tiles round the player.
++    pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {
++        let tiles = self.puzzle.tiles();
++        let player = self.puzzle.player();
++        let camera = Camera::centred_on(player, tiles.width(), tiles.height(), view);
++        let mut scene = MapScene::new(camera.origin, view);
++        scene.set_terrain(|pos| tiles.get(pos).copied());
++        let targets = self.puzzle.targets();
++        for (n, &pos) in self.puzzle.boxes().iter().enumerate() {
++            let home = targets.contains(&pos);
++            let who = Who::Box(n);
++            scene.push_unit(Piece { who, pos, home });
++        }
++        let (who, pos, home) = (Who::Player, player, false);
++        scene.push_unit(Piece { who, pos, home });
++        scene
++    }
++    // ANCHOR_END: scene
++
++    /// What the lines round the map show.
++    // ANCHOR: view
++    pub fn view(&self, ctx: &Ctx<Data>) -> BoardView {
++        let help = "board.help";
++        BoardView {
++            name: self.name.clone(),
++            help: ctx.text_with(help, &[]),
++        }
++    }
++    // ANCHOR_END: view
++
++    // ANCHOR: view_tiles
++    /// The tiles the glyph skin fits in [`AREA`].
++    pub fn view_tiles() -> (i32, i32) {
++        GridSkin::<Piece>::view_tiles(&GLYPHS, AREA)
++    }
++    // ANCHOR_END: view_tiles
++}
++
++// ANCHOR: screen_top
++impl Screen<Data> for Board {
++    // check-text: not player text, the screen's id
++    fn name(&self) -> &'static str {
++        "board"
++    }
++
++    /// Cancel to go back.
++    fn actions(&self) -> Option<Vec<UiAction>> {
++        Some(vec![UiAction::Cancel])
++    }
++
++    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
++        if input.actions.contains(&UiAction::Cancel) {
++            return Transition::Pop;
++        }
++        Transition::None
++    }
++    // ANCHOR_END: screen_top
++
++    // ANCHOR: draw
++    fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
++        let palette = &ctx.palette;
++        let c = |e| palette.engine(e);
++        let bg = c(EngineColor::Panel);
++        buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
++        let view = self.view(ctx);
++        buf.print(1, 0, &view.name, c(EngineColor::Highlight), bg);
++        let last = i32::from(buf.height()) - 1;
++        buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
++        let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
++        let scene = self.scene(Self::view_tiles());
++        GLYPHS.paint(&looks, &scene, AREA, &Pieces { palette }, buf);
++    }
++    // ANCHOR_END: draw
++
++    // ANCHOR: as_any
++    fn as_any(&self) -> Option<&dyn Any> {
++        Some(self)
++    }
++    // ANCHOR_END: as_any
++}
+diff --git 02-board/crates/game/src/level.rs 02-board/crates/game/src/level.rs
+new file mode 100644
+--- /dev/null
++++ 02-board/crates/game/src/level.rs
+@@ -0,0 +1,65 @@
++//! A level: a text file in the engine's `.map` format, read through the
++//! format registry, with the game's own terrains and features.
++
++// ANCHOR: uses
++use serde::{Deserialize, Serialize};
++use shuyi::assets::Formats;
++use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat, MapText};
++use shuyi::core::TerrainId;
++use shuyi::prelude::*;
++
++use crate::rules::Puzzle;
++// ANCHOR_END: uses
++
++// ANCHOR: terrains
++/// Floor: the player and the boxes go over it.
++pub const FLOOR: TerrainId = TerrainId(0);
++/// A wall: nothing goes through it.
++pub const WALL: TerrainId = TerrainId(1);
++/// A target: floor a box should end on.
++pub const TARGET: TerrainId = TerrainId(2);
++
++/// Each terrain's id in a level's legend, by [`TerrainId`].
++pub const TERRAIN_NAMES: [&str; 3] = ["floor", "wall", "target"];
++
++/// The terrain a legend's id names.
++pub fn terrain_named(name: &str) -> Option<TerrainId> {
++    let index = TERRAIN_NAMES.iter().position(|&n| n == name)?;
++    u16::try_from(index).ok().map(TerrainId)
++}
++
++/// What a tile may hold besides its terrain.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
++pub enum Feature {
++    /// The player starts here.
++    Start,
++    /// A box starts here.
++    Box,
++}
++
++impl MapFeature for Feature {}
++// ANCHOR_END: terrains
++
++// ANCHOR: read
++/// A level, as its file says.
++pub type Level = GridMap<TerrainId, Feature>;
++
++/// The format of a level: one tile look, at most 20 tiles a side, which
++/// the screen shows whole.
++pub const FORMAT: MapFormat<'static> = MapFormat::new(&[grid_map::DEFAULT_TILES], 20);
++
++/// The formats the game reads its own files with.
++pub fn formats() -> Formats {
++    let mut formats = Formats::standard();
++    // The first format of its kind: never refused.
++    let _ = formats.register(MapText::<TerrainId, Feature>::new(FORMAT, terrain_named));
++    formats
++}
++
++/// Reads the level in file `name`, which must make a puzzle.
++pub fn read(bundle: &Bundle, name: &str) -> Result<Level, Vec<ContentError>> {
++    let level = formats().load::<Level>(bundle, name)?;
++    Puzzle::new(&level).map_err(|e| vec![ContentError::new(bundle.display_path(name), e)])?;
++    Ok(level)
++}
++// ANCHOR_END: read
+diff --git 01-new/crates/game/src/lib.rs 02-board/crates/game/src/lib.rs
+--- 01-new/crates/game/src/lib.rs
++++ 02-board/crates/game/src/lib.rs
+@@ -9,6 +9,9 @@
+ 
+ // ANCHOR: mods
+ pub mod app_info;
++pub mod board;
++pub mod level;
++pub mod rules;
+ pub mod stages;
+ pub mod title;
+ // ANCHOR_END: mods
+@@ -18,20 +21,15 @@ use std::sync::OnceLock;
+ use shuyi::core::Made;
+ use shuyi::prelude::*;
+ 
+-// ANCHOR: files
+ /// The game's files, embedded.
+ // check-text: not player text, a folder
+ static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
+-// ANCHOR_END: files
+ 
+-// ANCHOR: data
+ /// The game's data and state, which its screens share: the engine's, read
+ /// from `files/`, with the six moves of `files/keymap.ron` as its actions,
+ /// and its stages' own part.
+ pub type Data = BasicData<UiAction, stages::Own>;
+-// ANCHOR_END: data
+ 
+-// ANCHOR: game
+ /// The game: who it is ([`app_info::APP`]: its name, and where the
+ /// player's settings and keys are kept), its files and its stages' part of
+ /// them, its first screen, every screen it can show, and the engine's
+@@ -45,7 +43,6 @@ pub fn game() -> BasicGame<UiAction, stages::Own> {
+     .screens(screens)
+     .modules(shuyi::enabled_modules)
+ }
+-// ANCHOR_END: game
+ 
+ /// What made this build, for its records and saves: the game's id and
+ /// version, and the fingerprint of the files it ships, computed once. A
+diff --git 02-board/crates/game/src/rules.rs 02-board/crates/game/src/rules.rs
+new file mode 100644
+--- /dev/null
++++ 02-board/crates/game/src/rules.rs
+@@ -0,0 +1,84 @@
++//! The puzzle's rules, pure and deterministic: a state that changes only
++//! through commands. They know nothing of screens, keys or the clock.
++
++// ANCHOR: uses
++use std::collections::BTreeSet;
++
++use serde::{Deserialize, Serialize};
++use shuyi::core::{Grid, Pos, TerrainId};
++
++use crate::level::{Feature, Level, TARGET};
++// ANCHOR_END: uses
++
++// ANCHOR: state
++/// The puzzle: its tiles, where the player stands and where the boxes are.
++#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
++pub struct Puzzle {
++    /// The tiles, which never change.
++    tiles: Grid<TerrainId>,
++    /// Where the player stands.
++    player: Pos,
++    /// Where the boxes are.
++    boxes: BTreeSet<Pos>,
++}
++// ANCHOR_END: state
++
++impl Puzzle {
++    // ANCHOR: new
++    /// The puzzle `level` lays out: it needs one start, a box, and as many
++    /// targets as boxes.
++    pub fn new(level: &Level) -> Result<Self, String> {
++        let mut player = None;
++        let mut boxes = BTreeSet::new();
++        for (&pos, feature) in &level.features {
++            match feature {
++                Feature::Start if player.is_some() => return Err("two starts".to_owned()),
++                Feature::Start => player = Some(pos),
++                Feature::Box => {
++                    boxes.insert(pos);
++                }
++            }
++        }
++        let player = player.ok_or("no start")?;
++        let puzzle = Self {
++            tiles: level.tiles.clone(),
++            player,
++            boxes,
++        };
++        let targets = puzzle.targets().len();
++        if puzzle.boxes.is_empty() || puzzle.boxes.len() != targets {
++            let boxes = puzzle.boxes.len();
++            return Err(format!("{boxes} boxes and {targets} targets"));
++        }
++        Ok(puzzle)
++    }
++    // ANCHOR_END: new
++
++    // ANCHOR: getters
++    /// The tiles.
++    pub fn tiles(&self) -> &Grid<TerrainId> {
++        &self.tiles
++    }
++
++    /// Where the player stands.
++    pub fn player(&self) -> Pos {
++        self.player
++    }
++
++    /// Where the boxes are.
++    pub fn boxes(&self) -> &BTreeSet<Pos> {
++        &self.boxes
++    }
++    // ANCHOR_END: getters
++
++    // ANCHOR: targets
++    /// Every target tile.
++    pub fn targets(&self) -> BTreeSet<Pos> {
++        let (width, height) = (self.tiles.width(), self.tiles.height());
++        (0..i32::from(height))
++            .flat_map(|y| (0..i32::from(width)).map(move |x| Pos::new(x, y)))
++            .filter(|&pos| self.tiles.get(pos) == Some(&TARGET))
++            .collect()
++    }
++    // ANCHOR_END: targets
++}
+diff --git 01-new/crates/game/src/stages.rs 02-board/crates/game/src/stages.rs
+--- 01-new/crates/game/src/stages.rs
++++ 02-board/crates/game/src/stages.rs
+@@ -1,34 +1,48 @@
+-//! The game's stages, in the order its template's parts add them. `shuyi
+-//! new` wrote this file from the parts it was made with: the title
+-//! ([`crate::title`]) starts the first, and a stage's own part of the
+-//! game's data is [`Own`].
++//! The game's one stage: the puzzle. The title ([`crate::title`]) starts
++//! it, and its part of the game's data is [`Own`].
+ 
++use shuyi::assets::lighting::Lighting;
+ use shuyi::prelude::*;
+ 
+ use crate::Data;
++use crate::board::Board;
++use crate::level::{self, Level};
+ 
+-/// The stages' ids, in order: none yet.
++/// The stages' ids, in order.
+ pub fn names() -> &'static [&'static str] {
+-    &[]
++    &["board"]
+ }
+ 
+-/// The stages' own part of the game's data: none.
+-pub type Own = ();
++// ANCHOR: own
++/// The game's own part of its data.
++#[derive(Debug)]
++pub struct Own {
++    /// The level.
++    pub level: Level,
++    /// The lights a level may be in: none, so the default, which changes
++    /// nothing.
++    pub lights: Lighting,
++}
+ 
+-/// Reads the stages' own part from the game's files.
+-pub fn own(_: &Bundle) -> Result<Own, Vec<ContentError>> {
+-    Ok(())
++/// Reads the game's own part from its files.
++pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
++    Ok(Own {
++        // check-text: not player text, a file name
++        level: level::read(bundle, "levels/1.map")?,
++        lights: Lighting::default(),
++    })
+ }
++// ANCHOR_END: own
+ 
+-/// The first stage, which the title starts: none.
+-pub fn first(_: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
+-    None
++/// What the title starts: the board.
++pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
++    Some(Box::new(Board::new(ctx)))
+ }
+ 
+-/// Every screen the stages can show, for the check that the game's
+-/// controls fit each target: none.
+-pub fn screens(_: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+-    Vec::new()
++/// Every screen the game can show past the title, for the check that its
++/// controls fit each target.
++pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
++    vec![Box::new(Board::new(ctx))]
+ }
+ 
+ /// The game's tools: the engine's, for a game on the short path.
+diff --git 01-new/crates/game/src/title.rs 02-board/crates/game/src/title.rs
+--- 01-new/crates/game/src/title.rs
++++ 02-board/crates/game/src/title.rs
+@@ -11,7 +11,6 @@ use shuyi::prelude::*;
+ 
+ use crate::{Data, stages};
+ 
+-// ANCHOR: view_struct
+ /// What the title shows.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct TitleView {
+@@ -25,15 +24,11 @@ pub struct TitleView {
+     /// only thing it would name.
+     pub help: String,
+ }
+-// ANCHOR_END: view_struct
+ 
+-// ANCHOR: title_struct
+ /// The title screen.
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+ pub struct Title;
+-// ANCHOR_END: title_struct
+ 
+-// ANCHOR: view_fn
+ impl Title {
+     /// What it shows.
+     pub fn view(ctx: &Ctx<Data>) -> TitleView {
+@@ -49,17 +44,13 @@ impl Title {
+         }
+     }
+ }
+-// ANCHOR_END: view_fn
+ 
+ impl Screen<Data> for Title {
+-    // ANCHOR: name
+     // check-text: not player text, the screen's id
+     fn name(&self) -> &'static str {
+         "title"
+     }
+-    // ANCHOR_END: name
+ 
+-    // ANCHOR: actions
+     /// Confirm, if there is a stage to start, and Cancel to leave.
+     fn actions(&self) -> Option<Vec<UiAction>> {
+         let mut actions = vec![UiAction::Cancel];
+@@ -68,9 +59,7 @@ impl Screen<Data> for Title {
+         }
+         Some(actions)
+     }
+-    // ANCHOR_END: actions
+ 
+-    // ANCHOR: update
+     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
+         if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel) {
+             return Transition::Quit;
+@@ -82,9 +71,7 @@ impl Screen<Data> for Title {
+         }
+         Transition::None
+     }
+-    // ANCHOR_END: update
+ 
+-    // ANCHOR: draw
+     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
+         let c = |e| ctx.palette.engine(e);
+         let bg = c(EngineColor::Background);
+@@ -106,5 +93,4 @@ impl Screen<Data> for Title {
+         let last = i32::from(buf.height()) - 1;
+         print_centred(buf, last, &view.help, c(EngineColor::TextDim), bg);
+     }
+-    // ANCHOR_END: draw
+ }
+diff --git 02-board/crates/game/tests/board.rs 02-board/crates/game/tests/board.rs
+new file mode 100644
+--- /dev/null
++++ 02-board/crates/game/tests/board.rs
+@@ -0,0 +1,28 @@
++//! The puzzle played through the engine's Harness: tests of what happened
++//! read the board's state. Key names here are the Harness's test-script
++//! names, input to a test, not game code.
++
++use game::board::Board;
++use shuyi::platform::harness::Harness;
++
++/// The game on its first level.
++fn on_board() -> Harness<game::Data> {
++    let mut h = game::game().harness();
++    h.keys("Enter");
++    assert_eq!(h.screens(), ["title", "board"]);
++    h
++}
++
++fn board(h: &Harness<game::Data>) -> &Board {
++    h.screen::<Board>()
++        .unwrap_or_else(|| panic!("no board: {:?}", h.screens()))
++}
++
++#[test]
++fn the_level_is_drawn_and_cancel_goes_back() {
++    let mut h = on_board();
++    assert!(h.snapshot().contains("First push"), "{}", h.snapshot());
++    assert_eq!(board(&h).puzzle.boxes().len(), 1);
++    h.keys("Backspace");
++    assert!(h.screen::<Board>().is_none());
++}
+diff --git 01-new/crates/game/tests/it/main.rs 02-board/crates/game/tests/it/main.rs
+--- 01-new/crates/game/tests/it/main.rs
++++ 02-board/crates/game/tests/it/main.rs
+@@ -20,7 +20,6 @@ fn tools() -> BasicTools<UiAction, game::stages::Own> {
+     BasicTools::new(game::game())
+ }
+ 
+-// ANCHOR: test_title
+ #[test]
+ fn the_title_shows_the_games_name_and_cancel_leaves() {
+     let mut h = game::game().harness();
+@@ -32,7 +31,6 @@ fn the_title_shows_the_games_name_and_cancel_leaves() {
+     h.keys("Backspace");
+     assert!(h.quit_requested());
+ }
+-// ANCHOR_END: test_title
+ 
+ #[test]
+ fn the_title_quits_only_where_the_game_can() {

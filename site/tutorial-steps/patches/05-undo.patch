@@ -1,0 +1,444 @@
+diff --git 04-push/crates/game/files/en.ron 05-undo/crates/game/files/en.ron
+--- 04-push/crates/game/files/en.ron
++++ 05-undo/crates/game/files/en.ron
+@@ -16,7 +16,7 @@
+ 
+     // ANCHOR: board
+     // The board.
+-    "board.help": "{Cursor} walk · {Cancel} back",
+-    "board.help.won": "Solved! {Cancel} back",
++    "board.help": "{Cursor} walk · {Undo} undo · {Cancel} back",
++    "board.help.won": "Solved! {Undo} undo · {Cancel} back",
+     // ANCHOR_END: board
+ }
+diff --git 04-push/crates/game/files/keymap.ron 05-undo/crates/game/files/keymap.ron
+--- 04-push/crates/game/files/keymap.ron
++++ 05-undo/crates/game/files/keymap.ron
+@@ -15,6 +15,9 @@
+                 "Right": ["Right", "d"],
+                 "Confirm": ["Enter", "Space", "z"],
+                 "Cancel": ["Backspace", "x"],
++                // ANCHOR: undo
++                "Undo": ["u"],
++                // ANCHOR_END: undo
+             },
+         ),
+     ],
+@@ -33,6 +36,7 @@
+         "Right": ["DpadRight", "LeftStickRight"],
+         "Confirm": ["South"],
+         "Cancel": ["East"],
++        "Undo": ["West"],
+     },
+     // Each target's own buttons, named after its profile (`targets/<id>.ron`
+     // in the engine's repository): a target of shuyi.ron that has no
+diff --git 05-undo/crates/game/src/action.rs 05-undo/crates/game/src/action.rs
+new file mode 100644
+--- /dev/null
++++ 05-undo/crates/game/src/action.rs
+@@ -0,0 +1,89 @@
++//! What a player can ask for: `UiAction`'s six moves and Undo, every one
++//! rebindable, their default keys and buttons in `files/keymap.ron`.
++
++use serde::{Deserialize, Serialize};
++use shuyi::assets::keymap::{ActionSet, Chord, Key, UiAction};
++
++// ANCHOR: action
++/// Everything a player can ask for.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
++pub enum Action {
++    /// Walk up, or move a menu's focus up.
++    Up,
++    /// Walk down, or move a menu's focus down.
++    Down,
++    /// Walk left.
++    Left,
++    /// Walk right.
++    Right,
++    /// Choose a menu item.
++    Confirm,
++    /// Go back.
++    Cancel,
++    /// Take back the last move.
++    Undo,
++}
++
++/// The keys every keymap has on top of its own: plain `Escape` cancels.
++const FIXED_KEYS: [(Chord, Action); 1] = [(Chord::plain(Key::Escape), Action::Cancel)];
++
++impl ActionSet for Action {
++    /// No two actions share a key.
++    type Group = ();
++
++    const ALL: &'static [Self] = &[
++        Self::Up,
++        Self::Down,
++        Self::Left,
++        Self::Right,
++        Self::Confirm,
++        Self::Cancel,
++        Self::Undo,
++    ];
++
++    fn name(self) -> &'static str {
++        match self {
++            Self::Up => "Up",
++            Self::Down => "Down",
++            Self::Left => "Left",
++            Self::Right => "Right",
++            Self::Confirm => "Confirm",
++            Self::Cancel => "Cancel",
++            Self::Undo => "Undo",
++        }
++    }
++
++    /// The four moves and Undo repeat while held.
++    fn is_repeatable(self) -> bool {
++        !matches!(self, Self::Confirm | Self::Cancel)
++    }
++
++    /// Every action must keep a key: the game can't be played without one.
++    fn is_required(self) -> bool {
++        true
++    }
++
++    fn is_rebindable(self) -> bool {
++        true
++    }
++
++    fn group(self) {}
++
++    /// What it means to the engine's widgets: Undo means nothing to them.
++    fn ui(self) -> Option<UiAction> {
++        match self {
++            Self::Up => Some(UiAction::Up),
++            Self::Down => Some(UiAction::Down),
++            Self::Left => Some(UiAction::Left),
++            Self::Right => Some(UiAction::Right),
++            Self::Confirm => Some(UiAction::Confirm),
++            Self::Cancel => Some(UiAction::Cancel),
++            Self::Undo => None,
++        }
++    }
++
++    fn fixed_keys() -> &'static [(Chord, Self)] {
++        &FIXED_KEYS
++    }
++}
++// ANCHOR_END: action
+diff --git 04-push/crates/game/src/board.rs 05-undo/crates/game/src/board.rs
+--- 04-push/crates/game/src/board.rs
++++ 05-undo/crates/game/src/board.rs
+@@ -3,6 +3,7 @@
+ 
+ use std::any::Any;
+ 
++use shuyi::core::History;
+ use shuyi::core::Pos;
+ use shuyi::core::{Dir, TerrainId, TurnRules};
+ use shuyi::prelude::*;
+@@ -13,6 +14,7 @@ use shuyi::ui::grid::{
+ };
+ 
+ use crate::Data;
++use crate::action::Action;
+ use crate::level::TERRAIN_NAMES;
+ use crate::rules::{Command, Puzzle};
+ 
+@@ -140,6 +142,8 @@ pub struct Board {
+     name: String,
+     /// The rules' state.
+     pub puzzle: Puzzle,
++    /// The level's first state and every command since.
++    pub history: History<Puzzle>,
+ }
+ // ANCHOR_END: board
+ 
+@@ -154,6 +158,7 @@ impl Board {
+         let puzzle = Puzzle::new(file).unwrap_or_else(|e| panic!("{e}"));
+         Self {
+             name: file.name.clone(),
++            history: History::new(puzzle.clone()),
+             puzzle,
+         }
+     }
+@@ -194,10 +199,23 @@ impl Board {
+     // ANCHOR: send
+     /// Sends `command` to the rules. A refused one changes nothing.
+     fn send(&mut self, command: Command) {
+-        let _ = self.puzzle.apply(&command);
++        if self.puzzle.apply(&command).is_ok() {
++            self.history.push(command);
++        }
+     }
+     // ANCHOR_END: send
+ 
++    // ANCHOR: undo
++    /// Takes back the last move, if there is one.
++    fn undo(&mut self) {
++        if let Some(last) = self.history.len().checked_sub(1)
++            && let Ok(puzzle) = self.history.rewind_to(last)
++        {
++            self.puzzle = puzzle;
++        }
++    }
++    // ANCHOR_END: undo
++
+     /// The tiles the glyph skin fits in [`AREA`].
+     pub fn view_tiles() -> (i32, i32) {
+         GridSkin::<Piece>::view_tiles(&GLYPHS, AREA)
+@@ -210,27 +228,24 @@ impl Screen<Data> for Board {
+         "board"
+     }
+ 
+-    /// The four steps, and Cancel to go back.
+-    fn actions(&self) -> Option<Vec<UiAction>> {
+-        Some(vec![
+-            UiAction::Up,
+-            UiAction::Down,
+-            UiAction::Left,
+-            UiAction::Right,
+-            UiAction::Cancel,
+-        ])
++    // ANCHOR: actions
++    /// Every action of the game.
++    fn actions(&self) -> Option<Vec<Action>> {
++        Some(Action::ALL.to_vec())
+     }
++    // ANCHOR_END: actions
+ 
+     // ANCHOR: update
+-    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
++    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+         for &action in &input.actions {
+             match action {
+-                UiAction::Up => self.send(Command::Step(Dir::Up)),
+-                UiAction::Down => self.send(Command::Step(Dir::Down)),
+-                UiAction::Left => self.send(Command::Step(Dir::Left)),
+-                UiAction::Right => self.send(Command::Step(Dir::Right)),
+-                UiAction::Cancel => return Transition::Pop,
+-                _ => {}
++                Action::Up => self.send(Command::Step(Dir::Up)),
++                Action::Down => self.send(Command::Step(Dir::Down)),
++                Action::Left => self.send(Command::Step(Dir::Left)),
++                Action::Right => self.send(Command::Step(Dir::Right)),
++                Action::Undo => self.undo(),
++                Action::Cancel => return Transition::Pop,
++                Action::Confirm => {}
+             }
+         }
+         Transition::None
+diff --git 04-push/crates/game/src/lib.rs 05-undo/crates/game/src/lib.rs
+--- 04-push/crates/game/src/lib.rs
++++ 05-undo/crates/game/src/lib.rs
+@@ -7,6 +7,7 @@
+ //! its name, id and version, is `shuyi.ron`'s `app`, which
+ //! `cargo shuyi app-info` writes into [`app_info`].
+ 
++pub mod action;
+ pub mod app_info;
+ pub mod board;
+ pub mod level;
+@@ -19,6 +20,8 @@ use std::sync::OnceLock;
+ use shuyi::core::Made;
+ use shuyi::prelude::*;
+ 
++use crate::action::Action;
++
+ /// The game's files, embedded.
+ // check-text: not player text, a folder
+ static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
+@@ -26,13 +29,13 @@ static FILES: Embedded = shuyi::files!("$CARGO_MANIFEST_DIR/files");
+ /// The game's data and state, which its screens share: the engine's, read
+ /// from `files/`, with the six moves of `files/keymap.ron` as its actions,
+ /// and its stages' own part.
+-pub type Data = BasicData<UiAction, stages::Own>;
++pub type Data = BasicData<Action, stages::Own>;
+ 
+ /// The game: who it is ([`app_info::APP`]: its name, and where the
+ /// player's settings and keys are kept), its files and its stages' part of
+ /// them, its first screen, every screen it can show, and the engine's
+ /// modules its features turn on (`Cargo.toml`).
+-pub fn game() -> BasicGame<UiAction, stages::Own> {
++pub fn game() -> BasicGame<Action, stages::Own> {
+     // check-text: not player text, a folder
+     let files = Layer::dir("files", FILES);
+     BasicGame::with_own(app_info::APP, files, stages::own, |_| {
+diff --git 04-push/crates/game/src/rules.rs 05-undo/crates/game/src/rules.rs
+--- 04-push/crates/game/src/rules.rs
++++ 05-undo/crates/game/src/rules.rs
+@@ -30,7 +30,6 @@ pub enum Command {
+     Step(Dir),
+ }
+ 
+-// ANCHOR: event
+ /// What happened.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+ pub enum Event {
+@@ -44,9 +43,7 @@ pub enum Event {
+         to: Pos,
+     },
+ }
+-// ANCHOR_END: event
+ 
+-// ANCHOR: refusal
+ /// Why a command was refused.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum Refusal {
+@@ -57,7 +54,6 @@ pub enum Refusal {
+     /// Every box is already on a target.
+     Over,
+ }
+-// ANCHOR_END: refusal
+ 
+ impl fmt::Display for Refusal {
+     // check-text: not player text, what a test or a tool prints
+@@ -71,11 +67,9 @@ impl fmt::Display for Refusal {
+ }
+ // ANCHOR_END: command
+ 
+-// ANCHOR: won
+ /// How a level ends: only one way, every box on a target.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+ pub struct Won;
+-// ANCHOR_END: won
+ 
+ impl Puzzle {
+     /// The puzzle `level` lays out: it needs one start, a box, and as many
+@@ -143,7 +137,6 @@ impl TurnRules for Puzzle {
+     type Error = Refusal;
+     type Outcome = Won;
+ 
+-    // ANCHOR: check
+     fn check(&self, command: &Command) -> Result<(), Refusal> {
+         if self.outcome().is_some() {
+             return Err(Refusal::Over);
+@@ -161,9 +154,7 @@ impl TurnRules for Puzzle {
+         // ANCHOR_END: push_check
+         Ok(())
+     }
+-    // ANCHOR_END: check
+ 
+-    // ANCHOR: apply
+     fn apply(&mut self, command: &Command) -> Result<Vec<Event>, Refusal> {
+         // All or nothing: a refused command changes nothing.
+         self.check(command)?;
+@@ -181,7 +172,6 @@ impl TurnRules for Puzzle {
+         events.push(Event::Walked(to));
+         Ok(events)
+     }
+-    // ANCHOR_END: apply
+ 
+     fn legal_commands(&self) -> Vec<Command> {
+         Dir::ALL
+diff --git 04-push/crates/game/src/stages.rs 05-undo/crates/game/src/stages.rs
+--- 04-push/crates/game/src/stages.rs
++++ 05-undo/crates/game/src/stages.rs
+@@ -47,6 +47,6 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+ 
+ /// The game's tools: the engine's, for a game on the short path.
+ #[cfg(feature = "tools")]
+-pub fn tools() -> shuyi_cli::BasicTools<UiAction, Own> {
++pub fn tools() -> shuyi_cli::BasicTools<crate::action::Action, Own> {
+     shuyi_cli::BasicTools::new(crate::game())
+ }
+diff --git 04-push/crates/game/src/title.rs 05-undo/crates/game/src/title.rs
+--- 04-push/crates/game/src/title.rs
++++ 05-undo/crates/game/src/title.rs
+@@ -9,6 +9,7 @@
+ 
+ use shuyi::prelude::*;
+ 
++use crate::action::Action;
+ use crate::{Data, stages};
+ 
+ /// What the title shows.
+@@ -52,19 +53,19 @@ impl Screen<Data> for Title {
+     }
+ 
+     /// Confirm, if there is a stage to start, and Cancel to leave.
+-    fn actions(&self) -> Option<Vec<UiAction>> {
+-        let mut actions = vec![UiAction::Cancel];
++    fn actions(&self) -> Option<Vec<Action>> {
++        let mut actions = vec![Action::Cancel];
+         if !stages::names().is_empty() {
+-            actions.insert(0, UiAction::Confirm);
++            actions.insert(0, Action::Confirm);
+         }
+         Some(actions)
+     }
+ 
+-    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
+-        if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel) {
++    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
++        if ctx.platform.can_quit() && input.actions.contains(&Action::Cancel) {
+             return Transition::Quit;
+         }
+-        if input.actions.contains(&UiAction::Confirm)
++        if input.actions.contains(&Action::Confirm)
+             && let Some(stage) = stages::first(ctx)
+         {
+             return Transition::Push(stage);
+diff --git 04-push/crates/game/tests/board.rs 05-undo/crates/game/tests/board.rs
+--- 04-push/crates/game/tests/board.rs
++++ 05-undo/crates/game/tests/board.rs
+@@ -54,7 +54,6 @@ fn pushing_the_box_onto_the_target_wins() {
+ }
+ // ANCHOR_END: test_push
+ 
+-// ANCHOR: test_stuck
+ #[test]
+ fn a_box_against_a_wall_stays_and_so_does_the_player() {
+     let mut h = on_board();
+@@ -65,4 +64,17 @@ fn a_box_against_a_wall_stays_and_so_does_the_player() {
+     h.keys("Up");
+     assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
+ }
+-// ANCHOR_END: test_stuck
++
++// ANCHOR: test_undo
++#[test]
++fn undo_takes_back_a_push_and_nothing_before_the_start() {
++    let mut h = on_board();
++    let start = board(&h).puzzle.clone();
++    h.keys("Right");
++    assert_ne!(board(&h).puzzle, start);
++    h.keys("u");
++    assert_eq!(board(&h).puzzle, start);
++    h.keys("u");
++    assert_eq!(board(&h).puzzle, start);
++}
++// ANCHOR_END: test_undo
+diff --git 04-push/crates/game/tests/it/main.rs 05-undo/crates/game/tests/it/main.rs
+--- 04-push/crates/game/tests/it/main.rs
++++ 05-undo/crates/game/tests/it/main.rs
+@@ -4,8 +4,8 @@
+ 
+ use std::path::Path;
+ 
++use game::action::Action;
+ use game::title::Title;
+-use shuyi::prelude::UiAction;
+ use shuyi_cli::contract::check::{CheckInput, check, targets};
+ use shuyi_cli::contract::playtest::PlaytestInput;
+ use shuyi_cli::contract::run::{RunInput, keys, run};
+@@ -16,7 +16,7 @@ use shuyi_cli::{BasicTools, GameTools};
+ 
+ /// The engine's tools for the game: `game::stages::tools` gives its
+ /// stages' own on top of them.
+-fn tools() -> BasicTools<UiAction, game::stages::Own> {
++fn tools() -> BasicTools<Action, game::stages::Own> {
+     BasicTools::new(game::game())
+ }
+ 
+diff --git 04-push/shuyi.ron 05-undo/shuyi.ron
+--- 04-push/shuyi.ron
++++ 05-undo/shuyi.ron
+@@ -48,6 +48,7 @@
+ 
+     // `cargo shuyi check-keys`: no key named in the game's code or text.
+     check_keys: (
++        key_files: ["crates/game/src/action.rs"],
+         rust: ["crates/game/src"],
+         assets: ["crates/game/files"],
+         not_text: ["crates/game/files/keymap.ron"],
