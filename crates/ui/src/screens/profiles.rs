@@ -238,7 +238,7 @@ impl<G: GameData> fmt::Debug for ProfilesScreen<G> {
 
 impl<G: GameData> ProfilesScreen<G> {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "profiles";
+    pub const NAME: &str = "profiles";
 
     /// The screen focused on the profile in use.
     pub fn new(ctx: &Ctx<G>) -> Self {

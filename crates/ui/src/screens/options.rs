@@ -718,7 +718,7 @@ impl<G: GameData> fmt::Debug for OptionsScreen<G> {
 
 impl<G: GameData> OptionsScreen<G> {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "options";
+    pub const NAME: &str = "options";
 
     /// The screen of `rows`, its first row focused.
     pub fn new(rows: Rows<G>) -> Self {

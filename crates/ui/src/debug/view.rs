@@ -88,7 +88,7 @@ impl fmt::Debug for DebugViewScreen {
 
 impl DebugViewScreen {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "debug_view";
+    pub const NAME: &str = "debug_view";
 
     /// The channels `ctx`'s screens have offered and slow motion, the
     /// first focused.

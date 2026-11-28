@@ -145,7 +145,7 @@ impl<G: GameData> fmt::Debug for DebugMenuScreen<G> {
 
 impl<G: GameData> DebugMenuScreen<G> {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "debug_menu";
+    pub const NAME: &str = "debug_menu";
 
     /// The menu of the game's `entries`, then the entries of the modules
     /// installed on `ctx`, made now, then the engine's, its first tool
@@ -265,7 +265,7 @@ pub struct GlyphSamplerScreen {
 
 impl GlyphSamplerScreen {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "glyph_sampler";
+    pub const NAME: &str = "glyph_sampler";
 
     /// The sampler of `glyphs` (the font's), `ctx`'s palette and the game's
     /// `panels`, on a console of `spec`.

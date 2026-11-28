@@ -105,7 +105,7 @@ impl<G: GameData> Clone for LayoutPickerScreen<G> {
 
 impl<G: GameData> LayoutPickerScreen<G> {
     /// Its [`Screen::name`].
-    pub const NAME: &'static str = "layout_picker";
+    pub const NAME: &str = "layout_picker";
 
     /// The picker with the first layout focused, its legend listing
     /// `legend`.

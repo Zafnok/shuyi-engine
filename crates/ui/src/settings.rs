@@ -269,7 +269,7 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// in order ([`OptionRow::frame_cap`](crate::screens::options::OptionRow::frame_cap)):
     /// 30, 60, 120, 144, 165 and 240 frames a second, then none, unless the
     /// game says otherwise ([`frame_cap::CHOICES`]).
-    const FRAME_CAP_CHOICES: &'static [FrameCap] = &frame_cap::CHOICES;
+    const FRAME_CAP_CHOICES: &[FrameCap] = &frame_cap::CHOICES;
 
     /// How the game's frame fills a window ([`ScaleMode`], ADR-0140): by
     /// the largest whole scale, letterboxed ([`ScaleMode::Integer`]),
@@ -617,7 +617,7 @@ mod tests {
     impl GameSettings for Fast {
         type Theme = ();
         const DEFAULT_FRAME_CAP: FrameCap = FrameCap::Fps(120);
-        const FRAME_CAP_CHOICES: &'static [FrameCap] = &[FrameCap::Fps(120), FrameCap::Off];
+        const FRAME_CAP_CHOICES: &[FrameCap] = &[FrameCap::Fps(120), FrameCap::Off];
 
         fn to_ron(_: &super::Settings<Self>) -> String {
             String::new()
