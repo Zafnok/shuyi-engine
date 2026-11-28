@@ -153,7 +153,6 @@ impl<G: RoomGame> RoomClient<G> {
                 self.stopped = false;
             }
             Frame::Closing => self.closed = true,
-            Frame::Welcome | Frame::Refused { .. } => {}
             _ if self.sim.is_none() || self.stopped => {}
             frame => {
                 if matches!(frame, Frame::Step { .. }) {

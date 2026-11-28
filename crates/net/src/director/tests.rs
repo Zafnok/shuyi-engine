@@ -486,3 +486,35 @@ fn a_room_id_reads_as_its_number() {
     let d = director(config);
     assert_eq!((d.config(), d.made()), (config, &made()));
 }
+
+#[test]
+fn each_room_takes_a_seed_of_two_draws_the_first_the_high_half() {
+    let mut d = director(DirectorConfig::new().with_rooms_warm(0));
+    let mut rng = SimRng::new(1);
+    // Three rooms of eight, opened in turn.
+    for peer in 100..124 {
+        play(&mut d, peer);
+    }
+    let out = step(&mut d);
+    let seeds: Vec<u64> = out
+        .frames
+        .iter()
+        .filter_map(|(_, frame)| match frame {
+            Frame::Joined { round_start, .. } => Some(round_start.seed),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(seeds.len(), 3 * 8);
+    for (room, seeds) in seeds.chunks(8).enumerate() {
+        // A room's rng draws its first round's seed as the director drew
+        // the room's: high half, then low.
+        let round = draw(&mut SimRng::new(draw(&mut rng)));
+        assert!(seeds.iter().all(|seed| *seed == round), "{room}");
+    }
+}
+
+/// Two draws, the first the high half.
+fn draw(rng: &mut SimRng) -> u64 {
+    let high = u64::from(rng.next_u32());
+    (high << 32) | u64::from(rng.next_u32())
+}

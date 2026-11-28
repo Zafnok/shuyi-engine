@@ -79,7 +79,7 @@ use core::fmt;
 use shuyi_core::{Made, SimRng};
 
 use crate::room::wire::{ClientMsg, Frame, PROTOCOL, Refusal};
-use crate::room::{Outbox, Room, RoomGame};
+use crate::room::{Outbox, Room, RoomGame, draw_seed};
 use crate::{NetEvent, PeerId};
 
 /// A player silent this many seconds is let go, in a room (the room's own
@@ -199,12 +199,8 @@ impl DirectorConfig {
 
     /// The rooms kept running with bots only, at most
     /// [`rooms_max`](Self::rooms_max).
-    pub const fn rooms_warm(&self) -> u16 {
-        if self.rooms_warm < self.rooms_max {
-            self.rooms_warm
-        } else {
-            self.rooms_max
-        }
+    pub fn rooms_warm(&self) -> u16 {
+        self.rooms_warm.min(self.rooms_max)
     }
 
     /// How long a room with no player runs before it closes.
@@ -474,8 +470,8 @@ impl<G: RoomGame + Clone> Director<G> {
     fn open(&mut self) -> Option<RoomId> {
         let id = RoomId(u16::try_from(self.next_room).ok()?);
         self.next_room += 1;
-        let high = u64::from(self.rng.next_u32());
-        let seed = (high << 32) | u64::from(self.rng.next_u32());
+        // Drawn as a room draws its rounds' seeds.
+        let seed = draw_seed(&mut self.rng);
         let room = Room::new(self.game.clone(), seed);
         self.rooms.insert(id, OpenRoom { room, idle: 0 });
         Some(id)
@@ -543,14 +539,19 @@ impl<G: RoomGame + Clone> Director<G> {
         }
     }
 
-    /// Answers `why` and closes the link after it.
-    fn refuse(&mut self, peer: PeerId, why: Refusal) {
+    /// Counts `why` and answers it to `peer`.
+    fn answer(&mut self, peer: PeerId, why: Refusal) {
         match why {
             Refusal::OtherBuild { .. } => self.refused.other_build += 1,
             Refusal::Protocol { .. } => self.refused.protocol += 1,
             Refusal::Busy { .. } => self.refused.busy += 1,
         }
         self.pending.push((peer, Frame::Refused { why }));
+    }
+
+    /// Answers `why` and closes the link after it.
+    fn refuse(&mut self, peer: PeerId, why: Refusal) {
+        self.answer(peer, why);
         self.forget(peer);
         self.closing.push(peer);
     }
@@ -582,10 +583,8 @@ impl<G: RoomGame + Clone> Director<G> {
         if let Some(id) = joined {
             self.set_stage(peer, Stage::In(id));
         } else {
-            self.refused.busy += 1;
             let retry_after_s = self.config.retry_after_s;
-            let why = Refusal::Busy { retry_after_s };
-            self.pending.push((peer, Frame::Refused { why }));
+            self.answer(peer, Refusal::Busy { retry_after_s });
         }
     }
 

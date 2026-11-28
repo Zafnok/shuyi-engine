@@ -375,10 +375,10 @@ Game: nothing to adopt, the game uses no `shuyi-net` code
 `'PROTOCOL room::wire'` find nothing, 2026-11-28), and `Made`'s new
 `Hash` derive is additive.
 
-Size: 1,872 counted lines, the parts couldn't land apart: the handshake's
+Size: 1,905 counted lines, the parts couldn't land apart: the handshake's
 messages have no reader without the director, and the churn and the 80
 clients the ticket asks for drive the handshake, the policy, the rooms'
-lifecycle and the budget together. Over half is tests (977 lines). The
+lifecycle and the budget together. Over half is tests (1,009 lines). The
 ticket's estimate of 900 missed the module's rustdoc and its two
 integration tests.
 
