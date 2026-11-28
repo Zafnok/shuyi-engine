@@ -34,6 +34,11 @@
 //!   [`autobalance_by`], [`BalanceSettings`], [`Balanced`] and [`Stop`],
 //!   at the root.
 //!
+//! The level solver ([`search`]: [`solve`], a [`Solver`] stepped in
+//! slices, its [`Limits`], [`Solve`] and [`SolveError`], at the root): a
+//! breadth-first search over any [`TurnRules`] game's states, which proves
+//! a level can be won and gives its shortest line.
+//!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
 //! crate sits on it and keeps its own rules, turn loop and data.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -53,6 +58,7 @@ pub mod made;
 pub mod path;
 pub mod rng;
 pub mod save;
+pub mod search;
 pub mod text;
 pub mod threat;
 pub mod tick;
@@ -76,6 +82,7 @@ pub use made::{ContentHash, Made};
 pub use path::{Reach, flow_field, reachable};
 pub use rng::{Bag, RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};
+pub use search::{Limits, Solve, SolveError, Solver, solve};
 pub use text::{Part, split_tokens};
 pub use threat::{
     Danger, GoalDistance, OrderHooks, Ranges, Strike, TacticsOrder, Threat, Threats, strike_area,
@@ -90,8 +97,8 @@ pub use turn::TurnRules;
 /// writes `shuyi::core::prelude`): the RNG, the turn and step traits, the
 /// step's input, record and [`tick`] module (for [`tick::replay`]), the
 /// timers, the grid's positions and paths, the ease and tween types, a
-/// state's hash and a save's header, and the bots that play a turn game
-/// (the playtest runner and the autobalance search are in
+/// state's hash and a save's header, the bots that play a turn game and
+/// the level solver that proves a level winnable (the playtest runner and the autobalance search are in
 /// `shuyi::prelude::test`). A game's code names nothing deeper than a
 /// prelude but the paths `cargo xtask check-imports` allows
 /// (`tools/imports.ron`).
@@ -99,9 +106,9 @@ pub mod prelude {
     pub use crate::tick;
     pub use crate::{
         ActionId, Bag, Bot, ContentHash, Countdown, Determinize, Dir, Ease, Every, Family, Grid,
-        History, Horizon, Made, PlayError, Pos, RandomBot, RandomSource, Reach, Report, Rollout,
-        RolloutSettings, SaveFormat, SaveHeader, ScriptedRng, SeatInput, Sides, SimRng, StateHash,
-        TerrainId, TickInput, TickRecord, TickSim, TurnRules, Tween, Unordered, flow_field, play,
-        reachable, state_hash,
+        History, Horizon, Limits, Made, PlayError, Pos, RandomBot, RandomSource, Reach, Report,
+        Rollout, RolloutSettings, SaveFormat, SaveHeader, ScriptedRng, SeatInput, Sides, SimRng,
+        Solve, SolveError, Solver, StateHash, TerrainId, TickInput, TickRecord, TickSim, TurnRules,
+        Tween, Unordered, flow_field, play, reachable, solve, state_hash,
     };
 }

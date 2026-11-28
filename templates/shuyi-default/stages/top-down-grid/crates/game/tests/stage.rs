@@ -6,11 +6,11 @@ use std::fs;
 use std::path::Path;
 
 use game::stages::top_down_grid::{
-    AREA, GLYPHS, Piece, StageRecord, StageScreen, Tools, crash_record,
+    AREA, GLYPHS, MAP, Piece, StageRecord, StageScreen, Tools, crash_record, prove_stage,
 };
-use rules::{Command, Outcome, Stage};
-use shuyi::core::prelude::{Dir, Pos, TurnRules};
-use shuyi::prelude::grid::{GRID, GridSkin};
+use rules::{Command, Feature, Outcome, Stage};
+use shuyi::core::prelude::{Dir, Limits, Pos, TerrainId, TurnRules};
+use shuyi::prelude::grid::{GRID, GridMap, GridSkin};
 use shuyi::prelude::test::Harness;
 use shuyi::prelude::text::TextRole;
 use shuyi::prelude::{Cell, GlyphBuffer, Rgb, Screen};
@@ -117,6 +117,60 @@ fn the_stages_help_line_paints_its_keys_in_the_palettes_key_colour() {
 fn check_finds_no_error_in_the_files() {
     let answer = check(&tools(), &CheckInput::default());
     assert!(answer.ok, "{answer:?}");
+}
+
+/// The map of `rows` (`@` your piece, `&` the wanderer, `>` the goal).
+fn map_of(rows: &[&str]) -> GridMap<TerrainId, Feature> {
+    let mut features = Vec::new();
+    let mut tiles = String::new();
+    for (y, row) in rows.iter().enumerate() {
+        for (x, c) in row.chars().enumerate() {
+            match c {
+                '@' => features.push(format!("({x}, {y}): Hero")),
+                '&' => features.push(format!("({x}, {y}): Wanderer")),
+                _ => {}
+            }
+            tiles.push(if matches!(c, '@' | '&') { '.' } else { c });
+        }
+        tiles.push('\n');
+    }
+    let mut source = String::from(
+        "(name: \"t\", legend: { '.': \"floor\", '#': \"wall\", '>': \"goal\" }, features: { ",
+    );
+    source.push_str(&features.join(", "));
+    source.push_str(" })\n---\n");
+    source.push_str(&tiles);
+    rules::parse_map("t.map", &source).unwrap_or_else(|e| panic!("{e}"))
+}
+
+#[test]
+fn the_shipped_stage_is_proved_winnable() {
+    let map = rules::parse_map(MAP, include_str!("../files/stage.map")).unwrap();
+    assert_eq!(prove_stage(&map, Limits::default()), Ok(Vec::new()));
+}
+
+#[test]
+fn a_piece_walled_in_alone_can_never_win() {
+    let map = map_of(&["#######", "#@#..>#", "###.&.#", "#######"]);
+    let errors = prove_stage(&map, Limits::default()).unwrap();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].file, MAP);
+    assert_eq!(
+        errors[0].message,
+        "the stage can't be won on seed 0: every line among 1 states was tried"
+    );
+}
+
+#[test]
+fn a_goal_walled_off_from_a_walking_piece_is_not_proved() {
+    let map = map_of(&["########", "#@..#.>#", "#...#&.#", "########"]);
+    let errors = prove_stage(&map, Limits::default().with_states(200)).unwrap();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].file, MAP);
+    assert_eq!(
+        errors[0].message,
+        "the stage isn't proved winnable on seed 0: the search stopped at 200 states"
+    );
 }
 
 #[test]

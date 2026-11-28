@@ -19,11 +19,12 @@ shape: a type the rules add to it derives
 `Serialize`, or the game's tools don't build.
 
 The stage that plays these rules is `crates/game/src/stages/top_down_grid.rs`,
-and its tools (`top_down_grid/tools.rs`) give `cargo shuyi scene`,
+and its tools (`top_down_grid/tools.rs`) give `cargo shuyi check` its proof, `scene`,
 `replay`, `playtest` and `import` for it:
 
 | Command | What it tells you |
 | ------- | ----------------- |
+| `cargo shuyi check` | the files' errors and, when they load, whether the stage can be won on seed 0: the engine's level solver (`shuyi::core::search`) looks for a winning line, and an error on `stage.map` says when none was found or the search stopped at its limit |
 | `cargo shuyi run --script "Enter Right Down" --frames 30` | the screens, the scene, what happened and the sounds |
 | `cargo shuyi scene --script "Enter Right"` | the stage's map and state |
 | `cargo shuyi scene --script "Enter Right" --path /hero/x` | one value of the state, by JSON Pointer; `--shape` gives every key it may hold |
