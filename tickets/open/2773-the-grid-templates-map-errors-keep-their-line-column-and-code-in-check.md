@@ -42,6 +42,15 @@ So `skills/shuyi-stage-grid/SKILL.md` (*When it fails*) sends agents to
 `import` to find a map's errors, and its worked example expects
 `check`'s one error on `stage.map`.
 
+**From 2792 (done):** `parse_map` returns `Vec<ContentError>`, `own`
+names `bundle.display_path(MAP)`, a missing map is
+`ContentError::not_found` (`SH2003`), the plans' golden file is written
+again, `shuyi-test`'s example formats the error with `{:?}`, and
+`shuyi-stage-grid`'s SKILL.md and worked example expect `check`'s error
+on `files/stage.map` at its line. What is left here: `Stage::new`'s
+problems coded `SH2010`, the worked example's column, `SH2008` and
+`SH2010` expectations, and the test of `check` over the stage's `Tools`.
+
 ## Nick input
 
 None.

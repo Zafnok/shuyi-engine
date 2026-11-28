@@ -135,7 +135,14 @@ text.
 - Deviations: `tools/imports.ron` allows `shuyi_assets::ContentError` in
   the rules crate beside its `grid_map` allow (the rules crate has no
   `shuyi` prelude), and `crates/cli/src/template/plans.golden` is
-  blessed for the four template files.
+  blessed for the four template files. The tic-tac-toe eval reference
+  (`evals/references/tic-tac-toe`) has its own `tests/reload.rs`: an
+  overlay can't take away the template's new one, which names the grid
+  stage's `MAP` that the reference's stage lacks.
+- 2773, open since 2026-10-24, asked for this same fix and more: it now
+  has a "From 2792 (done)" note naming what is left there (`SH2010` for
+  `Stage::new`'s problems, the worked example's column and codes, a test
+  of `check` over the stage's `Tools`).
 
 No break: the engine's public API is unchanged; the change is in the
 template's code, which a game owns once made.
