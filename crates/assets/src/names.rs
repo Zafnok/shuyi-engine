@@ -27,7 +27,7 @@ pub struct Names {
 }
 
 impl AssetKind for Names {
-    const NAME: &'static str = "names table";
+    const NAME: &str = "names table";
 }
 
 /// A names table (`names`, `.ron`), checked as [`from_source`] says.

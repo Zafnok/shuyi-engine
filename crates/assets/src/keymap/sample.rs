@@ -211,7 +211,7 @@ impl fmt::Display for Action {
 impl ActionSet for Action {
     type Group = KeyGroup;
 
-    const ALL: &'static [Self] = &Action::ALL;
+    const ALL: &[Self] = &Action::ALL;
 
     fn name(self) -> &'static str {
         Action::name(self)

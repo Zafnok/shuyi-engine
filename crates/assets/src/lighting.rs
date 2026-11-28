@@ -13,7 +13,7 @@ use crate::grid_map::DEFAULT_LIGHT;
 use crate::ron::parse_ron;
 
 impl AssetKind for Lighting {
-    const NAME: &'static str = "lights";
+    const NAME: &str = "lights";
 }
 
 /// A lights' file (`lights`, `.ron`), checked as [`from_source`] says,

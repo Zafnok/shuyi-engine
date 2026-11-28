@@ -62,7 +62,7 @@ use crate::format::join;
 /// [`SECTION`]: Self::SECTION
 pub trait ImportSettings: DeserializeOwned + Default + 'static {
     /// The section's name in a settings file: the step that reads it.
-    const SECTION: &'static str;
+    const SECTION: &str;
 }
 
 /// The extension of a settings file, which no format may claim.

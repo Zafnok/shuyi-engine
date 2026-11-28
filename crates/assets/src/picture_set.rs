@@ -140,7 +140,7 @@ pub struct PictureSetDef {
 }
 
 impl AssetKind for PictureSetDef {
-    const NAME: &'static str = "picture set";
+    const NAME: &str = "picture set";
 }
 
 impl PictureSetDef {

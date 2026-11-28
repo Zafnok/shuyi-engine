@@ -12,7 +12,7 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text
 use crate::ron::parse_ron;
 
 impl AssetKind for PaletteDef {
-    const NAME: &'static str = "palette";
+    const NAME: &str = "palette";
 }
 
 /// A palette file (`palette`, `.ron`), checked as

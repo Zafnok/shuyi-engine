@@ -75,7 +75,7 @@ pub trait ActionSet: Copy + Ord + Eq + Hash + Debug + 'static {
 
     /// Every action, in the order the game lists them (the order a repair
     /// of the saved bindings keeps the first of two claims in).
-    const ALL: &'static [Self];
+    const ALL: &[Self];
 
     /// The name used in keymap files and the saved bindings.
     fn name(self) -> &'static str;
@@ -128,7 +128,7 @@ impl ActionSet for UiAction {
     /// No two actions share a key.
     type Group = ();
 
-    const ALL: &'static [Self] = &[
+    const ALL: &[Self] = &[
         Self::Up,
         Self::Down,
         Self::Left,
