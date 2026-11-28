@@ -295,6 +295,11 @@ Context holds what a client reads from the room, as built here. 2615 and
 held set in every step to every peer, so the room should keep a seat's
 input to the game's actions.
 
+**Found along the way.** 2285: CI's `determinism` job on this PR's
+commit `7697f3ed` hit a panic in `jxl-frame` on wasm32 (a JPEG XL
+frame whose section sizes add past 32 bits), through `shuyi-assets`'
+random property test; nothing of this ticket's.
+
 **Handovers.** 2615 gets a **From 2614 (done)** list of what a director
 calls on a room; its wire step no longer adds `Leave`, which is here,
 and its outbox clause is settled (`room::Outbox`).
