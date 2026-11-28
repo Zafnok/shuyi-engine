@@ -19,7 +19,7 @@ fn stage(rows: &str, hero: (i32, i32), wanderer: (i32, i32), seed: u64) -> Stage
         "(name: \"test\", legend: {{ '.': \"floor\", '#': \"wall\", '>': \"goal\" }}, \
          features: {{ {hero:?}: Hero, {wanderer:?}: Wanderer }})\n---\n{rows}"
     );
-    let map = parse_map("test.map", &source).unwrap_or_else(|e| panic!("{e}"));
+    let map = parse_map("test.map", &source).unwrap_or_else(|e| panic!("{e:?}"));
     Stage::new(&map, seed).unwrap_or_else(|e| panic!("{e}"))
 }
 

@@ -233,8 +233,9 @@ Branch on the `code`, and read its page with `cargo shuyi explain
   rules don't know; the error has its line and column.
 - `SH2001` from `import`: the header's RON doesn't read.
 - `check` with an error and no code: the map reads, but the rules make
-  no stage of it (its message says why). `import` finds the line of a
-  map's own errors.
+  no stage of it (its message says why). A map's own errors come with
+  their code and line from `check` as from `import`, on the map's path
+  (`files/stage.map`).
 - `SH2103`, `SH2104` from `lint`: the rules broke their fence
   (`shuyi-gates`).
 - `SH3001`: the game's tools don't offer the operation: a game with no

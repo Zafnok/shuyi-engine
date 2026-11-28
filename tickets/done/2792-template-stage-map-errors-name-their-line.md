@@ -128,8 +128,14 @@ map's message is the engine's "file not found in asset bundle", coded
 Book: none, no chapter shows the template's `parse_map` or a map error's
 text.
 
-Skills: none, no skill names `parse_map` or the old error text; the
-template's errors only got their file and line right.
+- Skills: `shuyi-stage-grid`'s worked example expects `check`'s error on
+  `files/stage.map` at line 12 (it read `stage.map` before), and its
+  SKILL.md says `check` gives a map's errors with their code and line;
+  `shuyi-test`'s example formats `parse_map`'s errors with `{:?}`.
+- Deviations: `tools/imports.ron` allows `shuyi_assets::ContentError` in
+  the rules crate beside its `grid_map` allow (the rules crate has no
+  `shuyi` prelude), and `crates/cli/src/template/plans.golden` is
+  blessed for the four template files.
 
 No break: the engine's public API is unchanged; the change is in the
 template's code, which a game owns once made.
