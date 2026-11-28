@@ -44,7 +44,7 @@ const PLAYDATE: &str = include_str!("../../../../targets/playdate.ron");
 /// A game of one file of every kind the built-in formats read, and the
 /// files they name.
 pub(super) fn sources() -> &'static Bundle {
-    static SOURCES: OnceLock<&'static Bundle> = OnceLock::new();
+    static SOURCES: OnceLock<&Bundle> = OnceLock::new();
     SOURCES.get_or_init(|| {
         bundle(vec![
             ("images/card.png", png_file([1, 2, 3, 255, 4, 5, 6, 255])),

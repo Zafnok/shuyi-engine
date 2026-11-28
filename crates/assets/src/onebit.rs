@@ -407,7 +407,7 @@ impl RolePatterns {
 }
 
 impl AssetKind for PatternMapDef {
-    const NAME: &'static str = "pattern map";
+    const NAME: &str = "pattern map";
 }
 
 /// A pattern map: each palette role's patterns on a one-bit target, the

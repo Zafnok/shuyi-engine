@@ -35,7 +35,7 @@ pub enum Category {
 
 impl Category {
     /// Every category, in CLDR's order.
-    pub const ALL: &'static [Category] = &[
+    pub const ALL: &[Category] = &[
         Self::Zero,
         Self::One,
         Self::Two,

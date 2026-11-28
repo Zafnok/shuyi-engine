@@ -792,7 +792,7 @@ impl<A: ActionSet> Default for KeymapDef<A> {
 }
 
 impl<A: ActionSet> AssetKind for KeymapDef<A> {
-    const NAME: &'static str = "keymap";
+    const NAME: &str = "keymap";
 }
 
 /// The keymap file (`keymap`, `.ron`) of a game whose actions are `A`,
@@ -1208,9 +1208,9 @@ fn validate_pad<A: ActionSet>(
 /// [`ButtonChord`].
 trait Bound: Copy + Ord + fmt::Display {
     /// What one is called in error messages.
-    const NOUN: &'static str;
+    const NOUN: &str;
     /// What several are called in error messages.
-    const PLURAL: &'static str;
+    const PLURAL: &str;
 
     /// Parses its keymap-file name.
     fn parse_name(text: &str) -> Result<Self, String>;
@@ -1220,8 +1220,8 @@ trait Bound: Copy + Ord + fmt::Display {
 }
 
 impl Bound for Chord {
-    const NOUN: &'static str = "chord";
-    const PLURAL: &'static str = "keys";
+    const NOUN: &str = "chord";
+    const PLURAL: &str = "keys";
 
     fn parse_name(text: &str) -> Result<Self, String> {
         Self::parse(text)
@@ -1234,8 +1234,8 @@ impl Bound for Chord {
 }
 
 impl Bound for ButtonChord {
-    const NOUN: &'static str = "button";
-    const PLURAL: &'static str = "buttons";
+    const NOUN: &str = "button";
+    const PLURAL: &str = "buttons";
 
     fn parse_name(text: &str) -> Result<Self, String> {
         Self::parse(text)
