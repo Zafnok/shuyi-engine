@@ -8,7 +8,9 @@
 //! [`HASH_EVERY`] steps. A client steps its own copy of the same
 //! deterministic sim with exactly those inputs, so the copies stay equal,
 //! and a joiner catches up from the round's first step. Rounds follow one
-//! another without end, a short pause between them.
+//! another without end, a short pause between them. A client's side is
+//! [`RoomClient`]: it follows the frames behind a jitter buffer, checks
+//! the hash, and asks for a catch-up when its sim differs.
 //!
 //! The room is pure: no I/O, no clock, no floats. A host (a server's
 //! socket loop, or a test over [`MemoryNetwork`](crate::MemoryNetwork))
@@ -40,11 +42,13 @@ use core::fmt;
 use shuyi_core::tick::{MAX_SEATS, SeatInput, TickSim};
 use shuyi_core::{Made, SimRng};
 
+mod client;
 mod host;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 pub mod wire;
 
+pub use client::{Advance, RoomClient};
 pub use host::{Outbox, Room, RoomStats};
 
 /// Every this many steps of a round, a step's frame carries the sim's

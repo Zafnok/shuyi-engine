@@ -33,8 +33,11 @@ seats are ridden by bots, and players drop in and out of them (2614).
   `RoomGame`, the sans-IO `Room` with seats that are `Seat::Human(peer)`
   or `Seat::Bot`, the `room::wire` codec and its `PROTOCOL`, and the test
   game `room::testing::Dots` (eight seats, behind the `testing`
-  feature). **2621** builds `RoomClient`, which the integration test
-  below drives.
+  feature). **2621 (done)** built `RoomClient`, which the integration test
+  below drives: `crates/net/tests/rooms.rs` has a host loop over
+  `MemoryNetwork` (join on `Connected`, `ClientMsg::decode` and
+  `Room::receive` on a `Message`, leave on `Disconnected`, frames sent
+  on `Channel::Reliable`) to start from.
 - **From 2614 (done):** what the director calls on a room.
   - `Room::join(peer) -> Result<Joined, Full>` (`Joined::Seat(n)` or
     `Joined::Watching`); `Room::leave(peer)`; `Room::receive(peer,
