@@ -530,10 +530,7 @@ fn put_round_start(out: &mut Vec<u8>, start: &RoundStart) {
 /// A text's `u8` length and bytes: past 255 bytes, its first 255, cut at a
 /// character's edge.
 fn put_text(out: &mut Vec<u8>, text: &str) {
-    let mut end = text.len().min(usize::from(u8::MAX));
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
+    let end = text.floor_char_boundary(usize::from(u8::MAX));
     out.push(u8::try_from(end).unwrap_or(u8::MAX));
     out.extend_from_slice(&text.as_bytes()[..end]);
 }
