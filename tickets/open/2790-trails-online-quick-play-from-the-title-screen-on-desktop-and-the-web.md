@@ -31,6 +31,20 @@ What it builds on:
   server's hash every 15 steps, and asks for a catch-up on a mismatch.
   It doesn't predict: about one step of input delay at 15 steps a
   second (ADR-0155, 2613).
+- **From 2621 (done):** what the screen calls on a `RoomClient<Trails>`
+  (`shuyi_net::room`).
+  - `on_frame(&bytes)` for each `Reliable` message from the server;
+    `advance()` once a step of the screen's tick driver, which answers
+    `Advance::Stepped(n)`, `Waiting`, `Resync(bytes)` (send them) or
+    `Closed`.
+  - Each step: send `input(&seat_input)` when it is `Some`, else
+    `alive()` when it is `Some`; `leave()` on the way out.
+  - To draw: `sim()`, `my_seat()`, `place()`, `roster()`, `wins()`,
+    `round()`; `events()` holds what the last `advance` applied, so
+    each sound plays once.
+  - No accessor names a round's winner: `wins()` gains one for its seat
+    when the round ends (`RoundOver`), so a screen that shows who won
+    compares the wins before and after.
 - **The director's handshake** (2615): `Hello { protocol, made }`, then
   `Play`; answers `Welcome`, `Refused { why: OtherBuild | Busy {
   retry_after_s } | Protocol }`.

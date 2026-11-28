@@ -959,7 +959,7 @@ parked below.
 | 2613 (done) | `shuyi-net`: the `Transport` trait and an in-memory network |
 | 2620 (done) | The in-memory network's seeded faults: loss, duplicates, reordering and delay |
 | 2614 (done) | Tick rooms: a server-authoritative room over TickSim with bots in empty seats |
-| 2621 | Room client: `RoomClient` follows a room's frames, checks its hash and resyncs |
+| 2621 (done) | Room client: `RoomClient` follows a room's frames, checks its hash and resyncs |
 | 2622 | Rooms keep a seat's input to its game's actions |
 | 2615 | Quick play: a black-box director that seats a player in a room with a free seat |
 | 2616 | `shuyi-server`: a director's rooms over WebSocket, with TLS, limits, health and a cost guard |

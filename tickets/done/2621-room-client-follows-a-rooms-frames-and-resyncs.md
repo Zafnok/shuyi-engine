@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2614"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2621 — Room client: RoomClient follows a room's frames and resyncs
@@ -135,32 +135,32 @@ themselves.
 
 ## Acceptance criteria
 
-- [ ] Three `RoomClient`s and one `Room` of `Dots` over a
+- [x] Three `RoomClient`s and one `Room` of `Dots` over a
       `MemoryNetwork` with delay, and loss, duplicates and reordering on
       (frames on the `Reliable` channel): every client's hash equals the
       room's at every check, across 10 rounds.
-- [ ] A client that joins mid-round reaches the room's state (equal
+- [x] A client that joins mid-round reaches the room's state (equal
       `hash()`) after applying its catch-up, and its next check passes.
-- [ ] A client whose sim is deliberately corrupted (in a unit test,
+- [x] A client whose sim is deliberately corrupted (in a unit test,
       through its private field) answers `Advance::Resync` at the next
       hash, sends it, and is equal again after the catch-up.
-- [ ] With 1 step waiting before the start, `advance` is `Waiting`; with
+- [x] With 1 step waiting before the start, `advance` is `Waiting`; with
       2, `Stepped(1)`; with 3, `Stepped(2)`; with none after the start,
       `Waiting`, and it starts again only at 2.
-- [ ] `events()` holds each applied step's events once, and a catch-up's
+- [x] `events()` holds each applied step's events once, and a catch-up's
       none.
-- [ ] `input` is `None` for an unchanged held set with no press or
+- [x] `input` is `None` for an unchanged held set with no press or
       release, and `Some` for each press, the same press on two steps
       running included; `alive` is `Some` after `STEPS_PER_SECOND`
       advances with nothing sent, and not before.
-- [ ] A watcher's `my_seat()` is `None`, and its seat once the next
+- [x] A watcher's `my_seat()` is `None`, and its seat once the next
       round's `Roster` is applied.
-- [ ] No float arithmetic in `shuyi-net`; `cargo xtask check-layers`
+- [x] No float arithmetic in `shuyi-net`; `cargo xtask check-layers`
       passes.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -171,5 +171,81 @@ themselves.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** `shuyi_net::room::RoomClient` and `Advance`, pure,
+re-exported from `shuyi_net::room`:
+
+- `crates/net/src/room/client.rs`: `RoomClient::new(game)` (private
+  fields, ADR-0039 kind 8), `on_frame`, `advance`, the accessors
+  (`sim`, `place`, `my_seat`, `roster`, `wins`, `round`,
+  `steps_behind`, `events`) and the sending side (`input`, `alive`,
+  `leave`), as the Scope says: the catch-up rebuilds at once with its
+  steps' events dropped; the buffer starts at 2 steps and again after it
+  ran dry, steps 2 while more than 2 wait, and applies the frames that
+  aren't steps in their place; a step out of order or a hash that
+  differs is `Advance::Resync`, then `Waiting` until the catch-up.
+- `room/client/tests.rs`: 10 unit tests over frames a `Room<Dots>`
+  wrote: the buffer's cases, a catch-up mid-round and its next check,
+  frames that aren't steps applied after their step, a step missing, a
+  sim corrupted through its private field, `events()` against a mirror
+  sim, `input`, `alive`, a watcher's seat, and frames before the
+  catch-up and `Closing`.
+- `crates/net/tests/rooms.rs`: a host loop over `MemoryNetwork` (join on
+  `Connected`, `ClientMsg::decode` and `Room::receive` on a `Message`,
+  leave on `Disconnected`, frames on `Channel::Reliable`, `Outbox::drop`
+  disconnected), with delays of 1 to 4 steps and loss, duplicates and
+  reordering on. Three clients follow 10 rounds with no `Resync` and
+  their sims equal to the room's after every advance (more than 500
+  comparisons each); a joiner at step 37 is the room's state right after
+  its catch-up and passes its next check; a client whose first catch-up
+  had a byte of its seed flipped on the way resyncs once and is equal at
+  every step after.
+- `crates/net/README.md`: the client in the intro and *How to start*, and
+  its size in *What it costs*. The crate's doc names the client.
+
+**Size measured** on 2026-11-27: Hello, Grid's web release build
+(`cargo build -p hello-grid --release --target wasm32-unknown-unknown`)
+with `shuyi-net` (and its `testing` feature, for `Dots`) and a live use
+of every method of a `RoomClient<Dots>` is 19,299 bytes bigger
+(4,038,862 → 4,058,161), `Dots`' rules included. Rule 13 holds without a
+new toggle: the client is in `shuyi-net`, behind the front door's `net`
+feature, off by default.
+
+**Deviations.**
+
+- A `Closing` closes the client before its first catch-up too, so a
+  client waiting for one learns the server is going.
+- While the client waits for the catch-up it asked for, it drops every
+  frame but the catch-up and `Closing`: the catch-up holds all they
+  carry. `steps_behind()` is then 0.
+- `Advance::Closed` answers every `advance` after a `Closing`, steps
+  waiting or not.
+- `alive`'s second restarts on anything the client gave to send: an
+  `Input`, an `Alive`, a `Resync` and a `Leave`.
+- The integration test can't reach the client's private field, so its
+  corrupted client gets a catch-up whose seed was spoiled on the way;
+  the unit test corrupts the sim through its field, as the criterion
+  says.
+- No accessor names a round's winner (the Scope lists none): `wins()`
+  gains one for the winner's seat at `RoundOver`. Written into 2790's
+  **From 2621 (done)**, the screen that would show it.
+
+**Handovers.** 2790 gets a **From 2621 (done)** list of what a screen
+calls on the client; 2615's clause on 2621 now says it is done, and
+points its 80-client test at `tests/rooms.rs`'s host loop. 1147
+(prediction, parked) names the client already.
+
+**The game.** No break and no `Behaviour:` line: `shuyi-net` only gains
+`RoomClient` and `Advance`. `gh search code --repo
+Zafnok/visions-of-shuyi 'RoomClient'` and `'shuyi_net'` find nothing.
+
+Book: none, 2854 writes the book's chapter on online play (rooms, bots,
+quick play) once trails plays online; this adds the client, which no
+chapter teaches yet.
+
+Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
+play; this changes no schema, template, format or problem code.
+
+Size: 1,009 counted lines, past the Split's 1,000 by 9 and under the
+ticket's own estimate of 1,100, so the sending side stayed: split off,
+its 100 lines would come back as a second PR whose integration tests
+rewrite this one's players' sends.
