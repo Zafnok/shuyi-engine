@@ -38,6 +38,12 @@ updates:
           - "quad-*"
           - "sapp-jsutils"
           - "gilrs*"
+      # jxl-oxide and the parts of it shuyi-assets names itself, to walk a
+      # JPEG XL's frames before decoding them (ticket 2285): one version of
+      # each, whatever the update type.
+      jxl:
+        patterns:
+          - "jxl-*"
       # A 0.x bump that breaks semver comes in a PR of its own.
       cargo-minor-patch:
         update-types:

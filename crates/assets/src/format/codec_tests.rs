@@ -275,6 +275,42 @@ fn broken_bytes_are_an_error_that_names_the_format() {
     );
 }
 
+/// A bare JPEG XL codestream, 512 × 256 px with every header default,
+/// whose one frame has five sections (its global LF, one LF group, its
+/// global HF and two groups) each saying 1,077,936,127 bytes, the most a
+/// section may (`4211712 + U(30)`), and none of them there. Their sum
+/// passes `u32::MAX` at the fourth: `jxl-frame` 0.13.3 adds them in a
+/// `usize`, which overflowed on wasm32 (ticket 2285).
+pub(crate) fn jpeg_xl_past_4_gib() -> Vec<u8> {
+    let headers = [
+        0xff, // the signature, 2 bytes
+        0x0a,
+        // A small size (1), 32 × 8 px tall (31 + 1), 2:1 wide (7); then
+        // metadata all default (1), its transform's too (1), and zeros to
+        // the byte.
+        0b1111_1111,
+        0b0000_0111,
+        // The frame's header all default (1), its table of contents in
+        // order (0), and zeros to the byte.
+        0b0000_0001,
+    ];
+    // Five sizes, each the fourth kind (3 in two bits) at its most (30
+    // bits of 1).
+    [&headers[..], &[0xff; 20]].concat()
+}
+
+#[test]
+fn a_jpeg_xl_whose_sections_add_past_4_gib_is_refused_on_every_target() {
+    let refused =
+        ["a.jxl: not a valid JPEG XL file: its frame's sections end past 4 GiB from its start"];
+    let bytes = &jpeg_xl_past_4_gib();
+    assert_eq!(shown(alone(&JpegXlInfo, "a.jxl", bytes)), refused);
+    assert_eq!(shown(alone(&JpegXl, "a.jxl", bytes)), refused);
+    let cx = DecodeCx::new();
+    let read = Formats::standard().decode::<Image>(&AssetPath::new("a.jxl"), bytes, &cx);
+    assert_eq!(shown(read), refused);
+}
+
 #[test]
 fn flac_reads_a_sounds_header_and_a_tracks_length() {
     let sound = Sound::stereo(44_100).with_length_ms(Some(50));
