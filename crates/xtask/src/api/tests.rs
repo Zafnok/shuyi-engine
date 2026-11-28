@@ -1824,6 +1824,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "mp3",
             "sfx",
             "corners",
+            "parts",
         ],
     ),
     (

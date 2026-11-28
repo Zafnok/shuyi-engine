@@ -1,0 +1,31 @@
+// The part sets' test fixture: four slots of 8 × 8 parts, drawn for the
+// engine's tests (faces.png, seven parts side by side), and two kinds.
+(
+    size: (8, 8),
+    slots: ["head", "eyes", "hair", "hat"],
+    keys: { 200: "skin", 150: "skin_shadow", 120: "hair", 90: "eyes" },
+    colours: {
+        "skin": (keys: ["skin", "skin_shadow"], rows: [
+            ["#F1C27D", "#C68642"], ["#8D5524", "#5C3A1A"], ["#E0AC69", "#B07A3A"],
+        ]),
+        "hair": (keys: ["hair"], rows: [["#2B1B10"], ["#D8B060"], ["#A03020"]]),
+        "eyes": (keys: ["eyes"], rows: [["#3A6EA5"], ["#4A3020"], ["#2E8B57"]]),
+    },
+    parts: {
+        "head_round": (slot: "head", image: "faces.png", at: (0, 0)),
+        "head_square": (slot: "head", image: "faces.png", at: (8, 0)),
+        "eyes_dot": (slot: "eyes", image: "faces.png", at: (16, 0)),
+        "eyes_wide": (slot: "eyes", image: "faces.png", at: (24, 0)),
+        "hair_short": (slot: "hair", image: "faces.png", at: (32, 0)),
+        "hair_long": (slot: "hair", image: "faces.png", at: (40, 0)),
+        "hat_cap": (slot: "hat", image: "faces.png", at: (48, 0), hides: ["hair"]),
+    },
+    kinds: {
+        "plain": (slots: {
+            "head": ["head_round", "head_square"],
+            "eyes": ["eyes_dot", "eyes_wide"],
+            "hair": ["hair_short", "hair_long", None],
+        }),
+        "capped": (base: Some("plain"), slots: { "hat": ["hat_cap"] }),
+    },
+)
