@@ -217,8 +217,8 @@ an outcome you ask for:
 An `Err` is a bug in the game, not in the level: a command its own `legal_commands` listed that
 `apply` refused.
 
-The garden has luck, and the search plays the state as it stands, its RNG included. So **a line
-is a line for that seed**: on another seed the same commands may wilt a seed and lose. That's
+The garden has luck, and the search plays the state as it stands, its RNG included. So *a line
+is a line for that seed*: on another seed the same commands may wilt a seed and lose. That's
 right for a puzzle and its seed, and it says nothing about other seeds.
 
 {{ snippet(file="src/testing.rs", anchor="test_solve") }}
