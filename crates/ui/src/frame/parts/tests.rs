@@ -90,6 +90,20 @@ fn a_look_is_painted_by_its_keys_over_its_slots() {
 }
 
 #[test]
+fn a_colour_whose_red_is_a_key_but_not_grey_keeps_its_own() {
+    let (mut image, _, set) = faces();
+    let (ax, ay) = set.parts["head_round"].at;
+    // Pixel (3, 3) of the head, a skin pixel no later slot covers.
+    let i = ((ay + 3) * image.width + ax + 3) as usize * 4;
+    for pixel in [[SKIN, 40, 40, 255], [SKIN, SKIN, 40, 255]] {
+        image.rgba[i..i + 4].copy_from_slice(&pixel);
+        let mut out = Painted::rgba(8, 8);
+        paint(&set, &look(), |_| Some(&image), &mut out).unwrap();
+        assert_eq!(at(&out, 3, 3), pixel);
+    }
+}
+
+#[test]
 fn painting_again_clears_what_was_painted() {
     let (image, _, set) = faces();
     let mut out = Painted::rgba(8, 8);
