@@ -122,5 +122,5 @@ insta.workspace = true
 # `backtrace` takes a frame of its stack as the crash hook takes one, with
 # its module's base on Windows. The `object` version is `addr2line`'s.
 [target.'cfg(any(target_os = "linux", all(windows, target_env = "gnu")))'.dev-dependencies]
-object = { version = "0.40", default-features = false, features = ["read"] }
+object = { version = "0.41", default-features = false, features = ["read"] }
 backtrace = "0.3.77"
