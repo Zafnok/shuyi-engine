@@ -45,7 +45,7 @@ impl<T: Copy + PartialEq> Ask<T> {
     /// What a question reacts to ([`handle`](Self::handle)), for the
     /// screen that shows it to declare
     /// ([`Screen::actions`](crate::screen::Screen::actions)).
-    pub const ACTIONS: &'static [UiAction] = crate::input::NAVIGATION;
+    pub const ACTIONS: &[UiAction] = crate::input::NAVIGATION;
 
     /// The question of the text key `key` with `answers` (each an answer
     /// and the text key of its name), the first in focus. Cancel does

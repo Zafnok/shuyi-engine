@@ -186,12 +186,12 @@ fn as_ron(value: &str) -> Option<Box<RawValue>> {
 }
 
 impl SaveFormat for SaveBundle {
-    const NAME: &'static str = "SaveBundle";
+    const NAME: &str = "SaveBundle";
     const VERSION: u32 = SAVE_BUNDLE_VERSION;
 }
 
 impl AssetKind for SaveBundle {
-    const NAME: &'static str = "save bundle";
+    const NAME: &str = "save bundle";
 }
 
 /// Why a text isn't a bundle this build reads ([`read_bundle`],

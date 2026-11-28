@@ -17,7 +17,7 @@ struct Slot {
 }
 
 impl SaveFormat for Slot {
-    const NAME: &'static str = "Slot";
+    const NAME: &str = "Slot";
     const VERSION: u32 = 3;
 }
 

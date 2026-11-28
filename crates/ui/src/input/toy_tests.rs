@@ -31,7 +31,7 @@ enum Toy {
 impl ActionSet for Toy {
     type Group = ();
 
-    const ALL: &'static [Self] = &[Self::Jump, Self::Duck, Self::Pause];
+    const ALL: &[Self] = &[Self::Jump, Self::Duck, Self::Pause];
 
     fn name(self) -> &'static str {
         match self {

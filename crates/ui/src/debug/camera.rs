@@ -83,7 +83,7 @@ pub struct SceneCameraScreen {
 
 impl SceneCameraScreen {
     /// Name reported by [`Screen::name`].
-    pub const NAME: &'static str = "scene_camera";
+    pub const NAME: &str = "scene_camera";
 
     /// The camera at 1× over the middle of `picture`, with `layout` on a
     /// console of `console`'s cells; `missing` is what it says without a
