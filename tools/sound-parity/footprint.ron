@@ -62,8 +62,8 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "Cargo.lock",
-            find: " \"sha2\",\n \"shuyi-cli\",\n \"shuyi-sound\",\n",
-            with: " \"sha2\",\n \"shuyi-cli\",\n",
+            find: " \"shuyi-cli\",\n \"shuyi-embed\",\n \"shuyi-sound\",\n",
+            with: " \"shuyi-cli\",\n \"shuyi-embed\",\n",
         ),
         // Ticket 3030: the mixer's tests in the jobs and the gates that run others.
         Replace(
