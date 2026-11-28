@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2792 — The template stage's map errors name their file once, with its line
@@ -77,18 +77,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A grid game whose `files/stage.map` lacks its `---` line fails
+- [x] A grid game whose `files/stage.map` lacks its `---` line fails
       `cargo shuyi check` with one error naming `files/stage.map` once.
-- [ ] A `stage.map` with an unknown tile on its fourth tile row has an
+- [x] A `stage.map` with an unknown tile on its fourth tile row has an
       error whose `line` is that row's line in the file (not 0, not in its
       message).
-- [ ] Under `cargo shuyi run --watch` (or the Harness over a disk layer,
+- [x] Under `cargo shuyi run --watch` (or the Harness over a disk layer,
       `BasicGame::over` and `Harness::change_file`), the broken map's
       `Ctx::reload_errors` line reads `disk/stage.map:<line>: …`, the file
       once.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -99,5 +99,39 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `rules::parse_map` returns `Vec<ContentError>`, `grid_map::parse`'s
+  errors as they are, with their file and line.
+- `own` reads the map's display path (`bundle.display_path(MAP)`) and
+  hands it to `parse_map`; its missing-file error is
+  `ContentError::not_found` (the engine's own message and its
+  `MISSING_FILE` code, in place of a bare "file not found"), and
+  `Stage::new`'s refusal is a `ContentError` on that path.
+- Tests: `own`'s unit tests in `top_down_grid.rs` (no `---` line, an
+  unknown tile on the fourth tile row and its line, a missing map, a map
+  with no goal) and `tests/reload.rs`, the game over a disk layer with
+  `Harness::change_file`, whose reload error starts
+  `disk/stage.map:<the row's line>:` and names the file once. By hand on
+  a made grid game, `cargo shuyi check` gives
+  `files/stage.map: missing the "---" line between the header and the
+  tiles` and `files/stage.map:14:7: error[SH2008]: '?' is not in the
+  legend`.
+- Deviation: the rules' own test helper and the stage's `map_of` test
+  helper format the new error with `{:?}`; `tools.rs` needed no change
+  (its `map` reads `data()`, not `parse_map`).
+
+Behaviour: the grid template (a new game's `rules`, `game`): `parse_map`
+returns `Vec<ContentError>`; a broken `stage.map`'s errors name its
+display path (`files/stage.map`) once and carry their line; a missing
+map's message is the engine's "file not found in asset bundle", coded
+`MISSING_FILE`.
+
+Book: none, no chapter shows the template's `parse_map` or a map error's
+text.
+
+Skills: none, no skill names `parse_map` or the old error text; the
+template's errors only got their file and line right.
+
+No break: the engine's public API is unchanged; the change is in the
+template's code, which a game owns once made.
+
+Game: nothing to adopt, the game is not made from the grid template.

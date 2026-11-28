@@ -88,13 +88,12 @@ impl Own {
 /// The stage's part, read from the game's files: its map, which must make
 /// a stage.
 pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
-    let problem = |e: String| vec![ContentError::new(MAP, e)];
-    // check-text: not player text, a content error `cargo shuyi check` shows
+    let file = bundle.display_path(MAP);
     let text = bundle
         .file(MAP)
-        .ok_or_else(|| problem("file not found".to_owned()))?;
-    let map = rules::parse_map(MAP, &text).map_err(problem)?;
-    Stage::new(&map, 0).map_err(problem)?;
+        .ok_or_else(|| vec![ContentError::not_found(&file)])?;
+    let map = rules::parse_map(&file, &text)?;
+    Stage::new(&map, 0).map_err(|e| vec![ContentError::new(&file, e)])?;
     Ok(Own {
         map,
         lights: Lighting::default(),
@@ -398,5 +397,70 @@ impl Screen<Data> for StageScreen {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
         Some(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::*;
+
+    /// The shipped map.
+    const SHIPPED: &str = include_str!("../../files/stage.map");
+
+    /// `own` on a bundle of one layer, `files`, holding `map` as its
+    /// stage's map.
+    fn own_of(map: &str) -> Result<Own, Vec<ContentError>> {
+        let files = BTreeMap::from([(MAP.to_owned(), map.as_bytes().to_vec())]);
+        let layer = Layer::owned("files".to_owned(), files).unwrap_or_else(|e| panic!("{e:?}"));
+        own(&Bundle::new(vec![layer]))
+    }
+
+    /// The 1-based line of `source` whose text is `row`.
+    fn line_of(source: &str, row: &str) -> u32 {
+        let index = source.lines().position(|l| l == row);
+        let index = index.unwrap_or_else(|| panic!("no row {row:?}"));
+        u32::try_from(index + 1).unwrap_or_else(|e| panic!("{e}"))
+    }
+
+    #[test]
+    fn the_shipped_map_makes_the_stage() {
+        assert!(own_of(SHIPPED).is_ok());
+    }
+
+    #[test]
+    fn a_map_with_no_dashes_names_its_file_once() {
+        let errors = own_of(&SHIPPED.replace("---", "")).unwrap_err();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].file, "files/stage.map");
+        assert!(!errors[0].message.contains(MAP), "{errors:?}");
+    }
+
+    #[test]
+    fn an_unknown_tile_is_on_its_own_line() {
+        // The fourth tile row.
+        let (row, broken) = ("#...####...#", "#...##?#...#");
+        let errors = own_of(&SHIPPED.replace(row, broken)).unwrap_err();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].file, "files/stage.map");
+        assert_eq!(errors[0].line, Some(line_of(SHIPPED, row)), "{errors:?}");
+        assert!(!errors[0].message.contains(MAP), "{errors:?}");
+    }
+
+    #[test]
+    fn a_missing_map_is_not_found_on_its_display_path() {
+        let layer =
+            Layer::owned("files".to_owned(), BTreeMap::new()).unwrap_or_else(|e| panic!("{e:?}"));
+        let errors = own(&Bundle::new(vec![layer])).unwrap_err();
+        assert_eq!(errors, [ContentError::not_found("files/stage.map")]);
+    }
+
+    #[test]
+    fn a_map_the_stage_refuses_is_an_error_on_its_file() {
+        let errors = own_of(&SHIPPED.replace("#.........>#", "#..........#")).unwrap_err();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].file, "files/stage.map");
+        assert!(errors[0].message.contains("0 goal tiles"), "{errors:?}");
     }
 }
