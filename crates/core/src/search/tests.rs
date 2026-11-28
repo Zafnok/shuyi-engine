@@ -194,11 +194,9 @@ where
 {
     let mut solver = Solver::new(start.clone(), goal, limits);
     solver.hash = |_| Ok(StateHash(0));
-    loop {
-        if let Some(answer) = solver.step(u32::MAX)? {
-            return Ok(answer);
-        }
-    }
+    Ok(solver
+        .step(u32::MAX)?
+        .expect("a slice of u32::MAX units answers"))
 }
 
 /// `solve`'s answer, checked equal to one with every state given one hash.
@@ -472,12 +470,15 @@ fn brute_force(m: &Maze, depth: u32) -> bool {
 /// The answer of a solver of `m` stepped by `slices` in turn.
 fn sliced(m: &Maze, slices: &[u32]) -> Answer<Dir> {
     let mut solver = Solver::new(m.clone(), ANY, Limits::DEFAULT);
-    for &units in slices.iter().cycle() {
+    // A maze up to 4 × 3 keeps at most 12 states, each slice expands one
+    // or more: 100 slices are plenty, and a search that never answers
+    // fails here instead of hanging.
+    for &units in slices.iter().cycle().take(100) {
         if let Some(answer) = solver.step(units)? {
             return Ok(answer);
         }
     }
-    unreachable!("the slices are never all 0")
+    panic!("no answer after 100 slices")
 }
 
 proptest! {

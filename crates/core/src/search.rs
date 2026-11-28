@@ -240,6 +240,8 @@ where
     /// queue and expanded, and returns the answer once there is one, or
     /// `None` while the search isn't done. `step(0)` does nothing. Once it
     /// has answered, it returns the same answer again and expands nothing.
+    /// A search expands each state it keeps at most once, and keeps at
+    /// most [`Limits::states`], so `step(u32::MAX)` always answers.
     ///
     /// # Errors
     ///
@@ -386,11 +388,12 @@ where
     G: Fn(&R::Outcome) -> bool,
 {
     let mut solver = Solver::new(start.clone(), goal, limits);
-    loop {
-        if let Some(answer) = solver.step(u32::MAX)? {
-            return Ok(answer);
-        }
-    }
+    // One slice of `u32::MAX` units always answers ([`Solver::step`]), so
+    // the arm after it is never taken; it answers as a limit would.
+    let answer = solver.step(u32::MAX)?;
+    Ok(answer.unwrap_or_else(|| Solve::LimitReached {
+        states: solver.states(),
+    }))
 }
 
 #[cfg(test)]
