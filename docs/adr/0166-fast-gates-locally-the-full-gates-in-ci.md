@@ -1,6 +1,6 @@
 # ADR-0166: Fast gates locally, the full gates in CI
 
-- **Status:** Accepted
+- **Status:** Accepted; §4 amended by ADR-0167 (`--fast` starts the trim once a day in the background)
 - **Date:** 2026-11-27
 - **Related tickets:** 3544 (this), 2054 (`cargo xtask gates` and its
   `--fast`), 2076 (the trim), 3545 (the trim after `--fast`)

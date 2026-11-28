@@ -519,6 +519,30 @@ impl Options {
     }
 }
 
+/// What a run of the gates does about the trim of the idle worktrees at
+/// its end ([`crate::trim`]), before `CI` and `SHUYI_NO_TRIM` are read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrimAfter {
+    /// No trim: `--list`, or a gate failed.
+    No,
+    /// A full run: the trim, waited for.
+    Now,
+    /// `--fast` (the pre-push hook's): started in the background at most
+    /// once a day, never waited for (ticket 3545, ADR-0167).
+    Daily,
+}
+
+/// What a run with `options` does about the trim, `failed` or not.
+pub fn trim_after(options: &Options, failed: bool) -> TrimAfter {
+    if options.list || failed {
+        TrimAfter::No
+    } else if options.fast {
+        TrimAfter::Daily
+    } else {
+        TrimAfter::Now
+    }
+}
+
 /// What a diff makes of a gate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Plan {
@@ -924,10 +948,12 @@ pub fn run(root: &Path, options: &Options) -> Result<(String, bool), String> {
             failed = matches!(ran, Outcome::Failed(..));
             *outcome = Some(ran);
         }
-        // A passing full run frees the disk of the idle worktrees' builds
-        // (ticket 2076); this one's own target/ is never touched.
-        if !options.fast && !failed {
-            crate::trim::after_gates(root);
+        // A passing run frees the disk of the idle worktrees' builds
+        // (tickets 2076 and 3545); this one's own target/ is never touched.
+        match trim_after(options, failed) {
+            TrimAfter::Now => crate::trim::after_gates(root),
+            TrimAfter::Daily => crate::trim::after_fast_gates(root),
+            TrimAfter::No => {}
         }
     }
     let short_base = merge_base.get(..12).unwrap_or(&merge_base);
@@ -1059,6 +1085,23 @@ mod tests {
         let script = classifier(&read(&repo(), ".github/workflows/changes.yml").unwrap()).unwrap();
         let paths: Vec<String> = paths.iter().map(|p| (*p).to_owned()).collect();
         (classify(&script, &paths).unwrap(), paths)
+    }
+
+    /// A passing run trims, `--fast` once a day in the background; `--list`
+    /// and a failure never do (tickets 2076 and 3545).
+    #[test]
+    fn a_passing_run_trims_and_a_list_never_does() {
+        let options = |fast, list| Options {
+            base: None,
+            fast,
+            list,
+        };
+        assert_eq!(trim_after(&options(false, false), false), TrimAfter::Now);
+        assert_eq!(trim_after(&options(true, false), false), TrimAfter::Daily);
+        assert_eq!(trim_after(&options(false, true), false), TrimAfter::No);
+        assert_eq!(trim_after(&options(true, true), false), TrimAfter::No);
+        assert_eq!(trim_after(&options(false, false), true), TrimAfter::No);
+        assert_eq!(trim_after(&options(true, false), true), TrimAfter::No);
     }
 
     /// The gates that would run for `paths`, by name.

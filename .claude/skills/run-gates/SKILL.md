@@ -28,6 +28,8 @@ A crate the diff touches is one with a changed file under its folder;
 add `-p` once per crate. A diff of Markdown, tickets or skills alone
 needs `--fast` only. Paste the summary block `--fast` prints into the
 PR's body (the `work-ticket` skill, §6): it says the gates CI alone runs.
+A passing `--fast` also starts the trim of the idle worktrees in the
+background, once a day (below, ticket 3545); the push doesn't wait for it.
 
 The full `cargo xtask gates` is CI's. Run a slow gate locally, alone,
 with its section's command below, only:
@@ -129,10 +131,16 @@ any) with no build in 3 days and no cargo running, it deletes the
 `incremental/` of each profile folder of `target/`, `target/gates/games`,
 `target/tutorial` and `target/skill-examples*`. The next build there is
 still Fresh; only its first edit is slower. It never removes a worktree,
-never touches this one, and never fails the gates. `SHUYI_NO_TRIM=1`
-turns it off; `--fast` and `--list` skip it. As the full run is CI's
-now, run `cargo xtask trim-targets` alone when the disk runs low (ticket
-3545 makes `--fast` trim too). Run it alone with
+never touches this one, and never fails the gates. A passing `--fast`
+run (the pre-push hook's) starts the same trim too, at most once a day
+and in the background, never waited for: over about a hundred worktrees
+it takes most of a minute (ticket 3545,
+[ADR-0167](../../../docs/adr/0167-the-trim-after-fast-gates-once-a-day-in-the-background.md)).
+Its line says it started, or that it ran in the last day; starting it
+costs about a second, once a day. Its output is in `shuyi-trim/last.log`
+under the repository's common `.git` folder;
+deleting `shuyi-trim/stamp` there makes the next run start it again.
+`SHUYI_NO_TRIM=1` turns both off; `--list` never trims. Run it alone with
 `--dry-run` to see each worktree's `target/` size and what it would
 delete, `--idle-days N`, `--merged` to empty all of `target/` of an
 idle worktree whose branch or PR is merged, and `--stale-hashes` to

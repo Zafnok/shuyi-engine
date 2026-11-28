@@ -265,9 +265,10 @@ usage:
       body on stdout: HEAD, each gate's result, each gate left to CI and why.
       With --fast, only the quick gates (the pre-push hook's); with --list,
       say what would run and run nothing. Locally (not with CI set), a full run
-      that passes ends with `trim-targets` with its defaults, in one line;
-      SHUYI_NO_TRIM=1 turns it off.
-  cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes]
+      that passes ends with `trim-targets` with its defaults, in one line; a
+      --fast run that passes starts it in the background, at most once a day
+      (its log in .git/shuyi-trim/). SHUYI_NO_TRIM=1 turns both off.
+  cargo xtask trim-targets [--idle-days N] [--dry-run] [--merged] [--stale-hashes] [--log <file>]
       Free the disk of this repository's other worktrees' target/, keeping
       every worktree (ticket 2076): in each one idle (no build in N days, by
       default 3) and not locked (no cargo running), delete the `incremental`
@@ -279,6 +280,8 @@ usage:
       the N days before the worktree's last build, keeping the newest-read
       one; skipped, said in the summary, where last-access updates are off.
       With --dry-run, list each with its target's size and delete nothing.
+      With --log, write the lines to <file> instead of stdout (the background
+      trim after `gates --fast`, ADR-0167).
   cargo xtask pr-size [--base <rev>] [--hook] [--ticket <file>] [--pr-branch <branch>] [--pr-title <title>]
       Count the PR's changed lines (added + removed) from <rev>'s merge base
       (by default origin/main's) to the working tree, untracked files
@@ -856,11 +859,20 @@ fn gates(root: &Path, args: &[String]) -> ExitCode {
 }
 
 fn trim_targets(root: &Path, args: &[String]) -> ExitCode {
-    let Some(options) = trim::parse(args) else {
+    let Some((log, options)) =
+        trim::split_log(args).and_then(|(log, rest)| Some((log, trim::parse(&rest)?)))
+    else {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
-    match shuyi_cli::worktrees::trim::run(root, &options, &mut std::io::stdout().lock()) {
+    let mut out: Box<dyn std::io::Write> = match &log {
+        Some(log) => match std::fs::File::create(log) {
+            Ok(file) => Box::new(file),
+            Err(e) => return report("trim-targets", &[format!("{}: {e}", log.display())], &[]),
+        },
+        None => Box::new(std::io::stdout().lock()),
+    };
+    match shuyi_cli::worktrees::trim::run(root, &options, &mut out) {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => report("trim-targets", &[e], &[]),
     }
