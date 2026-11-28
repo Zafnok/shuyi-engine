@@ -1,6 +1,6 @@
-//! A [`Storage`] that fails when a test tells it to (ticket 3258): the
-//! one double the ui, platform and app tests share, in place of one
-//! hand-written `impl Storage` each.
+//! A [`Storage`] that fails when a test tells it to: the one double the
+//! ui, platform and app tests share, in place of one hand-written
+//! `impl Storage` each.
 
 use super::{MemoryStorage, Storage, StorageError};
 use crate::prelude::*;
