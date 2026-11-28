@@ -552,13 +552,6 @@ impl<G: GameData> Ctx<G> {
         self.widths = widths;
     }
 
-    /// Works out [`widths`](Self::widths) in each language again, with the
-    /// font atlas's widths it has: after the game's text changed (a
-    /// reloaded language file), as its languages' wide sets may have.
-    pub(crate) fn refresh_lang_widths(&mut self) {
-        self.lang_widths = lang_widths(self.game.lang(), &self.widths);
-    }
-
     /// Asks the game to start over at the screen `first` makes, on this
     /// context: every screen is dropped, with its sounds, and `first`'s is
     /// the only one; the settings, the profile, the layout and the

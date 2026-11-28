@@ -313,8 +313,7 @@ type FirstOf<A, T> = fn(&mut Ctx<BasicData<A, T>>) -> Box<dyn Screen<BasicData<A
 /// its English, keymap, palette and own part ([`BasicData::reload`]). It
 /// hands the context what reloaded:
 ///
-/// - the English: its languages' wide sets again, and the next frame shows
-///   the new text;
+/// - the English: nothing more, as the next frame shows the new text;
 /// - the palette: the context's colours ([`Ctx::palette`]);
 /// - the keymap: the keys of the layout in use, with the player's own
 ///   bindings kept ([`Ctx::refresh_keymap`]);
@@ -358,7 +357,6 @@ impl<A: ActionSet, T: Debug + 'static> Module<BasicData<A, T>> for BasicReload<A
         for (id, reload) in ctx.game.reload(changed) {
             if reload == Reload::Reloaded {
                 match id {
-                    ENGLISH_RON => ctx.refresh_lang_widths(),
                     KEYMAP_RON => ctx.refresh_keymap(),
                     PALETTE_RON => {
                         // Its format refuses one that lacks a colour.
@@ -366,7 +364,11 @@ impl<A: ActionSet, T: Debug + 'static> Module<BasicData<A, T>> for BasicReload<A
                             ctx.palette = palette;
                         }
                     }
-                    _ => ctx.restart(self.first),
+                    OWN_PART => ctx.restart(self.first),
+                    // The English: the screens read the text as they draw,
+                    // and its languages' wide sets can't change (the source
+                    // language is the default one, with no packs).
+                    _ => {}
                 }
             }
             ctx.note_reload(id, &reload);

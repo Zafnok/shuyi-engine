@@ -60,8 +60,9 @@ recorded and nothing reloads.
 `shuyi_ui::basic::BasicReload`, named `basic_reload`, declares
 `Hook::Reloaded`, calls `BasicData::reload` and applies each good reload:
 
-- the English: the languages' wide sets again (`Ctx::set_widths`'s work, with
-  the widths it has); the frame drawn next shows the new text;
+- the English: nothing more, as the screens read the text as they draw. Its
+  languages' wide sets can't change: `BasicData`'s `Lang` has the default
+  source language and no packs, so its widths are the font atlas's alone;
 - the palette: `ctx.palette = Palette::new::<EngineColor>(…)`;
 - the keymap: `ctx.refresh_keymap()`, so the layout in use and the player's own
   bindings stay. A layout the player changed keeps all its keys, as

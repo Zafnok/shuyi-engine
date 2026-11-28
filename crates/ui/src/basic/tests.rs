@@ -390,3 +390,127 @@ fn the_own_part_reloads_when_a_file_it_read_changes() {
     assert_eq!(errors, ["disk/stage.map:1: broken"]);
     assert_eq!(data.own, "second");
 }
+
+/// The game's data with a stage of its own ([`STAGE`]).
+type Staged = BasicData<UiAction, String>;
+
+/// A screen that does nothing but say its name: `"old"` or `"first"`.
+struct Named(&'static str);
+
+impl Screen<Staged> for Named {
+    fn name(&self) -> &'static str {
+        self.0
+    }
+
+    fn update(
+        &mut self,
+        _: &mut Ctx<Staged>,
+        _: &crate::FrameInput<UiAction>,
+    ) -> crate::Transition<Staged> {
+        crate::Transition::None
+    }
+
+    fn draw(&self, _: &Ctx<Staged>, _: &mut crate::frame::glyph_buffer::GlyphBuffer) {}
+}
+
+/// The screen a restart starts over at.
+fn first(_: &mut Ctx<Staged>) -> Box<dyn Screen<Staged>> {
+    Box::new(Named("first"))
+}
+
+/// A game on the blank template's files and a stage, on disk, in the
+/// keymap's first layout, at an "old" screen, with [`BasicReload`].
+fn reloading() -> crate::Game<Staged> {
+    let mut files = GOOD.to_vec();
+    files.push(("stage.map", b"first"));
+    let data = Staged::load(disk(&files), CONSOLE, STAGE).unwrap_or_else(|e| panic!("{e:?}"));
+    let mut ctx = Ctx::new(data).unwrap_or_else(|e| panic!("{e:?}"));
+    ctx.use_layout(Layout::named("Arrows"));
+    let game = crate::Game::new(ctx, Box::new(Named("old")), crate::GameHooks::default());
+    game.with_module(BasicReload::new(first))
+        .unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// Saves `bytes` at `path` in `game`'s files and tells its modules.
+fn save(game: &mut crate::Game<Staged>, path: &str, bytes: Vec<u8>) {
+    assert!(game.ctx().game.bundle.replace(path, bytes));
+    game.reloaded(&changed(&[path]));
+}
+
+#[test]
+fn the_reload_module_hears_of_changed_files_by_its_name() {
+    let game = reloading();
+    let module = &game.modules()[0];
+    assert_eq!(module.name, "basic_reload");
+    assert_eq!(module.hooks, [Hook::Reloaded]);
+    assert_eq!(
+        format!("{:?}", BasicReload::new(first)),
+        "BasicReload { .. }"
+    );
+}
+
+#[test]
+fn a_new_english_shows_on_the_same_screens() {
+    let mut game = reloading();
+    save(
+        &mut game,
+        ENGLISH_RON,
+        edited(EN, "made with Shuyi Engine", "made anew"),
+    );
+    assert_eq!(game.ctx().text("title.subtitle"), "made anew");
+    assert_eq!(game.screens(), ["old"]);
+}
+
+#[test]
+fn a_new_palette_is_the_contexts_and_a_broken_one_is_noted() {
+    let mut game = reloading();
+    let palette = edited(PALETTE, "\"text\": \"#e4e4dc\"", "\"text\": \"#102030\"");
+    save(&mut game, PALETTE_RON, palette);
+    let text = game.ctx().palette.engine(EngineColor::Text);
+    assert_eq!(text, crate::frame::color::Rgb::new(0x10, 0x20, 0x30));
+    assert_eq!(game.screens(), ["old"]);
+    save(
+        &mut game,
+        PALETTE_RON,
+        edited(PALETTE, "\"focus\": \"#5ac8ff\",", ""),
+    );
+    assert_eq!(game.ctx().palette.engine(EngineColor::Text), text);
+    let errors = game.ctx().reload_errors();
+    assert!(
+        errors.iter().any(|e| e.contains("palette.ron")),
+        "{errors:?}"
+    );
+    save(&mut game, PALETTE_RON, PALETTE.to_vec());
+    assert_eq!(game.ctx().reload_errors(), [] as [String; 0]);
+}
+
+#[test]
+fn a_new_keymap_is_the_layouts_keys_on_the_same_screens() {
+    let mut game = reloading();
+    let arrows = Layout::named("Arrows");
+    let before = game.ctx().keymap.clone();
+    save(
+        &mut game,
+        KEYMAP_RON,
+        edited(
+            KEYMAP,
+            "\"Cancel\": [\"Backspace\", \"x\"]",
+            "\"Cancel\": [\"q\"]",
+        ),
+    );
+    assert_ne!(game.ctx().keymap, before);
+    assert_eq!(game.ctx().keymap, game.ctx().keymap_for(arrows));
+    assert_eq!(game.screens(), ["old"]);
+}
+
+#[test]
+fn a_new_own_part_starts_the_game_over_at_its_first_screen() {
+    let mut game = reloading();
+    save(&mut game, "stage.map", b"second".to_vec());
+    assert_eq!(game.ctx().game.own, "second");
+    assert_eq!(game.screens(), ["first"]);
+    // A broken one keeps the screens and the old part.
+    save(&mut game, "stage.map", b"broken".to_vec());
+    assert_eq!(game.screens(), ["first"]);
+    assert_eq!(game.ctx().reload_errors(), ["disk/stage.map:1: broken"]);
+}

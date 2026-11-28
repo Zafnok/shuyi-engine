@@ -191,10 +191,9 @@ What was done:
   changed is not listed. A failed decode keeps the old value and adds its
   reads, as `Hot::refresh` does.
 - `BasicReload` (`basic_reload`, same file) declares `Hook::Reloaded` and
-  applies each good reload: the languages' wide sets again
-  (`Ctx::refresh_lang_widths`, crate-private), `ctx.palette`,
-  `ctx.refresh_keymap()`, and `Ctx::restart` at the game's first screen for
-  the own part; every outcome goes to `Ctx::note_reload`.
+  applies each good reload: `ctx.palette`, `ctx.refresh_keymap()`, and
+  `Ctx::restart` at the game's first screen for the own part; every outcome
+  goes to `Ctx::note_reload`.
 - `Ctx::restart(first)` (`crates/ui/src/ctx.rs`): `Game::reloaded` honours
   it once every module's hook has run, once, and a restart asked anywhere
   else is honoured at the start of the next frame (the ticket's step 3 let
@@ -228,7 +227,7 @@ no reload error; a broken `stage.map` keeps the stage playable and shows
 its error. Not looked at in a window: this session can't see one, so the
 watched folder's polling itself (`shuyi_app`, 2220's) was not run here.
 
-Size: 1,131 counted lines. It would split cleanly into `Ctx::restart` with
+Size: 1,251 counted lines. It would split cleanly into `Ctx::restart` with
 `Game::reloaded` honouring it (`ctx.rs`, `game.rs`, `screen.rs` and
 `restart_tests.rs`, about 200) and the rest, which needs it.
 
@@ -248,6 +247,12 @@ Deviations:
   line (`disk/palette.ron: missing required colour "focus"`): the colour
   that isn't there has no line. The English, keymap and map errors name
   their line.
+- No language widths worked out again for a new English (the ticket's
+  "the language widths again"): `BasicData`'s `Lang` has the default source
+  language and no packs, so its widths are the font atlas's alone and a new
+  `en.ron` can't change them. A first version called it anyway, and CI's
+  mutants showed the call could be removed with no test noticing; it is
+  gone, and the screens show the new text as they draw.
 - No separate `Palette::new` check in `BasicData::reload`: the palette
   format (`PaletteRon::requiring`) already refuses a palette lacking an
   engine colour, so a second check could never fail.

@@ -1096,8 +1096,8 @@ first, with debug tools on. `BasicData::load` records what each of the English,
 the keymap, the palette and the game's own part read (`bundle::recording`), and
 `BasicData::reload(&changed)` reads again those whose files changed, with the
 checks of the load: a good decode replaces the value, a failed one keeps it and
-answers `Reload::Failed`. The module applies each: the text's wide sets again,
-`ctx.palette`, `ctx.refresh_keymap()` (the player's own bindings stay; a layout
+answers `Reload::Failed`. The module applies each: nothing more for the text,
+which the screens read as they draw, then `ctx.palette`, `ctx.refresh_keymap()` (the player's own bindings stay; a layout
 they changed keeps all its keys), and for the own part `Ctx::restart` at the
 game's first screen, as no screen built from an old map can follow a new one.
 The settings, the profile, the layout and the player's bindings stay; every
