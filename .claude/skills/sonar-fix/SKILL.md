@@ -57,8 +57,10 @@ then stop.
    post a one-paragraph comment on the parent saying what it was, so later
    parts copy it.
 
-6. **Gates:** the `run-gates` skill, as for any PR. Mutation testing runs in
-   CI only.
+6. **Gates:** the `run-gates` skill, *Before a push*, as for any PR:
+   `cargo xtask gates --fast` plus `cargo clippy` and `cargo test -p` of
+   each crate the batch touches. The full `cargo xtask gates` and
+   mutation testing are CI's.
 
 7. **Commit** as `[sonar #<n>] imperative summary`, for example
    `[sonar #312] Drop redundant 'static lifetimes`.

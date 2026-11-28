@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing, with `cargo xtask gates` (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples, a game's compile times and what the compiler tells a game that misses an impl; the ticket lint, typos, links, the docs map, the pinned Rust and the website). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the quality gates before pushing — locally `cargo xtask gates --fast` (fmt, typos, the ticket lint, the engine lint) plus `cargo clippy` and `cargo test` of the crates the diff touches; the full `cargo xtask gates` (clippy pedantic, tests, docs, cargo-deny, machete, the web build, the layers, the no-std build, the golden tables on wasm32, the skill examples, compile times and messages, links, the docs map, the pinned Rust, the website) is CI's, run locally one gate at a time only to reproduce a CI failure. Mutation testing runs in CI only. Use before every push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -11,9 +11,38 @@ Verify shared skill discovery before the other gates:
 pwsh -File scripts/sync-agent-skills.ps1 -Check
 ```
 
-These mirror CI. Run them fast to slow, and stop at the first failure.
+## Before a push: the fast gates and the crates you touched
 
-## Start with `cargo xtask gates`
+On Nick's machine a full `cargo xtask gates` takes about two hours for one
+change; CI runs the same gates as parallel jobs on every PR. So before a
+push, run only (ticket 3544,
+[ADR-0166](../../../docs/adr/0166-fast-gates-locally-the-full-gates-in-ci.md)):
+
+```bash
+cargo xtask gates --fast                                   # fmt, typos, the ticket lint, the engine lint
+cargo clippy -p <crate> --all-targets --locked -- -D warnings   # each crate the diff touches
+cargo test -p <crate> --locked
+```
+
+A crate the diff touches is one with a changed file under its folder;
+add `-p` once per crate. A diff of Markdown, tickets or skills alone
+needs `--fast` only. Paste the summary block `--fast` prints into the
+PR's body (the `work-ticket` skill, §6): it says the gates CI alone runs.
+
+The full `cargo xtask gates` is CI's. Run a slow gate locally, alone,
+with its section's command below, only:
+
+- to reproduce a CI failure on that gate, and then only that gate;
+- where a section below says a change needs it before the push: the
+  wasm32 golden run for number code, hashing, a decoder or the pack, the
+  API check for a change you think breaks, and the game at the next pin
+  for a `Breaking:` line;
+- for a Rust bump (the `bump-rust` skill): the full run, on the GNU
+  host, as CI's Windows leg builds with MSVC.
+
+Never weaken a gate to pass it, here or in CI.
+
+## `cargo xtask gates`
 
 ```bash
 cargo xtask gates            # the gates the diff from origin/main needs, fast to slow
@@ -22,7 +51,8 @@ cargo xtask gates --fast     # the seconds-long ones: what the pre-push hook run
 cargo xtask gates --base <rev>
 ```
 
-It decides from the diff (committed, and anything uncommitted) which
+The full run mirrors CI: gates fast to slow, stopping at the first
+failure. It decides from the diff (committed, and anything uncommitted) which
 gates apply, with CI's own rules: it reads the classifier in
 `.github/workflows/changes.yml`, and each gate follows its `ci.yml` job's
 filter. A few gates add a narrower local rule, said in their sections
@@ -100,7 +130,9 @@ any) with no build in 3 days and no cargo running, it deletes the
 `target/tutorial` and `target/skill-examples*`. The next build there is
 still Fresh; only its first edit is slower. It never removes a worktree,
 never touches this one, and never fails the gates. `SHUYI_NO_TRIM=1`
-turns it off; `--fast` and `--list` skip it. Run it alone with
+turns it off; `--fast` and `--list` skip it. As the full run is CI's
+now, run `cargo xtask trim-targets` alone when the disk runs low (ticket
+3545 makes `--fast` trim too). Run it alone with
 `--dry-run` to see each worktree's `target/` size and what it would
 delete, `--idle-days N`, `--merged` to empty all of `target/` of an
 idle worktree whose branch or PR is merged, and `--stale-hashes` to

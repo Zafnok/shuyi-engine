@@ -133,7 +133,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0118](0118-a-closed-builds-recipient-overlay-three-marks-a-signed-ledger-never-proof.md) | A closed build's recipient overlay: one code in three marks, a ledger signed with the game's SSH key, never proof | Accepted; extends ADR-0023 §1 and §3 |
 | [0119](0119-the-outside-crates-the-public-api-may-name.md) | Outside crates in the public API: serde, schemars, and the tools' JSON and versions; every other one behind an engine type or a hidden path | Accepted; §3 amended by ADR-0138 |
 | [0120](0120-a-games-rebuild-budgeted-as-a-ratio-of-a-reference-build.md) | A new game's rebuild is budgeted as a ratio of a reference build on the same runner | Accepted; supersedes ADR-0049 §2 |
-| [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123 |
+| [0121](0121-a-worktrees-build-output-kept-compressed-and-trimmed.md) | A worktree's build output: incremental kept in the workspace, off in one-off builds, compressed everywhere, trimmed when idle | Accepted; §4 extended by ADR-0123; §4 amended by ADR-0166 (the full local run, after which the trim runs, is now rare) |
 | [0122](0122-styled-text-spans-with-a-role-the-skin-paints-from-the-palette.md) | Styled text: a line of spans, each with an optional role that the skin paints from the palette | Accepted; §4 superseded by ADR-0124 |
 | [0123](0123-stale-hashes-in-deps-read-by-last-access-against-the-last-build.md) | Stale hashes in `deps/`, read by last access against the worktree's last build | Accepted; extends ADR-0121 §4 |
 | [0124](0124-key-caps-a-key-drawn-as-a-cap-in-the-room-its-box-needs.md) | Key caps: a key's name drawn as a cap, in the room its box needs, its glyphs moved off the grid | Accepted; supersedes ADR-0122 §4; §5 and §6 amended by ADR-0125; extended by ADR-0129 |
@@ -177,5 +177,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0163](0163-a-panels-border-may-be-a-picture-its-text-stays-glyph-cells.md) | A panel's border may be a picture in nine slices; its text stays glyph cells | Accepted; extends ADR-0003 §5 |
 | [0164](0164-the-short-path-reloads-its-own-files-and-restarts-on-a-new-own-part.md) | The short path reloads its own files, and starts over at its first screen on a new own part | Accepted; amends ADR-0071 §4 and ADR-0040 §3 |
 | [0165](0165-part-sets-grey-keyed-parts-rolled-per-slot-and-painted-by-the-skin.md) | Part sets: pictures of grey-keyed parts, a look rolled per slot from a hashed seed and painted by the skin, behind off-by-default features of `shuyi-assets` and `shuyi-ui` | Accepted; amends ADR-0160 §5 |
+| [0166](0166-fast-gates-locally-the-full-gates-in-ci.md) | Fast gates locally (`--fast` plus the touched crates' clippy and tests), the full gates in CI | Accepted; amends ADR-0121 §4 |
 
 Template: [`0000-template.md`](0000-template.md).

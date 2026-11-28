@@ -91,7 +91,11 @@ that changes more than resolving its parents needs (ticket 2065).
      `cargo xtask check-layers` checks them ([ADR-0032](docs/adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)).
      A new engine crate, engine edge or outside crate of a pure crate adds
      its line there in the same PR.
-6. **Tests are the review.** Run the `run-gates` skill before pushing.
+6. **Tests are the review.** Run the `run-gates` skill before pushing:
+   locally `cargo xtask gates --fast` plus clippy and the tests of the
+   crates the diff touches; the full `cargo xtask gates` is CI's, and a
+   slow gate runs locally only to reproduce a CI failure on it
+   ([ADR-0166](docs/adr/0166-fast-gates-locally-the-full-gates-in-ci.md)).
    Never weaken a gate to pass it. CI also measures coverage, scans
    with SonarCloud, audits the workflows with zizmor and the code with
    CodeQL; a zizmor finding wrong here goes in `.github/zizmor.yml` with
@@ -182,10 +186,11 @@ that changes more than resolving its parents needs (ticket 2065).
   so a merge of `main` never needs a force-push or a new PR. Its
   post-checkout hook, on Windows, compresses a new
   worktree's `target/` with NTFS (about half the disk, no slower), and
-  `cargo xtask gates` compresses one that lacks it. A passing full
-  `cargo xtask gates` then deletes the incremental caches of the other,
-  idle worktrees (`cargo xtask trim-targets`, ADR-0121), never a
-  worktree.
+  a full `cargo xtask gates` compresses one that lacks it. A passing
+  full run then deletes the incremental caches of the other, idle
+  worktrees (`cargo xtask trim-targets`, ADR-0121), never a worktree;
+  as the full run is CI's (rule 6), run `cargo xtask trim-targets`
+  alone when the disk runs low.
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`
