@@ -58,7 +58,11 @@ A request from the game.
      ASCII only; each other character an error at its column, with
      `ascii_spelling`'s suggestion when it has one). Comments are not
      checked. The same policy reaches `Dlg<D>` and the scripts loaders,
-     so a game needs no format of its own.
+     so a game needs no format of its own. **From 2096 (done):**
+     `DialogueLimits` is `#[non_exhaustive]`, built with
+     `DialogueLimits::new(box_width, box_lines)` and its `with_<field>`
+     methods, so the policy's field is additive (`TextChars::Any` in
+     `new`, and a `const fn with_text_chars`).
 5. **Examples from games that aren't tactics:** a visual novel with its
    own `@bgm` and `@cg` directives that checks each against its files
    at its line; a retro adventure whose bitmap font has only ASCII, so

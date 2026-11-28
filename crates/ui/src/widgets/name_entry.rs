@@ -326,7 +326,11 @@ impl NameEntry {
 }
 
 /// The typing box.
+///
+/// Kind 3 of ADR-0039: build it with [`TypingView::new`]. It grows a caret
+/// and a selection (3232).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TypingView {
     /// The box's title.
     pub title: String,
@@ -334,6 +338,22 @@ pub struct TypingView {
     pub typed: String,
     /// What to do: type.
     pub hint: String,
+}
+
+impl TypingView {
+    /// The box titled `title`, with `typed` so far and the `hint` that says
+    /// what to do.
+    pub fn new(
+        title: impl Into<String>,
+        typed: impl Into<String>,
+        hint: impl Into<String>,
+    ) -> Self {
+        Self {
+            title: title.into(),
+            typed: typed.into(),
+            hint: hint.into(),
+        }
+    }
 }
 
 /// The letter grid.

@@ -40,15 +40,7 @@ mentor: Then we go.
 const LONELY: &str = "@scene lonely\nmentor: Hello?\n@end\n";
 
 /// The text box's limits: wide enough for every line here.
-const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: 34,
-    box_lines: 3,
-    max_text: 100,
-    max_option: 30,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 3,
-};
+const LIMITS: DialogueLimits = DialogueLimits::new(34, 3).with_max_text(100);
 
 /// The rules: anyone speaks, no tokens.
 struct Rules;

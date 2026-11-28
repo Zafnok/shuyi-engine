@@ -767,6 +767,10 @@ impl Edition {
 /// checked out into a git-ignored folder at a pinned commit.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
+// Read from `shuyi.ron`, or built with `default()` and its fields assigned:
+// it grows (3443 gives it the leak check's rules), so `#[non_exhaustive]`
+// (ADR-0039 kinds 4 and 5).
+#[non_exhaustive]
 pub struct PrivateAssets {
     /// The repository.
     pub url: String,

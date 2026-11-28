@@ -443,6 +443,10 @@ pub struct Walk {
 /// foe `f` in the way. Confirm on your piece shows where it can go; moving
 /// the cursor steers its path; Confirm on a tile it can reach walks it
 /// there at the skin's pace; Cancel puts it down.
+///
+/// `#[non_exhaustive]` (ADR-0039): its fields change (3206 gives it a
+/// `Viewport`), so it is built with [`Field::new`] or [`Field::glyphs`].
+#[non_exhaustive]
 pub struct Field {
     /// The skin it is painted with.
     pub skin: Rc<dyn GridSkin<Piece>>,

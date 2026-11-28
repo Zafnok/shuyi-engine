@@ -362,6 +362,10 @@ pub struct FileSize {
 /// What `export` made: `export-report.json`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer `export` fills in, read by a game or an agent: it grows (2846
+// gives it the SBOM, 3071 what a package loads), so `#[non_exhaustive]`
+// (ADR-0039 kind 3).
+#[non_exhaustive]
 pub struct ExportOutput {
     /// The target.
     pub target: String,

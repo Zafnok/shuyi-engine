@@ -395,9 +395,10 @@ impl<G: GameData, P: PreviewGame<G>> DialoguePreview<G, P> {
         }
         // The checks, over the files that parsed: a broken file's last
         // good scenes were checked when they were read.
-        let parsed = read.iter().filter(|f| !f.broken).map(|f| DialogueFile {
-            scenes: f.scenes.clone(),
-        });
+        let parsed = read
+            .iter()
+            .filter(|f| !f.broken)
+            .map(|f| DialogueFile::new(f.scenes.clone()));
         let rules = self.game.rules(ctx);
         if let Err(errors) = scripts_from_parsed(parsed, &rules) {
             problems.extend(errors);

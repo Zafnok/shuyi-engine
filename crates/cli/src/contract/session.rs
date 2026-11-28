@@ -214,6 +214,9 @@ pub enum Event {
 /// A sound cue asked to play.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// Read, never built outside this crate; it grows (parked 2363 gives it a
+// volume and a pan), so `#[non_exhaustive]` (ADR-0039 kind 3).
+#[non_exhaustive]
 pub struct Sound {
     /// The frame.
     pub frame: u32,

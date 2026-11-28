@@ -287,7 +287,8 @@ None.
   `#[non_exhaustive]` variants, built with `AudioRequest::play_sound`
   and `SoundRequest::sound`, which set a `pan` of 0. `AudioRequest`
   gains a variant (it is `#[non_exhaustive]`), `SoundCue` gains a
-  field (built with `SoundCue::new`), and `run`'s `Sound` gains two.
+  field (built with `SoundCue::new`), and `run`'s `Sound` gains two
+  (**from 2096 (done)** it is `#[non_exhaustive]`).
   `Backend` is public, and a provided method breaks no game. No
   `Breaking:` line is planned; the game's PR that moves the pin follows this one. The game's
   own manifest reads unchanged; a pack baked before is refused and

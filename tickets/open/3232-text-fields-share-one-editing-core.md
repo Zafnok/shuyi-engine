@@ -159,10 +159,10 @@ None.
      name being typed may end in a space), which `accepts` calls; if
      not, add `NameRules::allows_text` here, from `allows`, and 2380's
      `accepts` calls it.
-   - `TypingView` gains the caret and the selection. It is not
-     `#[non_exhaustive]` and the game builds one in a test, so it
-     becomes `#[non_exhaustive]` with `TypingView::new(title, typed,
-     hint)` in the same change: a `Breaking:` line.
+   - `TypingView` gains the caret and the selection, additively:
+     **from 2096 (done)** it is `#[non_exhaustive]`, built with
+     `TypingView::new(title, typed, hint)`; `new` starts the caret at the
+     end of `typed`, with nothing selected.
    - `paint_typing` draws the caret and selection as `text_field::glyph`
      does.
    - The name grid (`NameEntry`) keeps appending and deleting at the
@@ -201,11 +201,10 @@ Zafnok/visions-of-shuyi NameBox` finds `crates/ui/src/screens/lead_select.rs`;
 `crates/ui/src/widgets/name_entry/playdate.rs` that builds
 `TypingView { title, typed, hint }` (line 131). The game re-exports the
 engine's `name_entry` (`crates/ui/src/widgets/mod.rs`). So:
-- `TypingView` breaks (step 6): the game's test uses
-  `TypingView::new`, and its Playdate `paint_typing` still prints
-  `typed` with `_` (the caret at the end looks as before). The PR has
-  a `Breaking:` line and a `migration` block, and the game's PR that
-  moves its pin follows it.
+- `TypingView` grows (step 6), additively: the game's test builds it
+  with `TypingView::new` once its pin passes 2096, and its Playdate
+  `paint_typing` still prints `typed` with `_` (the caret at the end
+  looks as before).
 - `Behaviour:` lines for the name box (the arrow keys now move a caret
   while typing; a paste and the shortcuts work), and for the volume box
   (it takes a paste).

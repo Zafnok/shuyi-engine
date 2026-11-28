@@ -99,7 +99,8 @@ allow list) into a new ticket.
 1. Read the game's `crates/xtask/src/leaks.rs` and `workflow_guard.rs`
    (public: `github.com/Zafnok/visions-of-shuyi`) as the reference for
    the matching rules. Their tests are the cases to port.
-2. Add `Leaks` to `PrivateAssets` in `crates/cli/src/project.rs`.
+2. Add `Leaks` to `PrivateAssets` in `crates/cli/src/project.rs`
+   (additive: **from 2096 (done)** it is `#[non_exhaustive]`).
 3. Write `crates/cli/src/check_leaks.rs`:
    1. sources: lines and rows by place;
    2. the search over the tracked files;

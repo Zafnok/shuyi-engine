@@ -167,8 +167,9 @@ fn resolve_json(members: &[&str], deps: &[(&str, &[&str])]) -> String {
 /// A fake [`Runner`]. Each command is written `<where>: <program> <args>`,
 /// `<where>` being `head` (the root) or `base` (the base's tree); the last
 /// answer given whose key starts the command answers it, and any other
-/// command succeeds and prints nothing. It records every command, and the
-/// variables each command run with some was given.
+/// command succeeds and prints nothing, but `git show`, which fails as for a
+/// file the base doesn't have. It records every command, and the variables
+/// each command run with some was given.
 struct Fake {
     root: PathBuf,
     answers: Vec<(String, Result<Ran, String>)>,
@@ -180,7 +181,10 @@ impl Fake {
     fn new(root: &Path) -> Self {
         Self {
             root: root.to_path_buf(),
-            answers: Vec::new(),
+            answers: vec![(
+                "head: git show ".to_string(),
+                Ok(failed("fatal: path does not exist")),
+            )],
             ran: RefCell::new(Vec::new()),
             envs: RefCell::new(Vec::new()),
         }
@@ -2662,6 +2666,17 @@ fn unreadable_metadata_with_dependencies_is_an_error() {
 /// A run in which the head's `shuyi-assets` has `MusicSwitch::new(u32, u32,
 /// bool)` on a `#[non_exhaustive]` type, as the base has, and an exhaustive
 /// type's constructor of two numbers.
+/// Lists [`constructor_run`]'s exhaustive `ImageRect` in the root's
+/// [`exhaustive::FILE`], which only [`exhaustive`]'s check reads.
+fn list_image_rect(root: &Path) {
+    fs::create_dir_all(root.join("tools")).unwrap();
+    fs::write(
+        root.join(exhaustive::FILE),
+        "(crates: {\"shuyi-assets\": (plain: [\"shuyi_assets::ImageRect\"])})",
+    )
+    .unwrap();
+}
+
 fn constructor_run(root: &Path) -> Fake {
     let listing = "pub mod shuyi_assets\n\
                    #[non_exhaustive] pub struct shuyi_assets::audio::MusicSwitch\n\
@@ -2680,6 +2695,7 @@ fn constructor_run(root: &Path) -> Fake {
 #[test]
 fn a_run_with_a_constructor_of_two_neighbouring_numbers_fails_and_names_it() {
     let root = temp_root("constructors");
+    list_image_rect(&root);
     let outcome = run(&root, &Options::default(), &constructor_run(&root));
     assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
     let error = &outcome.errors[0];
@@ -2703,7 +2719,7 @@ fn a_run_with_a_constructor_of_two_neighbouring_numbers_fails_and_names_it() {
 #[test]
 fn a_run_passes_once_the_file_lists_the_constructor() {
     let root = temp_root("constructors-listed");
-    fs::create_dir_all(root.join("tools")).unwrap();
+    list_image_rect(&root);
     fs::write(
         root.join(constructors::FILE),
         "(allowed: [(path: \"shuyi_assets::audio::MusicSwitch::new\", why: \"a fade out, \
@@ -2723,7 +2739,7 @@ fn a_run_passes_once_the_file_lists_the_constructor() {
 #[test]
 fn a_run_fails_a_stale_entry() {
     let root = temp_root("constructors-stale");
-    fs::create_dir_all(root.join("tools")).unwrap();
+    list_image_rect(&root);
     fs::write(
         root.join(constructors::FILE),
         "(allowed: [\n\
@@ -2739,5 +2755,102 @@ fn a_run_fails_a_stale_entry() {
         "{:?}",
         outcome.errors
     );
+    let _ = fs::remove_dir_all(&root);
+}
+
+// -- exhaustive types (ticket 2096) --
+
+/// A run in which the head's `shuyi-core` has the exhaustive `Pos` and a new
+/// exhaustive `Gauge`, and the `#[non_exhaustive]` `PlanSettings`.
+fn exhaustive_run(root: &Path) -> Fake {
+    let listing = "pub mod shuyi_core\n\
+                   pub struct shuyi_core::grid::Pos\n\
+                   pub shuyi_core::grid::Pos::x: i32\n\
+                   #[non_exhaustive] pub struct shuyi_core::bots::plan::PlanSettings\n\
+                   pub struct shuyi_core::gauge::Gauge(pub u8)\n";
+    Fake::new(root)
+        .with_tools()
+        .with_base("abc123")
+        .with_base_packages(&catalog_names())
+        .with_listing("base", "shuyi-core", listing)
+        .with_listing("head", "shuyi-core", listing)
+}
+
+fn write_exhaustive(root: &Path, text: &str) {
+    fs::create_dir_all(root.join("tools")).unwrap();
+    fs::write(root.join(exhaustive::FILE), text).unwrap();
+}
+
+#[test]
+fn a_run_with_a_new_unlisted_exhaustive_type_fails_and_shows_its_path() {
+    let root = temp_root("exhaustive");
+    write_exhaustive(
+        &root,
+        r#"(crates: {"shuyi-core": (plain: ["shuyi_core::grid::Pos"])})"#,
+    );
+    let fake = exhaustive_run(&root);
+    let outcome = run(&root, &Options::default(), &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0]
+            .contains("shuyi-core: `shuyi_core::gauge::Gauge` is an exhaustive public type"),
+        "{:?}",
+        outcome.errors
+    );
+    assert!(
+        outcome
+            .summary
+            .contains("**Exhaustive types, fail:**\n\n- shuyi-core: `shuyi_core::gauge::Gauge`"),
+        "{}",
+        outcome.summary
+    );
+    // The base's file was asked of git, at the base.
+    assert!(
+        fake.ran()
+            .contains(&"head: git show abc123:tools/exhaustive.ron".to_string())
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_passes_with_every_exhaustive_type_listed() {
+    let root = temp_root("exhaustive-listed");
+    write_exhaustive(
+        &root,
+        r#"(crates: {"shuyi-core": (plain: ["shuyi_core::grid::Pos", "shuyi_core::gauge::Gauge"])})"#,
+    );
+    let outcome = run(&root, &Options::default(), &exhaustive_run(&root));
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(
+        !outcome.summary.contains("Exhaustive types, fail"),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_fails_an_open_path_the_bases_file_lacks() {
+    let root = temp_root("exhaustive-open");
+    let head = r#"(crates: {"shuyi-core": (
+        plain: ["shuyi_core::grid::Pos"],
+        open: ["shuyi_core::gauge::Gauge"],
+    )})"#;
+    write_exhaustive(&root, head);
+    let base = r#"(crates: {"shuyi-core": (plain: ["shuyi_core::grid::Pos"])})"#;
+    let fake = exhaustive_run(&root).answer("head: git show abc123:", Ok(ok(base)));
+    let outcome = run(&root, &Options::default(), &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0].contains(
+            "`shuyi_core::gauge::Gauge` is `open` in tools/exhaustive.ron, and the base's file"
+        ),
+        "{:?}",
+        outcome.errors
+    );
+    // The base had it open: it may stay so.
+    let fake = exhaustive_run(&root).answer("head: git show abc123:", Ok(ok(head)));
+    let outcome = run(&root, &Options::default(), &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
     let _ = fs::remove_dir_all(&root);
 }

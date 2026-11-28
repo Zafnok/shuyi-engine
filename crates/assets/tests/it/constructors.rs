@@ -15,15 +15,7 @@ use shuyi_assets::target::{
 };
 use shuyi_core::ContentHash;
 
-const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: 40,
-    box_lines: 3,
-    max_text: 200,
-    max_option: 30,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 3,
-};
+const LIMITS: DialogueLimits = DialogueLimits::new(40, 3).with_max_text(200);
 
 /// A game's pack rules, in a `const` item as a game writes them.
 const RULES: PackRules<'static> =

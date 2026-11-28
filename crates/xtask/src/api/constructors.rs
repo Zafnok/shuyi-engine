@@ -56,8 +56,8 @@ pub fn constructors(listing: &[String]) -> Vec<Constructor> {
     let mut seen = BTreeSet::new();
     let mut in_growing = false;
     for line in listing {
-        if let Some(growing) = type_header(line) {
-            in_growing = growing;
+        if let Some(header) = type_header(line) {
+            in_growing = header.growing && header.is_type();
             continue;
         }
         if !in_growing {
@@ -80,24 +80,49 @@ pub fn constructors(listing: &[String]) -> Vec<Constructor> {
     found
 }
 
-/// Whether `line` opens a block, and whether the block is a
-/// `#[non_exhaustive]` struct or enum's: `None` for a line inside a block.
-fn type_header(line: &str) -> Option<bool> {
-    let (growing, rest) = match line.strip_prefix("#[non_exhaustive] ") {
-        Some(rest) => (true, rest),
-        None => (false, line),
-    };
-    let rest = rest.strip_prefix("pub ")?;
-    if rest.starts_with("struct ") || rest.starts_with("enum ") {
-        Some(growing)
-    } else if ["union ", "trait ", "mod ", "type ", "macro ", "static "]
-        .iter()
-        .any(|word| rest.starts_with(word))
-    {
-        Some(false)
-    } else {
-        None
+/// A listing line that opens a block, read by [`type_header`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Header<'a> {
+    /// What it opens: `struct`, `enum`, `union`, `trait`, `mod`, `type`,
+    /// `macro` or `static`.
+    pub(super) word: &'static str,
+    /// The line after that word: the item's path, then its generics, its
+    /// tuple fields or its type.
+    pub(super) rest: &'a str,
+    /// Whether one of the attributes before `pub` is `#[non_exhaustive]`.
+    pub(super) growing: bool,
+}
+
+impl Header<'_> {
+    /// Whether it opens a struct or an enum's block.
+    pub(super) fn is_type(&self) -> bool {
+        matches!(self.word, "struct" | "enum")
     }
+}
+
+/// `line` as the line that opens a block: any attributes (`#[…] `) before
+/// `pub`, then the item's word. `None` for a line inside a block.
+pub(super) fn type_header(line: &str) -> Option<Header<'_>> {
+    let mut rest = line;
+    let mut growing = false;
+    while let Some(attribute) = rest.strip_prefix("#[") {
+        let end = attribute.find("] ")?;
+        growing |= &attribute[..end] == "non_exhaustive";
+        rest = &attribute[end + 2..];
+    }
+    let rest = rest.strip_prefix("pub ")?;
+    [
+        "struct", "enum", "union", "trait", "mod", "type", "macro", "static",
+    ]
+    .into_iter()
+    .find_map(|word| {
+        let after = rest.strip_prefix(word)?.strip_prefix(' ')?;
+        Some(Header {
+            word,
+            rest: after,
+            growing,
+        })
+    })
 }
 
 /// A function's listing line, read.

@@ -147,9 +147,10 @@ None.
    macOS packing after the path search.
 3. Add the problem code, its row in `contract::codes::TABLE` and its page
    in `crates/cli/errors/`.
-4. Add `loads` and `glibc` to `ExportOutput`, regenerate the schemas
-   and add their fingerprint to `versions.json` (added answer fields
-   keep `contract::VERSION`, ADR-0150).
+4. Add `loads` and `glibc` to `ExportOutput` (additive: **from 2096
+   (done)** it is `#[non_exhaustive]`), regenerate the schemas and add
+   their fingerprint to `versions.json` (added answer fields keep
+   `contract::VERSION`, ADR-0150).
 5. Add the `linux-arm64` exporter and its CI leg.
 6. Update `tools/export-check/check.sh`, `docs/targets/desktop.md`,
    `docs/contract.md`'s `export` row and the skill.

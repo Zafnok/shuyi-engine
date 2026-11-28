@@ -22,15 +22,7 @@ use crate::{Hello, TITLE, bundle, ctx_from};
 /// What the game's text box and reply menu hold: [`Talk`]'s box, a line of
 /// text at most a page of it. The game has no reply choices; their limits
 /// are the engine's usual ones.
-pub const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: Talk::WIDTH,
-    box_lines: Talk::LINES,
-    max_text: Talk::WIDTH * Talk::LINES,
-    max_option: 30,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 3,
-};
+pub const LIMITS: DialogueLimits = DialogueLimits::new(Talk::WIDTH, Talk::LINES);
 
 /// The rules the format's checks hold a scene to: [`LIMITS`], and no
 /// tokens. Every glyph of the game's font is one cell wide, the rules'

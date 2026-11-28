@@ -160,7 +160,8 @@ None.
 - **`Needs`**, in `shuyi_assets::target`, one type read from three
   places:
   - a module's `[package.metadata.shuyi.needs]` (2003's `ModuleInfo`
-    gets the field);
+    gets the field, additively: **from 2096 (done)** it is
+    `#[non_exhaustive]`);
   - the game manifest, for the whole game and per stage
     (`stages.<id>.needs`), for example `sprites = { at_once = 200 }`;
   - a skin's settings file, through the skin's format, which gives its

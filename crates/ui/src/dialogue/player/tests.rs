@@ -377,15 +377,10 @@ struct NamedRules(Names);
 
 impl SceneRules<NoDirective> for NamedRules {
     fn limits(&self) -> &DialogueLimits {
-        &DialogueLimits {
-            box_width: 40,
-            box_lines: 2,
-            max_text: 80,
-            max_option: 30,
-            min_options: 2,
-            max_options: 3,
-            max_reaction_texts: 4,
-        }
+        const LIMITS: DialogueLimits = DialogueLimits::new(40, 2)
+            .with_max_options(3)
+            .with_max_reaction_texts(4);
+        &LIMITS
     }
 
     fn tokens(&self) -> &dyn shuyi_assets::dialogue::Tokens {

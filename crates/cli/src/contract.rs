@@ -229,6 +229,9 @@ impl Op {
 /// What an operation answers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// Built with `Answer::new` and its kin; it grows (3415 gives it the
+// build's diagnostics), so `#[non_exhaustive]` (ADR-0039 kind 3).
+#[non_exhaustive]
 pub struct Answer<T> {
     /// The contract's version ([`VERSION`]).
     pub contract: u32,
