@@ -112,6 +112,12 @@ None.
   and give 2727's `MysteryStage` a row for its `CaseFile` action, so a
   target with only the required actions bound reaches the case file; if
   not, nothing to do (2727 adds the row).
+- **Either order with 3252** (a backlog and auto-advance over
+  `DialoguePlayer`, from the game's sweep game#1397): if 3252 is done,
+  `Conveniences`' auto step reads through 3252's `auto::AutoAdvance`
+  and `Backlog` keeps its entries in 3252's `backlog::Backlog`, so a
+  `.dlg` game and a VN share one rule for both; if not, nothing to do
+  (3252 builds them for this ticket to use).
 
 **Out (do not do):**
 - saves, the gallery, endings in the profile and the route chart
