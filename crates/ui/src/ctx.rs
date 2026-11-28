@@ -1,6 +1,6 @@
 //! [`Ctx`]: what every screen shares, passed `&mut` to
-//! [`Screen::update`](crate::Screen::update) and `&` to
-//! [`Screen::draw`](crate::Screen::draw). The engine's services (text by
+//! [`Screen::update`] and `&` to
+//! [`Screen::draw`]. The engine's services (text by
 //! key in the player's language, the keys and the names help text gives
 //! them, the player's settings and profiles, sounds, music and voices,
 //! storage) and the game's own part, [`Ctx::game`], whose type says what
@@ -44,6 +44,7 @@ use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
 use crate::platform_facts::{PlatformFacts, ScreenColor};
 use crate::player_files::{FileRequest, Folder};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
+use crate::screen::Screen;
 use crate::settings::{FirstLanguage, GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::system_keyboard::SystemKeyboard;
@@ -445,7 +446,13 @@ pub struct Ctx<G: GameData> {
     pub(crate) modules: module::States<G>,
     /// The hot reloads that failed ([`note_reload`](Self::note_reload)).
     reload_errors: module::ReloadErrors,
+    /// The first screen the game starts over at, if a module asked
+    /// ([`restart`](Self::restart)).
+    restart: Option<FirstScreen<G>>,
 }
+
+/// What makes the screen a game starts over at ([`Ctx::restart`]).
+type FirstScreen<G> = fn(&mut Ctx<G>) -> Box<dyn Screen<G>>;
 
 impl<G: GameData> Ctx<G> {
     /// The shared context over the game's part. Fails with the names of
@@ -500,6 +507,7 @@ impl<G: GameData> Ctx<G> {
             lang,
             modules: module::States::default(),
             reload_errors: module::ReloadErrors::default(),
+            restart: None,
         })
     }
 
@@ -549,6 +557,26 @@ impl<G: GameData> Ctx<G> {
     pub(crate) fn set_widths(&mut self, widths: CellWidths) {
         self.lang_widths = lang_widths(self.game.lang(), &widths);
         self.widths = widths;
+    }
+
+    /// Asks the game to start over at the screen `first` makes, on this
+    /// context: every screen is dropped, with its sounds, and `first`'s is
+    /// the only one; the settings, the profile, the layout and the
+    /// player's bindings stay. For a module whose data changed under the
+    /// screens (a reloaded map, which no screen built from the old one can
+    /// follow). Asked from [`Module::reloaded`](module::Module::reloaded),
+    /// it is honoured once every module's hook has run
+    /// ([`Game::reloaded`](crate::Game::reloaded)); asked anywhere else, at
+    /// the start of the next frame. Asked twice before then, the game
+    /// starts over once, at the last one's screen.
+    pub fn restart(&mut self, first: fn(&mut Self) -> Box<dyn Screen<G>>) {
+        self.restart = Some(first);
+    }
+
+    /// The restart asked for ([`restart`](Self::restart)), if one was: it
+    /// is asked no more.
+    pub(crate) fn take_restart(&mut self) -> Option<FirstScreen<G>> {
+        self.restart.take()
     }
 
     /// Takes how the asset `id` reloaded (`Hot::refresh`'s answer): a

@@ -17,7 +17,7 @@ use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::pack::Bake;
 use shuyi_core::Made;
-use shuyi_ui::basic::{BasicData, Own};
+use shuyi_ui::basic::{BasicData, BasicReload, Own};
 use shuyi_ui::dialogue::preview::{DialogueFolder, DialoguePreview, PreviewGame};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
@@ -257,13 +257,21 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     }
 
     /// The game on `ctx`, at its first screen, with its
-    /// [`modules`](Self::modules) installed; or why one could not be.
+    /// [`modules`](Self::modules) installed; or why one could not be. With
+    /// debug tools on (in a build with them, [`shuyi_ui::DEBUG_TOOLS`], and
+    /// on `ctx`), [`BasicReload`] comes first: its files reload as they
+    /// change on disk (`cargo shuyi run --watch`), and a new own part
+    /// starts it over at its first screen.
     pub fn game(
         &self,
         mut ctx: Ctx<BasicData<A, T>>,
     ) -> Result<Game<BasicData<A, T>>, ModuleError> {
+        let reload = shuyi_ui::DEBUG_TOOLS && ctx.debug_tools;
         let first = (self.first)(&mut ctx);
-        let game = Game::new(ctx, first, GameHooks::default());
+        let mut game = Game::new(ctx, first, GameHooks::default());
+        if reload {
+            game = game.with_module(BasicReload::new(self.first))?;
+        }
         match self.modules {
             Some(modules) => game.with_modules(modules()),
             None => Ok(game),

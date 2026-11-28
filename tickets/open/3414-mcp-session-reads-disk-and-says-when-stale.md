@@ -174,12 +174,12 @@ None.
   staleness fingerprint, and the launcher that answers before the build.
   It amends ADR-0031 (the host reads embedded files only) and ADR-0035
   (who answers `initialize`).
-- **Either order with 2269:** if 2269 is done, `BasicGame`'s
-  `basic_reload` module reloads text, palette, keymap, maps and dialogue
-  in a session too: add a test that a text edit shows in the next
-  `step`'s frame. If not, nothing to do (a `BasicTools` session then
-  reloads pictures only, and the "no module took it" limit says so for
-  the rest; 2269 adds the test when it lands).
+- **From 2269 (done):** `BasicGame::game` installs the
+  `basic_reload` module (`shuyi_ui::basic::BasicReload`) with debug
+  tools on, which reloads the text, palette, keymap and the game's own
+  part (a map, dialogue) in a session too, a new own part starting the
+  game over at its first screen (ADR-0164): add a test that a text edit
+  shows in the next `step`'s frame and is listed in its `reloads`.
 - **Either order with 2270:** if 2270 is done, a game built with
   `disk-files` already reads its files layer from disk, so lay no second
   disk overlay for it on the headless path; read that layer for reloads

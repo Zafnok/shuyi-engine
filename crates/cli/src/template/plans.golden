@@ -10,7 +10,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 0b7759cf3680c5d7 .github/workflows/export.yml
 2d0a7246dc0e7b2c .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-eb19edee1828e52a AGENTS.md
+94fc0e65d8f77069 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 1741fe660ef71f1d Cargo.toml
 8594cdaa3c93c2ec README.md
@@ -50,7 +50,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 76f61b855c33dfa7 .github/workflows/playtest.yml
 2d0a7246dc0e7b2c .github/workflows/release.yml
 7798fc67608aa8a1 .gitignore
-eb19edee1828e52a AGENTS.md
+94fc0e65d8f77069 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 19aae3324077a573 Cargo.toml
 8594cdaa3c93c2ec README.md
@@ -99,7 +99,7 @@ ccb09fcd68a93cb9 .github/workflows/ci.yml
 0b7759cf3680c5d7 .github/workflows/export.yml
 2d0a7246dc0e7b2c .github/workflows/release.yml
 49ee40e211c25cec .gitignore
-4bc64cec1f5629e6 AGENTS.md
+2b015039e88abbe9 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 1741fe660ef71f1d Cargo.toml
 484e9ac9d524680f README.md

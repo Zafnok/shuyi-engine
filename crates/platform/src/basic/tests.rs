@@ -143,7 +143,9 @@ fn it_starts_on_its_first_screen_in_the_keymaps_first_layout() {
     assert_eq!(ctx.console, BASIC_CONSOLE);
     let started = game.game(ctx).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(started.screens(), ["hello"]);
-    assert_eq!(started.modules(), &[]);
+    // With debug tools on, the module that reloads its files, alone.
+    let names: Vec<&str> = started.modules().iter().map(|m| m.name).collect();
+    assert_eq!(names, ["basic_reload"]);
     let small = ConsoleSpec::text(20, 10);
     assert_eq!(game.console(small).ctx().map(|c| c.console), Ok(small));
 }
@@ -226,7 +228,8 @@ fn its_modules_are_installed_in_its_game_and_its_harness() {
     let ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
     let started = game.game(ctx).unwrap_or_else(|e| panic!("{e}"));
     let names: Vec<&str> = started.modules().iter().map(|m| m.name).collect();
-    assert_eq!(names, ["marker"]);
+    // The engine's reload first, with debug tools on.
+    assert_eq!(names, ["basic_reload", "marker"]);
     assert_eq!(started.ctx().module_state::<u8>(), Some(&7));
     assert_eq!(game.harness().ctx().module_state::<u8>(), Some(&7));
 }

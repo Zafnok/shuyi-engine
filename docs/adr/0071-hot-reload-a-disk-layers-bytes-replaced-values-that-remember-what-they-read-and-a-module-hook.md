@@ -1,6 +1,6 @@
 # ADR-0071: Hot reload: a disk layer's bytes replaced, values that remember what they read, and a module hook
 
-- **Status:** Accepted
+- **Status:** Accepted; §4 amended by ADR-0164 (a file reload of the short path)
 - **Date:** 2026-11-01
 - **Related tickets:** 2220 (this), 2207 (disk layers), 2358 (modules), 2516
   (`bundle::recording`), 2518 (session records), 2221, 2327 and 2330 (use it)

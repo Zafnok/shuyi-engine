@@ -340,9 +340,18 @@ second the bundle has its new bytes. The pictures the window draws, the font's a
 images', are redrawn from them with no code of yours; a sprite keeps its source
 rectangle, so one past the edge of a smaller picture shows as missing, in magenta.
 
-A value you want to follow it is a `Hot<T>`: any kind, read through the registry, which
-remembers every file its decode asked for (its picture, its settings) and reads like
-the value. A small module of the game's keeps it, and refreshes it when files change:
+A game made with `cargo shuyi new` reloads more with no code of its own: its text
+(`en.ron`), its colors (`palette.ron`), its keys (`keymap.ron`) and its own part, such as
+the stage's `stage.map`, show on the next frame. The player's own key bindings stay: a
+layout they changed keeps all its keys. A new own part can't be fitted into the screens
+built from the old one, so the game starts over at its first screen, with its settings,
+profile and layout as they were. A new picture, or a new font atlas description, still
+needs a restart.
+
+A value of a game's own data you want to follow it is a `Hot<T>`: any kind, read through
+the registry, which remembers every file its decode asked for (its picture, its settings)
+and reads like the value. A small module of the game's keeps it, and refreshes it when
+files change:
 
 {{ snippet(file="src/assets.rs", anchor="hot") }}
 

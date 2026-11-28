@@ -134,8 +134,10 @@ mod tests {
         let basic = game();
         let running = basic.game(basic.ctx().unwrap()).unwrap();
         let mut running = running.with_module(HotPlan::new(&bundle).unwrap()).unwrap();
-        assert_eq!(running.modules()[0].name, "hot_plan");
-        assert_eq!(running.modules()[0].hooks, [Hook::Reloaded]);
+        // After the engine's own `basic_reload`, in a build with debug tools.
+        let hot_plan = running.modules().last().unwrap();
+        assert_eq!(hot_plan.name, "hot_plan");
+        assert_eq!(hot_plan.hooks, [Hook::Reloaded]);
         let changed = ["garden.ron".to_owned()];
         assert!(bundle.replace("garden.ron", b"(plots".to_vec()));
         running.reloaded(&changed);
