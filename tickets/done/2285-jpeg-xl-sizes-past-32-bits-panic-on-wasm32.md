@@ -141,7 +141,12 @@ None.
   a table of contents with an order (a hand-made one-symbol prefix code,
   an empty order); and two frames too big to count (2³⁰ × 2³⁰ px, and
   2³¹ × 2³⁰ px), each of which overflowed `num_groups` without the size
-  check, natively too. `no_bytes_panic_a_codec` is unchanged and keeps its
+  check, natively too. After CI's mutants: frames written bit by bit (a
+  `Codestream` helper in the tests), for a walk over two frames, one that
+  stops at the last frame and at one cut short, a frame of two passes, and
+  tables of contents of 65,536 entries (read) and 65,538 (left). The stop
+  at a frame cut short is now `stream.get(start..)?`, not a comparison
+  with the stream's length, whose `>=` mutant was equivalent. `no_bytes_panic_a_codec` is unchanged and keeps its
   random seed; after the size check it passed 40 runs of 256 cases each
   on wasm32 under wasmtime.
 - **Docs:** `docs/formats.md`'s JPEG XL bullet says what it refuses and

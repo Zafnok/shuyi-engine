@@ -429,12 +429,12 @@ mod jpeg_xl {
                 if end > most {
                     return Some(end);
                 }
-                if (header.is_last && !preview) || end > stream.len() as u64 {
+                if header.is_last && !preview {
                     return None;
                 }
                 preview = false;
                 start = usize::try_from(end).ok()?;
-                bits = Bitstream::new(&stream[start..]);
+                bits = Bitstream::new(stream.get(start..)?);
             }
         }
 
@@ -579,6 +579,147 @@ mod tests {
         let end = 26 + 5 * 4_211_712;
         assert_eq!(first_end_past(&ordered, end - 1), Some(end));
         assert_eq!(first_end_past(&ordered, end), None);
+    }
+
+    /// A JPEG XL codestream written bit by bit, each number from its low
+    /// bit up, as the format reads it.
+    #[cfg(feature = "jpeg-xl")]
+    #[derive(Default)]
+    struct Codestream {
+        bytes: Vec<u8>,
+        bits: usize,
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    impl Codestream {
+        /// The signature and an image header: `width` × `height` px, its
+        /// metadata all default.
+        fn image(width: u32, height: u32) -> Self {
+            let mut stream = Self::default();
+            // Not a small size (0); a ratio of 0, so the width follows.
+            stream
+                .put(0x0aff, 16)
+                .put(0, 1)
+                .side(height)
+                .put(0, 3)
+                .side(width);
+            // Metadata all default (1), its transform's too (1).
+            stream.put(1, 1).put(1, 1);
+            stream
+        }
+
+        /// `value`'s low `bits` bits.
+        fn put(&mut self, value: u32, bits: usize) -> &mut Self {
+            for bit in 0..bits {
+                if self.bits == self.bytes.len() * 8 {
+                    self.bytes.push(0);
+                }
+                if value >> bit & 1 == 1 {
+                    self.bytes[self.bits / 8] |= 1 << (self.bits % 8);
+                }
+                self.bits += 1;
+            }
+            self
+        }
+
+        /// Zeros to the byte.
+        fn pad(&mut self) -> &mut Self {
+            self.bits = self.bytes.len() * 8;
+            self
+        }
+
+        /// A side of the image, as the size header's `U32` writes it.
+        fn side(&mut self, px: u32) -> &mut Self {
+            let (kind, bits) = match px - 1 {
+                0..512 => (0, 9),
+                512..8192 => (1, 13),
+                8192..0x4_0000 => (2, 18),
+                _ => (3, 30),
+            };
+            self.put(kind, 2).put(px - 1, bits)
+        }
+
+        /// A regular frame of the whole image: of `passes` passes (1 or
+        /// 2), the last or not, its table of contents in order with
+        /// `sizes` (each under 1024), then as many bytes of sections if
+        /// `whole`. Where its sections end.
+        fn frame(&mut self, passes: u32, last: bool, sizes: &[u32], whole: bool) -> u64 {
+            // Not all default (0); a regular frame (00) of VarDCT (0), no
+            // flags (00), no upsampling (00), quantizer scales of 0.
+            self.pad().put(0, 1 + 2 + 1 + 2 + 2 + 3 + 3);
+            if passes == 1 {
+                self.put(0, 2);
+            } else {
+                // 2 passes (01), none downsampled (00), shifted by 0 (00).
+                self.put(1, 2).put(0, 2 + 2);
+            }
+            // No crop (0), replaced by its blending (00); the last or not.
+            self.put(0, 1 + 2).put(u32::from(last), 1);
+            if !last {
+                // Saved as no reference (00), nor before its colour
+                // transform (0).
+                self.put(0, 2 + 1);
+            }
+            // No name (00), filters all default (1), no extensions (00);
+            // its table of contents in order (0).
+            self.put(0, 2).put(1, 1).put(0, 2).put(0, 1).pad();
+            for &size in sizes {
+                self.put(0, 2).put(size, 10);
+            }
+            self.pad();
+            let end = self.bytes.len() + sizes.iter().map(|&size| size as usize).sum::<usize>();
+            if whole {
+                self.bytes.resize(end, 0);
+                self.pad();
+            }
+            end as u64
+        }
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    #[test]
+    fn a_jpeg_xl_walk_goes_from_frame_to_frame_until_the_last() {
+        use jpeg_xl::sections::first_end_past;
+        // A frame not the last, then the last: the walk reads both.
+        let mut two = Codestream::image(8, 8);
+        let first = two.frame(1, false, &[5], true);
+        let last = two.frame(1, true, &[7], true);
+        assert_eq!(last, two.bytes.len() as u64);
+        assert_eq!(first_end_past(&two.bytes, first), Some(last));
+        assert_eq!(first_end_past(&two.bytes, last), None);
+        // Nothing after the last frame is read.
+        let mut after = Codestream::image(8, 8);
+        let last = after.frame(1, true, &[7], true);
+        after.frame(1, false, &[1000], false);
+        assert_eq!(first_end_past(&after.bytes, last), None);
+        // Nor past a frame cut short.
+        let mut short = Codestream::image(8, 8);
+        let cut = short.frame(1, false, &[1000], false);
+        assert!(cut > short.bytes.len() as u64);
+        assert_eq!(first_end_past(&short.bytes, cut), None);
+        // Two passes of a one-group frame: its global LF, its LF group,
+        // its global HF, and its group twice.
+        let mut passes = Codestream::image(8, 8);
+        let end = passes.frame(2, true, &[1, 2, 3, 4, 5], true);
+        assert_eq!(first_end_past(&passes.bytes, end - 1), Some(end));
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    #[test]
+    fn a_jpeg_xl_walk_reads_a_table_of_contents_of_at_most_2_to_the_16_entries() {
+        use jpeg_xl::sections::first_end_past;
+        // 172 × 375 groups of 256 px and 22 × 47 LF groups, then its two
+        // globals: 65,536 entries, read. 252 × 256 and 32 × 32: 65,538,
+        // which `jxl-frame` refuses, and so the walk leaves.
+        for (width, height, entries, read) in [
+            (44_032, 96_000, 65_536, true),
+            (64_512, 65_536, 65_538, false),
+        ] {
+            let mut stream = Codestream::image(width, height);
+            let end = stream.frame(1, true, &vec![0; entries], true);
+            let walked = first_end_past(&stream.bytes, end - 1);
+            assert_eq!(walked, read.then_some(end), "{entries} entries");
+        }
     }
 
     #[cfg(feature = "jpeg-xl")]
