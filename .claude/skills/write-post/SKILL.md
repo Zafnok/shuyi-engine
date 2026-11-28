@@ -83,8 +83,9 @@ before writing it, and keep the source list for the PR body.
    `cargo xtask site-data --site .` and `bash copy-shots.sh`, as
    `site/README.md` says), and `zola serve` to read the post on News, its
    tag's page and the feed.
-2. Run the `run-gates` skill (`cargo xtask gates --fast` is enough for a
-   post alone: the typos and the website gates).
+2. Run the `run-gates` skill (a post alone touches no crate, so
+   `cargo xtask gates --fast` is all of it locally; CI runs the website
+   gates).
 3. A branch `post-YYYY-MM-DD-short-name` (in a desktop worktree, rename
    its `claude/…` branch before the first push), a commit and a PR both
    titled `Post: <title>`. It has no ticket: a post is Nick's content,

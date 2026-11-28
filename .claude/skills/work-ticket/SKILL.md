@@ -181,8 +181,11 @@ built already.
 
 ## 4. Verify
 
-Run the `run-gates` skill: `cargo xtask gates` runs every gate the
-diff needs and prints a summary block; keep it for the PR's body. Check a change a player sees through the MCP
+Run the `run-gates` skill, *Before a push*: `cargo xtask gates --fast`
+plus `cargo clippy` and `cargo test -p` of each crate the diff touches.
+`--fast` prints a summary block; keep it for the PR's body. The full
+`cargo xtask gates` is CI's: run a slow gate locally only to reproduce
+a CI failure on it, or where `run-gates` says a change needs it first. Check a change a player sees through the MCP
 session tools (the root `.mcp.json`) on `examples/hello-grid`: `start`,
 `step`, `scene`, `frame_png`; not by reading the Harness's code to drive
 it. Walk the **Acceptance criteria** and tick each box honestly. If one can't be met, say so in the Completion notes and
@@ -320,7 +323,8 @@ the PR.
 - Body: summary bullets, the acceptance criteria (checked), follow-up
   tickets, the ticket's `Breaking:` lines (or "No break"), its
   `Behaviour:` lines, a `Nick input:` line, and the summary block of
-  `cargo xtask gates` run on the commit you push (§4). The game's
+  `cargo xtask gates --fast` run on the commit you push (§4), with the
+  crates you ran clippy and the tests of. The game's
   watcher reads both kinds of line from the body and from the ticket's
   notes. Not "all gates pass": the block says which ran and which CI
   alone runs.
