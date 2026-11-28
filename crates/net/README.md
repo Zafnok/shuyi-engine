@@ -19,8 +19,11 @@ the game's bot, steps the real sim and writes each step's inputs for
 every player, and `room::wire` is their bytes. `RoomClient` is the
 client's side: it steps its own copy of the sim with those inputs behind a
 jitter buffer, checks the room's hash and asks for a catch-up when its copy
-differs. The quick-play director (2615) and the server (2616) are
-planned; lockstep, rollback and a referee are parked (1140–1150).
+differs. Its `director` module is quick play: a `Director` greets each
+client, checks its build, seats each that asks to play in the room with
+the most players that has a free seat, and opens rooms up to a cap, with
+no lobby, account or name. The server around it (2616) is planned;
+lockstep, rollback and a referee are parked (1140–1150).
 
 ## What it is not for
 
@@ -29,6 +32,9 @@ planned; lockstep, rollback and a referee are parked (1140–1150).
   client's `shuyi-app`'s behind its `net` feature (2617), and the web's
   our own JS plugin's (1142).
 - **A turn game played by two peers.** That is lockstep (1140), parked.
+- **Matchmaking by skill, lobbies, invites and room codes.** The
+  director seats strangers by free seats alone; accounts and ratings
+  are 1148's, lobbies and invites 1145's, both parked.
 - **Watching by choice, names and chat.** A room's only watchers are
   players waiting for the next round's seat, and it carries no text
   from players (ADR-0155 §6).
@@ -56,6 +62,8 @@ planned; lockstep, rollback and a referee are parked (1140–1150).
   included, which a game's rules take the place of.
   `room::testing::Dots`, a test game, is behind the `testing` feature,
   off by default.
+- **The director** runs on the server: a game's client builds none of
+  it, only the handshake's messages in `room::wire`.
 
 ## How to start
 
@@ -178,6 +186,41 @@ than 2 wait. A hash that differs from the room's, or a step missing, is
 `Advance::Resync`, and the catch-up the room sends back makes it equal
 again. `events()` holds what the last `advance`'s steps did, so a sound
 plays once.
+
+A server runs quick play with a `Director` instead of one room: it hands
+it every event its transport saw, steps it at the game's rate, sends each
+frame it writes on the `Reliable` channel, then closes each peer in
+`out.drop`:
+
+```rust
+use shuyi_net::director::{Director, DirectorConfig};
+use shuyi_net::room::Outbox;
+
+// At most 10 rooms, one kept warm with bots, as `DirectorConfig::new()`.
+let config = DirectorConfig::new().with_rooms_max(10);
+let mut director = Director::new(config, game, game.made(), seed);
+loop {
+    for event in transport.poll() {
+        director.on_event(event);
+    }
+    let mut out = Outbox::new();
+    director.step(&mut out); // once a step of the game's
+    for (peer, frame) in &out.frames {
+        let _ = transport.send(*peer, Channel::Reliable, &frame.encode());
+    }
+    for peer in &out.drop {
+        transport.disconnect(*peer);
+    }
+}
+```
+
+A client greets it first, with `ClientMsg::hello(made)`, its build's
+stamp. It is sent `Frame::Welcome`, or `Frame::Refused` with why (another
+build, another protocol, or busy: every room is full). After the welcome,
+`ClientMsg::Play` seats it, and the room's catch-up follows; `Leave` gives
+the seat back to the bot, and `Play` again seats it anew. `RoomClient`
+passes over the handshake's frames: the game reads them with
+`Frame::decode`.
 
 ## Beside its alternatives
 

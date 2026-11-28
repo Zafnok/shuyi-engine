@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: networking"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2614", "2621"]
 nick_input: none
-completed:
+completed: 2026-11-28
 ---
 
 # 2615 — Quick play: a black-box director over rooms
@@ -215,38 +215,38 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
 
 ## Acceptance criteria
 
-- [ ] 80 peers who each send `Hello` and `Play` fill 10 rooms of 8
+- [x] 80 peers who each send `Hello` and `Play` fill 10 rooms of 8
       humans; the 81st gets `Busy { retry_after_s: 10 }`, and its next
       `Play` after one human leaves is seated in that freed room.
-- [ ] With three open rooms holding 5, 7 and 7 humans out of 8 seats,
+- [x] With three open rooms holding 5, 7 and 7 humans out of 8 seats,
       `Play` seats the peer in the lower-id room of 7; with rooms of 8,
       8 and 2, in the room of 2.
-- [ ] With `rooms_max` rooms open and every seat human, `Play` is
+- [x] With `rooms_max` rooms open and every seat human, `Play` is
       `Busy`, and no room is opened.
-- [ ] A `Hello` with another `Made` gets `OtherBuild` carrying the
+- [x] A `Hello` with another `Made` gets `OtherBuild` carrying the
       director's `Made`; one with another `protocol` gets `Protocol`; a
       `Play` before `Hello` gets `Protocol`; each is then disconnected.
-- [ ] A peer who sends nothing for `hello_timeout_s` is dropped.
-- [ ] With `rooms_warm: 1`, one bots-only room runs from the start and
+- [x] A peer who sends nothing for `hello_timeout_s` is dropped.
+- [x] With `rooms_warm: 1`, one bots-only room runs from the start and
       never closes; a second room whose last human left closes exactly
       `idle_close_s` seconds of steps later, not one step sooner.
-- [ ] A peer sending `msgs_per_second + 1` messages in one second is
+- [x] A peer sending `msgs_per_second + 1` messages in one second is
       disconnected, its seat is a `Bot` at the next step, and
       `stats().refused` counts it; one sending exactly
       `msgs_per_second` is not.
-- [ ] Over 100,000 seeded operations (connect, `Hello`, `Play`,
+- [x] Over 100,000 seeded operations (connect, `Hello`, `Play`,
       `Leave`, disconnect, flood, step) on `MemoryNetwork` with seeded
       loss and delay: a peer is in at most one room; open rooms ≤
       `rooms_max`; in every room, humans + bots = seats; open rooms ≥
       `rooms_warm`; `stats()` matches a count over the rooms.
-- [ ] Two directors with the same seed fed the same events write the
+- [x] Two directors with the same seed fed the same events write the
       same outbox, byte for byte.
-- [ ] `cargo xtask check-layers` passes: `shuyi-net` gains no outside
+- [x] `cargo xtask check-layers` passes: `shuyi-net` gains no outside
       crate.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] Guides in `docs/guides/` updated, if this adds a direction, a module or a move (ADR-0009 §5).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -266,5 +266,120 @@ clock, no floats), as `tools/layers.ron` already holds `shuyi-net` after
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `room::wire` (step 1): `ClientMsg::Hello { protocol, made }` (byte
+  `0x84`, built with `ClientMsg::hello(made)`) and `ClientMsg::Play`
+  (`0x85`); `Frame::Welcome` (`0x07`) and `Frame::Refused { why }`
+  (`0x08`) with `Refusal` (`#[non_exhaustive]`: `OtherBuild { theirs }`,
+  `Busy { retry_after_s }`, `Protocol { ours }`). `Made` is written as
+  the ticket says: the engine's version and the game's word, each a `u8`
+  length and UTF-8 (cut at 255 bytes, at a character's edge), then the
+  content hash's 8 bytes. `PROTOCOL` is 2. The module doc says the
+  handshake's messages keep their bytes in every protocol, so a client of
+  another version still reads why it was refused. They joined the
+  round-trip, short, random-bytes and mutation tests, with a test of
+  their exact bytes, of the cut, and of a stamp that isn't UTF-8.
+- `shuyi_net::director`: `Director<G>`, `DirectorConfig` (private fields,
+  `new()`, `with_*` and getters, as `Faults`), `DirectorStats`,
+  `Refusals` and `RoomId`. `on_event` takes `NetEvent`s, and `step`
+  writes into 2614's `Outbox`: first what was answered since the last
+  step (welcomes and refusals), then the peers to close, then every room
+  stepped once in id order. Refused and flooded peers go in
+  `Outbox::drop` after their frame, and the host closes them after
+  sending the frames (MemoryNetwork delivers a peer's `Reliable` messages
+  before its close).
+- The seating policy is `pick(&[RoomSeats], rooms_max) -> Pick`, a pure
+  function tested apart. It counts a room's players as its humans plus
+  its watchers, because `Room::join` takes a peer while those are under
+  the seats.
+- The module's rustdoc says what quick play does and doesn't do;
+  `crates/net/README.md` says how a server runs a director and how a
+  client greets it.
+- `RoomClient::on_frame` passes over `Welcome` and `Refused`: the game
+  reads them with `Frame::decode` (2790's screen). `Room::receive` counts
+  a `Hello` or a `Play` as heard and does nothing else.
+- Tests: 21 unit tests in `director/tests.rs` (the policy, every
+  refusal, the hello time-out at its exact step, warm rooms, the idle
+  close at its exact step, ids not reused, the budget at 30 and at 31,
+  stats, two directors of one seed writing the same bytes). In
+  `tests/director.rs`, 80 `RoomClient`s greet a director on a network
+  with loss, duplicates, reordering and delays of 1 to 4 steps: all 80
+  seat in 10 rooms of 8, none resyncs, and each client's sim equals its
+  room's at every step it reaches, more than 300 checks each. A churn of
+  100,000 seeded operations (connect, with a good `Hello`, another
+  build's, a `Play` first or nothing; `Hello`, `Play`, `Leave`,
+  disconnect, flood, `Alive`, `Input`, step) checks the invariants after
+  every one. It alternates stretches of 40 clients and of 6, so rooms
+  fill to the cap, empty, close and open again under new ids, and every
+  refusal is reached. The whole file takes about 3 s in a debug build.
+
+**Deviations.**
+
+- `shuyi-core`'s `Made` and `ContentHash` derive `Hash`: `Frame` and
+  `ClientMsg` derive it, and now hold a `Made`. This is an addition, not
+  a break.
+- `Director<G: RoomGame + Clone>`, not `G: RoomGame` alone: each room it
+  opens takes its own copy of the game (`Room::new` takes `G`).
+- Room ids are `RoomId(pub u16)`, not a bare `u16`. It shows as
+  `room 3`, as `PeerId` shows as `peer 3`, so a log line names its room.
+  Past id 65,535 no room opens again (`Busy`): ids are never reused.
+- `DirectorStats::refused` is a `Refusals` struct of four counts, and
+  `DirectorStats` also counts `watchers`, so `humans + watchers` is
+  every player in a room (the churn checks it against the rooms).
+- **The warm rooms are the lowest-id open rooms.** A room past them that
+  has had no player for `idle_close_s` closes. The ticket's "unless
+  closing it would leave fewer than `rooms_warm` open rooms" follows
+  from this. It also keeps the oldest rooms running when two rooms empty
+  at once.
+- **A welcomed client out of a room is let go after five silent
+  seconds**, the room's own rule (`5 * STEPS_PER_SECOND` steps). The
+  ticket times out only the `Hello`, so a client that was welcomed or got
+  `Busy` and then fell silent was kept forever: a leak in a public
+  server. A waiting client keeps its place by sending `RoomClient::alive()`,
+  as it does in a room. 2790 is told so (**From 2615 (done)**).
+- The message budget counts a client's messages in a second that starts
+  with its first message after the last second ran out, not in seconds
+  that every client shares. A client that sends 30 every second is never
+  cut off; 31 within 15 steps is cut off.
+- A client's second `Hello`, a `Play` while it is in a room, and bytes
+  that are no message after the handshake are passed over, as a room
+  passes over them. A peer let go (refused, flooded, timed out) is
+  forgotten at once: anything more from it is not read, and `peers`
+  stops counting it before the transport's `Disconnected` arrives.
+- The time-outs, the window and a room's idle steps are counted in
+  `step`, and the director's own drops come before the rooms' steps.
+
+**Follow-ups.** None new. 2616 keeps the switch to refuse `Play` past its
+egress budget: the clause there now says the director has none, and that
+2616 adds `Director::set_open(bool)`. 2790 builds the client's screen and
+its text for each refusal. 2854 writes the book's chapter and 2855
+rewrites the `shuyi-net` skill.
+
+Book: none, 2854 writes the book's chapter on online play, quick play
+included, from this ticket's notes; no chapter names `shuyi-net` yet.
+
+Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
+play; this changes no schema, template, format of files or problem code.
+
+Behaviour: shuyi-net: `room::wire::PROTOCOL` is 2 (it was 1): a client
+of 2614's protocol is refused by a director, and a room's frames are
+unchanged.
+
+Behaviour: shuyi-net: `RoomClient::on_frame` passes over `Frame::Welcome`
+and `Frame::Refused`, and `Room::receive` counts a `Hello` or a `Play` as
+the peer heard from.
+
+Game: nothing to adopt, the game uses no `shuyi-net` code
+(`gh search code --repo Zafnok/visions-of-shuyi 'shuyi_net'` and
+`'PROTOCOL room::wire'` find nothing, 2026-11-28), and `Made`'s new
+`Hash` derive is additive.
+
+Size: 1,872 counted lines, the parts couldn't land apart: the handshake's
+messages have no reader without the director, and the churn and the 80
+clients the ticket asks for drive the handshake, the policy, the rooms'
+lifecycle and the budget together. Over half is tests (977 lines). The
+ticket's estimate of 900 missed the module's rustdoc and its two
+integration tests.
+
+Nick input: none.

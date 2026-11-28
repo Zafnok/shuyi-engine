@@ -1,7 +1,9 @@
 use shuyi_core::SimRng;
 use shuyi_core::tick::{ActionId, SeatInput, TickInput};
 
-use super::{ClientMsg, Frame, Roster, RoundStart, WireError};
+use shuyi_core::{ContentHash, Made};
+
+use super::{ClientMsg, Frame, PROTOCOL, Refusal, Roster, RoundStart, WireError};
 use crate::room::testing::Dots;
 use crate::room::{Joined, RoomGame, SeatKind};
 
@@ -70,7 +72,22 @@ fn frames() -> Vec<Frame> {
         },
         Frame::RoundStart(round_start()),
         Frame::Closing,
+        Frame::Welcome,
+        Frame::Refused {
+            why: Refusal::OtherBuild { theirs: made() },
+        },
+        Frame::Refused {
+            why: Refusal::Busy { retry_after_s: 10 },
+        },
+        Frame::Refused {
+            why: Refusal::Protocol { ours: PROTOCOL },
+        },
     ]
+}
+
+/// A stamp with text of more than one byte a character.
+fn made() -> Made {
+    Made::new("dots 1.0 \u{e9}t\u{e9}", ContentHash(0x0102_0304_0506_0708))
 }
 
 /// One of every client message.
@@ -81,7 +98,62 @@ fn msgs() -> Vec<ClientMsg> {
         ClientMsg::Alive,
         ClientMsg::Resync,
         ClientMsg::Leave,
+        ClientMsg::hello(made()),
+        ClientMsg::Hello {
+            protocol: 9,
+            made: Made::new("", ContentHash(0)),
+        },
+        ClientMsg::Play,
     ]
+}
+
+#[test]
+fn a_hello_is_its_protocol_then_the_stamps_three_fields() {
+    let mut made = Made::new("g", ContentHash(0x0807_0605_0403_0201));
+    "0.1".clone_into(&mut made.engine);
+    let bytes = ClientMsg::Hello {
+        protocol: 0x0102,
+        made,
+    }
+    .encode();
+    assert_eq!(
+        bytes,
+        [
+            0x84, 0x02, 0x01, 3, b'0', b'.', b'1', 1, b'g', 1, 2, 3, 4, 5, 6, 7, 8
+        ]
+    );
+    assert_eq!(ClientMsg::Play.encode(), [0x85]);
+    assert_eq!(Frame::Welcome.encode(), [0x07]);
+    let busy = Frame::Refused {
+        why: Refusal::Busy { retry_after_s: 10 },
+    };
+    assert_eq!(busy.encode(), [0x08, 0x03, 10, 0]);
+}
+
+#[test]
+fn a_stamps_text_past_255_bytes_is_cut_at_a_characters_edge() {
+    // 128 characters of two bytes each: 256 bytes, cut to 127 of them.
+    let long = "\u{e9}".repeat(128);
+    let bytes = ClientMsg::hello(Made::new(long, ContentHash(0))).encode();
+    let Ok(ClientMsg::Hello { made, .. }) = ClientMsg::decode(&bytes) else {
+        panic!("a cut stamp still decodes");
+    };
+    assert_eq!(made.game, "\u{e9}".repeat(127));
+}
+
+#[test]
+fn a_stamps_text_that_isnt_utf8_or_a_refusal_of_no_kind_is_refused() {
+    let mut bytes = ClientMsg::hello(Made::new("g", ContentHash(0))).encode();
+    let game = bytes.iter().rposition(|b| *b == b'g').unwrap_or(0);
+    bytes[game] = 0xFF;
+    assert_eq!(
+        ClientMsg::decode(&bytes),
+        Err(WireError::BadField("stamp's text"))
+    );
+    assert_eq!(
+        Frame::decode::<Dots>(&[0x08, 0x09, 0, 0]),
+        Err(WireError::BadField("refusal"))
+    );
 }
 
 #[test]
@@ -420,7 +492,8 @@ fn random_bytes_never_panic() {
         if let Some(first) = bytes.first_mut()
             && rng.roll_below(4) != 0
         {
-            *first = [1, 2, 3, 4, 5, 6, 0x80, 0x81, 0x82, 0x83][usize::from(*first % 10)];
+            let tags = [1, 2, 3, 4, 5, 6, 7, 8, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85];
+            *first = tags[usize::from(*first) % tags.len()];
         }
         decodes_or_refuses(&bytes);
     }
