@@ -36,7 +36,7 @@ use shuyi::ui::frame::Palette;
 use crate::Data;
 
 #[cfg(feature = "tools")]
-pub use tools::{OPTIONS, Tools, playtest_plan, seed_of};
+pub use tools::{OPTIONS, Tools, playtest_plan, prove_stage, seed_of};
 
 /// The stage's map, in the game's files.
 // check-text: not player text, a file name

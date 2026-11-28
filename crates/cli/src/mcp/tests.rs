@@ -134,3 +134,28 @@ fn no_tool_description_holds_a_run_of_spaces_or_a_line_break() {
         assert!(!description.contains('\n'), "{name}: {description}");
     }
 }
+
+#[test]
+fn the_new_tools_answer_is_the_game_made_or_with_questions_the_questions() {
+    let new = tools().into_iter().find(|t| t["name"] == "new").unwrap();
+    let schema = &new["outputSchema"];
+    let any_of = schema["properties"]["result"]["anyOf"].as_array().unwrap();
+    let refs: Vec<&str> = any_of.iter().filter_map(|r| r["$ref"].as_str()).collect();
+    assert_eq!(refs, ["#/$defs/NewOutput", "#/$defs/Questions"]);
+    // Every definition either schema names is there, as it was.
+    let questions: Value = serde_json::from_str(&crate::contract::questions_schema().text).unwrap();
+    for (name, def) in questions["$defs"].as_object().unwrap() {
+        assert_eq!(&schema["$defs"][name], def, "{name}");
+    }
+    assert!(new["inputSchema"]["properties"]["questions"].is_object());
+    let description = new["description"].as_str().unwrap();
+    assert!(description.contains("from the session's folder"));
+    assert!(description.contains("`questions`"));
+    // The other tools' answers are their own schema's.
+    let check = tools().into_iter().find(|t| t["name"] == "check").unwrap();
+    let [_, output] = op_schemas(Op::Check, false);
+    assert_eq!(
+        check["outputSchema"],
+        serde_json::from_str::<Value>(&output.text).unwrap()
+    );
+}

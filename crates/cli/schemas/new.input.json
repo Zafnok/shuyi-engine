@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "answers": {
-      "description": "An answers file (`answers.ron`), from the working folder: its\nanswers in place of the short name's.",
+      "description": "An answers file (`answers.ron`), from the working folder (through\nMCP, the session's folder): its answers in place of the short\nname's.",
       "type": [
         "string",
         "null"
@@ -13,7 +13,7 @@
       "default": null
     },
     "dir": {
-      "description": "The new game's folder, from the working folder: made if missing,\nand refused unless empty (or `force`).",
+      "description": "The new game's folder, from the working folder (through MCP, the\nsession's folder): made if missing, and refused unless empty (or\n`force`).",
       "type": "string"
     },
     "engine": {
@@ -51,6 +51,11 @@
         "null"
       ],
       "default": null
+    },
+    "questions": {
+      "description": "Make nothing, and answer the wizard's questions instead, for the\nanswers given so far (`new --questions`; `new.questions.json` in\nthe schemas): each with who asks it, its answers, its default, its\nflag and why it is skipped.",
+      "type": "boolean",
+      "default": false
     },
     "set": {
       "description": "Answers by question, in place of the short name's and the file's\n(`--set perspective=top-down-grid`).",

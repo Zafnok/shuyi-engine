@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2260 — Part sets: pictures made of grey-keyed parts, opt-in
@@ -216,6 +216,11 @@ None.
 Nothing breaks, and nothing changes for a game that doesn't opt in: no
 `Breaking:` line.
 
+**Estimated size:** about 1,800 lines (code 800, tests 750, docs 250).
+
+**Split:** past 1,400 lines, split off the skin's half (`paint`, its
+tests and the raster snapshot) into a new ticket.
+
 **Out (do not do):**
 - **Making it the main way to draw people.** Nothing that exists today
   changes how it works; a game opts in.
@@ -261,46 +266,48 @@ Nothing breaks, and nothing changes for a game that doesn't opt in: no
 
 ## Acceptance criteria
 
-- [ ] The example file above (completed with the parts it names) loads;
+- [x] The example file above (completed with the parts it names) loads;
   each check in *Checked alone* has a file that fails it, with its
   line.
-- [ ] `appearance("plain", s, &[])` gives the same `Appearance` for the
+- [x] `appearance("plain", s, &[])` gives the same `Appearance` for the
   same `s` on every run, and at least two different ones over seeds 0 to
   99.
-- [ ] Adding a slot (and its parts) to a set, or a colour group, leaves
+- [x] Adding a slot (and its parts) to a set, or a colour group, leaves
   every other slot's part and every other key's colour unchanged for
   seeds 0 to 999.
-- [ ] `"elf"` with base `"plain"` rolls `"plain"`'s heads and hair and
+- [x] `"elf"` with base `"plain"` rolls `"plain"`'s heads and hair and
   always has `ears_long` in `"ears"`; a base cycle is an error naming
   the kinds in it.
-- [ ] Wearing `helm_iron` puts it in `"helmet"` and empties `"hair"`,
+- [x] Wearing `helm_iron` puts it in `"helmet"` and empties `"hair"`,
   `"back_hair"` and `"ears"`; wearing an unknown part, or two parts of
   one slot, is an error.
-- [ ] `paint`, on an 8 × 8 fixture: a key-grey pixel is the rolled
+- [x] ~~`paint`, on an 8 × 8 fixture: a key-grey pixel is the rolled
   colour; a red pixel stays red; a pixel with alpha 100 leaves what is
   below it; the later slot's pixel is over the earlier's; `out`'s
-  revision moved by one; a wrong size or kind of `out` is an error.
-- [ ] `check_pixels` reports a grey of 198 in a set whose key is 200,
+  revision moved by one; a wrong size or kind of `out` is an error.~~
+  (not done: split off to 2284, at the ticket's `Split:` line)
+- [x] `check_pixels` reports a grey of 198 in a set whose key is 200,
   naming the file and pixel, and nothing for 190.
-- [ ] `PartsRon` has ADR-0007's fuzz-style test (as `PaletteRon`'s in
+- [x] `PartsRon` has ADR-0007's fuzz-style test (as `PaletteRon`'s in
   `crates/assets/src/format/builtin_tests.rs`), and a golden table,
   `tests/golden/parts.ron` in the chosen crate, has a row `part set: parts`
   (the decoded fixture's hash) and a row `appearance` (seed 7's look of
   the fixture set), which the `determinism` job runs on wasm32.
-- [ ] The format and the roll build and work without the painting half
+- [x] The format and the roll build and work without the painting half
   (and so without `shuyi-ui`).
-- [ ] A raster-painter snapshot (`frame-png`'s painter) of three rolled
+- [x] ~~A raster-painter snapshot (`frame-png`'s painter) of three rolled
   faces of the fixture set side by side: a look test, so it reads
-  pixels.
-- [ ] Opt-in: a game that doesn't opt in builds none of it (`cargo
+  pixels.~~ (not done: split off to 2284, at the ticket's `Split:`
+  line)
+- [x] Opt-in: a game that doesn't opt in builds none of it (`cargo
   tree` or a build without the feature, recorded in the completion
   notes), and every existing snapshot and golden row is unchanged.
   `cargo xtask check-layers` passes (and `check-modules`, if it is a
   module).
-- [ ] The completion notes say which home was chosen, which others were
+- [x] The completion notes say which home was chosen, which others were
   weighed, and why.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -313,5 +320,109 @@ Nothing breaks, and nothing changes for a game that doesn't opt in: no
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** `shuyi_assets::parts`, behind a new `parts` feature
+of `shuyi-assets` (off by default, no dependency, `no_std`): `PartsDef`
+(the file as written, with `ColourGroupDef`, `PartDef` and `KindDef`),
+the format `PartsRon` (`parts`, `.ron`, kind `part set`), checked alone
+(`PartsDef::from_source`, `parts/check.rs`) and resolved against an
+`ImageTable` (`PartsDef::resolve`, giving `PartSet` and its `Part`s);
+`PartSet::appearance`, `PartSet::check_pixels`, `Appearance` (plain
+data with `serde` and `fingerprint`), `PartsError`, `slot_rng`, and the
+caps as constants. The fixture is
+`crates/assets/tests/fixtures/parts/faces.ron` and `faces.png` (four
+slots of 8 × 8 parts, drawn for the tests by a script, seven parts side
+by side, and two kinds). The golden table
+`crates/assets/tests/golden/parts.ron` (rows `part set: parts` and
+`appearance`) runs with `shuyi-assets`' tests, so on wasm32 in the
+`determinism` job; the `no-std` job builds the feature
+(`--features sfx,corners,parts`). Docs: `docs/formats.md` (a row in the
+table of formats a game registers, and a section, *Part sets*), the
+module's rustdoc, the `shuyi-import-art` skill, ADR-0165.
+
+**Where it lives, and why** (ADR-0165, which amends ADR-0160 §5). The
+home is an off-by-default `parts` feature of `shuyi-assets`, beside
+`image`, `palette` and `picture_set`, for the format and the roll; and,
+decided here and built in 2284, a `parts` feature of `shuyi-ui` for the
+painting, beside `frame::painted`, which turns the first on. So a
+headless build rolls without `shuyi-ui`. Weighed:
+- *A module crate, `shuyi-parts`*: the cleanest separation, and what
+  ADR-0160 §5 said for a part a shipped game runs. But the metadata,
+  README, `tools/layers.ron` line, front-door feature, catalog row,
+  concern and skill are more than the code, the concern would add a
+  question to `shuyi new` about something no game must choose, and the
+  painting would still need a feature of its own inside it. So it isn't
+  a module, and no `pictures` concern was added to `docs/modules.ron`.
+- *A feature of `shuyi-ui` alone*: a headless build couldn't roll
+  without the UI crate.
+- *Features of the default crates* (chosen): as `sfx`, a format with its
+  pure function, which a shipped game runs too, is a feature of
+  `shuyi-assets` (ADR-0009 §4's form for formats). No new engine edge or
+  outside crate, so `tools/layers.ron` has no new line.
+
+Opt-in, measured: `cargo tree -p hello-grid --features tools -e features
+-i shuyi-assets`, the same with `-i shuyi-ui`, and `cargo tree -p snake
+-e features -i shuyi-assets` show no `parts` feature: a game that
+doesn't opt in builds none of it, tools included. No existing snapshot
+or golden row changed.
+
+**Deviations.**
+- **Split, at the ticket's `**Split:**` line:** the skin's half
+  (`shuyi_ui::frame::parts::paint`, `PaintError`, `shuyi-ui`'s `parts`
+  feature, its tests, the raster snapshot of three faces, its `no-std`
+  line and the book's paragraph) went to 2284, with its two acceptance
+  boxes. With it the PR measured 2,513 counted lines. It was written and
+  passing before the split; its code is on the local branch
+  `t2284-part-sets-paint`. `PartsError` and the public structs are
+  `#[non_exhaustive]`, so 2284 needs nothing more here.
+- **No feature of the `shuyi` front door** (the ticket's second option
+  named one): the front door's features are modules (`cargo xtask
+  check-modules` fails one with no catalog row), and a game turns
+  `shuyi-assets`' feature on in its own `Cargo.toml`, as it does `sfx`;
+  2284's `shuyi-ui` feature is one switch for both halves.
+- **A part hides only slots under its own**: a check the ticket didn't
+  list. Step 4 says a hidden part's own `hides` don't count, which needs
+  an order; with hides only downward, going from the topmost slot down
+  is exact and never ambiguous (`a_hidden_parts_own_hides_do_not_count`).
+- **A kind may replace a colour group's rows** (`colours: { "skin":
+  [[...]] }` in a kind), as the ticket's "takes the base's slots and
+  colours and replaces only those it names" says; the example shows only
+  slots. Its rows are checked as the set's are.
+- **More checks:** two key greys standing for one name (a group's key
+  would be ambiguous), and a group that colours no key.
+- **The file reads with RON's `implicit_some`**, so a list writes a part
+  bare beside `None`, as the example does; `base: Some("plain")` reads
+  as written.
+- `PartsDef::keys` is a `Vec<(u8, String)>`, read from the map in order,
+  so a grey written twice is seen (a map would keep the last).
+- A worn part named twice is worn once, not an error; two different
+  parts of one slot are the error.
+- `check_pixels` also reports a part whose image is smaller than its
+  rectangle, and a pixel is drawn (and checked) from alpha 128, as the
+  painting has it (`parts::DRAWN_ALPHA`). It takes `impl Fn(ImageId) ->
+  Option<&'a Image>`, the lifetime named.
+- `Appearance` derives `Ord` too, so looks can be sorted and kept in a
+  set, and has `Appearance::new`.
+- The fuzz-style test is in `crates/assets/src/parts/tests.rs`, with
+  `builtin_tests`' helpers (`bytes`, `edited`), since the format is
+  behind its feature; it resolves and rolls what decodes, too.
+- One fixture serves as the ticket's 4-slot set and its 2-kind set (kinds
+  `plain` and `capped`).
+- The ticket was 15 days old: every type, function and file its steps
+  name was checked against `main` (`painted.rs`, `Image`, `ImageTable`,
+  `SimRng::roll_below`, `fnv::Hasher`, `palette.rs`, `builtin_tests.rs`,
+  `docs/formats.md`). 2259, done since, had already rewritten its clause
+  on ADR-0160; nothing else had changed.
+
+**Follow-up tickets.** 2284: the painting (the split).
+
+Size: 2,163 counted lines, the format, its checks and the roll couldn't land apart: the roll reads the resolved set, and the acceptance (the example loading with every check, the golden row of a look, the fuzz test that resolves and rolls) needs all three; the part that could land apart, the painting, went to 2284.
+
+Breaking: none. Everything is new and behind a feature that is off by
+default.
+
+Book: none, the book's paragraph on part sets comes with 2284's
+painting: a game can't show a rolled face before it can paint one.
+
+Game: nothing to adopt, the game draws its people by hand and builds no
+part set (`gh search code --repo Zafnok/visions-of-shuyi 'PartSet'` and
+`'features = ["parts"'` found nothing).

@@ -1,8 +1,9 @@
 //! Corner sheets made, not drawn (the `corners` feature, off by default):
 //! the 15 pictures of a [`CornerLayer`] made from a terrain's one tile
-//! ([`generate`]), at tool time and in integers. Hand-drawn corner layers
-//! stay the grid kit's way; this is a tool a game opts into, for one
-//! terrain's edges or all of them.
+//! ([`generate`]), or turned from 5 drawn pieces ([`rotated`]), at tool
+//! time and in integers. Hand-drawn corner layers stay the grid kit's
+//! way; this is a tool a game opts into, for one terrain's edges or all of
+//! them.
 //!
 //! A sheet is 8 × 2 pictures of the tile's size, mix `m` (the
 //! [`mix`](crate::tileset::mix) of the four tiles round a point) at column
@@ -31,6 +32,17 @@
 //! An in pixel takes the tile's pixel half a tile over (wrapping), so mix
 //! 15 lines up with the plain tiles round it; an out pixel is clear. A
 //! [`Rim`] colours the pixels near the edge, read from the field too.
+//!
+//! # Turned from five pieces
+//!
+//! Drawn by hand, a sheet needs only 5 pieces ([`PIECES`]): one corner in
+//! (mix 8, `#...`), two side by side (12, `##..`), two across (9, `#..#`),
+//! three in (14, `###.`) and all four (15). The other 10 are their quarter
+//! turns. A quarter turn clockwise moves each corner to the next, top-left
+//! to top-right to bottom-right to bottom-left, both for the pixels
+//! (`(x, y)` to `(n − 1 − y, x)`, so a piece is square) and for the mix's
+//! bits (8 to 4 to 1 to 2 to 8): 8 turns to 4, 1 and 2; 12 to 5, 3 and
+//! 10; 9 to 6; 14 to 13, 7 and 11. Mix 15 is its piece as drawn.
 
 use crate::prelude::*;
 
@@ -173,7 +185,30 @@ pub enum CornersError {
     /// A wobble's `strength` is over [`MAX_STRENGTH`].
     #[error("a wobble's strength is 0 to 100, not {0}")]
     Strength(u8),
+    /// A piece of [`rotated`] isn't square.
+    #[error("piece {piece} is {size:?} pixels across and down: a piece is square")]
+    NotSquare {
+        /// Which piece, from 0, in the order of [`PIECES`].
+        piece: usize,
+        /// Its size.
+        size: (u32, u32),
+    },
+    /// A piece of [`rotated`] isn't the size of the first.
+    #[error("piece {piece} is {size:?} pixels across and down, and the first is {first:?}")]
+    PieceSize {
+        /// Which piece, from 0, in the order of [`PIECES`].
+        piece: usize,
+        /// Its size.
+        size: (u32, u32),
+        /// The first piece's.
+        first: (u32, u32),
+    },
 }
+
+/// The mixes whose pieces [`rotated`] is given, in its order: one corner in
+/// (`#...`), two side by side (`##..`), two across (`#..#`), three in
+/// (`###.`) and all four (`####`).
+pub const PIECES: [u8; 5] = [8, 12, 9, 14, 15];
 
 /// The place of mix `m`'s picture in a sheet of `tile_px` pictures whose
 /// top-left is at `origin`: column `m % 8`, row `m / 8`.
@@ -245,6 +280,69 @@ pub fn generate(
         }
     }
     Ok(sheet)
+}
+
+/// The sheet made from the five drawn `pieces` of the mixes in [`PIECES`],
+/// each other mix a quarter turn of one of them, clockwise once, twice or
+/// three times ([module docs](self)). Mix 15's is its piece as drawn.
+///
+/// # Errors
+/// An empty first piece or a side over [`MAX_SIDE`] (as a tile's), a
+/// piece that isn't square, or one not the size of the first.
+pub fn rotated(pieces: [&Image; 5]) -> Result<Image, CornersError> {
+    let first = (pieces[0].width, pieces[0].height);
+    for (piece, image) in pieces.iter().enumerate() {
+        let size = (image.width, image.height);
+        if piece == 0 {
+            tile_size(image)?;
+        } else if size != first {
+            return Err(CornersError::PieceSize { piece, size, first });
+        }
+        if size.0 != size.1 {
+            return Err(CornersError::NotSquare { piece, size });
+        }
+    }
+    let mut sheet = Image::filled(first.0 * COLUMNS, first.1 * ROWS, [0; 4]);
+    let mut filled = [false; MIXES];
+    for (m, piece) in PIECES.into_iter().zip(pieces) {
+        let (mut m, mut picture) = (m, piece.clone());
+        for _ in 0..4 {
+            if let Some(done) = filled.get_mut(usize::from(m)).filter(|done| !**done) {
+                *done = true;
+                let at = sheet_rect((0, 0), first, m);
+                for y in 0..first.1 {
+                    for x in 0..first.0 {
+                        let pixel = picture.pixel(x, y).unwrap_or([0; 4]);
+                        put(&mut sheet, (at.x + x, at.y + y), pixel);
+                    }
+                }
+            }
+            (m, picture) = (turn_mix(m), turn(&picture));
+        }
+    }
+    Ok(sheet)
+}
+
+/// The square `picture` turned a quarter clockwise: `(x, y)` to
+/// `(n − 1 − y, x)`.
+fn turn(picture: &Image) -> Image {
+    let n = picture.width;
+    let mut turned = Image::filled(n, n, [0; 4]);
+    for y in 0..n {
+        for x in 0..n {
+            let pixel = picture.pixel(x, y).unwrap_or([0; 4]);
+            put(&mut turned, (n - 1 - y, x), pixel);
+        }
+    }
+    turned
+}
+
+/// Mix `m` turned a quarter clockwise: top-left (8) to top-right (4),
+/// top-right to bottom-right (1), bottom-right to bottom-left (2) and
+/// bottom-left to top-left. The four bits moved are apart, so they add up
+/// to the turned mix.
+const fn turn_mix(m: u8) -> u8 {
+    ((m & 8) >> 1) + ((m & 4) >> 2) + ((m & 1) << 1) + ((m & 2) << 2)
 }
 
 /// The colour of the pixel at `(x, y)` of a picture whose field is `over`

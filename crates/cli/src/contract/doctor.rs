@@ -1,6 +1,6 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
-//! and Cargo, rustup's targets, MSYS2's linker and `objcopy` on the
-//! Windows GNU toolchain, on Linux the C linker, `pkg-config` and the
+//! and Cargo, rustup's targets, MSYS2's linker, `windres` and `objcopy` on
+//! the Windows GNU toolchain, on Linux the C linker, `pkg-config` and the
 //! system libraries the backend links and opens, and the web target; and,
 //! as optional checks that never fail it, `gh`, which only `shuyi repos`
 //! needs, `ssh-keygen`, which it and `export --recipient` need, and, in a
@@ -366,6 +366,7 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
                 ),
             }
         });
+        checks.push(windres_check(probe));
     }
     if host.as_deref().is_some_and(|h| h.contains("-linux-")) {
         checks.extend(linux::checks(probe));
@@ -401,6 +402,24 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
     let windows = host.as_deref().is_some_and(|h| h.contains("-windows-"));
     checks.extend(worktree_checks(probe, windows));
     DoctorOutput { host, checks }
+}
+
+/// The check of binutils' `windres`, which compiles the Windows program's
+/// icon and version resource (`export windows`): the one the export runs
+/// ([`crate::export::windres`]), `windres --version`.
+fn windres_check(probe: &dyn Probe) -> Check {
+    let windres =
+        crate::export::windres(&|program| probe.output(program, &["--version"]).is_some());
+    match probe.output(windres, &["--version"]) {
+        Some(text) => pass("windres", first_line(&text)),
+        None => fail(
+            "windres",
+            None,
+            "`export windows` compiles the program's icon and version resource with binutils' \
+             windres, which comes with MSYS2's mingw-w64 GCC: `C:\\msys64\\usr\\bin\\pacman.exe \
+             -S mingw-w64-x86_64-gcc`, with C:\\msys64\\mingw64\\bin on PATH",
+        ),
+    }
 }
 
 /// `doctor` on the machine `probe` looks at.
@@ -594,6 +613,7 @@ wasm32-unknown-unknown
                 "GNU objcopy (GNU Binutils) 2.45
 ",
             )
+            .with("windres --version", "GNU windres (GNU Binutils) 2.45\n")
             .with(
                 "git rev-parse --show-toplevel",
                 "D:/games/moon
@@ -826,11 +846,11 @@ wasm32-unknown-unknown
         let output = checks(&machine);
         assert_eq!(
             names(&output, false),
-            ["msys2-gcc", "objcopy", "wasm-target"]
+            ["msys2-gcc", "windres", "objcopy", "wasm-target"]
         );
         let msys = &output.checks[3];
         assert!(msys.help.as_deref().unwrap().contains("MSYS2.MSYS2"));
-        let objcopy = &output.checks[4];
+        let objcopy = &output.checks[5];
         assert!(
             objcopy
                 .help
@@ -839,7 +859,7 @@ wasm32-unknown-unknown
                 .contains("mingw-w64-x86_64-binutils")
         );
         let with = machine.with("objcopy --version", "GNU objcopy (GNU Binutils) 2.45\n");
-        let check = &checks(&with).checks[4];
+        let check = &checks(&with).checks[5];
         assert_eq!(
             check.found.as_deref(),
             Some("GNU objcopy (GNU Binutils) 2.45")
@@ -867,6 +887,37 @@ wasm32-unknown-unknown
         assert_eq!(
             check.found.as_deref(),
             Some("gcc on PATH: gcc (Rev1) 14.2.0")
+        );
+    }
+
+    #[test]
+    fn windows_gnu_needs_windres_and_says_how_to_get_it() {
+        let machine = rust("x86_64-pc-windows-gnu");
+        let output = checks(&machine);
+        let windres = &output.checks[4];
+        assert_eq!((windres.name.as_str(), windres.ok), ("windres", false));
+        let help = windres.help.as_deref().unwrap();
+        assert!(
+            help.contains("icon and version resource") && help.contains("mingw-w64-x86_64-gcc"),
+            "{help}"
+        );
+        let said = text(&output);
+        assert!(said.contains("  FAIL windres\n"), "{said}");
+        let plain = rust("x86_64-pc-windows-gnu")
+            .with("windres --version", "GNU windres (GNU Binutils) 2.45\n");
+        let check = &checks(&plain).checks[4];
+        assert_eq!(
+            (check.ok, check.found.as_deref()),
+            (true, Some("GNU windres (GNU Binutils) 2.45"))
+        );
+        let prefixed = machine.with(
+            "x86_64-w64-mingw32-windres --version",
+            "GNU windres (GNU Binutils for Debian) 2.40\n",
+        );
+        let check = &checks(&prefixed).checks[4];
+        assert_eq!(
+            check.found.as_deref(),
+            Some("GNU windres (GNU Binutils for Debian) 2.40")
         );
     }
 

@@ -10,14 +10,16 @@
 //! signature covers it, and a file beside the `.app`, where a player finds it.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::disclosure::{FileKind, Shipped};
+use super::identity::{self, Identity};
 use super::{
     ExportCx, ExportError, ExportReport, Exporter, Host, InCi, RunCx, Signing, archive, fresh,
-    tool, write,
+    tool, tool_in, write,
 };
+use crate::contract::target::{Level, TargetCheck, TargetProblem};
 use crate::game::GameTools;
 use crate::notices;
 use crate::project::Project;
@@ -174,20 +176,27 @@ impl Exporter for Desktop {
                 self.name()
             )));
         }
-        match self.system {
+        let mut report = match self.system {
             System::MacOs => {
                 let slices = self
                     .triples
                     .iter()
-                    .map(|triple| cx.build(triple, false))
+                    .map(|triple| cx.build(triple, false, None))
                     .collect::<Result<Vec<_>, _>>()?;
                 pack_macos(cx, &slices)
             }
             system => {
-                let program = cx.build(self.triples[0], true)?;
+                let resource = if system == System::Windows {
+                    windows_resource(cx)?
+                } else {
+                    None
+                };
+                let program = cx.build(self.triples[0], true, resource.as_deref())?;
                 pack(cx, system, self.triples[0], &program)
             }
-        }
+        }?;
+        report.warnings.extend(no_identity(cx));
+        Ok(report)
     }
 
     /// The program, its notices and the players' note, all written here, and
@@ -200,10 +209,22 @@ impl Exporter for Desktop {
         shipped.source(notices::FILE, FileKind::Written, "written by the export");
         let program = match self.system {
             System::Windows => format!("{}.exe", cx.bin),
-            System::Linux => cx.bin.clone(),
+            System::Linux => {
+                let share = cx.out.join(&report.folder).join(SHARE);
+                let entries = archive::entries(&share, &format!("{SHARE}/"), &|_| false);
+                for entry in entries.unwrap_or_default() {
+                    shipped.source(entry.name, FileKind::Written, "written by the export");
+                }
+                cx.bin.clone()
+            }
             System::MacOs => {
-                let contents = format!("{}.app/Contents", cx.bin);
-                for file in ["Info.plist", "_CodeSignature/CodeResources"] {
+                let contents = format!("{}/Contents", app_folder(cx));
+                let mut files = vec!["Info.plist", "_CodeSignature/CodeResources"];
+                let icns = cx.out.join(&report.folder).join(&contents).join(ICNS);
+                if icns.is_file() {
+                    files.push(ICNS);
+                }
+                for file in files {
                     let path = format!("{contents}/{file}");
                     shipped.source(path, FileKind::Written, "written by the export");
                 }
@@ -233,7 +254,7 @@ impl Exporter for Desktop {
                     "a recipient's macOS copy is signed again on macOS (`codesign`)".to_owned(),
                 ));
             }
-            let app = folder.join(format!("{}.app", cx.bin));
+            let app = folder.join(app_folder(cx));
             let program = app.join("Contents").join("MacOS").join(&cx.bin);
             return sign_app(&program, &app);
         }
@@ -331,6 +352,16 @@ pub fn pack(
     if system == System::Windows {
         write(&folder.join(NOTE), WINDOWS_NOTE)?;
     }
+    if system == System::Linux
+        && let Some(part) = &cx.app
+    {
+        let identity = Identity::of(part, &cx.root, &cx.version);
+        let files = identity::linux_files(&identity, &cx.bin)
+            .map_err(|e| ExportError::Setup(identity::icon_error(&e)))?;
+        for (path, bytes) in files {
+            write_bytes(&folder.join(path), &bytes)?;
+        }
+    }
     let beside = cx.copy_beside(&|_| folder.clone())?;
     let package = if system == System::Windows {
         format!("{base}.zip")
@@ -347,14 +378,15 @@ pub fn pack(
 }
 
 /// Writes the macOS package of the program's `slices`: the folder
-/// `<base>/` with `<program>.app` (the slices joined by `lipo`, a minimal
-/// `Info.plist`, its pack in `Contents/Resources` if it is packed, signed ad
-/// hoc), `NOTICES.txt` and the players' note.
+/// `<base>/` with the `.app` ([`app_folder`]: the slices joined by `lipo`,
+/// its `Info.plist` and its icon from the game's identity, its pack in
+/// `Contents/Resources` if it is packed, signed ad hoc), `NOTICES.txt` and
+/// the players' note.
 fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportReport, ExportError> {
     let base = cx.base();
     let folder = cx.out.join(&base);
     fresh(&folder)?;
-    let app = folder.join(format!("{}.app", cx.bin));
+    let app = folder.join(app_folder(cx));
     let contents = app.join("Contents");
     let macos = contents.join("MacOS");
     fs::create_dir_all(&macos)
@@ -365,7 +397,7 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
     let xcode = "install Xcode's command line tools: `xcode-select --install`";
     tool("lipo", &lipo, xcode)?;
     cx.search(&program)?;
-    write(&contents.join("Info.plist"), &info_plist(&cx.bin))?;
+    let warnings = bundle_identity(cx, &contents)?;
     cx.native_notices(MACOS.triples[0], &folder)?;
     write(&folder.join(NOTE), MACOS_NOTE)?;
     let resources = contents.join("Resources");
@@ -382,7 +414,155 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
     let mut report = cx.report(&base, sizes, Signing::AdHoc, None);
     report.beside = beside;
     report.pack = pack;
+    report.warnings = warnings;
     Ok(report)
+}
+
+/// Writes the `.app`'s `Info.plist` into its `contents` folder, and with an
+/// icon its `Resources/AppIcon.icns`, before the signature covers them; and
+/// returns the warning of an icon under 1024 pixels, whose `.icns` lacks its
+/// biggest entry.
+pub(super) fn bundle_identity(
+    cx: &ExportCx,
+    contents: &Path,
+) -> Result<Vec<TargetProblem>, ExportError> {
+    let Some(part) = &cx.app else {
+        write(
+            &contents.join("Info.plist"),
+            &identity::info_plist(&cx.bin, None, false),
+        )?;
+        return Ok(Vec::new());
+    };
+    let identity = Identity::of(part, &cx.root, &cx.version);
+    let short = identity.short_version().map_err(ExportError::Setup)?;
+    let icons = identity::icons(&identity, &identity::icns_sides())
+        .map_err(|e| ExportError::Setup(identity::icon_error(&e)))?;
+    let mut warnings = Vec::new();
+    if !icons.is_empty() {
+        write_bytes(&contents.join(ICNS), &identity::icns(&icons))?;
+        if !icons.iter().any(|(side, _)| *side == 1024) {
+            warnings.push(app_warning(
+                "the icon is under 1024 pixels a side, so the .app's AppIcon.icns has no \
+                 1024-pixel entry (ic10), which a Retina screen's biggest icon uses"
+                    .to_owned(),
+            ));
+        }
+    }
+    let plist = identity::info_plist(&cx.bin, Some((&identity, &short)), !icons.is_empty());
+    write(&contents.join("Info.plist"), &plist)?;
+    Ok(warnings)
+}
+
+/// The folder of the `.app`, in the macOS package's: named after the game's
+/// name ([`Identity::app_folder`]), else after its program.
+pub fn app_folder(cx: &ExportCx) -> String {
+    cx.app.as_ref().map_or_else(
+        || format!("{}.app", cx.bin),
+        |part| Identity::of(part, &cx.root, &cx.version).app_folder(),
+    )
+}
+
+/// The `.icns` in a `.app`'s `Contents`.
+const ICNS: &str = "Resources/AppIcon.icns";
+
+/// The folder of the Linux package's desktop entry and icons, for
+/// `~/.local/share`.
+const SHARE: &str = "share";
+
+/// The warning of an export of a project without an `app` part, whose
+/// packages carry no identity.
+pub(super) fn no_identity(cx: &ExportCx) -> Option<TargetProblem> {
+    cx.app
+        .is_none()
+        .then(|| app_warning(identity::NONE.to_owned()))
+}
+
+/// A warning of the export about the game's `app` part.
+fn app_warning(message: String) -> TargetProblem {
+    TargetProblem::display(Level::Warning, TargetCheck::App, "app".to_owned(), message)
+}
+
+/// binutils' `windres` for the Windows GNU target, by its prefixed name.
+const WINDRES_PREFIXED: &str = "x86_64-w64-mingw32-windres";
+
+/// The `windres` to run: `x86_64-w64-mingw32-windres` if `found` says it
+/// runs, else `windres`.
+pub fn windres(found: &dyn Fn(&str) -> bool) -> &'static str {
+    if found(WINDRES_PREFIXED) {
+        WINDRES_PREFIXED
+    } else {
+        "windres"
+    }
+}
+
+/// Whether `program --version` runs here and succeeds.
+fn runs(program: &str) -> bool {
+    Command::new(program)
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+/// `windres`' arguments, run in the export's work folder: `app.rc`, UTF-8,
+/// to the COFF object `app.o`.
+pub const WINDRES_ARGS: [&str; 7] = [
+    "--codepage=65001",
+    "-O",
+    "coff",
+    "-i",
+    "app.rc",
+    "-o",
+    "app.o",
+];
+
+/// How to install `windres` on `system`.
+pub fn windres_help(system: Option<System>) -> &'static str {
+    if system == Some(System::Windows) {
+        "it comes with MSYS2's mingw-w64 GCC: `C:\\msys64\\usr\\bin\\pacman.exe -S \
+         mingw-w64-x86_64-gcc`, with C:\\msys64\\mingw64\\bin on PATH"
+    } else {
+        "install mingw-w64's binutils with the system's package manager (`apt-get install \
+         binutils-mingw-w64-x86-64`)"
+    }
+}
+
+/// The game's icon and version resource for its Windows program, compiled
+/// into the COFF object the build links in: `app.ico` and `app.rc` written in
+/// the export's work folder ([`ExportCx::work`]), never in the package, and
+/// `windres` run there. `None` without an `app` part. A version number or
+/// build over 65535 refuses the export.
+pub(super) fn windows_resource(cx: &ExportCx) -> Result<Option<PathBuf>, ExportError> {
+    let Some(part) = &cx.app else {
+        return Ok(None);
+    };
+    let identity = Identity::of(part, &cx.root, &cx.version);
+    let numbers = identity.numbers().map_err(ExportError::Setup)?;
+    let icons = identity::icons(&identity, &identity::ICO_SIDES)
+        .map_err(|e| ExportError::Setup(identity::icon_error(&e)))?;
+    let work = cx.work();
+    fresh(&work)?;
+    if !icons.is_empty() {
+        write_bytes(&work.join("app.ico"), &identity::ico(&icons))?;
+    }
+    let rc = identity::rc(&identity, &cx.bin, numbers, !icons.is_empty());
+    write(&work.join("app.rc"), &rc)?;
+    let args: Vec<&Path> = WINDRES_ARGS.iter().map(Path::new).collect();
+    tool_in(
+        Some(&work),
+        windres(&runs),
+        &args,
+        windres_help(System::here()),
+    )?;
+    Ok(Some(work.join("app.o")))
+}
+
+/// Writes `bytes` to `path`, making its folder.
+fn write_bytes(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| ExportError::Build(format!("create {}: {e}", parent.display())))?;
+    }
+    fs::write(path, bytes).map_err(|e| ExportError::Build(format!("write {}: {e}", path.display())))
 }
 
 /// Writes the zip (Windows) or `tar.gz` of `folder`, named `<base>/` in it,
@@ -424,23 +604,6 @@ fn sign_app(program: &Path, app: &Path) -> Result<(), ExportError> {
         )?;
     }
     Ok(())
-}
-
-/// The minimal `Info.plist` of a bundle whose program is `bin`.
-pub fn info_plist(bin: &str) -> String {
-    format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
-         <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \
-         \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
-         <plist version=\"1.0\">\n\
-         <dict>\n\
-         \t<key>CFBundleExecutable</key>\n\
-         \t<string>{bin}</string>\n\
-         \t<key>CFBundlePackageType</key>\n\
-         \t<string>APPL</string>\n\
-         </dict>\n\
-         </plist>\n"
-    )
 }
 
 /// Copies `from` to `to`.

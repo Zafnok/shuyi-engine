@@ -441,7 +441,8 @@ is done.
 | 2114 | RNG helpers: ranges, chances, picks, shuffles, bags, named streams and forks |
 | 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
-| 2112 | A level solver: breadth-first search over any `TurnRules` game |
+| 2112 (done) | A level solver: breadth-first search over any `TurnRules` game |
+| 2150 | The level solver in the tutorial, the book and the test skill (after 2112) |
 | 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
 
 **Data, saves and versions:**
@@ -484,7 +485,7 @@ is done.
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN (2521, the link itself, moved into the MVP on 2026-10-24) |
-| 2510 | Compiler messages on the traits a game implements |
+| 2510 (done) | Compiler messages on the traits a game implements |
 | 2024 | The other config and views a game builds moved onto constructors (ADR-0039): `shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core` |
 | 2025 | The contract's inputs and the game tools' types moved onto constructors (ADR-0039) |
 | 2534 | `shuyi lint`: `check-keys`, `check-text` and the rules crate's fence in one answer, with file and line |
@@ -512,7 +513,8 @@ is done.
 | 2778 | The template's title quits only where the game can (after 3053) |
 | 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
 | 3072 | The game's icon in `shuyi.ron`, and the window's icon from it |
-| 3049 | The identity in every package: icons, version resources, `Info.plist`, `.desktop` files |
+| 3049 (done) | The identity in every desktop package: icons, version resources, `Info.plist`, `.desktop` files |
+| 3354 | The identity on the web: the page's icons, and its title from `app.name` (split from 3049) |
 | 2223 | Credits are the game's: every third-party file covered, and the credits in every build's notices |
 | 3050 | Release a game from a tag: every target's package built in CI, a GitHub Release, and itch.io |
 | 3052 | The web shell: a download progress bar, and readable errors in place of a black page |
@@ -534,7 +536,7 @@ stays first):
 2. What keeps players' data safe, before the game ships on Steam
    (game#0903): 3045, 3042, 3093, 3043, 3041, 3046 and 2110.
 3. The rest, a group at a time, each in the order of its table. The
-   shipping group goes with 3004 (done), and 2112 comes before 3009.
+   shipping group goes with 3004 (done), and 2112 (done) came before 3009.
 
 ### The end goal
 
@@ -907,7 +909,7 @@ checks that would have caught them.
 | 3352 | The web build ships a game's FLAC and MP3 music tracks, not only its OGG ones (a bug) |
 | 2850 | The book's project starts from the game `shuyi new` makes today, and a check keeps step 1 equal to it |
 | 2851 | The book says what scales the window, and the glossary gets its missing words |
-| 3426 | The MCP `new` tool lists the wizard's questions |
+| 3426 (done) | The MCP `new` tool lists the wizard's questions |
 | 3427 | The MCP server's docs and descriptions say what its tools take, and tests keep the docs' lists of operations in step |
 | 3428 | The skill pack catches up on the formats, the audio manifest, the log file, a target's scale and the bots' seed |
 | 3533 | Each crate's doc names every `pub mod`, checked by `cargo xtask check-docs` |

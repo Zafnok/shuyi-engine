@@ -373,7 +373,7 @@ pub const GATES: &[Gate] = &[
     gate("no-std", "no-std", CODE).steps(&[
         "cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked",
-        "cargo build -p shuyi-assets --no-default-features --features sfx,corners --target thumbv7em-none-eabihf --locked",
+        "cargo build -p shuyi-assets --no-default-features --features sfx,corners,parts --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked",
         "cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked",
         "RUSTFLAGS=\"--cfg shuyi_playdate_sdk\" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked",
@@ -432,6 +432,8 @@ pub const GATES: &[Gate] = &[
     // local run holds the crates' count alone.
     gate("compile-times (crates)", "compile-times", CODE)
         .steps(&["cargo xtask compile-times --budget tools/compile-budget.ron --count-only"]),
+    gate("compile-messages", "compile-messages", CODE)
+        .steps(&["cargo xtask compile-messages"]),
     gate("skill examples", "skills", CODE)
         .local(Local::When(
             concat!(

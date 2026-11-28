@@ -151,6 +151,7 @@ The ones a game registers with its own types or rules:
 | map | `grid_map::GridMap<T, F>` | `grid_map::MapText<T, F>` | `map` | `map` | its `MapFormat` and what a terrain id resolves to |
 | terrain tiles | `tileset::TerrainTilesDef`: a tileset's ground as written | `tileset::TerrainTilesRon` | `terrain-tiles` | `ron` | its `TileRules`: the looks its maps may name, the sides a tile may have |
 | picture set | `picture_set::PictureSetDef`: an id's pictures by name, as written | `picture_set::PictureSetRon` | `picture-set` | `ron` | its `PictureRules`: the names every set has, the largest a picture may be |
+| part set | `parts::PartsDef`: pictures made of grey-keyed parts, as written (behind the `parts` feature, [below](#part-sets-the-parts-feature)) | `parts::PartsRon` | `parts` | `ron` | nothing; `PartsDef::resolve` takes its image table |
 | keymap | `keymap::KeymapDef<A>` | `keymap::KeymapRon<A>` | `keymap` | `ron` | its actions |
 | cinematic | `cinematic::CinematicFile<S, P>` | `cinematic::CinematicRon<S, P>` | `cinematic` | `ron` | its shots and shared lists |
 | dialogue | `dialogue::DialogueFile<D>` | `dialogue::Dlg<D>` | `dlg` | `dlg` | its directives |
@@ -487,7 +488,8 @@ What each one reads:
   naming the look and layer (`look "winter": layer 1: image …`).
   A corner layer's 15 pictures may also be made, not drawn: a
   `<name>.corners.ron` recipe, a tool's input that no game loads, makes
-  them into a PNG from one tile (`shuyi_assets::corners`, behind its
+  them into a PNG from one tile, or from 5 drawn pieces turned
+  (`make: Rotated(…)`, a `pieces` list of exactly 5; `shuyi_assets::corners`, behind its
   `corners` feature, and `shuyi-cli`'s `corners` command; ADR-0160).
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
@@ -694,6 +696,54 @@ manifest names it like any sound file:
   with `a .sfx.ron sound needs the sfx feature of shuyi-assets`.
 - **The pack** keeps a `.sfx.ron` as its own bytes, as any sound
   ([The pack](#the-pack)): it is rendered after it is read.
+
+### Part sets (the `parts` feature)
+
+A part set makes a picture for each of a game's many generated people,
+creatures or things, from parts drawn once (ticket 2260, ADR-0165):
+behind the `parts` feature of `shuyi-assets` (the file and the roll;
+the painting, a feature of `shuyi-ui`, is ticket 2284's). No
+dependency, and it builds without `std`. Hand-drawn pictures stay the
+default way ([picture sets](#formats), one file of pictures per named
+person); a game opts in for its crowds, and may show both on one screen.
+
+- **Draw in keyed greys.** Every part is the set's `size` (at most 256 ×
+  256), taken at `at` in its image. A grey (red = green = blue) that is
+  a key stands for something (`200: "skin"`) and is painted in the
+  colour rolled for it; every other pixel keeps its own colour
+  (outlines, eye whites), and a pixel with alpha under 128 is left out.
+  `PartSet::check_pixels` finds a drawn grey within 4 of a key but not
+  on it, a slip of the brush that would show grey in the game, naming
+  the image and the pixel.
+- **The file.** `slots` in draw order (first undermost), `keys`,
+  `colours` (keys coloured together: one roll picks a row), `parts` (each
+  with its `slot`, `image`, `at` and the slots under it that it
+  `hides`), and `kinds`, each a list per slot (`None` for nothing, a part
+  twice to roll it more often) and optionally a group's own rows. A kind
+  with a `base` takes the base's lists and rows and replaces only those
+  it names. The module's docs (`shuyi_assets::parts`) show a whole file.
+- **Checked alone, then resolved.** `PartsRon` (`parts`, `.ron`) checks
+  the file alone, each problem on its line: a slot named twice or not
+  one of `slots`, a list empty or naming a part of another slot, a base
+  that isn't a kind or makes a cycle (naming the kinds in it), a key
+  grey twice, a group naming a key that isn't one or one already in
+  another group, a row of the wrong length or a bad `#RRGGBB`, and the
+  caps (64 slots, 1024 parts, 256 kinds, 64 rows a group).
+  `PartsDef::resolve` then checks that each part's image is in the image
+  table, its rectangle inside it. A game registers the format with its
+  others; nothing is registered for a game that doesn't.
+- **Roll, in the skin.** The rules keep a person's seed and kind, and
+  what they wear, never pixels or colours. The skin rolls the look,
+  `PartSet::appearance(kind, seed, worn)`: a part per slot and a colour
+  per key, which it paints into an RGBA `Painted` picture of the set's
+  size that every painter draws (ADR-0078), again only when the person
+  changes.
+- **A mod can add to a set.** Each slot and each colour group rolls from
+  a generator of its own, seeded by the FNV hash of the seed and its
+  name, so adding a slot or a group changes no other one's roll: every
+  face of a saved game stays as it was. The roll is integers only; the
+  fixture's hash and seed 7's look are golden rows
+  (`tests/golden/parts.ron`).
 
 ### Sprite atlases (`atlas.ron`)
 

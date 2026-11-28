@@ -171,6 +171,13 @@ tileset's picture. A test keeps the sheet equal to its recipe:
 The sheet is a plain picture, so a game can make it once, touch it up by hand and drop the
 recipe.
 
+A shore drawn by hand needs only 5 of the 15: one corner of water, two side by side, two
+across, three, and all four. The other 10 are their quarter turns. A recipe of
+`make: Rotated(image: "tiles/shore.png", size: (16, 16), pieces: [(0, 0), (16, 0), (32, 0),
+(48, 0), (64, 0)])` names the 5 square pieces in that order, and the same command turns
+them into the sheet (`shuyi_assets::corners::rotated` in code). The turns are baked into the
+sheet, so the painter draws it as any other.
+
 A few things no terrain says, a lamp at a gate or a signpost at a crossing, a map
 places by hand in its file's `look`:
 `look: (props: { (19, 5): "lamp" })`. The tileset's look says what each name is drawn as

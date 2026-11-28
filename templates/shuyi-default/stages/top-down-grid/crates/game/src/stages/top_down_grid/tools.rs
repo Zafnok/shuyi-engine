@@ -2,7 +2,8 @@
 //! shuyi <command>`): the engine's for a game on the short path
 //! (`BasicTools`: `frame-png`, `lang-status`, `check` with the font atlas
 //! its text is checked against, and the controls
-//! `check --target` checks), with a `--seed` for the first stage, and the
+//! `check --target` checks), `check` proving the stage can be won on seed
+//! 0 as well ([`prove_stage`]), with a `--seed` for the first stage, and the
 //! stage's own: `run` and `scene` with its map scene and state, `replay`
 //! (a [`StageRecord`], stamped with what made it: [`crate::made`]),
 //! `playtest` (the engine's random bot, each try recorded:
@@ -10,9 +11,9 @@
 //! engine's kinds) and `bake`, the engine's. `examples/tools.rs` is the
 //! tool program that runs them; the tests use them too.
 
-use rules::{Feature, Player, Stage};
+use rules::{Feature, Outcome, Player, Stage};
 use serde::Serialize;
-use shuyi::core::prelude::{Bot, Made, Pos, RandomBot, TerrainId, play};
+use shuyi::core::prelude::{Bot, Limits, Made, Pos, RandomBot, Solve, TerrainId, play, solve};
 use shuyi::prelude::grid::{GridMap, MapText};
 use shuyi::prelude::test::{Harness, Measures, PlayedTry, SessionRecord, Stamps, Tried, bot_seed};
 use shuyi::prelude::text::FontAtlasDef;
@@ -23,7 +24,7 @@ use shuyi_cli::prelude::{
     PlaytestInput, PlaytestPlan, Record, ReplayRun, Scene, Script, Session, Shot, turns,
 };
 
-use super::{Own, StageRecord, StageScreen, Terrain};
+use super::{MAP, Own, StageRecord, StageScreen, Terrain};
 use crate::Data;
 
 /// The game's own options, for `frame-png`, `run` and `scene`.
@@ -78,6 +79,38 @@ pub fn scene(h: &Harness<Data>) -> Result<Scene, String> {
 pub fn events(h: &Harness<Data>) -> Vec<String> {
     h.screen::<StageScreen>()
         .map_or_default(|screen| screen.events.iter().map(|e| format!("{e:?}")).collect())
+}
+
+/// Whether the stage of `map` can be won on seed 0 (the seed `--seed`
+/// defaults to, and the first stage's): the engine's level solver
+/// (`shuyi::core::search`) looks for a line of commands that wins it,
+/// within `limits`. No error when it finds one; else one on
+/// [`MAP`]. The stage lists every open step, so "can't be won" is a
+/// proof. The stage keeps its turn, so a goal walled off from a piece that
+/// can still walk runs into the limit instead: "isn't proved winnable".
+///
+/// # Errors
+///
+/// A bug in the rules, not in the files: a map `Stage::new` refuses, or
+/// an open step the rules listed and then refused.
+pub fn prove_stage(
+    map: &GridMap<TerrainId, Feature>,
+    limits: Limits,
+) -> Result<Vec<ContentError>, String> {
+    let stage = Stage::new(map, 0)?;
+    let won = |outcome: &Outcome| matches!(outcome, Outcome::Won { .. });
+    let message = match solve(&stage, won, limits).map_err(|e| e.to_string())? {
+        Solve::Solved { .. } => return Ok(Vec::new()),
+        Solve::Exhausted { states } => {
+            format!("the stage can't be won on seed 0: every line among {states} states was tried")
+        }
+        Solve::LimitReached { states } => {
+            format!(
+                "the stage isn't proved winnable on seed 0: the search stopped at {states} states"
+            )
+        }
+    };
+    Ok(vec![ContentError::new(MAP, message)])
 }
 
 /// The stage's bot run for `playtest` (`cargo shuyi playtest --tries 20`):
@@ -187,8 +220,14 @@ impl GameTools for Tools {
         self.basic().lang()
     }
 
+    /// The files' errors, or, when they load, whether the stage can be won
+    /// ([`prove_stage`]).
     fn check(&self) -> Result<Vec<ContentError>, String> {
-        self.basic().check()
+        let errors = self.basic().check()?;
+        if !errors.is_empty() {
+            return Ok(errors);
+        }
+        prove_stage(&self.map()?, Limits::default())
     }
 
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {

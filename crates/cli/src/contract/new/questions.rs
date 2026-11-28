@@ -5,7 +5,8 @@
 //! the game on GitHub, each repository's visibility, and which kinds of
 //! files stay private. Each is asked through a [`Prompter`], so a test
 //! answers from a script; a flag answers each one ([`Flags`]), and none is
-//! asked off a terminal ([`on_a_terminal`]). `--questions` lists them all
+//! asked off a terminal ([`on_a_terminal`]). `--questions` (the input's
+//! `questions`) lists them all
 //! ([`listed`]), the GitHub ones as [`github_questions`] makes them.
 //!
 //! With `--github`, [`new_with`] composes the private part with the private
@@ -74,9 +75,6 @@ pub struct Flags {
     /// `--no-input`: nothing asked, as off a terminal: every question
     /// the flags leave takes its default, and no repository is made.
     pub no_input: bool,
-    /// `--questions`: the questions listed for the answers given so far
-    /// ([`super::wizard::listed`]), and nothing made.
-    pub questions: bool,
 }
 
 /// Reads `new`'s arguments (not `--json`): [`parse_args`]' and the flags
@@ -111,7 +109,6 @@ pub fn parse(args: &[String]) -> Result<(NewInput, Flags), String> {
             }
             "--private-folder" => folders.push(value()?),
             "--no-input" => flags.no_input = true,
-            "--questions" => flags.questions = true,
             flag if TAKES_A_VALUE.contains(&flag)
                 || super::wizard::concern_flag(flag).is_some() =>
             {
@@ -718,9 +715,10 @@ pub fn new_with(
     }
 }
 
-/// `new <dir> --questions`: the questions for the answers `input` and
-/// `flags` give so far, from `cwd` ([`super::wizard::listed`]), then the
-/// GitHub questions ([`github_questions`]); nothing is asked or made.
+/// `new <dir> --questions` (and the MCP `new` tool with `questions`, with
+/// [`Flags::default`]): the questions for the answers `input` and `flags`
+/// give so far, from `cwd` ([`super::wizard::listed`]), then the GitHub
+/// questions ([`github_questions`]); nothing is asked or made.
 pub fn listed(cwd: &Path, mut input: NewInput, flags: &Flags) -> Answer<Questions> {
     if let Err((code, e)) = flag_examples(&mut input, flags.examples) {
         return Answer::failed(Op::New, code, e);

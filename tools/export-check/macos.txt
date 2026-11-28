@@ -1,8 +1,8 @@
 {base}/ABOUT.md
 {base}/HOW-TO-OPEN.txt
 {base}/NOTICES.txt
-{base}/hello-grid.app/Contents/Info.plist
-{base}/hello-grid.app/Contents/MacOS/hello-grid
-{base}/hello-grid.app/Contents/Resources/capture/frames.ron
-{base}/hello-grid.app/Contents/Resources/hello-grid.pack
-{base}/hello-grid.app/Contents/_CodeSignature/CodeResources
+{base}/Hello, Grid.app/Contents/Info.plist
+{base}/Hello, Grid.app/Contents/MacOS/hello-grid
+{base}/Hello, Grid.app/Contents/Resources/capture/frames.ron
+{base}/Hello, Grid.app/Contents/Resources/hello-grid.pack
+{base}/Hello, Grid.app/Contents/_CodeSignature/CodeResources

@@ -30,7 +30,6 @@ pub(crate) const CLI_ONLY: &[(Option<Op>, &str, &str)] = &[
         "--no-input",
         "a terminal's prompts: MCP never asks",
     ),
-    (Some(Op::New), "--questions", "3426 moves it into the input"),
     (
         Some(Op::New),
         "--github",

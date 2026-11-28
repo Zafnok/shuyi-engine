@@ -45,12 +45,19 @@ mp3 = ["dep:nanomp3"]
 # `sfx::SfxDef`, the formats `SfxDefRon` and `SfxRon`, and ten presets.
 # No dependency and no `std`. A game turns it on in its own `Cargo.toml`.
 sfx = []
-# `corners`: a terrain's 15 corner pictures made from its one tile, at tool
-# time and in integers (ticket 2259, ADR-0160): `corners::generate`, the
+# `corners`: a terrain's 15 corner pictures made from its one tile, or turned
+# from 5 drawn pieces, at tool time and in integers (tickets 2259 and 2283,
+# ADR-0160): `corners::generate`, `corners::rotated`, the
 # sheet's layout (`corners::layer`) and its recipe. No dependency and no `std`. A game
 # turns it on through `shuyi-cli`'s `corners` feature, its tools'; and here
 # too only if it builds the layer with `corners::layer` as it runs.
 corners = []
+# `parts`: part sets, pictures made of grey-keyed parts (faces, figures),
+# a look rolled from a seed per kind (ticket 2260, ADR-0165): `parts::PartSet`,
+# its format `PartsRon` and `PartSet::appearance`. No dependency and no
+# `std`. A game that makes its people's pictures from parts turns it on in
+# its own `Cargo.toml`.
+parts = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -87,6 +94,6 @@ proptest.workspace = true
 insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
 # its golden tables (`golden`), whatever features the test run turns on.
-shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx", "corners"] }
+shuyi-assets = { path = ".", features = ["png", "golden", "parse-count", "jpeg", "webp", "qoi", "jpeg-xl", "flac", "mp3", "sfx", "corners", "parts"] }
 # The heap counter `tests/lang_load.rs` reads (ticket 2266).
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

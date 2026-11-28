@@ -80,6 +80,13 @@ pub const DEFAULT_MUSIC_SEED: u64 = 0;
 /// The game's part of the [`Ctx`], and what the engine reads from the
 /// game's data through it: its actions, colors, text, keys, audio
 /// manifest and palettes, and the hooks where the game has a say.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a game's data: it doesn't implement `GameData`",
+    label = "write `impl GameData for {Self}`, or use the engine's `BasicData`",
+    note = "a game's data names four types (`Action`, `Colors`, `Voice`, `Settings`) and gives its `lang`, `keymap_def`, `audio_manifest`, `palette_def` and `console`; `theme_def`, `voice_variant` and the rest have defaults",
+    note = "`BasicData<UiAction>` is a whole one, read from the game's files, as the template's `Data` is (ADR-0036)",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/games-and-screens/"
+)]
 pub trait GameData: Debug + Sized + 'static {
     /// The game's input actions.
     type Action: ActionSet;

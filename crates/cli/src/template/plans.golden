@@ -73,13 +73,13 @@ b81bc51a482e531b crates/game/files/sfx/move.sfx.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
 e4a4cf13178deddf crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
-e24eaae0a9ece680 crates/game/src/stages/top_down_grid/tools.rs
-fb004630dbec9c91 crates/game/src/stages/top_down_grid.rs
+5c08f04598f61a03 crates/game/src/stages/top_down_grid/tools.rs
+8589a7fbe8d2b7a4 crates/game/src/stages/top_down_grid.rs
 990e9c3f7a8a2ef1 crates/game/src/stages.rs
 9304644ad3e2cd18 crates/game/src/title.rs
 3158b6560715dcc7 crates/game/tests/it/main.rs
-9e7eba3a9b8ae21b crates/game/tests/stage.rs
-39ce7b8f894fff11 crates/rules/AGENTS.md
+02fff149b63734cb crates/game/tests/stage.rs
+a3cd68b7f9ac4a3c crates/rules/AGENTS.md
 b7aa8f2f58462c41 crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml
 21dad218da39cc39 crates/rules/src/lib.rs
