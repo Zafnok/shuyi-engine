@@ -75,6 +75,7 @@ as the notes in the pages say.
 | Palette | Shuyi | The game's colors, by name | [Step 1](@/learn/book/box-pusher/01-new.md#the-colors-palette-ron) |
 | Debug view, channel, gizmo, role | Shuyi | What your logic works with, drawn over the running game; one thing it can show; a shape it draws; what a gizmo shows, which picks its color | [Chapter 2](@/learn/book/frame-and-skins.md#seeing-what-the-game-sees) |
 | Picture set | Shuyi | A file of named pictures for one id: a person's faces, a card's front and back | [Chapter 2](@/learn/book/frame-and-skins.md#the-skin) |
+| Parts, part set, key, kind | Shuyi | Pictures made of pieces drawn once in grey; the file of them; a grey that stands for something (skin, hair) and is painted in a colour rolled from a seed; a people or species, which says what its pictures roll | [Chapter 2](@/learn/book/frame-and-skins.md#a-picture-the-skin-paints) |
 | Readout | Shuyi | A few lines about the top screen's state, drawn in a corner by the debug view | [Chapter 2](@/learn/book/frame-and-skins.md#stopping-on-the-frame-that-goes-wrong) |
 | Widget | Shuyi | A piece of a screen the engine gives you, such as a menu | [Step 6](@/learn/book/box-pusher/06-levels.md#the-menu), [chapter 6](@/learn/book/games-and-screens.md#the-engine-s-own-screens-and-widgets) |
 | Action | Shuyi | Something a player can ask for, like Confirm | [Step 1](@/learn/book/box-pusher/01-new.md#the-keys-keymap-ron), [chapter 4](@/learn/book/actions.md#reacting-to-an-action) |
