@@ -238,7 +238,7 @@ docs 100).
   -sss`; the run used `NIGHTLY` (`nightly-2026-08-16`) and
   `--simplified`, as `listing` does.
 
-Size: 1,520 counted lines, the check and its data land together (the check fails every run without the file, and the file means nothing without the check) and are 1,370 of them; the ten moves are the ticket's own step 2, since a type a ticket grows can't be `open`.
+Size: 1,539 counted lines, the check and its data land together (the check fails every run without the file, and the file means nothing without the check) and are about 1,220 of them; the ten moves (about 290, with the book's snippet and the skill) are the ticket's own step 2, since a type a ticket grows can't be `open`: landed after it, they would sit in `open`, which the acceptance forbids.
 
 Book: the dialogue preview's snippet (`site/snippets/src/preview.rs`) builds its limits with `DialogueLimits::new`; no chapter's words name the literal.
 
