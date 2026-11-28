@@ -312,6 +312,12 @@ pub struct ThreatView {
 
 /// What a scene needs of a game's view of a unit: which unit it is, the
 /// tile it is shown on, and its line in the scene's text.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a unit on a map: it doesn't implement `MapUnit`",
+    label = "write `impl MapUnit for {Self}`",
+    note = "a map unit names its `Id` and writes `id` (which unit), `pos` (its tile) and `text` (its line in the scene)",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait MapUnit {
     /// What tells units apart.
     type Id: Copy + PartialEq;

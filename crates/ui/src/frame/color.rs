@@ -187,6 +187,12 @@ impl EngineColor {
 
 /// The colors a game's code draws with, by name: usually an enum, whose
 /// every name its palette must have.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a set of colors: it doesn't implement `ColorSet`",
+    label = "write `impl ColorSet for {Self}`, or use the engine's `EngineColor`",
+    note = "a color set lists its colors in `ALL`, each with its palette's `name` and its `index`; most games draw with the engine's `EngineColor`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait ColorSet: Copy + 'static {
     /// Every color of the set, each at its [`index`](Self::index).
     const ALL: &'static [Self];

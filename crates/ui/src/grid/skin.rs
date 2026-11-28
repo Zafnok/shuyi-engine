@@ -111,6 +111,12 @@ impl<'a> TerrainGlyphs<'a> {
 
 /// A game's terrains, as far as its map's look goes: what each is called,
 /// and how the glyph skin draws it. The game's table, by [`TerrainId`].
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a game's terrains: it doesn't implement `Terrains`",
+    label = "write `impl Terrains for {Self}`",
+    note = "a game's terrains write `name` and `glyphs` for each terrain id",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait Terrains {
     /// The name of terrain `id` (`"water"`), if the game has it.
     fn name(&self, id: TerrainId) -> Option<&str>;
@@ -280,6 +286,12 @@ impl WalkSpeeds {
 /// Paints a game's units on a grid skin's tiles: its letters, bars,
 /// marks or pictures. A skin calls it between its own
 /// layers.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` doesn't paint units `{U}`: it doesn't implement `UnitPainter`",
+    label = "write `impl UnitPainter<{U}> for {Self}`, or use the engine's `NoUnits`",
+    note = "a unit painter writes `paint`; the engine's `NoUnits` paints none",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait UnitPainter<U> {
     /// What lies on the ground under the units (a light square under a
     /// unit picked out): painted after the ground and the ranges, before
@@ -310,6 +322,12 @@ impl<U> UnitPainter<U> for NoUnits {
 /// it how many tiles fit and where a tile is. A skin never changes the
 /// game: only the frame, how many tiles are on screen, and how fast a
 /// walk is shown.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a grid skin of `{U}`: it doesn't implement `GridSkin`",
+    label = "write `impl GridSkin<{U}> for {Self}`, or use the engine's `GlyphSkin` or `SpriteSkin`",
+    note = "a grid skin paints a map's scene; the engine's `GlyphSkin` and `SpriteSkin` are two",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/frame-and-skins/"
+)]
 pub trait GridSkin<U>: core::fmt::Debug {
     /// A stable `snake_case` name for the kind of skin, e.g. `"glyph"`.
     fn name(&self) -> &'static str;

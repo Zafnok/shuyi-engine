@@ -24,6 +24,12 @@ use alloc::vec::Vec;
 ///   leave some out (when there are too many to list), and says which.
 /// - Once [`outcome`](Self::outcome) is `Some`, the game is over and
 ///   [`legal_commands`](Self::legal_commands) is empty.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a game's rules: it doesn't implement `TurnRules`",
+    label = "write `impl TurnRules for {Self}`",
+    note = "turn rules name four types (`Command`, `Event`, `Error`, `Outcome`) and write `check`, `apply`, `legal_commands` and `outcome`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/rules-as-commands/"
+)]
 pub trait TurnRules {
     /// What a player (or an AI) asks for.
     type Command;

@@ -58,6 +58,12 @@ use crate::import_settings::{
 /// A kind of asset: the plain type a [`Format`] reads into. The engine's
 /// kinds are its own types (`ImageInfo`, `PaletteDef`, `DialogueFile`…);
 /// a game makes one of each of its data tables.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a kind of asset: it doesn't implement `AssetKind`",
+    label = "write `impl AssetKind for {Self}`",
+    note = "an asset kind holds one constant, `NAME`: what messages call it, in lowercase words",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/assets-and-formats/"
+)]
 pub trait AssetKind: Sized + 'static {
     /// What messages call the kind, in lowercase words: `"image"`,
     /// `"palette"`.
@@ -76,6 +82,12 @@ pub const TEXT_MAX_BYTES: usize = 4 << 20;
 pub const NOT_FOUND: &str = "file not found in asset bundle";
 
 /// A file format: reads one [`AssetKind`] from a file's bytes.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a file format: it doesn't implement `Format`",
+    label = "write `impl Format for {Self}`",
+    note = "a format names its `Asset` kind and writes `id`, `extensions` and `decode`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/assets-and-formats/"
+)]
 pub trait Format: Send + Sync + 'static {
     /// The kind it reads.
     type Asset: AssetKind;

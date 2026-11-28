@@ -432,6 +432,8 @@ pub const GATES: &[Gate] = &[
     // local run holds the crates' count alone.
     gate("compile-times (crates)", "compile-times", CODE)
         .steps(&["cargo xtask compile-times --budget tools/compile-budget.ron --count-only"]),
+    gate("compile-messages", "compile-messages", CODE)
+        .steps(&["cargo xtask compile-messages"]),
     gate("skill examples", "skills", CODE)
         .local(Local::When(
             concat!(

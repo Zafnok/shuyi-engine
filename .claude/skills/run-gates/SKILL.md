@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing, with `cargo xtask gates` (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map, the pinned Rust and the website). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing, with `cargo xtask gates` (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples, a game's compile times and what the compiler tells a game that misses an impl; the ticket lint, typos, links, the docs map, the pinned Rust and the website). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -504,6 +504,22 @@ cargo xtask compile-times   # --json for JSON; the games are made in target/comp
 
 A slow rebuild is never fixed by raising the budget: find what grew
 (`cargo build --timings` in `target/compile-times/timed`) first.
+
+## What the compiler tells a game (CI's `compile-messages` job)
+
+The traits a game implements carry `#[diagnostic::on_unimplemented]`, so
+a missing impl says what to write and where to read (ticket 2510). Each
+fixture in `crates/xtask/compile-messages/` misses one impl, and its
+`//~ <text>` lines at the top are text its errors must hold. The command
+checks them all as one package in `target/compile-messages/`, and fails
+a fixture that compiles or whose errors lack a text:
+
+```bash
+cargo xtask compile-messages   # one `cargo check` of the engine and the 18 fixtures
+```
+
+A changed attribute's text changes its fixture's `//~` lines in the same
+PR. A new trait a game implements gets the attribute and a fixture.
 
 ## The repository's own checks (CI's `tickets` job)
 

@@ -44,6 +44,12 @@ pub use crate::input::frame::FrameInput;
 
 /// A scene, or a room: one screen of a game, a title, a map, a menu
 /// overlay, …
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a screen of `{G}`: it doesn't implement `Screen`",
+    label = "write `impl Screen<{G}> for {Self}`",
+    note = "a screen writes `name`, `update` and `draw`, and goes on the stack boxed: `Box::new(Title)`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/games-and-screens/"
+)]
 #[doc(alias = "Scene")]
 #[doc(alias = "Room")]
 pub trait Screen<G: GameData> {

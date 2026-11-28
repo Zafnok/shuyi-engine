@@ -38,6 +38,12 @@ pub use weigh::{Persona, UnknownFeature, Weighted, Weights};
 
 /// A game whose state says whose move it is and which turn it is, so a
 /// loop can ask the right bot for each command.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` doesn't say whose move it is: it doesn't implement `Sides`",
+    label = "write `impl Sides for {Self}`",
+    note = "sides name who moves (`Side`) and write `side_to_move` and `turn`, over the game's `TurnRules`",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/rules-as-commands/"
+)]
 pub trait Sides: TurnRules {
     /// Who moves: a player, a faction, a phase.
     type Side: Copy + Eq + fmt::Debug;
@@ -56,6 +62,12 @@ pub trait Sides: TurnRules {
 /// to come, above all): any randomness of its own comes from a seed it
 /// was built with. The same seed and the same states must give the same
 /// commands.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a bot of `{R}`: it doesn't implement `Bot`",
+    label = "write `impl Bot<{R}> for {Self}`",
+    note = "a bot writes one method, `choose`, the next command; a closure of the rules that returns one is a bot already",
+    note = "the book's chapter: https://zafnok.github.io/shuyi-engine/learn/book/rules-as-commands/"
+)]
 pub trait Bot<R: TurnRules> {
     /// The next command in `rules`, which is not over and has this bot's
     /// side to move. It should be one [`TurnRules::check`] accepts; a
