@@ -187,10 +187,10 @@ that changes more than resolving its parents needs (ticket 2065).
   post-checkout hook, on Windows, compresses a new
   worktree's `target/` with NTFS (about half the disk, no slower), and
   a full `cargo xtask gates` compresses one that lacks it. A passing
-  full run then deletes the incremental caches of the other, idle
-  worktrees (`cargo xtask trim-targets`, ADR-0121), never a worktree;
-  as the full run is CI's (rule 6), run `cargo xtask trim-targets`
-  alone when the disk runs low.
+  run, full or `--fast`, then deletes the incremental caches of the
+  other, idle worktrees (`cargo xtask trim-targets`, ADR-0121), never a
+  worktree: `--fast` starts it in the background at most once a day, so
+  a push never waits for it (ADR-0167).
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`
