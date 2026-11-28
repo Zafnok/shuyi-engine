@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["2260"]
 nick_input: none
-completed:
+completed: 2026-11-27
 ---
 
 # 2284 — A part set's look painted
@@ -83,21 +83,21 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `paint`, on the 8 × 8 fixture: a key-grey pixel is the rolled
+- [x] `paint`, on the 8 × 8 fixture: a key-grey pixel is the rolled
   colour; a red pixel stays red; a pixel with alpha 100 leaves what is
   below it; the later slot's pixel is over the earlier's; `out`'s
   revision moved by one; a wrong size or kind of `out` is an error, and
   moves no revision.
-- [ ] A raster-painter snapshot (`frame::raster::Painter`) of three
+- [x] A raster-painter snapshot (`frame::raster::Painter`) of three
   rolled faces of the fixture set side by side, with three skins: a look
   test, so it reads pixels.
-- [ ] Opt-in: a game that doesn't turn the feature on builds none of it
+- [x] Opt-in: a game that doesn't turn the feature on builds none of it
   (`cargo tree -e features`, recorded in the completion notes); every
   existing snapshot is unchanged.
-- [ ] `shuyi-ui` builds without `std` with `raster,parts`.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi-ui` builds without `std` with `raster,parts`.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] The skill pack (`skills/`) is updated for a changed schema, template, format or problem code, or the completion notes have a `Skills:` line saying why not (`cargo xtask docs-rules`, 3534).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -106,5 +106,49 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** `shuyi-ui`'s `parts` feature (off by default, `parts =
+["shuyi-assets/parts"]`) and `frame::parts` behind it:
+`paint(set, look, pixels, out)` and `PaintError` (`NotRgba`,
+`WrongSize`, `NotOfTheSet`, `NoPixels`), as the scope says. The code is
+the one 2260's session wrote on the local branch `t2284-part-sets-paint`,
+taken over unchanged onto `main` after 2260 merged; the feature, gate,
+API-list and doc edits were made again against `main`, where 2260 had
+already moved part of them (the `shuyi-assets` `parts` no-std line, its
+API-list entry).
+
+- Tests (`crates/ui/src/frame/parts/tests.rs`, on the fixture): a key
+  grey takes the rolled colour, red stays red, a key the look doesn't
+  colour keeps its grey, the hair's alpha-100 pixels leave the head's
+  outline below them, a later slot over an earlier one, clear where no
+  part draws, the revision moving by one per paint; painting again
+  clears; a wrong size, an indexed picture, missing or too few pixels, a
+  part not in the set and too many slots are errors that move no
+  revision.
+- The raster snapshot: three faces rolled from the fixture (seeds 1 and
+  3 of `plain`, 6 of `capped`, three skin colours) side by side through
+  `frame::raster::Painter`, as text with a colour legend.
+- Opt-in: `cargo tree -p hello-grid -e features` shows no `parts`
+  feature of `shuyi-ui` or `shuyi-assets`; `cargo tree -p shuyi-ui
+  --features parts -e features` shows `shuyi-assets feature "parts"`
+  pulled by it. No existing snapshot changed.
+- No-std: `cargo build -p shuyi-ui --no-default-features --features
+  raster,parts --target thumbv7em-none-eabihf` builds, now in CI's
+  `no-std` job and `cargo xtask gates`.
+- The ticket said "three skins" for the snapshot; read as three skin
+  colours of rolled faces (one painter), which is what a look test of a
+  roll needs.
+- An opaque key grey: `paint` colours a key grey at any alpha it draws
+  (128 and up), drawn opaque, the same rule as "every drawn pixel is
+  opaque".
+
+Book: `frame-and-skins.md` gains the part sets paragraph (seed and kind
+kept by the rules, the skin rolling and painting with
+`frame::parts::paint`).
+
+Skills: `shuyi-import-art` now says to turn on `shuyi-ui`'s `parts`
+feature and paint with `frame::parts::paint`.
+
+No break: an added feature, module, function and error type.
+
+Game: nothing to adopt, the game doesn't use part sets yet and turns no
+`parts` feature on.

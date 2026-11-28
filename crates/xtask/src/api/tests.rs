@@ -1802,7 +1802,7 @@ const CORE_SEMVER: &str =
     " --only-explicit-features --features std --features schema --features toy";
 const UI_LISTING: &str = " --no-default-features --features std --features debug-tools \
      --features storage-conformance --features onebit-reference --features raster \
-     --features toy --features schema";
+     --features toy --features schema --features parts";
 
 /// Each crate of the catalog and the features it is checked with (ticket
 /// 2041), spelled out here rather than read from [`API_CRATES`].
@@ -1837,6 +1837,7 @@ const CONFIGURATIONS: &[(&str, &[&str])] = &[
             "raster",
             "toy",
             "schema",
+            "parts",
         ],
     ),
     (
