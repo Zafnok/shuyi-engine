@@ -3,7 +3,7 @@ name: shuyi-test
 description: Test a Shuyi Engine game at every layer, with unit and property tests of its rules, its screens played through the engine's headless Harness, the tool contract in tests, text snapshots of a look, and pictures of frames to review. Use when adding or changing rules, a screen or a stage, when a change needs a test that proves it, or when you want to see a frame without a window. Not for running the checks before a commit (shuyi-gates), for a bug only a record reproduces (shuyi-debug-replay), or for measuring how hard a stage is (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Test a game
@@ -164,6 +164,31 @@ colours or the frame's text.
 9. **Run them:** `cargo test --workspace`, or one file with `cargo test
    -p <crate> --test <name>`. A game's CI runs every test on every pull
    request.
+
+## Proving a level winnable
+
+A puzzle's levels are proved in the game's tools' `check`, so
+`cargo shuyi check` fails on a level no line wins. The engine's level
+solver, `shuyi::core::solve(&start, goal, Limits::DEFAULT)`, searches
+every line from the level's start, shortest first, for an outcome `goal`
+accepts (the state must be `Clone + Eq + Serialize`). It answers:
+
+- `Solve::Solved { commands, .. }`: a shortest winning line, which also
+  replays as a test's commands. `check` reports nothing.
+- `Solve::Exhausted`: every listed line was tried and none wins. A proof
+  the level can't be won only when `legal_commands` lists every command
+  the game allows; otherwise "not found among the listed ones".
+- `Solve::LimitReached`: the search stopped first. Never a pass. A state
+  that keeps its turn number (or an undo history) never repeats, so a
+  level a piece can walk forever ends here rather than in `Exhausted`.
+
+For `Exhausted` and `LimitReached`, `check` returns a `ContentError` on
+the level's file, saying which, and how many states were tried. An
+`Err(SolveError)` is a bug in the rules (a listed command `apply`
+refused): return it as the tool's error, not as a `ContentError`. The
+search plays luck as the state holds it, so a line is a line for that
+seed. A `grid` game's `check` does this already (`prove_stage`, in its
+stage's `tools.rs`).
 
 ## When it fails
 
