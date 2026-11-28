@@ -212,12 +212,6 @@ mod tests {
         buf
     }
 
-    fn text(buf: &GlyphBuffer, y: i32) -> String {
-        (0..i32::from(buf.width()))
-            .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
-            .collect()
-    }
-
     /// The column `word` starts at in `row` (in cells, not bytes).
     fn col(row: &str, word: &str) -> usize {
         row[..row.find(word).unwrap()].chars().count()
@@ -266,18 +260,18 @@ mod tests {
     fn two_panels_stack_under_the_centred_title_with_help_at_the_bottom() {
         let c = ctx();
         let buf = painted(&c, &view(KeyRole::Bound, KeyRole::Bound));
-        assert_eq!(text(&buf, TITLE_ROW).trim(), "Pick");
-        let first = text(&buf, FIRST_PANEL_ROW);
-        let second = text(&buf, SECOND);
+        assert_eq!(buf.row_text(TITLE_ROW).trim(), "Pick");
+        let first = buf.row_text(FIRST_PANEL_ROW);
+        let second = buf.row_text(SECOND);
         assert_eq!(first.find('┌'), Some(usize::try_from(LEFT).unwrap()));
         assert!(first.contains("┌─ First ─"), "{first}");
         // The focused panel: double border and an arrow before its name.
         assert!(second.contains("╔═ ► Second ═"), "{second}");
-        assert!(text(&buf, FIRST_PANEL_ROW + PANEL_H - 1).contains('└'));
-        assert!(text(&buf, SECOND + PANEL_H - 1).contains('╚'));
-        assert_eq!(text(&buf, i32::from(PC.rows) - 1).trim(), "help");
+        assert!(buf.row_text(FIRST_PANEL_ROW + PANEL_H - 1).contains('└'));
+        assert!(buf.row_text(SECOND + PANEL_H - 1).contains('╚'));
+        assert_eq!(buf.row_text(i32::from(PC.rows) - 1).trim(), "help");
         // The gap between the panels is blank.
-        let found = text(&buf, FIRST_PANEL_ROW + PANEL_H);
+        let found = buf.row_text(FIRST_PANEL_ROW + PANEL_H);
         assert!(found.trim().is_empty(), "{found:?}");
     }
 
@@ -289,7 +283,7 @@ mod tests {
         // `q` is the first cap of the top row, `f` the fourth of the home
         // row (indented half a cap).
         let (qx, qy) = (LEFT + KEYS_X, FIRST_PANEL_ROW + TOP_ROW_Y);
-        let q_row = text(&buf, qy);
+        let q_row = buf.row_text(qy);
         assert_eq!(col(&q_row, "[q]"), usize::try_from(qx).unwrap());
         assert_eq!(at(qx + 1, qy).fg, c.palette.engine(EngineColor::Accent));
         let (fx, fy) = (LEFT + KEYS_X + 1 + 3 * CAP_W, FIRST_PANEL_ROW + HOME_ROW_Y);
@@ -302,10 +296,13 @@ mod tests {
         assert_eq!(at(wx + 1, wy).glyph, 'w');
         assert_eq!(at(wx + 1, wy).fg, c.palette.engine(EngineColor::TextDim));
         // The arrow cluster's caps and the space bar.
-        let arrows = text(&buf, FIRST_PANEL_ROW + HOME_ROW_Y);
+        let arrows = buf.row_text(FIRST_PANEL_ROW + HOME_ROW_Y);
         assert!(arrows.contains("[←][↓][→]"), "{arrows}");
-        assert!(text(&buf, FIRST_PANEL_ROW + TOP_ROW_Y).contains("[↑]"));
-        assert!(text(&buf, FIRST_PANEL_ROW + SPACE_ROW_Y).contains("[      Space      ]"));
+        assert!(buf.row_text(FIRST_PANEL_ROW + TOP_ROW_Y).contains("[↑]"));
+        assert!(
+            buf.row_text(FIRST_PANEL_ROW + SPACE_ROW_Y)
+                .contains("[      Space      ]")
+        );
     }
 
     #[test]
@@ -313,7 +310,7 @@ mod tests {
         let c = ctx();
         let buf = painted(&c, &view(KeyRole::Bound, KeyRole::Bound));
         let (x, y) = (LEFT + LEGEND_X, FIRST_PANEL_ROW + LEGEND_Y);
-        let first = text(&buf, y);
+        let first = buf.row_text(y);
         assert_eq!(col(&first, "arrows"), usize::try_from(x).unwrap());
         assert_eq!(
             col(&first, "move"),

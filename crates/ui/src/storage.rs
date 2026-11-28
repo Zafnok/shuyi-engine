@@ -10,6 +10,10 @@ use alloc::collections::BTreeMap;
 use core::fmt;
 
 pub mod bundle;
+#[cfg(any(test, feature = "toy"))]
+mod faulty;
+#[cfg(any(test, feature = "toy"))]
+pub use faulty::FaultyStorage;
 #[cfg(any(test, feature = "storage-conformance"))]
 mod power_cut;
 #[cfg(any(test, feature = "storage-conformance"))]
@@ -190,32 +194,12 @@ mod tests {
         conformance_suite(&mut MemoryStorage::new());
     }
 
-    /// A [`Storage`] that ignores every write and accepts any key: proves
-    /// [`conformance_suite`] actually checks something, rather than being
-    /// vacuously satisfied by a broken implementation.
-    #[derive(Debug, Default)]
-    struct Broken;
-
-    impl Storage for Broken {
-        fn read(&self, _key: &str) -> Result<Option<String>, StorageError> {
-            Ok(None)
-        }
-        fn write(&mut self, _key: &str, _value: &str) -> Result<(), StorageError> {
-            Ok(())
-        }
-        fn delete(&mut self, _key: &str) -> Result<(), StorageError> {
-            Ok(())
-        }
-        fn list(&self) -> Result<Vec<String>, StorageError> {
-            Ok(Vec::new())
-        }
-    }
-
-    /// A storage that ignores writes and key validation must fail the suite.
+    /// A storage that loses its writes must fail the suite: it checks
+    /// something, rather than being vacuously satisfied.
     #[test]
     #[should_panic(expected = "assertion `left == right` failed")]
     fn conformance_suite_rejects_a_broken_storage() {
-        conformance_suite(&mut Broken);
+        conformance_suite(&mut FaultyStorage::new().dropping_writes());
     }
 
     #[test]

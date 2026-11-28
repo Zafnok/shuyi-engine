@@ -35,12 +35,6 @@ fn near(a: (f32, f32), b: (f32, f32)) -> bool {
     (a.0 - b.0).abs() < 1e-3 && (a.1 - b.1).abs() < 1e-3
 }
 
-fn row(buf: &GlyphBuffer, y: i32) -> String {
-    (0..i32::from(buf.width()))
-        .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
-        .collect()
-}
-
 #[test]
 fn the_sizes_are_the_windows_and_the_pictures_pixels() {
     let ctx = ctx();
@@ -112,17 +106,17 @@ fn the_picture_shows_only_through_the_windows_see_through_cells() {
     // The window's frame and the box's border.
     assert_eq!(buf.get(1, 3).map(|c| c.fg), Some(c(EngineColor::Border)));
     assert_eq!(buf.get(18, 12).map(|c| c.fg), Some(c(EngineColor::Focus)));
-    assert_eq!(row(&buf, 0).trim(), "Scene camera (debug)");
+    assert_eq!(buf.row_text(0).trim(), "Scene camera (debug)");
     assert_eq!(
-        row(&buf, 2).trim(),
+        buf.row_text(2).trim(),
         "zoom 1x   window starts at -16.0,-16.0"
     );
-    let help = row(&buf, 19);
+    let help = buf.row_text(19);
     assert!(help.trim().starts_with("arrows pan (hold)"), "{help}");
     assert_eq!(buf.get(2, 19).map(|c| c.fg), Some(c(EngineColor::TextDim)));
     // The box's lines, from its second cell in.
     let line = |y| {
-        row(&buf, y)[..]
+        buf.row_text(y)[..]
             .chars()
             .skip(20)
             .take(16)
@@ -284,8 +278,8 @@ fn says_so_when_there_is_no_picture() {
     assert!(near(screen.centre(), (0.0, 0.0)));
     let buf = draw(&ctx, &screen);
     assert!(buf.backdrop().is_none());
-    assert_eq!(row(&buf, 2).trim(), "No field");
-    assert_eq!(row(&buf, 0).trim(), "Scene camera (debug)");
+    assert_eq!(buf.row_text(2).trim(), "No field");
+    assert_eq!(buf.row_text(0).trim(), "Scene camera (debug)");
     assert!(
         !buf.get(CAMERA.window.x, CAMERA.window.y)
             .unwrap()

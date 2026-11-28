@@ -223,12 +223,6 @@ mod tests {
         (buf, p)
     }
 
-    fn row(buf: &GlyphBuffer, y: i32) -> String {
-        (0..i32::from(buf.width()))
-            .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
-            .collect()
-    }
-
     #[test]
     fn the_box_is_the_widest_item_plus_a_space_and_border_each_side() {
         assert_eq!(size(&MenuView::new(vec![])), (4, 2));
@@ -244,10 +238,10 @@ mod tests {
     fn items_are_painted_one_to_a_row_inside_the_border() {
         let view = MenuView::new(vec![item("Move", true, false), item("Wait", true, true)]);
         let (buf, _) = painted(&view);
-        assert_eq!(row(&buf, 1).trim(), "┌──────┐");
-        assert_eq!(row(&buf, 2).trim(), "│ Move │");
-        assert_eq!(row(&buf, 3).trim(), "│ Wait │");
-        assert_eq!(row(&buf, 4).trim(), "└──────┘");
+        assert_eq!(buf.row_text(1).trim(), "┌──────┐");
+        assert_eq!(buf.row_text(2).trim(), "│ Move │");
+        assert_eq!(buf.row_text(3).trim(), "│ Wait │");
+        assert_eq!(buf.row_text(4).trim(), "└──────┘");
     }
 
     #[test]
@@ -280,9 +274,9 @@ mod tests {
         // As wide as the longest note, whichever item has the focus.
         assert_eq!(size(&view), (28, 6));
         let (buf, p) = painted(&view);
-        assert_eq!(row(&buf, 4).trim(), "├──────────────────────────┤");
-        assert_eq!(row(&buf, 5).trim(), "│ self: Def +5             │");
-        assert_eq!(row(&buf, 6).trim(), "└──────────────────────────┘");
+        assert_eq!(buf.row_text(4).trim(), "├──────────────────────────┤");
+        assert_eq!(buf.row_text(5).trim(), "│ self: Def +5             │");
+        assert_eq!(buf.row_text(6).trim(), "└──────────────────────────┘");
         assert_eq!(buf.get(3, 5).unwrap().fg, p.engine(EngineColor::Text));
     }
 
@@ -300,7 +294,7 @@ mod tests {
         assert_eq!(at(3, 3).fg, p.engine(EngineColor::Panel));
         // The reason takes the bar's colour too.
         assert_eq!(at(9, 3).fg, p.engine(EngineColor::Panel));
-        assert_eq!(row(&buf, 5).trim(), "│ push               │");
+        assert_eq!(buf.row_text(5).trim(), "│ push               │");
     }
 
     #[test]
@@ -313,13 +307,13 @@ mod tests {
         (view.first_shown, view.shown) = (1, 3);
         assert_eq!(size(&view), (7, 7));
         let (buf, _) = painted(&view);
-        assert_eq!(row(&buf, 1).trim(), "┌────▲┐");
-        assert_eq!(row(&buf, 2).trim(), "│ 1   │");
-        assert_eq!(row(&buf, 4).trim(), "│ 3   │");
+        assert_eq!(buf.row_text(1).trim(), "┌────▲┐");
+        assert_eq!(buf.row_text(2).trim(), "│ 1   │");
+        assert_eq!(buf.row_text(4).trim(), "│ 3   │");
         // With notes, the mark below is on the rule.
-        assert_eq!(row(&buf, 5).trim(), "├────▼┤");
-        assert_eq!(row(&buf, 6).trim(), "│ two │");
-        assert_eq!(row(&buf, 7).trim(), "└─────┘");
+        assert_eq!(buf.row_text(5).trim(), "├────▼┤");
+        assert_eq!(buf.row_text(6).trim(), "│ two │");
+        assert_eq!(buf.row_text(7).trim(), "└─────┘");
     }
 
     #[test]
@@ -338,7 +332,7 @@ mod tests {
         let (buf, p) = painted(&view);
         let at = |x, y| *buf.get(x, y).unwrap();
         // After the label and a space: column 3 + 5 on the first row.
-        assert_eq!(row(&buf, 2).trim(), "│ Sword (broken) │");
+        assert_eq!(buf.row_text(2).trim(), "│ Sword (broken) │");
         assert_eq!(at(9, 2).glyph, '(');
         assert_eq!(at(9, 2).fg, p.engine(EngineColor::Warning));
         assert_eq!(at(7, 3).glyph, '(');
@@ -379,7 +373,7 @@ mod tests {
         );
         paint_with(&painter, &view, &mut buf, 0, 0, &look);
         // No lines: the rule keeps its `─` but not its joins.
-        assert_eq!(row(&buf, 0).trim(), "");
+        assert_eq!(buf.row_text(0).trim(), "");
         assert_eq!(buf.get(0, 3).unwrap().glyph, ' ');
         assert_eq!(buf.get(1, 3).unwrap().glyph, '─');
         // The unfocused row is on the look's background; the bar isn't.

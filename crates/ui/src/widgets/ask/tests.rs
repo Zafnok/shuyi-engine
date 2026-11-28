@@ -158,13 +158,6 @@ fn painted(view: &AskView<Leave>, spec: ConsoleSpec) -> GlyphBuffer {
     buf
 }
 
-/// Row `y` of `buf`, as glyphs.
-fn row(buf: &GlyphBuffer, y: i32) -> String {
-    (0..i32::from(buf.width()))
-        .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
-        .collect()
-}
-
 #[test]
 fn the_box_is_in_the_middle_over_whatever_is_under_it() {
     let view = three().view(&ctx());
@@ -172,12 +165,12 @@ fn the_box_is_in_the_middle_over_whatever_is_under_it() {
     let rect = glyph::rect(&view, &buf);
     // The answers' line is wider than the question.
     assert_eq!((rect.x, rect.y, rect.w, rect.h), (4, 3, 31, glyph::HEIGHT));
-    assert_eq!(row(&buf, 2), "x".repeat(40), "outside the box stays");
+    assert_eq!(buf.row_text(2), "x".repeat(40), "outside the box stays");
     let x = |n| "x".repeat(n);
     let question = format!("{}║ {:<27} ║{}", x(4), "Keep these changes?", x(5));
-    assert_eq!(row(&buf, 5), question);
+    assert_eq!(buf.row_text(5), question);
     let answers = format!("{}║  Keep     Discard     Back  ║{}", x(4), x(5));
-    assert_eq!(row(&buf, 6), answers);
+    assert_eq!(buf.row_text(6), answers);
 }
 
 #[test]

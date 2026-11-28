@@ -112,12 +112,6 @@ fn painted_on(c: &Ctx, view: &KeyBindingsView, spec: ConsoleSpec) -> GlyphBuffer
     buf
 }
 
-fn text(buf: &GlyphBuffer, y: i32) -> String {
-    (0..i32::from(buf.width()))
-        .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
-        .collect()
-}
-
 /// The console row of `action` in `view`.
 fn y_of(view: &KeyBindingsView, action: Action) -> i32 {
     let placed = place(view);
@@ -127,7 +121,7 @@ fn y_of(view: &KeyBindingsView, action: Action) -> i32 {
 
 /// The column `word` starts at in console row `y` (in cells).
 fn x_of(buf: &GlyphBuffer, y: i32, word: &str) -> i32 {
-    let row = text(buf, y);
+    let row = buf.row_text(y);
     let cells = row[..row.find(word).unwrap()].chars().count();
     i32::try_from(cells).unwrap()
 }
@@ -137,12 +131,15 @@ fn the_title_switch_columns_and_groups_have_their_rows() {
     let c = ctx();
     let v = view(Side::Keyboard);
     let buf = painted(&c, &v);
-    assert!(text(&buf, 1).contains("─ Key bindings ─"));
-    assert!(text(&buf, 2).contains("  Keyboard · Left-handed    Controller  "));
+    assert!(buf.row_text(1).contains("─ Key bindings ─"));
+    assert!(
+        buf.row_text(2)
+            .contains("  Keyboard · Left-handed    Controller  ")
+    );
     // The slot columns' headings are right under the switch.
-    let columns = text(&buf, 3);
+    let columns = buf.row_text(3);
     assert!(columns.contains("Key 1") && columns.contains("Key 3"));
-    assert!(text(&buf, 4).contains("Must have a key"));
+    assert!(buf.row_text(4).contains("Must have a key"));
     // Seven required actions, then a blank row and the optional ones, then
     // the dialogue log's group.
     let placed = place(&v);
@@ -153,19 +150,19 @@ fn the_title_switch_columns_and_groups_have_their_rows() {
     assert_eq!(placed.actions[16], 23);
     assert_eq!(placed.actions[17], 26);
     let blank = |y| {
-        text(&buf, y)
+        buf.row_text(y)
             .trim_matches(|ch| ch == ' ' || ch == '│')
             .is_empty()
     };
     assert!(blank(12) && blank(24));
-    assert!(text(&buf, 13).contains("Optional"));
-    assert!(text(&buf, 25).contains("In the dialogue log"));
+    assert!(buf.row_text(13).contains("Optional"));
+    assert!(buf.row_text(25).contains("In the dialogue log"));
     // Restore defaults is one blank row under the last action, on the
     // panel's last row.
     assert_eq!(placed.restore, 28);
-    assert!(text(&buf, 28).contains("Restore defaults"));
-    assert!(text(&buf, 29).contains('└'));
-    assert_eq!(text(&buf, i32::from(PC.rows) - 1).trim(), "help");
+    assert!(buf.row_text(28).contains("Restore defaults"));
+    assert!(buf.row_text(29).contains('└'));
+    assert_eq!(buf.row_text(i32::from(PC.rows) - 1).trim(), "help");
 }
 
 #[test]
@@ -187,9 +184,9 @@ fn a_row_shows_its_slots_fixed_keys_and_not_mapped_note() {
     row_mut(&mut v, Action::Cancel).fixed = vec!["Escape".to_owned()];
     row_mut(&mut v, Action::EndTurn).fixed = vec!["Space".to_owned(), "x".to_owned()];
     let buf = painted(&c, &v);
-    let cancel = text(&buf, y_of(&v, Action::Cancel));
+    let cancel = buf.row_text(y_of(&v, Action::Cancel));
     assert!(cancel.contains(" Cancel  + Escape "), "{cancel}");
-    let end = text(&buf, y_of(&v, Action::EndTurn));
+    let end = buf.row_text(y_of(&v, Action::EndTurn));
     assert!(end.contains(" End turn  + Space/x "), "{end}");
     // The first slot's key sits one cell into its column; the empty ones
     // show a dot in the same place.
@@ -221,7 +218,7 @@ fn the_not_mapped_note_is_dim_unless_it_blocks_leaving() {
     let buf = painted(&c, &v);
     let note_fg = |action| {
         let y = y_of(&v, action);
-        assert!(text(&buf, y).contains(NOT_MAPPED), "{action:?}");
+        assert!(buf.row_text(y).contains(NOT_MAPPED), "{action:?}");
         let x = x_of(&buf, y, NOT_MAPPED);
         assert_eq!(x, slot_x(SLOTS) + 1);
         buf.get(x, y).unwrap().fg
@@ -235,7 +232,7 @@ fn the_not_mapped_note_is_dim_unless_it_blocks_leaving() {
         c.palette.engine(EngineColor::Warning)
     );
     // No note on a row that has a key.
-    assert!(!text(&buf, y_of(&v, Action::Cancel)).contains(NOT_MAPPED));
+    assert!(!buf.row_text(y_of(&v, Action::Cancel)).contains(NOT_MAPPED));
 }
 
 #[test]
@@ -252,7 +249,7 @@ fn the_focused_slot_is_a_bar_and_while_capturing_it_shows_the_prompt() {
     assert_eq!(bg(slot_x(0) + 15), bar);
     assert_ne!(bg(slot_x(0) + 16), bar);
     assert_ne!(bg(slot_x(1)), bar);
-    assert!(text(&buf, y).contains(" f    "));
+    assert!(buf.row_text(y).contains(" f    "));
     // The focused row's label takes the highlight colour.
     assert_eq!(
         buf.get(LABEL_X, y).unwrap().fg,
@@ -264,7 +261,7 @@ fn the_focused_slot_is_a_bar_and_while_capturing_it_shows_the_prompt() {
     confirm.focus = Some(1);
     confirm.slots[1] = SlotView::Capturing("Press a key…".to_owned());
     let buf = painted(&c, &v);
-    assert!(text(&buf, y).contains("Press a key…"));
+    assert!(buf.row_text(y).contains("Press a key…"));
     assert_eq!(buf.get(slot_x(1), y).unwrap().bg, bar);
     assert_ne!(buf.get(slot_x(0), y).unwrap().bg, bar);
     let confirm = row_mut(&mut v, Action::Confirm);
@@ -339,10 +336,10 @@ fn the_controller_side_headings_and_buttons_are_painted_as_given() {
     v.groups[0].heading = "Must have a button".to_owned();
     row_mut(&mut v, Action::EndTurn).slots[0] = SlotView::Bound("Start".to_owned());
     let buf = painted(&c, &v);
-    assert!(text(&buf, 3).contains("Button 1") && text(&buf, 3).contains("Button 3"));
-    assert!(!text(&buf, 3).contains("Key 1"));
-    assert!(text(&buf, 4).contains("Must have a button"));
-    assert!(text(&buf, y_of(&v, Action::EndTurn)).contains(" Start "));
+    assert!(buf.row_text(3).contains("Button 1") && buf.row_text(3).contains("Button 3"));
+    assert!(!buf.row_text(3).contains("Key 1"));
+    assert!(buf.row_text(4).contains("Must have a button"));
+    assert!(buf.row_text(y_of(&v, Action::EndTurn)).contains(" Start "));
 }
 
 #[test]
@@ -358,7 +355,7 @@ fn the_restore_row_is_a_bar_when_focused() {
     let buf = painted(&c, &v);
     assert_eq!(buf.get(LABEL_X - 1, y).unwrap().bg, bar);
     assert_eq!(buf.get(LABEL_X, y).unwrap().glyph, 'R');
-    assert!(text(&buf, y).contains(" Restore defaults "));
+    assert!(buf.row_text(y).contains(" Restore defaults "));
 }
 
 /// The message sits one blank row under the panel's bottom border, in the
@@ -370,10 +367,10 @@ fn the_message_is_painted_under_the_panel_in_the_warning_colour() {
     v.message = Some("Give Cancel a key first".to_owned());
     let buf = painted(&c, &v);
     let bottom = PANEL.y + PANEL.h - 1;
-    assert!(text(&buf, bottom).contains('└'));
+    assert!(buf.row_text(bottom).contains('└'));
     assert_eq!(MESSAGE_ROW, bottom + 1);
     assert_eq!(MESSAGE_ROW, i32::from(PC.rows) - 2, "over the help line");
-    let message = text(&buf, MESSAGE_ROW);
+    let message = buf.row_text(MESSAGE_ROW);
     assert_eq!(message.trim(), "Give Cancel a key first");
     let x = x_of(&buf, MESSAGE_ROW, "Give");
     assert_eq!(
@@ -394,14 +391,17 @@ fn the_question_is_a_box_in_the_middle_with_its_answers_under_it() {
     let buf = painted(&c, &v);
     let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
     let border = format!("╔{}╗", "═".repeat(44));
-    assert!(text(&buf, top).contains(&border), "{}", text(&buf, top));
-    assert!(text(&buf, top + 2).contains("║ Restore the default keys for Right-handed? ║"));
-    assert!(text(&buf, top + 3).contains("║ f yes / d no "));
-    assert!(text(&buf, top + 5).contains('╚'));
+    assert!(buf.row_text(top).contains(&border), "{}", buf.row_text(top));
+    assert!(
+        buf.row_text(top + 2)
+            .contains("║ Restore the default keys for Right-handed? ║")
+    );
+    assert!(buf.row_text(top + 3).contains("║ f yes / d no "));
+    assert!(buf.row_text(top + 5).contains('╚'));
     // No question, no box.
     v.question = None;
     let buf = painted(&c, &v);
-    assert!(!(0..i32::from(PC.rows)).any(|y| text(&buf, y).contains('║')));
+    assert!(!(0..i32::from(PC.rows)).any(|y| buf.row_text(y).contains('║')));
 }
 
 /// The choices go under the slot, or over it on the last rows.
@@ -421,8 +421,8 @@ fn the_choices_are_drawn_under_the_slot_or_over_it_on_the_last_rows() {
     let buf = painted(&c, &v);
     assert_eq!(buf.get(x, y + 1).unwrap().glyph, '╔');
     assert_eq!(buf.get(x + CHOICE_W - 1, y + CHOICE_H).unwrap().glyph, '╝');
-    assert!(text(&buf, y + 2).contains("║ Change   ║"));
-    assert!(text(&buf, y + 3).contains("║ Clear    ║"));
+    assert!(buf.row_text(y + 2).contains("║ Change   ║"));
+    assert!(buf.row_text(y + 3).contains("║ Clear    ║"));
     assert_eq!(buf.get(x + 1, y + 2).unwrap().bg, bar);
     assert_eq!(buf.get(x + CHOICE_W - 2, y + 2).unwrap().bg, bar);
     assert_ne!(buf.get(x + 1, y + 3).unwrap().bg, bar);
@@ -430,7 +430,7 @@ fn the_choices_are_drawn_under_the_slot_or_over_it_on_the_last_rows() {
     let buf = painted(&c, &v);
     assert_eq!(buf.get(x + 1, y + 3).unwrap().bg, bar);
     assert_ne!(buf.get(x + 1, y + 2).unwrap().bg, bar);
-    assert!(text(&buf, y + 2).contains("║ Change   ║"));
+    assert!(buf.row_text(y + 2).contains("║ Change   ║"));
     // Only under the last row it doesn't fit.
     for (row, over) in [(15, false), (16, false), (17, true)] {
         let mut v = view(Side::Controller);
@@ -462,7 +462,7 @@ fn choices_with_no_focused_row_are_not_painted() {
         slot: 0,
     });
     let buf = painted(&c, &v);
-    assert!(!(0..i32::from(PC.rows)).any(|y| text(&buf, y).contains('╔')));
+    assert!(!(0..i32::from(PC.rows)).any(|y| buf.row_text(y).contains('╔')));
 }
 
 #[test]
@@ -599,13 +599,16 @@ fn on_a_small_console_every_slot_is_inside_the_panel() {
     assert_eq!(at.slots_x, at.label_x + 14);
     assert!(at.slot_x(SLOTS) <= right(at.panel) + 1);
     for y in 0..i32::from(SMALL.rows) - 2 {
-        let row = text(&buf, y);
+        let row = buf.row_text(y);
         let inside: String = row.chars().skip(2).take(44).collect();
         assert_eq!(row.trim(), inside.trim(), "row {y}: {row}");
     }
-    let up = text(&buf, y_of(&v, Action::CursorUp));
+    let up = buf.row_text(y_of(&v, Action::CursorUp));
     assert!(up.contains("Cursor up") && up.contains(" Ctrl… "), "{up}");
-    assert!(text(&buf, y_of(&v, Action::Cancel)).contains("Cancel  + Es…  f"));
+    assert!(
+        buf.row_text(y_of(&v, Action::Cancel))
+            .contains("Cancel  + Es…  f")
+    );
     // The note after the focused slot's bar, or over the first slot.
     let confirm = y_of(&v, Action::Confirm);
     assert_eq!(x_of(&buf, confirm, "! not"), at.slot_x(1) - 1);
@@ -615,9 +618,9 @@ fn on_a_small_console_every_slot_is_inside_the_panel() {
     );
     let end = y_of(&v, Action::EndTurn);
     assert_eq!(x_of(&buf, end, "! not"), at.slots_x + 1);
-    assert!(!text(&buf, end).contains(EMPTY_SLOT));
-    assert_eq!(text(&buf, 22).trim(), "Give End turn a key first");
-    assert_eq!(text(&buf, 23).trim(), "help");
+    assert!(!buf.row_text(end).contains(EMPTY_SLOT));
+    assert_eq!(buf.row_text(22).trim(), "Give End turn a key first");
+    assert_eq!(buf.row_text(23).trim(), "help");
 }
 
 /// On the small console the note moves out from under the cursor's bar,
@@ -633,7 +636,7 @@ fn on_a_small_console_the_note_keeps_clear_of_the_cursor() {
         let mut v = v.clone();
         row_mut(&mut v, Action::Confirm).focus = focus;
         let buf = painted_on(&c, &v, SMALL);
-        let row = text(&buf, y);
+        let row = buf.row_text(y);
         (x_of(&buf, y, "!"), row)
     };
     // On the second slot (28 to 34): after its bar, cut at the border.
@@ -658,7 +661,7 @@ fn on_a_small_console_headings_and_choices_fit_the_panel() {
     let mut v = small_view();
     v.columns = (1..=SLOTS).map(|n| format!("Keys no. {n}")).collect();
     let buf = painted_on(&c, &v, SMALL);
-    assert!(text(&buf, COLUMNS_Y).contains("Keys …  Keys …  Keys …"));
+    assert!(buf.row_text(COLUMNS_Y).contains("Keys …  Keys …  Keys …"));
     let choices = ChoicesView {
         lines: CHOICES.map(|key| c.text(key).to_owned()).to_vec(),
         focused: 0,
@@ -721,8 +724,8 @@ fn a_list_that_fits_doesnt_scroll() {
     };
     assert_eq!(scroll(&v, &placed, LAST_ROW), none);
     let buf = painted(&c, &v);
-    assert!(!text(&buf, FIRST_ROW).contains('▲'));
-    assert!(!text(&buf, LAST_ROW).contains('▼'));
+    assert!(!buf.row_text(FIRST_ROW).contains('▲'));
+    assert!(!buf.row_text(LAST_ROW).contains('▼'));
 }
 
 /// A list longer than the panel starts at its top, a `▼` on the border
@@ -736,28 +739,28 @@ fn a_list_longer_than_the_panel_scrolls_to_the_focus() {
     let placed = place(&v);
     assert!(placed.restore > LAST_ROW);
     let buf = painted(&c, &v);
-    assert!(text(&buf, 4).contains("Must have a key"));
+    assert!(buf.row_text(4).contains("Must have a key"));
     assert!(
-        text(&buf, LAST_ROW).ends_with("▼  "),
+        buf.row_text(LAST_ROW).ends_with("▼  "),
         "{}",
-        text(&buf, LAST_ROW)
+        buf.row_text(LAST_ROW)
     );
-    assert!(!text(&buf, FIRST_ROW).contains('▲'));
-    let border = text(&buf, LAST_ROW + 1);
+    assert!(!buf.row_text(FIRST_ROW).contains('▲'));
+    let border = buf.row_text(LAST_ROW + 1);
     assert!(border.trim().starts_with('└'), "{border}");
     v.restore.focused = true;
     let scrolled = scroll(&v, &placed, LAST_ROW);
     assert_eq!(scrolled.by, placed.restore - LAST_ROW);
     assert!(scrolled.above && !scrolled.below);
     let buf = painted(&c, &v);
-    assert!(text(&buf, LAST_ROW).contains(" Restore defaults "));
+    assert!(buf.row_text(LAST_ROW).contains(" Restore defaults "));
     // The list starts on the row under the columns' headings, which stay.
-    assert!(text(&buf, COLUMNS_Y).contains("Key 1"));
-    assert!(text(&buf, COLUMNS_Y + 1).contains('▲'));
-    assert!(!text(&buf, COLUMNS_Y + 1).contains("Must have a key"));
-    let first = text(&buf, COLUMNS_Y + 1);
+    assert!(buf.row_text(COLUMNS_Y).contains("Key 1"));
+    assert!(buf.row_text(COLUMNS_Y + 1).contains('▲'));
+    assert!(!buf.row_text(COLUMNS_Y + 1).contains("Must have a key"));
+    let first = buf.row_text(COLUMNS_Y + 1);
     assert!(first.trim_start_matches(['│', ' ']).len() > 3, "{first}");
-    let border = text(&buf, LAST_ROW + 1);
+    let border = buf.row_text(LAST_ROW + 1);
     assert!(border.trim().starts_with('└'), "{border}");
 }
 

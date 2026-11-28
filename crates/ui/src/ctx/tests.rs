@@ -9,7 +9,7 @@ use shuyi_assets::keymap::{Button, Chord, Key, RepeatDef};
 use crate::audio::AudioRequest;
 use crate::audio::groups::{MASTER, MUSIC, SFX, UI, VOICE};
 use crate::input::help_keys::key_name;
-use crate::storage::MemoryStorage;
+use crate::storage::{FaultyStorage, MemoryStorage};
 use crate::toy::{Action, DEBUG_LANG, LEFT_HANDED, Prefs, RIGHT_HANDED, Theme, Toy, ToyCtx, Voice};
 use crate::toy::{ctx, first_launch};
 
@@ -21,22 +21,8 @@ fn code(code: &str) -> LangCode {
 }
 
 /// A storage whose every operation fails.
-#[derive(Debug)]
-struct Failing;
-
-impl Storage for Failing {
-    fn read(&self, _: &str) -> Result<Option<String>, StorageError> {
-        Err(StorageError::Backend("down".into()))
-    }
-    fn write(&mut self, _: &str, _: &str) -> Result<(), StorageError> {
-        Err(StorageError::Backend("down".into()))
-    }
-    fn delete(&mut self, _: &str) -> Result<(), StorageError> {
-        Err(StorageError::Backend("down".into()))
-    }
-    fn list(&self) -> Result<Vec<String>, StorageError> {
-        Err(StorageError::Backend("down".into()))
-    }
+fn failing() -> FaultyStorage {
+    FaultyStorage::new().failing_all()
 }
 
 /// A first launch on `storage`.
@@ -75,40 +61,11 @@ fn a_new_ctx_starts_on_the_games_palette_console_and_picker_keys() {
 
 #[test]
 fn a_palette_lacking_colors_is_refused_with_their_names() {
-    #[derive(Debug)]
-    struct Pale(Toy, PaletteDef);
-    impl GameData for Pale {
-        type Action = Action;
-        type Colors = EngineColor;
-        type Voice = Voice;
-        type Settings = Prefs;
-        fn lang(&self) -> &Lang {
-            self.0.lang()
-        }
-        fn keymap_def(&self) -> &KeymapDef<Action> {
-            self.0.keymap_def()
-        }
-        fn audio_manifest(&self) -> &AudioManifest {
-            self.0.audio_manifest()
-        }
-        fn palette_def(&self) -> &PaletteDef {
-            &self.1
-        }
-        fn console(&self) -> ConsoleSpec {
-            self.0.console()
-        }
-        fn theme_def(&self, _: Theme) -> Option<&PaletteDef> {
-            None
-        }
-        fn voice_variant(&self) -> Voice {
-            Voice::Only
-        }
-    }
     let toy = Toy::new();
     let mut def = toy.palette_def().clone();
     def.colors.remove("text");
     def.colors.remove("border");
-    let err = Ctx::new(Pale(toy, def)).unwrap_err();
+    let err = Ctx::new(toy.with_palette(def).without_themes()).unwrap_err();
     assert_eq!(err, ["text", "border"]);
 }
 
@@ -715,7 +672,7 @@ fn unreadable_settings_give_the_defaults_and_a_warning() {
 
 #[test]
 fn a_failing_storage_leaves_the_defaults_and_a_warning_for_each() {
-    let mut c = launch(Failing);
+    let mut c = launch(failing());
     assert_eq!(c.player_keys(), &PlayerKeys::default());
     assert_eq!(
         c.take_warnings(),
@@ -769,7 +726,7 @@ fn set_layout_bindings_saves_and_switches_the_layout_in_use() {
     let found = again.take_warnings();
     assert!(found.is_empty(), "{found:?}");
     // A failed save still switches them.
-    let mut failing = launch(Failing).with_layout(LEFT_HANDED);
+    let mut failing = launch(failing()).with_layout(LEFT_HANDED);
     assert!(
         failing
             .set_layout_bindings(LEFT_HANDED, left.clone())
@@ -810,7 +767,7 @@ fn set_pad_bindings_applies_in_every_layout_and_before_one_is_chosen() {
     let again = first_launch().with_storage(storage);
     assert_eq!(again.pad_bindings(), b);
     // A failed save still applies them.
-    let mut failing = launch(Failing);
+    let mut failing = launch(failing());
     assert!(failing.set_pad_bindings(b.clone()).is_err());
     assert_eq!(failing.pad_bindings(), b);
 }
@@ -919,27 +876,15 @@ fn profiles_are_renamed_and_deleted_with_their_keys() {
 
 #[test]
 fn a_list_that_cant_be_saved_changes_nothing() {
-    #[derive(Debug)]
-    struct NoWrites(MemoryStorage);
-    impl Storage for NoWrites {
-        fn read(&self, key: &str) -> Result<Option<String>, StorageError> {
-            self.0.read(key)
-        }
-        fn write(&mut self, _: &str, _: &str) -> Result<(), StorageError> {
-            Err(StorageError::Backend("full".into()))
-        }
-        fn delete(&mut self, key: &str) -> Result<(), StorageError> {
-            self.0.delete(key)
-        }
-        fn list(&self) -> Result<Vec<String>, StorageError> {
-            self.0.list()
-        }
-    }
     let mut storage = MemoryStorage::new();
     let two = "Profiles(version: 1, profiles: [(id: 1, name: \"A\"), (id: 2, name: \"B\")], \
                current: 1, next_id: 3)";
     storage.write(profiles::PROFILES_KEY, two).unwrap();
-    let mut c = launch(NoWrites(storage));
+    let mut c = launch(
+        FaultyStorage::over(storage)
+            .failing_writes()
+            .with_error("full"),
+    );
     let full = ProfileError::Storage(StorageError::Backend("full".into()));
     assert_eq!(c.add_profile("C"), Err(full.clone()));
     assert_eq!(c.profiles().all().len(), 2);
@@ -1013,76 +958,40 @@ fn a_game_that_leaves_the_defaults_has_no_debug_language_voices_or_old_keys() {
 
 /// The toy written in Japanese, with an English pack that translates its
 /// greeting only, and the toy's debug language.
-#[derive(Debug)]
-struct InJapanese(Toy, Lang);
-
-impl InJapanese {
-    fn new() -> Self {
-        use shuyi_assets::dialogue::{DialogueLimits, NoTokens};
-        use shuyi_assets::lang::{PackRules, SourceLang, pack_from_sources};
-        let ui: alloc::collections::BTreeMap<String, String> = [
-            ("home.greeting", "こんにちは、{name}"),
-            ("profile.numbered", "プレイヤー{n}"),
-        ]
-        .map(|(k, v)| (k.to_owned(), v.to_owned()))
-        .into();
-        let rules = PackRules::new(
-            |_, _| None,
-            &NoTokens,
-            DialogueLimits {
-                box_width: 40,
-                box_lines: 3,
-                max_text: 200,
-                max_option: 30,
-                min_options: 2,
-                max_options: 4,
-                max_reaction_texts: 3,
-            },
-            &CellWidths::NARROW,
-        );
-        let en_ui = r#"[(key: "home.greeting", source: "こんにちは、{name}", text: "Hi, {name}")]"#;
-        let info = r#"(name: "English", made_by: Machine)"#;
-        let en = pack_from_sources(("en/lang.ron", info), ("en/ui.ron", en_ui), &ui, &rules);
-        let lang = Lang::new(ui, [(code("en"), en.unwrap())].into())
-            .with_source_lang(SourceLang::new(code("ja"), "日本語"));
-        Self(Toy::new(), lang)
-    }
-}
-
-impl GameData for InJapanese {
-    type Action = Action;
-    type Colors = EngineColor;
-    type Voice = Voice;
-    type Settings = Prefs;
-    fn lang(&self) -> &Lang {
-        &self.1
-    }
-    fn debug_lang(&self) -> Option<&str> {
-        Some(DEBUG_LANG)
-    }
-    fn keymap_def(&self) -> &KeymapDef<Action> {
-        self.0.keymap_def()
-    }
-    fn audio_manifest(&self) -> &AudioManifest {
-        self.0.audio_manifest()
-    }
-    fn palette_def(&self) -> &PaletteDef {
-        self.0.palette_def()
-    }
-    fn console(&self) -> ConsoleSpec {
-        self.0.console()
-    }
-    fn theme_def(&self, theme: Theme) -> Option<&PaletteDef> {
-        self.0.theme_def(theme)
-    }
-    fn voice_variant(&self) -> Voice {
-        Voice::Only
-    }
+fn in_japanese() -> Toy {
+    use shuyi_assets::dialogue::{DialogueLimits, NoTokens};
+    use shuyi_assets::lang::{PackRules, SourceLang, pack_from_sources};
+    let ui: alloc::collections::BTreeMap<String, String> = [
+        ("home.greeting", "こんにちは、{name}"),
+        ("profile.numbered", "プレイヤー{n}"),
+    ]
+    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+    .into();
+    let rules = PackRules::new(
+        |_, _| None,
+        &NoTokens,
+        DialogueLimits {
+            box_width: 40,
+            box_lines: 3,
+            max_text: 200,
+            max_option: 30,
+            min_options: 2,
+            max_options: 4,
+            max_reaction_texts: 3,
+        },
+        &CellWidths::NARROW,
+    );
+    let en_ui = r#"[(key: "home.greeting", source: "こんにちは、{name}", text: "Hi, {name}")]"#;
+    let info = r#"(name: "English", made_by: Machine)"#;
+    let en = pack_from_sources(("en/lang.ron", info), ("en/ui.ron", en_ui), &ui, &rules);
+    let lang = Lang::new(ui, [(code("en"), en.unwrap())].into())
+        .with_source_lang(SourceLang::new(code("ja"), "日本語"));
+    Toy::new().with_lang(|_| lang)
 }
 
 #[test]
 fn a_game_written_in_japanese_starts_in_japanese_and_falls_back_to_it() {
-    let mut c = Ctx::new(InJapanese::new()).unwrap();
+    let mut c = Ctx::new(in_japanese()).unwrap();
     assert_eq!(c.lang, code("ja"));
     assert_eq!(c.text("home.greeting"), "こんにちは、{name}");
     assert_eq!(c.profiles().all()[0].name, "プレイヤー1");
@@ -1135,7 +1044,7 @@ fn a_build_keeps_the_info_and_debug_lines_as_it_has_debug_tools() {
 
 #[test]
 fn saved_data_that_cant_be_read_is_logged_by_what_it_is_about() {
-    let mut c = launch(Failing);
+    let mut c = launch(failing());
     c.set_voice_manifest("not a manifest");
     let (lines, _) = c.take_log();
     let said: Vec<_> = lines.iter().map(|l| (l.level, l.category)).collect();
