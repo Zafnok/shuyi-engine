@@ -42,6 +42,15 @@ So `skills/shuyi-stage-grid/SKILL.md` (*When it fails*) sends agents to
 `import` to find a map's errors, and its worked example expects
 `check`'s one error on `stage.map`.
 
+**From 2792 (done):** `parse_map` returns `Vec<ContentError>`, `own`
+names `bundle.display_path(MAP)`, a missing map is
+`ContentError::not_found` (`SH2003`), the plans' golden file is written
+again, `shuyi-test`'s example formats the error with `{:?}`, and
+`shuyi-stage-grid`'s SKILL.md and worked example expect `check`'s error
+on `files/stage.map` at its line. What is left here: `Stage::new`'s
+problems coded `SH2010`, the worked example's column, `SH2008` and
+`SH2010` expectations, and the test of `check` over the stage's `Tools`.
+
 ## Nick input
 
 None.
@@ -109,15 +118,11 @@ None.
       character on `files/stage.map` with its line, column and
       `SH2008`, as `import` does.
 - [ ] A map with two goals fails `check` with `SH2010`.
-- [ ] From 2792 (the same bug, found again; it waits on this ticket):
-      a `files/stage.map` with no `---` line fails `cargo shuyi check`
-      with one error naming `files/stage.map` once. Under `cargo shuyi
-      run --watch` (or the Harness over a disk layer,
-      `BasicGame::over` and `Harness::change_file`), the broken map's
-      `Ctx::reload_errors` line reads `disk/stage.map:<line>: …`, the
-      file once.
-- [ ] This ticket's PR also moves 2792 to `tickets/done/`, with the
-      completion note "Done by 2773: the same fix".
+- [ ] 2792's checks still hold (done, its tests in the template's
+      `top_down_grid.rs` and `tests/reload.rs`): a `files/stage.map`
+      with no `---` line fails `cargo shuyi check` with one error naming
+      `files/stage.map` once, and the Harness over a disk layer reads
+      `disk/stage.map:<line>: …` in `Ctx::reload_errors`.
 - [ ] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
 - [ ] The template's tests and CI's `templates` job pass.

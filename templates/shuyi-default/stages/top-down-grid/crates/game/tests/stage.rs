@@ -140,7 +140,7 @@ fn map_of(rows: &[&str]) -> GridMap<TerrainId, Feature> {
     source.push_str(&features.join(", "));
     source.push_str(" })\n---\n");
     source.push_str(&tiles);
-    rules::parse_map("t.map", &source).unwrap_or_else(|e| panic!("{e}"))
+    rules::parse_map("t.map", &source).unwrap_or_else(|e| panic!("{e:?}"))
 }
 
 #[test]
