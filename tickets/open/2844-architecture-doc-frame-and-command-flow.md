@@ -134,6 +134,13 @@ doubled from the steps.
 (steps 2 and 3) into a new ticket, and land the page with a hand-drawn
 graph marked "until NNNN".
 
+**Either order with 2099 and 3513** (the redundancy sweep of 2026-11-28): a block between
+marker comments is read, compared and rewritten by
+`crates/xtask/src/generated.rs`, with its CRLF handling, its missing or
+misordered markers, and its `--write`/check convention. If 2099 or 3513
+is done, use it. If neither is, write `generated.rs` as 3513's Scope
+says, and they use it.
+
 ## Implementation steps
 
 1. Read `tools/layers.ron`, `crates/xtask/src/layers.rs`,

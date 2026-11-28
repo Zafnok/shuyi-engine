@@ -102,6 +102,14 @@ None.
 - a whole-frame flash and shake, and transition looks, on every painter
   (2340, 2339).
 
+**Either order with 3237:** if 3237 is done, it has landed this
+ticket's backend-neutral half: the `EffectChain` asset,
+`GlyphBuffer.effects`, the raster CPU references,
+`Settings::screen_effects` and the toy game's CRT chain. Keep only the
+WGSL passes, the ping-pong targets, `Crt` at window size, the 2331
+clause and lavapipe CI, against 3237's references. If not, build all of
+it as planned.
+
 ## Implementation steps
 
 1. Read 3034's ADR and the wgpu renderer, ADR-0002 §4, 2332's raster,

@@ -73,10 +73,17 @@ None.
   `widgets/name_entry/glyph.rs`: the paint functions take a `WidgetLook`
   (box style and roles), with `WidgetLook::GLYPH` (today's look; every
   existing snapshot unchanged) and `WidgetLook::ONE_BIT`.
-- An `onebit` painter for `screens/options`, `screens/key_bindings`,
+- The one-bit look of `screens/options`, `screens/key_bindings`,
   `screens/profiles` and `screens/layout_picker`, sized for the one-bit
   frame (`frame/onebit.rs`, 400 × 240 pixels; the cells that fit at the
   one-bit font the frame draws with), using the widgets in `ONE_BIT`.
+  **The screen painters take the same `WidgetLook`** (the redundancy sweep of 2026-11-28) and
+  size themselves from the buffer, rather than each getting a second
+  `onebit` painter. Options' `panel()` already fits the buffer and
+  scrolls. key_bindings' fixed `PANEL` (96×29) is the main gap. Write a
+  separate `onebit` painter only for a screen whose one-bit layout
+  differs in structure (likely key_bindings, with fewer slot columns on
+  50 cells), and say which in the completion notes.
 - The target profile (3001) names a default painter set (`glyph` or
   `onebit`) that the screens use when the game gives none. It reaches
   a running game through 3053's facts (3053 is done): `PlatformFacts::from_profile`
@@ -167,6 +174,11 @@ keeps the widgets' `WidgetLook`, `MenuFrame` and the Options and question painte
 a follow-up (written in the same PR) takes Key bindings, Profiles, name
 entry and the layout picker.
 
+**Either order with 3260:** if 3260 is done, paint through
+`GlyphBuffer::panel`, `bar_label`, `Rect::centred_in` and `window_for`
+rather than at each screen's own copy. If not, change the sites as
+planned, and 3260 moves them onto the helpers.
+
 ## Implementation steps
 
 1. **Read** `widgets/menu/glyph.rs`, `widgets/ask/glyph.rs`,
@@ -177,7 +189,7 @@ entry and the layout picker.
 2. **`WidgetLook`** and the widget paints taking it; `GLYPH` keeps every
    snapshot. Then **`MenuFrame`** (`size_in`, `paint_in`): title,
    footer and `fitting(rows)`, in both looks.
-3. **The one-bit painters**, one screen at a time, each with snapshots.
+3. **The screens in the one-bit look**, one screen at a time, each with snapshots: the look passed to the screen's painter, and a separate `onebit` painter only where the layout differs.
 4. **The profile's default painter set**.
 5. **Docs**.
 

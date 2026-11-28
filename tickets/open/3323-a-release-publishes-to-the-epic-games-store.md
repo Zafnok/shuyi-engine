@@ -53,13 +53,18 @@ built and tested by reading, and the real run is a ticket of its own
   docs, and stop at the docs (a manual upload from the draft).
 - The base's README and AGENTS.md *Releasing*, `skills/shuyi-ship`
   step 8, `docs/contract.md`, the book's *Releasing*.
-- Tests in `crates/cli/src/contract/new/tests.rs`, as 3321's.
+- Tests in `crates/cli/src/contract/new/tests.rs`: a row in 3321's
+  table of store jobs.
+- **Either order with 3321:** if 3321 is done, call its composite action
+  (`.github/actions/store-packages/`), add the Epic Games Store's row to its table test
+  and a paragraph to its *Publishing to a store* section. If not, write
+  those three as 3321's Scope says, and 3321 adds Steam's row.
 
 **Out (do not do):**
 - Steam (3321), GOG (3322), `shuyi repos` asking (3410).
 - Epic Online Services in the game.
 
-**Estimated size:** about 900 lines (code 300, tests 300, docs 300).
+**Estimated size:** about 650 lines (code 250, tests 150, docs 250), with 3321's shared step and table.
 
 ## Implementation steps
 

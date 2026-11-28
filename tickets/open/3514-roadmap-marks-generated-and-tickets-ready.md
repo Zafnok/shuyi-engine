@@ -115,6 +115,10 @@ whole-read note if this ticket has already changed `work-ticket` §1).
 
 **Estimated size:** about 750 lines (code 330, tests 330, docs 90).
 
+**The readiness walk is 2099's** (the redundancy sweep of 2026-11-28): `ready.rs` calls the
+waits-for walk 2099 writes in `tickets/release.rs` rather than walking
+the blockers again.
+
 ## Implementation steps
 
 1. `crates/xtask/src/tickets.rs`: `TicketFields` gains `rank:

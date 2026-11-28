@@ -272,6 +272,14 @@ None.
   (2904's ADR). A game keeps each thing's clip and start time in
   whichever store it uses.
 
+**A game asks** (the redundancy sweep of 2026-11-28): game#1333 (hit bursts) and game#1334 plan
+a sheet flipbook: frame sizes, frame times and an anchor read from the
+`.json` beside a sheet, and the frame at a time from the start. That is
+this ticket's `AnimationClip` and `frame_at`. The game's sweep game#1397
+notes the game already writes it twice (`content/src/tileset/frames.rs`
+and `trees.rs`). The strike-kind table stays the game's. Unparking is
+Nick's call.
+
 ## Implementation steps
 
 1. Read ADR-0004 §2–§3, ADR-0019, ADR-0023 §5, `docs/formats.md`,

@@ -189,6 +189,12 @@ data 250).
 (grade 2) into a new ticket, and grade the first round with 2562's
 judge over scripted frame captures.
 
+**Shared with 2562** (the redundancy sweep of 2026-11-28): the stream counter, the line
+splitter, the judge and the rubric format are library functions in one
+module under `crates/xtask/src/eval/`, which 2562 writes and `bench.rs`
+calls. They are not written again in `bench.rs`. The rules only the
+blind benchmark has stay in `bench.rs`.
+
 ## Implementation steps
 
 1. Ask Nick (`ask-nick`) with the cost estimate; record his answers in

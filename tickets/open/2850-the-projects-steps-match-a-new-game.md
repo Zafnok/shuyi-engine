@@ -89,6 +89,11 @@ None.
 - checking steps 02–10 against the template file by file: each changes
   the game on purpose. The check covers step 1.
 
+**Either order with 2858:** if 2858 is done, make this ticket's
+new-game files once in `site/tutorial/01-new`, run `cargo xtask
+tutorial-steps --write`, and `--record` any step whose patch no longer
+applies. If not, edit the ten folders as planned, and 2858 records them.
+
 ## Implementation steps
 
 1. Read `site/README.md` (*The book's order*, the tutorial's build),

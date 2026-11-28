@@ -71,8 +71,12 @@ Planned:
 
 Why it matters:
 
-- **The game first:** Visions of Shuyi needs no generated levels, which
-  is why this waits for its launch. Nothing here changes for the game:
+- **The game first:** Visions of Shuyi planned no generated levels
+  when this was parked. Since then, game#1277 plans a run-time room
+  generator for a delve (rooms, walls and doors, connectivity; its
+  enemies and chests stay the game's), which is this ticket's BSP rooms
+  and connectivity repair. Unparking is Nick's call. Until then the
+  game writes its own, and its pin bump after this ticket replaces it. Nothing here changes for the game:
   it doesn't use `shuyi-procgen`.
 - **Other 2D games:** Nick added roguelikes on 2026-10-20
   (`docs/decisions.md`). Each generator here is under a hundred lines,
@@ -288,6 +292,15 @@ None.
 - checking a generated level by search (2112);
 - noise (2118), field of view (2120), and the example and template
   (2735).
+
+**`WeightedTable` lives in `shuyi-core`** (the redundancy sweep of 2026-11-28), beside
+`rng.rs`'s weighted picks, not in `shuyi-procgen`, so the parked
+encounter, drop, pack and roll tables (2751, 2760, 2747) hold
+`WeightedTable<Entry>` and check their weights once.
+
+**Either order with 2747, 2751 and 2760:** if one is done, use its
+`shuyi_core::WeightedTable`. If not, nothing to do (they use this one,
+their clauses say so).
 
 ## Implementation steps
 
