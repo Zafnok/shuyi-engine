@@ -442,7 +442,7 @@ is done.
 | 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
 | 2112 (done) | A level solver: breadth-first search over any `TurnRules` game |
-| 2150 | The level solver in the tutorial, the book and the test skill (after 2112) |
+| 2150 (done) | The level solver in the tutorial, the book and the test skill (after 2112) |
 | 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
 
 **Data, saves and versions:**

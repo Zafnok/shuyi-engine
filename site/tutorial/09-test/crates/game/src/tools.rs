@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use shuyi::core::bots::playtest::{Measures, PlayedTry, Tried};
 use shuyi::core::bots::{Bot, play};
-use shuyi::core::{Dir, Made, TurnRules};
+use shuyi::core::{Dir, Limits, Made, Solve, TurnRules, solve};
 use shuyi::platform::harness::Harness;
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
@@ -23,23 +23,40 @@ use crate::stages::Own;
 use crate::{Data, made};
 
 // ANCHOR: bot
-/// A bot that plays a line kept in the game's files: each level's is in
-/// `files/lines/`.
+/// A bot that plays a shortest line that wins the level, found by the
+/// engine's level solver (`shuyi::core::search`). The puzzle has no luck,
+/// so the line wins every try.
 #[derive(Debug, Clone)]
 pub struct LineBot {
     /// The steps left, last first.
-    steps: Vec<Dir>,
+    steps: Vec<Command>,
 }
 
 impl LineBot {
-    /// The bot that plays level `level`'s line, counted from 0.
-    pub fn new(bundle: &Bundle, level: usize) -> Result<Self, String> {
-        // check-text: not player text, a file name
-        let name = format!("lines/{}.ron", level + 1);
-        let text = bundle.file(&name).ok_or(format!("no {name}"))?;
-        let mut steps: Vec<Dir> = ron::from_str(&text).map_err(|e| format!("{name}: {e}"))?;
-        steps.reverse();
-        Ok(Self { steps })
+    /// The bot that plays a shortest line from `puzzle`'s start.
+    ///
+    /// # Errors
+    ///
+    /// The level can't be won (the puzzle lists every step it allows, so
+    /// that is a proof), the search stopped at its limit, or the rules
+    /// refused a step they listed.
+    pub fn new(puzzle: &Puzzle) -> Result<Self, String> {
+        // The puzzle counts its turns, so no state repeats and the search
+        // keeps more than the default's 100 000: level 5 takes 165 280.
+        let limits = Limits::DEFAULT.with_states(1_000_000);
+        let found = solve(puzzle, |_| true, limits).map_err(|e| e.to_string())?;
+        match found {
+            Solve::Solved { mut commands, .. } => {
+                commands.reverse();
+                Ok(Self { steps: commands })
+            }
+            Solve::Exhausted { states } => Err(format!(
+                "the level can't be won: every line among {states} states was tried"
+            )),
+            Solve::LimitReached { states } => Err(format!(
+                "the level isn't proved winnable: the search stopped at {states} states"
+            )),
+        }
     }
 }
 
@@ -50,7 +67,6 @@ impl Bot<Puzzle> for LineBot {
         let legal = || puzzle.legal_commands().first().copied();
         self.steps
             .pop()
-            .map(Command::Step)
             .or_else(legal)
             .unwrap_or(Command::Step(Dir::Up))
     }
@@ -170,7 +186,7 @@ impl GameTools for Tools {
         _input: &PlaytestInput,
     ) -> Result<PlaytestPlan, String> {
         let puzzle = self.puzzle(0)?;
-        let bot = LineBot::new(&self.game.bundle(), 0)?;
+        let bot = LineBot::new(&puzzle)?;
         Ok(PlaytestPlan::new(
             "level 1, played by its line",
             vec![("line".to_owned(), None)],

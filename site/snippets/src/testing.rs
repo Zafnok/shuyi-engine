@@ -2,10 +2,10 @@
 //! that holds for any seed, a record replayed step by step with the hash of
 //! each step, and a whole session recorded and played to any frame.
 
-use shuyi::core::prelude::{Bot, RandomBot, Report, TurnRules, play};
+use shuyi::core::prelude::{Bot, Limits, RandomBot, Report, Solve, TurnRules, play, solve};
 
 use crate::assets::Plan;
-use crate::rules::{Command, Garden};
+use crate::rules::{Command, Garden, Outcome};
 
 // ANCHOR: bot
 /// A bot that plants wherever nothing grows yet, and walks right to the
@@ -33,6 +33,20 @@ pub fn play_once(bot: &mut dyn Bot<Garden>, seed: u64) -> Report<Garden> {
 }
 // ANCHOR_END: bot
 
+// ANCHOR: solve
+/// A shortest line that wins the garden of `plan` on `seed`, if the level
+/// solver finds one within `limits`.
+pub fn winning_line(plan: &Plan, seed: u64, limits: Limits) -> Option<Vec<Command>> {
+    let garden = Garden::new(plan, seed);
+    let won = |outcome: &Outcome| *outcome == Outcome::Won;
+    match solve(&garden, won, limits).unwrap_or_else(|e| panic!("{e}")) {
+        Solve::Solved { commands, .. } => Some(commands),
+        // Every line was tried, or the search stopped first: no proof.
+        Solve::Exhausted { .. } | Solve::LimitReached { .. } => None,
+    }
+}
+// ANCHOR_END: solve
+
 /// A random bot's play, for a test to compare with.
 pub fn play_randomly(seed: u64) -> Report<Garden> {
     play_once(&mut RandomBot::new(seed), seed)
@@ -47,7 +61,6 @@ mod tests {
 
     use super::*;
     use crate::game;
-    use crate::rules::Outcome;
 
     // ANCHOR: test_bot
     #[test]
@@ -60,6 +73,32 @@ mod tests {
         assert!(play_randomly(1).commands.len() <= 200);
     }
     // ANCHOR_END: test_bot
+
+    // ANCHOR: test_solve
+    #[test]
+    fn seed_0s_line_wins_seed_0_and_not_seed_1() {
+        let plan = Plan::new(6, 9, 75);
+        let line = winning_line(&plan, 0, Limits::DEFAULT).expect("winnable on seed 0");
+        let mut garden = Garden::new(&plan, 0);
+        for command in &line {
+            garden.apply(command).unwrap();
+        }
+        assert_eq!(garden.outcome(), Some(Outcome::Won));
+        // A line is a line for its seed: on seed 1, more seeds wilt.
+        let mut other = Garden::new(&plan, 1);
+        let played = line.iter().all(|command| other.apply(command).is_ok());
+        assert!(!played || other.outcome() != Some(Outcome::Won));
+    }
+
+    #[test]
+    fn too_few_seeds_is_never_proved_winnable() {
+        // Three plots and two seeds: no line wins. The player can walk
+        // forever, and the garden counts its turns, so the search runs
+        // into its limit rather than trying every line.
+        let limits = Limits::DEFAULT.with_states(5_000);
+        assert_eq!(winning_line(&Plan::new(3, 2, 75), 1, limits), None);
+    }
+    // ANCHOR_END: test_solve
 
     // ANCHOR: property
     proptest! {
