@@ -6,12 +6,19 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: todo
-blocked_by: []
+blocked_by: ["2773"]
 nick_input: none
 completed:
 ---
 
 # 2792 — The template stage's map errors name their file once, with its line
+
+**Done by 2773.** The redundancy sweep of 2026-11-28 found that 2773
+plans the same change: `parse_map` returns `Vec<ContentError>`, and
+`own` uses `bundle.display_path(MAP)`. 2773 is the larger ticket (it
+adds the codes, the golden file and the skills), and its acceptance
+criteria now hold this ticket's. 2773's PR moves this ticket to
+`done/`. Don't work it on its own.
 
 ## Context
 

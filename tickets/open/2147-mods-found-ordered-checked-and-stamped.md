@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["game#1014"]
+blocked_by: ["game#1011"]
 nick_input: none
 completed:
 ---
@@ -44,9 +44,10 @@ missing feature.
   and an `app` file that scans `mods/` beside the executable and the
   player's data folder, reads the enabled list from storage key `mods`,
   and reads each mod with `read_folder`. game#1015 then records the mods
-  in the game's saves and shows a Mods screen. This ticket moves the
-  generic half of 1014 into the engine once 1014 is done, as 2207 did
-  for the bundle.
+  in the game's saves and shows a Mods screen. This ticket writes the
+  generic half first, under game#1011's ADR, and game#1014 adopts it
+  rather than writing it and then moving it here (the redundancy sweep
+  of 2026-11-28).
 - **The game today** (pin `50472bbcd3084555a61728a5d07518f720bd6514`):
   `gh search code --repo Zafnok/visions-of-shuyi 'ModManifest'` finds
   only `tickets/open/1014-…`; no code yet. `read_folder` is called by
@@ -149,12 +150,11 @@ None.
 
 ## Implementation steps
 
-1. Read game#1014 as merged (its `modding.rs` and `app/src/mods.rs`),
-   game#1011's ADR, ADR-0004 §1, ADR-0051, `crates/assets/src/bundle.rs`
+1. Read game#1014's plan and game#1011's ADR, ADR-0004 §1, ADR-0051, `crates/assets/src/bundle.rs`
    (`Layer::owned`), `crates/app/src/folder.rs`,
    `crates/app/src/storage/native.rs` and `crates/core/src/made.rs`.
-   Where the game's code and this ticket differ on a field or a rule,
-   follow the game's ADR, and say so in the completion notes.
+   Where game#1014 and this ticket differ on a field or a rule, follow
+   the game's ADR, and say so in the completion notes.
 2. `crates/assets/src/mods.rs` (and `mods/tests.rs`): `ModManifest`, its
    kind and RON `Format` (registered with the engine's own formats),
    with `deny_unknown_fields` and an id checked as a storage key is

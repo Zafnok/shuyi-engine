@@ -68,7 +68,7 @@ None.
 - **Moves between cells:** 8 directions, straight cost 10 and diagonal
   14, times the terrain cost. A diagonal is allowed only when both
   straight neighbours are open (no cutting corners). **Either order
-  with 2117:** if 2117 is done, take the eight directions, the step
+  with 2117:** if 2117 is done, run the portal-graph A* and the per-sector Dijkstra through its generic `shuyi_core::path::search`, take the eight directions, the step
   costs and the corner rule from `shuyi_core` (`Dir8`,
   `Topology::Square8(Diagonals::OCTILE)`, `Topology::steps` and
   `step_weight`), and use `Topology::distance` as `route`'s octile

@@ -240,6 +240,18 @@ None.
 - searches over game states (2112, 2113);
 - changing `Dir`, `reachable`, `flow_field` or `neighbors4`.
 
+**One generic search** (the redundancy sweep of 2026-11-28): the A* loop is
+`pub fn search<N: Ord + Copy, C: Ord + Add<Output = C> + Copy>(start,
+goal, neighbours, heuristic)` in `shuyi_core::path`. It is generic over
+the node and the cost, and its ties are broken by `N`'s order, so a
+caller orders `(f, g, id)`. `find_path` wraps it. 2106's navigation mesh
+(fixed-point costs), 2709's portal graph and 2744's automap route call
+it rather than writing their own.
+
+**Either order with 2106 and 2744:** if one is done, move its own A*
+onto `search`. If not, nothing to do (they call `search`, their clauses
+say so).
+
 ## Implementation steps
 
 1. Read `crates/core/src/grid.rs`, `crates/core/src/path.rs` and

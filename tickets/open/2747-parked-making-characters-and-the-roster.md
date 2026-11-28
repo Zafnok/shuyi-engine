@@ -91,6 +91,11 @@ None.
 - the hub's other places (2752);
 - what a lineage or calling means beyond its numbers and tags.
 
+**Either order with 2119:** if 2119 is done, hold its
+`shuyi_core::WeightedTable<Entry>` and drop this ticket's own weight
+checks. If not, write `WeightedTable` in `shuyi-core` beside `rng.rs`
+as 2119's Scope says, and 2119 uses it.
+
 ## Implementation steps
 
 1. The format, defs and errors.

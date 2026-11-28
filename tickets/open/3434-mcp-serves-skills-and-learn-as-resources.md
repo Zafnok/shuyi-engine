@@ -173,6 +173,12 @@ missing resource is `-32602` (SEP-2164), on the old protocol `-32002`.
   2578 keeps it current.
 - Reading the corpus from disk in a debug build: 3414's.
 
+**Either order with 3450:** if 3450 is done, read and extend the
+Learn pages' shortcodes through `shuyi_cli::shortcodes`, not
+`contract/docs/corpus.rs` or `crates/xtask/src/llms.rs` alone. If not,
+change the readers as planned, and 3450 moves the change into
+`shortcodes`.
+
 ## Implementation steps
 
 1. Read the skills extension's spec (its `skills/list` and `skills/get`

@@ -73,6 +73,11 @@ None.
 - crowd steering for hundreds (the RTS work, 2711);
 - bosses' scripted phases (a game's mind).
 
+**Either order with 2119:** if 2119 is done, hold its
+`shuyi_core::WeightedTable<Entry>` and drop this ticket's own weight
+checks. If not, write `WeightedTable` in `shuyi-core` beside `rng.rs`
+as 2119's Scope says, and 2119 uses it.
+
 ## Implementation steps
 
 1. The format and defs.

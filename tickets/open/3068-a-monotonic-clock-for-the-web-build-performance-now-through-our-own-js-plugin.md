@@ -115,6 +115,11 @@ None.
   `languages.js`, `net.js`, …): each adds its own file and its own row
   to `SHELL`; nothing to settle.
 
+**Either order with 3452:** if 3452 is done, the new plugin's
+provides, version and load-order tests are one row in `web.rs`'s plugin
+table. If not, write them as the existing plugins' are, and 3452 turns
+them into a row.
+
 ## Implementation steps
 
 1. Read 3067's completion notes, `pacing.rs`, `pads/web.rs`,

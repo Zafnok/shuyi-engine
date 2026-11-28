@@ -122,6 +122,10 @@ it lands second).
 
 **Estimated size:** about 700 lines (code 300, tests 320, docs 80).
 
+**Either order with 3516 and 2844:** if one of them is done, move its
+marker-block splice onto `generated.rs`. If not, nothing to do (they use
+`generated.rs`, their clauses say so).
+
 ## Implementation steps
 
 1. `crates/xtask/src/tickets.rs`: `TicketFields` gains `milestone` and

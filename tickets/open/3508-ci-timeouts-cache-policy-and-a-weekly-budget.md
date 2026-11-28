@@ -119,6 +119,15 @@ to do here (`check-workflows` makes 3502's new job carry both).
 **Split:** past 1,100 lines, split off steps 6–8 (the `ci-budget`
 command, its ledger and the scheduled workflow) into a new ticket.
 
+**One Rust setup step first** (the redundancy sweep of 2026-11-28): `rustup show`,
+`Swatinem/rust-cache` and `scripts/setup-linux.sh` begin about 38
+jobs. Add `.github/actions/rust-setup/` (a composite action with the
+cache's `save-if` written once, and inputs for the cache key and whether
+to run the setup script), and call it from every engine job before
+adding the timeouts. Step 1's check 2 reads the composite as well as
+each workflow. `export.yml` keeps its own steps: it is byte-identical to
+the template's and runs in games, which have no such local action.
+
 ## Implementation steps
 
 1. **The gate.** Add `crates/xtask/src/workflows.rs`, run as `cargo

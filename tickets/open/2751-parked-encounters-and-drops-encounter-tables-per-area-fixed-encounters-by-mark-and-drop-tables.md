@@ -75,6 +75,11 @@ None.
 - affix tables and rolling an item's affixes (ADR-0034, 2758);
 - encounters that walk on the map (a game's things, 2742's things list).
 
+**Either order with 2119:** if 2119 is done, hold its
+`shuyi_core::WeightedTable<Entry>` and drop this ticket's own weight
+checks. If not, write `WeightedTable` in `shuyi-core` beside `rng.rs`
+as 2119's Scope says, and 2119 uses it.
+
 ## Implementation steps
 
 1. The format and defs.

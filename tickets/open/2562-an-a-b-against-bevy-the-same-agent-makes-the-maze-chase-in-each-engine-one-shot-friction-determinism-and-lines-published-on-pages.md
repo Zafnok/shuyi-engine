@@ -152,6 +152,11 @@ His answers go in `docs/decisions.md` and in `evals/ab/maze-chase.ron`.
 - Any engine change the A/B finds: a ticket each (`write-ticket`), with
   the friction it measured.
 
+**For 3432** (the redundancy sweep of 2026-11-28): write the stream counter, the line split,
+the judge and the rubric format as library functions in one module
+under `crates/xtask/src/eval/`, not inside `ab.rs`. 3432's blind
+benchmark calls them.
+
 ## Implementation steps
 
 1. Ask Nick (`ask-nick`) with the cost estimate, record his answers.
