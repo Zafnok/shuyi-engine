@@ -167,10 +167,12 @@ codec_formats!(
     /// picture in floats with SIMD it picks at run time: the fixture's
     /// pixels are pinned on x64, ARM64 and wasm32 (ADR-0007 §5), but a
     /// lossy picture could round a pixel apart on another; a lossless one
-    /// never does.
+    /// never does. A file whose frame says its sections end past 4 GiB
+    /// from the codestream's start is refused on every target.
     JpegXl,
     /// JPEG XL read for its size (`jpeg-xl`, `.jxl`), with the `jpeg-xl`
-    /// feature: only its image header.
+    /// feature: its image header, after its frames' tables of contents
+    /// are checked as [`JpegXl`] checks them.
     JpegXlInfo
 );
 
@@ -323,7 +325,27 @@ mod jpeg_xl {
         JxlImage::builder().alloc_tracker(AllocTracker::with_limit(max_held))
     }
 
+    /// The furthest a frame's sections may end, in bytes from the
+    /// codestream's start: the most a 32-bit `usize` holds.
+    pub(super) const MOST_BYTES: u64 = u32::MAX as u64;
+
+    /// Refuses `bytes` if a frame's sections end past [`MOST_BYTES`],
+    /// before `jxl-oxide` reads them: `jxl-frame` 0.13.3 adds a frame's
+    /// section sizes in a `usize` (`Toc::parse`), which overflows on a
+    /// 32-bit target, wasm32 among them. Refused on every target, so a
+    /// file reads alike on each. It goes, with [`sections`], once a
+    /// release of `jxl-frame` refuses such a file itself.
+    fn sections_fit(bytes: &[u8]) -> Decoded<()> {
+        match sections::first_end_past(&sections::codestream(bytes), MOST_BYTES) {
+            Some(_) => Err(invalid(
+                "its frame's sections end past 4 GiB from its start",
+            )),
+            None => Ok(()),
+        }
+    }
+
     pub(super) fn size(bytes: &[u8]) -> Decoded<(u32, u32)> {
+        sections_fit(bytes)?;
         let mut image = builder(MAX_HELD).build_uninit();
         image.feed_bytes(bytes).map_err(invalid)?;
         match image.try_init().map_err(invalid)? {
@@ -342,6 +364,7 @@ mod jpeg_xl {
         info: ImageInfo,
         max_held: usize,
     ) -> Decoded<Vec<u8>> {
+        sections_fit(bytes)?;
         let mut image = builder(max_held).read(bytes).map_err(invalid)?;
         image.request_color_encoding(EnumColourEncoding::srgb(RenderingIntent::Relative));
         let render = image.render_frame(0).map_err(invalid)?;
@@ -354,6 +377,107 @@ mod jpeg_xl {
         stream.write_to_buffer(&mut samples);
         to_rgba(&samples, channels)
             .ok_or_else(|| invalid(format!("{channels} channels; must be 1 to 4")))
+    }
+
+    /// A walk over a codestream's frames that reads where each one's
+    /// sections end, with `jxl-oxide`'s own parsers of its headers and
+    /// tables of contents, and none of their sections: [`sections_fit`].
+    pub(super) mod sections {
+        use crate::prelude::*;
+        use jxl_bitstream::{Bitstream, ContainerParser, ParseEvent, U};
+        use jxl_oxide::{FrameHeader, ImageHeader};
+        use jxl_oxide_common::Bundle;
+
+        /// The codestream of `bytes`, a bare one or a container's boxes
+        /// of it, as far as it can be read.
+        pub(in super::super) fn codestream(bytes: &[u8]) -> Vec<u8> {
+            let mut stream = Vec::new();
+            let mut container = ContainerParser::new();
+            for event in container.feed_bytes(bytes) {
+                match event {
+                    Ok(ParseEvent::Codestream(part)) => stream.extend_from_slice(part),
+                    Ok(_) => {}
+                    Err(_) => break,
+                }
+            }
+            stream
+        }
+
+        /// Where the first frame of `stream` whose sections end past
+        /// `most` (bytes from its start) says they end. `None` if none
+        /// does, as far as the walk reads: it stops at the last frame, at
+        /// a frame cut short and at bytes it can't read, which the decoder
+        /// then refuses itself, for it reads them alike.
+        pub(in super::super) fn first_end_past(stream: &[u8], most: u64) -> Option<u64> {
+            let mut bits = Bitstream::new(stream);
+            let image = ImageHeader::parse(&mut bits, ()).ok()?;
+            if image.metadata.colour_encoding.want_icc() {
+                jxl_color::icc::read_icc(&mut bits).ok()?;
+            }
+            // A preview frame comes first, if there is one, and then the
+            // image's frames whatever it says.
+            let mut preview = image.metadata.preview.is_some();
+            let mut start = 0;
+            loop {
+                bits.zero_pad_to_byte().ok()?;
+                let header = FrameHeader::parse(&mut bits, &image).ok()?;
+                if !sized_to_read(&header) {
+                    return None;
+                }
+                let sizes = sections_bytes(&mut bits, &header)?;
+                let end = (start + bits.num_read_bits() / 8) as u64 + sizes;
+                if end > most {
+                    return Some(end);
+                }
+                if (header.is_last && !preview) || end > stream.len() as u64 {
+                    return None;
+                }
+                preview = false;
+                start = usize::try_from(end).ok()?;
+                bits = Bitstream::new(&stream[start..]);
+            }
+        }
+
+        /// Whether `jxl-frame`'s `Frame::parse` reads on from `header` to
+        /// its table of contents: 1 to 2³⁰ px a side, 2⁴⁰ px at most. It
+        /// refuses the others first, and `FrameHeader::num_groups`
+        /// overflows on some of them.
+        fn sized_to_read(header: &FrameHeader) -> bool {
+            let side = 1..=1_u64 << 30;
+            let (width, height) = (u64::from(header.width), u64::from(header.height));
+            side.contains(&width) && side.contains(&height) && width * height <= 1 << 40
+        }
+
+        /// The bytes of the sections a frame's table of contents lists,
+        /// read as `jxl-frame`'s `Toc::parse` reads it, from `bits` just
+        /// after the frame's `header`.
+        fn sections_bytes(bits: &mut Bitstream, header: &FrameHeader) -> Option<u64> {
+            let (groups, passes) = (header.num_groups(), header.passes.num_passes);
+            let entries = if groups == 1 && passes == 1 {
+                1
+            } else {
+                let lf_groups = u64::from(header.num_lf_groups());
+                u32::try_from(2 + lf_groups + u64::from(groups) * u64::from(passes)).ok()?
+            };
+            if entries > 1 << 16 {
+                return None;
+            }
+            if bits.read_bool().ok()? {
+                // Its sections' order, which the walk steps over.
+                let mut decoder = jxl_coding::Decoder::parse(bits, 8).ok()?;
+                decoder.begin(bits).ok()?;
+                jxl_coding::read_permutation(bits, &mut decoder, entries, 0).ok()?;
+                decoder.finalize().ok()?;
+            }
+            bits.zero_pad_to_byte().ok()?;
+            let mut total = 0;
+            for _ in 0..entries {
+                let size = bits.read_u32(U(10), 1024 + U(14), 17408 + U(22), 4_211_712 + U(30));
+                total += u64::from(size.ok()?);
+            }
+            bits.zero_pad_to_byte().ok()?;
+            Some(total)
+        }
     }
 }
 
@@ -404,6 +528,75 @@ mod tests {
         assert!(jpeg_xl::pixels_within(bytes, info, 1 << 30).is_ok());
         let held = jpeg_xl::pixels_within(bytes, info, 1024);
         assert!(held.is_err_and(|e| e.starts_with("not a valid JPEG XL file")));
+    }
+
+    /// `jpeg_xl_past_4_gib`'s image header, `frame` in place of its
+    /// frame's header and the start of its table of contents (byte 4),
+    /// then its five sections of `sizes`, each written as the fourth kind
+    /// of size.
+    #[cfg(feature = "jpeg-xl")]
+    fn jpeg_xl_with(frame: &[u8], sizes: [u32; 5]) -> Vec<u8> {
+        let mut bytes = crate::format::codec_tests::jpeg_xl_past_4_gib()[..4].to_vec();
+        bytes.extend_from_slice(frame);
+        for size in sizes {
+            bytes.extend((3 | (size - 4_211_712) << 2).to_le_bytes());
+        }
+        bytes
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    #[test]
+    fn a_jpeg_xl_walk_finds_where_its_frames_sections_end() {
+        use crate::format::codec_tests::{JPEG_XL, JPEG_XL_LOSSLESS};
+        use jpeg_xl::sections::{codestream, first_end_past};
+        // A one-frame file's sections end where its bytes do.
+        for fixture in [JPEG_XL, JPEG_XL_LOSSLESS] {
+            let (stream, end) = (codestream(fixture), fixture.len() as u64);
+            assert_eq!(stream, fixture);
+            assert_eq!(first_end_past(&stream, end - 1), Some(end));
+            assert_eq!(first_end_past(&stream, end), None);
+        }
+        // A container's codestream is its `jxlc` box's.
+        let mut boxed = b"\0\0\0\x0cJXL \r\n\x87\n\0\0\0\x14ftypjxl \0\0\0\0jxl ".to_vec();
+        boxed.extend(u32::try_from(8 + JPEG_XL.len()).unwrap_or(0).to_be_bytes());
+        boxed.extend(b"jxlc");
+        boxed.extend(JPEG_XL);
+        assert_eq!(codestream(&boxed), JPEG_XL);
+        // 25 bytes of headers and 4 GiB less 25 of sections end at the
+        // last byte a 32-bit `usize` counts; a byte more is past it.
+        let most = jpeg_xl::MOST_BYTES;
+        let big = 1_072_688_889;
+        let at_most = jpeg_xl_with(&[1], [big, big, big, big, 4_211_714]);
+        assert_eq!(first_end_past(&at_most, most), None);
+        let past = jpeg_xl_with(&[1], [big, big, big, big, 4_211_715]);
+        assert_eq!(first_end_past(&past, most), Some(most + 1));
+        // A table of contents with an order (1, after the frame's header
+        // all default): no LZ77 (0); its 8 contexts in one cluster, simply
+        // (1, entries of 0 bits: 00); a prefix code (1) splitting at 2¹⁵
+        // (15: 1111) and of one symbol (0), so every number read is 0 and
+        // the order is empty. Its sizes are read after it.
+        let ordered = jpeg_xl_with(&[0b1100_1011, 0b0000_0111], [4_211_712; 5]);
+        let end = 26 + 5 * 4_211_712;
+        assert_eq!(first_end_past(&ordered, end - 1), Some(end));
+        assert_eq!(first_end_past(&ordered, end), None);
+    }
+
+    #[cfg(feature = "jpeg-xl")]
+    #[test]
+    fn a_jpeg_xl_walk_leaves_a_frame_too_big_to_the_decoder() {
+        use jpeg_xl::sections::first_end_past;
+        // 2³⁰ px tall (not small: 0, the fourth kind: 11, 30 bits of 1),
+        // then a ratio (3 bits), metadata all default (11), zeros to the
+        // byte, and a frame's header all default: 2⁶⁰ px at 1:1 (ratio
+        // 1), 2³¹ px wide at 2:1 (ratio 7). Counting their groups would
+        // overflow; `jxl-frame` refuses them before, and so the walk
+        // leaves them.
+        for last in [0b0011_0011, 0b0011_1111] {
+            let big = [0xff, 0x0a, 0xfe, 0xff, 0xff, 0xff, last, 0b0000_0001];
+            assert_eq!(first_end_past(&big, 0), None);
+            let refused = jpeg_xl::size(&big);
+            assert!(refused.is_err_and(|e| e.starts_with("not a valid JPEG XL file")));
+        }
     }
 
     #[cfg(any(feature = "webp", feature = "jpeg-xl"))]

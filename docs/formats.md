@@ -554,7 +554,12 @@ What each one reads:
   - **QOI**: RGB or RGBA; its colour-space tag is ignored.
   - **JPEG XL**: a bare codestream or a container, lossless or lossy;
     its first frame, in sRGB. A CMYK picture, or one whose ICC profile
-    needs converting, is refused.
+    needs converting, is refused, and so is one whose frame says its
+    sections end past 4 GiB from the codestream's start, on every
+    target: `jxl-frame` 0.13.3 adds their sizes in a `usize`, which
+    overflowed on wasm32, so the format reads each frame's header and
+    table of contents with `jxl-oxide`'s own parsers before decoding
+    (ticket 2285).
 - **A sound** reads only its header, as WAV and OGG do: one or two
   channels at 44.1 kHz.
   - **FLAC**: its `STREAMINFO`; a track's length is its sample count, so
@@ -589,7 +594,7 @@ every feature on (ADR-0002 §8). Each is pure Rust, builds for
 | `jpeg` | `zune-jpeg` 0.5.15 (`zune-core`) | MIT OR Apache-2.0 OR Zlib | 2026-03-26 | none: no `x86` or `neon` SIMD | yes |
 | `webp` | `image-webp` 0.2.4 (`byteorder-lite`, `quick-error`) | MIT OR Apache-2.0 | 2025-08-27 | none | no |
 | `qoi` | `qoi` 0.4.1 (`bytemuck`) | MIT OR Apache-2.0 | 2022-10-16 | `alloc` | yes |
-| `jpeg-xl` | `jxl-oxide` 0.12.6 (eleven `jxl-*` crates, `brotli-decompressor`, `tracing`) | MIT OR Apache-2.0 (`brotli-decompressor`: BSD-3-Clause OR MIT) | 2026-05-29 | none: no `rayon` | no |
+| `jpeg-xl` | `jxl-oxide` 0.12.6 (eleven `jxl-*` crates, `brotli-decompressor`, `tracing`; `jxl-bitstream`, `jxl-coding`, `jxl-color` and `jxl-oxide-common` named too, at its versions) | MIT OR Apache-2.0 (`brotli-decompressor`: BSD-3-Clause OR MIT) | 2026-05-29 | none: no `rayon` | no |
 | `flac` | `claxon` 0.4.3 | Apache-2.0 | 2020-08-09 | none | no |
 | `mp3` | `nanomp3` 0.2.0 (`nanomp3-core`) | MIT OR Apache-2.0 | 2026-09-30 | `alloc`: no layers I and II | yes |
 
