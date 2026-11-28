@@ -245,7 +245,7 @@ chapter teaches yet.
 Skills: none, 2855 rewrites the `shuyi-net` skill for rooms and quick
 play; this changes no schema, template, format or problem code.
 
-Size: 1,009 counted lines, past the Split's 1,000 by 9 and under the
+Size: 1,010 counted lines, past the Split's 1,000 by 10 and under the
 ticket's own estimate of 1,100, so the sending side stayed: split off,
 its 100 lines would come back as a second PR whose integration tests
 rewrite this one's players' sends.
