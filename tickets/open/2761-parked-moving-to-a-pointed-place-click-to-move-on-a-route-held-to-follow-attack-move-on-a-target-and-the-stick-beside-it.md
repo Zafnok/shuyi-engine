@@ -64,8 +64,7 @@ None.
 
 **Out (do not do):**
 - selecting several units (RTS, 2716);
-- swipes (2407, parked); pinch, long press and other gestures: no
-  ticket plans them;
+- swipes (2407, parked); pinch, long press and other gestures: 2416;
 - the HUD (2762).
 
 ## Implementation steps

@@ -128,6 +128,14 @@ tier (as 3525's answer says), each one PR's worth.
 7. **Mixed frames.** A smooth world with pixel UI, and a pixel world
    with smooth UI: one frame, two tiers, and where 2333's scale modes and
    3231's window-resolution layer apply.
+8. **Smooth edges.** Anti-aliasing for smooth items, which 2336, 2703
+   and 3263 leave out: coverage counted in integers per edge pixel of a
+   drawn shape or a rotated sprite (4 or 16 samples), blended in 3227's
+   space, and a frame-wide pass (FXAA, as Bevy's `bevy_anti_alias`
+   offers beside SMAA, TAA and MSAA) on 3325 with a CPU reference
+   within a tolerance. Which of the two each painter gets, and that the
+   pixel tier and the one-bit targets keep hard edges (the Bevy
+   coverage audit of 2026-11-28 found no ticket that names it).
 
 **Out (do not do):**
 - the product question itself: 3525 asks Nick;

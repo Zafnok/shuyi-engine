@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["1119", "1120", "2405"]
+blocked_by: ["1119", "1120", "2405", "2415"]
 nick_input: none
 completed:
 ---
@@ -34,10 +34,10 @@ None. Our game doesn't use these unless a later ticket says so.
 ## Scope
 
 **In:**
-- `shuyi-app` reads stick axes (gilrs on native, the web pad plugin) and
-  the mouse buttons other than the primary into `RawInputEvent`s; the
-  mouse's place, its primary button, the wheel and touches already
-  arrive through 2405's events.
+- `shuyi-app` reads stick axes (gilrs on native, the web pad plugin)
+  into `RawInputEvent`s; the mouse's place, its buttons (the others
+  split out to 2415, a blocker), the wheel and touches already arrive
+  through 2405's and 2415's events.
 - **Either order with 2402:** if 2402 is done, the native source is
   SDL3's (ADR-0147): take the axes from its `PadState`s, as from gilrs's
   if not, so either source gives the same `RawInputEvent`s (2402 keeps
@@ -115,7 +115,7 @@ None. Our game doesn't use these unless a later ticket says so.
   (`RawInputEvent::from_crank_steps`). It reports no `Crank` axis: this
   ticket adds it there, from the same steps, with a fake-SDK test.
 
-**Out (do not do):** pinch and other two-finger gestures; swipes and
+**Out (do not do):** pinch and other two-finger gestures (2416); swipes and
 on-screen touch controls (2407, parked); the pointer in menus and on
 grid maps (2405); more than one screen. Devices per player, and which
 player a viewport belongs to, are 2406's. The parked 3023 (ADR-0012 §5)

@@ -240,7 +240,7 @@ grows past that, its painter goes in a ticket of its own.
 - a tap on a tile or a menu row (2405);
 - the player moving and resizing the controls, the native apps and the
   stores (3015);
-- pinch, long press and other gestures;
+- pinch, long press and other gestures (2416);
 - the web shell's loading screen and errors (3052), suspending a hidden
   tab (3043), and the running game knowing it has touch (3053);
 - rumble on a phone's browser (`navigator.vibrate`, where the browser

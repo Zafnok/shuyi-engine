@@ -119,8 +119,7 @@ None.
 - more than two surfaces in the layouts (the types allow it; write a
   ticket when a target needs it);
 - a 3D view on each surface (3025);
-- swipes (2407, parked); pinch, long press and other gestures: no
-  ticket plans them.
+- swipes (2407, parked); pinch, long press and other gestures: 2416.
 
 ## Implementation steps
 

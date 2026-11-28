@@ -197,6 +197,10 @@ None.
   `#[non_exhaustive]` enum. No game PR has to follow this one.
 
 **Out (do not do):**
+- scene overrides (2294). **Either order with 2294:** if 2294 is done,
+  move its pointer application into this operation's code and have it
+  call that; if not, nothing to do (2294 applies its overrides through
+  this operation).
 - A `.map` or `.dlg` patch when 2273 isn't done (see the either-order
   bullet).
 - The editor's undo stack, watching the files it has open and

@@ -117,11 +117,12 @@ None.
 **Out (do not do):**
 - **an optimized mesh format.** It is derived at bake time in 2204's
   pack and tested equal to its glTF (ADR-0011 §4, ADR-0007 §4): 3111;
-- glTF's node tree and scenes (a level with many placed meshes). Write
-  a ticket if 3108 needs one;
+- glTF's node tree and scenes (a level with many placed meshes): 3115;
 - glTF cameras and lights (they come from the scene, 3103);
-- more than one UV set;
-- drawing (3103, 3104).
+- more than one UV set (3118 reads the second, for lightmaps);
+- drawing (3103, 3104);
+- metallic-roughness, normal, occlusion and emissive maps, shading
+  models and blend modes: 3116.
 
 ## Implementation steps
 

@@ -299,7 +299,7 @@ None.
   when this lands (its line above), and 2235's if it is;
 - a picture inside engine panels (it needs highlight bars that are
   items, not cell backgrounds);
-- mirrored or hidden slices, random tiles, rotation (2335), SVG;
+- mirrored or hidden slices, random tiles, rotation (2335), SVG (2293);
 - tinting the frame with `look.border` (2337's tints apply to the
   sprites these helpers return);
 - borders scaled by anything but a whole zoom;

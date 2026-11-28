@@ -232,7 +232,7 @@ None.
   (2114's pinned values in `rng.rs` work the same way).
 
 **Out (do not do):**
-- slopes, rotated boxes, polygons, and circles as bodies;
+- slopes and rotated boxes; polygons and circles as bodies are 2158 (parked);
 - swept shapes other than movers' probes;
 - rigid-body shapes and rapier's own queries (1128);
 - grid sight for turn games (2120), vision and fog for armies (2713),

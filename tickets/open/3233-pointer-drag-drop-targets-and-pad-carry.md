@@ -118,8 +118,8 @@ first user) into a new ticket; the fixture screen in the tests stays
 the proof.
 
 **Out (do not do):**
-- Mouse buttons other than the primary, the pointer as a game action,
-  and the pointer in `TickInput`: 1121 (parked).
+- Mouse buttons other than the primary: 2415. The pointer as a game
+  action, and the pointer in `TickInput`: 1121 (parked).
 - Swipes and several touches at once: 2407 (parked). A swipe starts on
   no control and a drag on a draggable hit, so they never meet.
 - Drag in the inventory grid: 2759 (parked) keeps its click to pick up

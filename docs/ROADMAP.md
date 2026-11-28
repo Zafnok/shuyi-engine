@@ -349,6 +349,45 @@ These are not parked, but they come after the MVP:
 - **2901**: research on better images with machine learning, as a
   separate repository with a loader plugin.
 
+### Bevy's game coverage
+
+On 2026-11-28 an audit read Bevy's main branch (0.20.0-dev) that day
+and asked which kinds of game Bevy makes that Shuyi can't yet. In
+functional Rust lines (no blanks, comments or test folders), Bevy has
+about 322,000 across 67 crates and Shuyi about 140,000 across 16, of
+which about 63,000 are the CLI and `xtask` tooling. Most of Bevy's
+lead is its 3D renderer, its reflection and its ECS; Shuyi has no
+reflection by design (ADR-0084). The audit wrote the tickets below for
+what no ticket covered. They follow the rules above: real time waits
+for the game's launch, 3D stays parked, the rest comes after the MVP.
+Research 3236 gained a question on anti-aliasing in the smooth tier.
+
+| Kind of game Bevy makes | Shuyi today | Tickets | State |
+| ----------------------- | ----------- | ------- | ----- |
+| Board, card and turn tactics games, by mouse and touch | Made today: the grid kit, turn rules, the primary button and touch as a mouse | 2415 (other buttons, shift-click), 2416 (gestures), 2417 (shaped hits) | after MVP |
+| Grid arcade in real time (snake) | Made today on `TickSim` (2137, 2739) | 2776 | done; the maze chase open |
+| Cellular simulations (falling sand, Life) | Possible today: `TickSim` and painted pictures (2399) | none needed | possible |
+| Arcade physics-lite: brick breakers, shooters, bullet hell, pool | No fixed-point numbers or collision yet | 2139, 1122, 2124, 2738, 2158 (round and convex bodies) | parked: real time |
+| Platformers, top-down adventures, twin-stick and action RPGs | No | 1119–1125, 1127, 2756–2764, 2157 (poses and parents) | parked: real time |
+| Fighting games | No | 2756, 2123, 2406, 1147, 2793 (moves, motion inputs) | parked |
+| Racing and tower defense | No example; built from the real-time kits | 2335, 1121, 2122, 2123, 2712 | parked |
+| Idle and incremental games | No | 2794 (big numbers, time away) | parked |
+| ECS simulations, colony games, rules that react | No ECS yet | 2904, 2107, 2108, 2221, 2153 (relations), 2154 (observers), 2155 (states), 2294 (prefabs) | after MVP |
+| Moddable, data-driven games | Scripts (2101) | 2145, 2156 (script systems), 2146 | after MVP; 2146 parked |
+| Skeletal 2D characters that blend, layer and deform | No | 2105, 2134, 2159 (layers, blend spaces), 2160 (mesh deform), 3262 (textured triangles) | parked; 3262 after MVP |
+| Vector-looking 2D: shapes, gradients, SVG art | Pixel tier: sprites, rectangles | 2336, 3263 (arcs, gradients, panels), 2293 (more formats, SVG), 3236 | after MVP; smooth tier parked |
+| Live minimaps, monitors, portals | No | 3264 (a frame drawn into a picture) | after MVP |
+| Text-heavy games: RPG and card text, notebooks, forms | Cell text with colour roles | 2224, 2334, 3267 (styled spans), 3268 (text areas, tab order), 3265 (tree list), 3266 (grids), 3269 (colour picker), 3270 (eased widgets) | after MVP |
+| Sound toys and rhythm practice | Cues, streamed music, made sounds | 2295 (generated sound), 2296 (seek and rate), 2365 | after MVP; 2365 parked |
+| Desktop toys and games across windows | No | 3355 | parked: in-house platform |
+| Split screen and mobile touch games | No | 2385, 2386, 2406, 3015, 2407 | parked |
+| 3D in first and third person, HD-2D | No 3D code | 3101–3112 | parked: 3D |
+| Realistic 3D, open worlds, 3D strategy and shooters | No 3D code | 3115–3123 (levels, materials, lights, baked light, large places, views, output, picking) | parked: 3D |
+
+Tools every game gets from it: 3271 (screenshots the player takes),
+3453 (a state browser and an input viewer) and 3454 (more gizmos, hit
+outlines, a game's own measurements), after the MVP.
+
 ### The second comparison: Unity, Unreal and the 2D engines
 
 Nick, 2026-10-20 ([`decisions.md`](decisions.md)): a comparison with

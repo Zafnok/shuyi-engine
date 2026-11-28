@@ -334,8 +334,8 @@ screens behave as before with no pointer.
   scroll panel shows the marks and sends a bar the pointer drags to
   3233. Dragging, and drag and drop (the volume bar among them): 3233,
   which waits for this ticket.
-- Mouse buttons other than the primary, the pointer as a game action,
-  and the pointer in `TickInput`: 1121 (parked).
+- Mouse buttons other than the primary: 2415. The pointer as a game
+  action, and the pointer in `TickInput`: 1121 (parked).
 - Swipes and several touches at once: 2407 (parked).
 - Hello, Grid's title and end menus, the debug menu and the toy's
   lobby: 2405 did them.

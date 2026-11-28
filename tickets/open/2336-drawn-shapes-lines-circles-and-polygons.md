@@ -256,12 +256,12 @@ not parked.
 - anti-aliased edges and points between pixels;
 - outlines wider than one pixel: a thick polygon outline is its edges
   drawn as wide lines; a thick ring is a follow-up if a game asks;
-- textured polygons and triangles (2217 adds textured triangles, on
-  this rule, if it needs them);
-- curves, arcs, ellipses and rounded rectangles (a curve is drawn as
-  lines);
+- textured polygons and triangles (3262 adds textured triangles, on
+  this rule);
+- curves, arcs, ellipses and rounded rectangles (3263; a curve is drawn
+  as lines);
 - line joins and caps other than the round ends, and dashed lines;
-- opacity and blend modes on shapes (rectangles have neither; 2337 adds
+- opacity and blend modes on shapes (3263 adds opacity; 2337 adds
   blend modes to sprites and rectangles);
 - more than 16 points (a skin splits a bigger polygon);
 - rotated sprites (2335);

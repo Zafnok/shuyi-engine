@@ -73,6 +73,9 @@ None.
 - New methods on an existing public type are additive (ADR-0039).
 
 **Out (do not do):**
+- a colour picker (3269). **Either order with 3269:** if 3269 is done,
+  move its integer HSV conversion here and have the picker call it; if
+  not, nothing to do (3269 uses this ticket's conversion).
 - Edits at run time on the screen (rotation, tint and blend modes of
   sprites): 2335 and 2337. These are offline edits of a picture's bytes.
 - Resizing by any factor but a half, filtering, or colour quantising.

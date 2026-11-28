@@ -112,6 +112,10 @@ None.
   the skill's `waits_for`. `check-skills` passes.
 
 **Out (do not do):**
+- spawn shapes other than a point. **Either order with 2158:** if 2158
+  is done, `EmitterDef` gains a `shape: SpawnShape` (point, disc, ring,
+  rect, line) sampled through its `sample` module; if not, nothing to do
+  (2158 adds the shape to `EmitterDef`).
 - particles colliding with tiles or boxes (that needs state per
   particle; a follow-up ticket after 1122 if a game asks);
 - a moving emitter whose old particles stay where they were born (that

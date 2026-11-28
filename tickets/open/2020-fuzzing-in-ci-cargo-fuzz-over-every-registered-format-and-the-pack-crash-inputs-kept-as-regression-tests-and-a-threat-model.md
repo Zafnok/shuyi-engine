@@ -431,6 +431,9 @@ it is technical.
     is there already); if not, nothing to do (3054 adds it that way).
 
 **Out (do not do):**
+- the picture formats of 2293. **Either order with 2293:** if 2293 is
+  done, its formats are fuzzed with the rest; if not, nothing to do
+  (2293 adds each format to the fuzz list).
 
 - OSS-Fuzz and ClusterFuzzLite: plain cargo-fuzz in Actions, as Bevy
   does.

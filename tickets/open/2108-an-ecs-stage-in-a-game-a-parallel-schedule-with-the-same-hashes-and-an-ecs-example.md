@@ -74,6 +74,10 @@ None.
   `ready` (2107 adds both as `planned`).
 
 **Out (do not do):**
+- messages from 2154 collected as a command's events. **Either order
+  with 2154:** if 2154 is done, `EcsRules` may name one message type
+  whose messages become the command's `Vec<Event>`, with a test; if not,
+  nothing to do (2154 adds that option to `EcsRules`).
 - moving the kit or any existing example to the ECS;
 - the parallel schedule on the web (no threads there today).
 

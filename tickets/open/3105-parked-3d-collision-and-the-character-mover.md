@@ -90,6 +90,10 @@ None.
 - **A text dump** of a `World3` and of a `MoveResult`, one line each.
 
 **Out (do not do):**
+- static collision from a glTF scene's named nodes (3115). **Either
+  order with 3115:** if 3115 is done, build static meshes from its
+  collision nodes; if not, nothing to do (3115 builds them through this
+  module).
 - rigid bodies and `rapier3d` (a module of its own when an example needs
   it, ADR-0009 §7);
 - rotated boxes and moving platforms;
