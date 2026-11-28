@@ -321,7 +321,7 @@ None.
 - **Either order with 2523:** if 2523 is done, add a step to
   `skills/shuyi-upgrade/SKILL.md`, after the game builds on the new
   engine: run `cargo shuyi upgrade`, then `cargo shuyi check`. If 2523
-  isn't done, it writes that step itself (its step 7).
+  isn't done, it writes that step itself (its step 6).
 - **The templates (2501, done):** the templates' changes go where the
   parts of `templates/shuyi-default` hold those files.
 - **Public types (ADR-0039):** `UpgradeInput` (an input, its kind 4)

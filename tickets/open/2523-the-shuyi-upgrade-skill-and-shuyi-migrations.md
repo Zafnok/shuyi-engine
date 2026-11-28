@@ -1,17 +1,17 @@
 ---
 id: "2523"
-title: "The shuyi-upgrade skill: a game moved to a newer engine, with shuyi migrations listing each breaking change since its version and where its code still uses the old names"
+title: "The shuyi-upgrade skill: a game moved to a newer engine from the plan shuyi changes answers, and a check that every Breaking line has its migration block"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2005", "2804", "1134", "2010", "2012"]
+blocked_by: ["2005", "2804", "1134", "2010", "2012", "3454"]
 nick_input: none
 completed:
 ---
 
-# 2523 — The shuyi-upgrade skill and shuyi migrations
+# 2523 — The shuyi-upgrade skill and the migration check
 
 ## Context
 
@@ -95,8 +95,19 @@ Why it matters:
   game an agent makes in under an hour; that game should also cross
   the engine's next release with one skill run.
 
-Until a release carries a `migration` block, the op's list is empty and
-its tests use a fake list. That is fine: the tool is ready when the
+**Amended 2026-11-28 (tickets 3453 and 3454).** This ticket first
+planned its own op, `shuyi migrations`, reading a `migrations.json`
+embedded in `shuyi-cli`, keyed by released version. 3453 publishes a
+change feed on the site from every push to `main` (signatures before
+and after, the `Breaking:` and `Behaviour:` lines, the `migration`
+blocks, found by commit), and 3454's `shuyi changes` reads it from a
+game's pin, a revision or a release, with the call sites of each
+block's `find` strings. That op is this skill's plan, so this ticket no
+longer writes an op, a JSON list or an embedded copy: it keeps the
+check that every `Breaking:` line has its block, and the skill.
+
+Until a release carries a `migration` block, the plan has none and the
+check's tests use fake tickets. That is fine: both are ready when the
 first break ships.
 
 ## Nick input
@@ -107,17 +118,13 @@ asked in 2005's sign-off.
 ## Scope
 
 **In:**
-- **The entries, shipped with the tools:**
-  - `cargo xtask migrations` (`crates/xtask/src/migrations.rs`, wired
-    in `crates/xtask/src/main.rs`: the module doc list, `USAGE` and the
-    match arm, as `check-no-std` has them) reads every `migration`
-    block in `tickets/done/*.md` and writes `crates/cli/migrations.json`:
-    one entry per block, `{ ticket, since, what, old, new, before,
-    after, find }`, sorted by `since` as a version, then by `ticket`,
-    then by the block's order in its file; pretty JSON with a trailing
-    newline.
-  - It refuses (exit 1, writing nothing, each error with the ticket's
-    file and the block's or line's line number):
+- **The migration check:**
+  - `cargo xtask check-migrations` (`crates/xtask/src/migrations.rs`,
+    wired in `crates/xtask/src/main.rs`: the module doc list, `USAGE`
+    and the match arm, as `check-no-std` has them) reads every
+    `migration` block in `tickets/done/*.md` and writes nothing.
+  - It refuses (exit 1, each error with the ticket's file and the
+    block's or line's line number):
     - a block whose `since` is not `X.Y.Z`, or is above the workspace
       `version` in the root `Cargo.toml`;
     - a block with an empty `what`, `old`, `new`, `before` or `after`
@@ -130,96 +137,25 @@ asked in 2005's sign-off.
       have a `Breaking:` line and no block when this ticket is worked
       are listed by id in a const, `BEFORE_BLOCKS`, and skipped; any
       other ticket fails. This is the check 2010 leaves to this ticket.
-  - `cargo xtask migrations --check` writes nothing and fails when the
-    file differs from what it would write. CI's `tickets` job runs it
-    (it reads only tickets, so docs-only PRs run it too), and the
-    `run-gates` skill lists it under *The repository's own checks*.
+  - CI's `tickets` job runs it (it reads only tickets, so docs-only PRs
+    run it too), and the `run-gates` skill lists it under *The
+    repository's own checks*.
   - **2804's parser:** 2804 (done) parses the blocks in
     `crates/xtask/src/changelog.rs`: `migrations(file, content)` returns
     each ticket's `Migration`s (`pub(crate)`, with `since`, `what`,
     `old`, `new`, `before`, `after` and `find`, and it already checks
     `since` and that each `find` string is in `before` and not in
-    `after`). Reuse it; don't write a second one. The block's shape is
-    in `tickets/README.md`, *Breaking changes*.
-  - `serde_json` (MIT OR Apache-2.0, already in `Cargo.lock` through
-    `shuyi-cli`; `deny.toml` allows both licenses) and `serde` with
-    `derive` join `crates/xtask/Cargo.toml` if 2804 didn't add them, and
-    its `description` names the new command.
-- **`shuyi migrations [--from <version>] [--json]`**, a contract op
-  (`crates/cli/src/contract/migrations.rs`, `Op::Migrations`) that needs
-  no game program:
-  - it is in `contract::cli::without_project`, beside `new`, `doctor`
-    and `schema`, so any version's `shuyi` binary runs it in a game that
-    doesn't build;
-  - its list is `include_str!` of `crates/cli/migrations.json`, so each
-    version of the tools knows every entry up to itself;
-  - `pub fn migrations(cwd: &Path, input: &MigrationsInput, list:
-    &[Entry], to: &str) -> Answer<MigrationsOutput>` takes the list and
-    the tools' version as arguments, so tests pass a fake list and
-    version; the CLI passes the embedded list and
-    `env!("CARGO_PKG_VERSION")`;
-  - **from:** the engine's version in the game's `Cargo.lock` (in the
-    first folder from the working folder up that has one): the
-    `version` of each `[[package]]` named `shuyi-<crate>` for a crate of
-    `new::ENGINE_CRATES` (`crates/cli/src/contract/new.rs:37`). Its
-    `source` line says how the game gets the engine: `registry+` or
-    `sparse+` (a release), `git+` (a revision), or none (a checkout by
-    path). Two engine crates at different versions is an error. `--from`
-    overrides the lock's version;
-  - **to:** this tool's own version;
-  - **the entries:** each one with `from <= since <= to`. The ones with
-    `since == from` are marked `maybe_done`: a release has them all, and
-    a revision inside that version's window may have some. They are
-    listed anyway, because a deprecated old name still builds and its
-    call sites still show;
-  - **call sites:** for each entry with `find` strings, every place one
-    of them occurs in the game's `*.rs` and `Cargo.toml` files: the file
-    from the root, `/`-separated, the 1-based line and column (in
-    characters), and the line's text. The walk starts at the folder of
-    `Cargo.lock` (or the working folder, when `--from` stands in for a
-    missing lock) and skips `target/`, every folder whose name starts
-    with `.`, and every folder below the root whose `Cargo.toml` has a
-    `[workspace]` of its own (another project, such as an engine
-    checkout kept inside the game);
-  - `MigrationsInput { from: Option<String> }`;
-    `MigrationsOutput { from: String, from_source: Option<EngineSource>,
-    to: String, entries: Vec<Migration> }` (no source when `--from`
-    stands in for a missing lock); `EngineSource` is `Release`,
-    `Revision` or `Checkout`; `Migration { ticket, since, what, old, new,
-    before, after, find: Vec<String>, maybe_done: bool, found:
-    Vec<CallSite> }`; `CallSite { file, line, column, text }`;
-  - `ok` when no entry has a call site;
-  - **limits:** an entry with no `find` strings ("`Lang::english`: no
-    strings find it; the compiler finds its call sites once the pin
-    moves"); `to == from` from a release ("these are the tools of the
-    game's own engine: run the newer version's `shuyi` to see what it
-    changes"); each folder skipped as another project;
-  - **errors:** no `Cargo.lock` and no `--from` (the message names
-    `--from`); a version that isn't `X.Y.Z`; `from` above `to` ("the
-    game's engine, 0.5.0, is newer than these tools, 0.4.0");
-  - the text answer: a first line such as `the engine: 0.2.0 (a
-    revision) to 0.4.0`, then a line per entry, `0.3.0 2226: <what>`,
-    with `(may be done)` after a `maybe_done` one, and its call sites
-    below it as `crates/game/src/lib.rs:12:9: <text>`;
-  - the op is in `Op`, `Op::ALL`, `Op::name`, `schemas()`
-    (`crates/cli/src/contract.rs`), the op table in that file's module
-    docs, the usage in `crates/cli/src/lib.rs`, the lines that say which
-    ops need no project (the module docs of `crates/cli/src/lib.rs` and
-    `crates/cli/src/contract/cli.rs`, and the usage's "new, doctor and
-    schema need none"), and `docs/contract.md`'s op table (needs: "a
-    `Cargo.lock`, or `--from`");
-  - the schemas are written again
-    (`crates/cli/schemas/migrations.input.json` and
-    `migrations.output.json`), and `crates/cli/schemas/versions.json`
-    gets the new fingerprint. A new operation breaks no client, so
-    `contract::VERSION` stays (ADR-0150);
-  - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
+    `after`). Reuse it; don't write a second one. 3453's feed reads the
+    blocks with it too. The block's shape is in `tickets/README.md`,
+    *Breaking changes*.
 - **The skill, `skills/shuyi-upgrade/SKILL.md`,** in 1134's pack and its
   format (frontmatter, when to use it and when not, the steps, the ops
   it names):
-  - **Use it** to move a game to a newer engine release or revision.
-    **Not** for an engine change the game is making itself (the game's
-    own process for that), and not for packs (bake again, ADR-0023 §5).
+  - **Use it** to move a game to a newer engine release or revision,
+    and when the game's `engine-changes` issue (3454's workflow) asks
+    for it. **Not** for an engine change the game is making itself (the
+    game's own process for that), and not for packs (bake again,
+    ADR-0023 §5).
   - **The game's Rust moves with the engine.** Moving a game to a newer
     engine also moves the game's `rust-toolchain.toml` channel and its
     `rust-version` to at least the new engine's `rust-version`, because
@@ -230,77 +166,86 @@ asked in 2005's sign-off.
     1. Start on a branch from a clean working tree. Run the game's gates
        (its `AGENTS.md`) and note what already fails.
     2. Pick the target: the newest release (the version on the
-       `shuyi-cli = "X.Y.Z"` line of `cargo search shuyi-cli`), or the
+       `shuyi-cli = "X.Y.Z"` line of `cargo search shuyi-cli`), the
+       newest commit of `main` for a game that follows `main`, or the
        version or revision asked for.
-    3. Install the target's tools beside the game, without touching it:
-       `cargo install --locked shuyi-cli --version <to> --root
-       target/shuyi-upgrade`, or for a revision `cargo install --locked
-       --git https://github.com/Zafnok/shuyi-engine --rev <rev>
-       shuyi-cli --root target/shuyi-upgrade`. The binary is
-       `target/shuyi-upgrade/bin/shuyi` (`shuyi.exe` on Windows).
-    4. In the game, before the pin moves, run that binary's `migrations
-       --json`: it reads the old version from `Cargo.lock`. Keep the
-       answer: it is the plan, and its `from` is the old version.
-    5. Move the pin and the Rust. Every `shuyi-*` dependency line (in a
+    3. Before the pin moves, while the game still builds, run `cargo
+       shuyi changes --to <target> --json` (3454): it reads the old pin
+       from `Cargo.lock` and the change feed from the site. Keep the
+       answer: it is the plan, and its `from` is the old pin. A game
+       whose tools have no `changes` op (an engine from before 3454)
+       installs the newest tools beside it, without touching it
+       (`cargo install --locked shuyi-cli --root target/shuyi-upgrade`,
+       the binary `target/shuyi-upgrade/bin/shuyi`, `shuyi.exe` on
+       Windows), and runs that binary's `changes` in the game.
+    4. Move the pin and the Rust. Every `shuyi-*` dependency line (in a
        game from the templates, the root `Cargo.toml`'s
        `[workspace.dependencies]`) goes to the target. For the target's
-       Rust, make a scratch game with the binary
-       (`target/shuyi-upgrade/bin/shuyi new blank
-       target/shuyi-upgrade/fresh`) and read its `rust-toolchain.toml`'s
-       `channel` and its `Cargo.toml`'s `rust-version` (the templates' stay
-       equal to the engine's pin, which is never below the engine's
-       `rust-version`: 2012, 3511). Where the game's are lower, raise them
-       to those.
-    6. Build with `cargo clippy --workspace --all-targets`. Fix each
-       error from the entry whose `old` or `find` names it, by its
-       `before` and `after`. Fix each `deprecated` warning by its note
-       now: the old name goes in a later release (2005's policy).
-    7. Run `cargo shuyi upgrade` for the game's content files, then
+       Rust, read the engine's `rust-toolchain.toml` `channel` and its
+       root `Cargo.toml`'s `rust-version` at the target
+       (`https://raw.githubusercontent.com/Zafnok/shuyi-engine/<target>/rust-toolchain.toml`
+       and `/Cargo.toml`; the templates' stay equal to the engine's pin,
+       which is never below its `rust-version`: 2012, 3511). Where the
+       game's are lower, raise them to those.
+    5. Build with `cargo clippy --workspace --all-targets`. Fix each
+       error from the plan: a `changed` API line by its `new`, a
+       `removed` one by the entry's `Breaking:` line and its migration
+       block's `before` and `after`. Fix each `deprecated` warning by its
+       note now: the old name goes in a later release (2005's policy).
+       Read each `Behaviour:` line and search the game's tests and
+       content for what it names.
+    6. Run `cargo shuyi upgrade` for the game's content files, then
        `cargo shuyi check` (only once 2517 is done; below).
-    8. Run the binary's `migrations --from <old version> --json` again
-       until it answers `ok`, then the game's gates.
-    9. Report: the two versions, the Rust before and after, each entry
-       done, each entry left with its call sites and why, and the
-       gates' results. A `maybe_done` entry with no call site is done.
+    7. Run `cargo shuyi changes --from <old pin> --to <target>` again
+       (its `--from` stands in for the lock, which now names the
+       target): no migration of the plan may have a call site left.
+       Then the game's gates.
+    8. Report: the two pins, the Rust before and after, each entry
+       done, each entry left with its call sites and why, each
+       `Behaviour:` line and what the game did about it, and the gates'
+       results. A `partial` entry with no call site and no build error
+       is done.
   - Its worked example, `skills/shuyi-upgrade/example.ron`, in the form
     1134 set (the steps of `crates/xtask/src/script.rs`, which CI's
     `skills` job runs with `cargo xtask skill-examples`): a fresh game
-    from `shuyi new grid`, in which `migrations --from 0.1.0 --json`
-    answers `ok` (a fresh game uses no old name). It is no module's
-    skill, so `shuyi new` copies it into every new game.
-  - **Either order with 2517:** if 2517 is done, step 7 is in; if not,
-    leave step 7 out, and 2517 adds it when it lands. `check-skills` (1134) fails a skill that names an op the
+    from `shuyi new`, in which `changes --feed <a fixture feed whose
+    newest commit is the game's pin> --json` answers `ok`. It is no
+    module's skill, so `shuyi new` copies it into every new game.
+  - **Either order with 2517:** if 2517 is done, step 6 is in; if not,
+    leave step 6 out, and 2517 adds it when it lands. `check-skills` (1134) fails a skill that names an op the
     contract doesn't have.
-- **CI's `templates` job** (`.github/workflows/ci.yml`) runs `cargo
-  shuyi migrations --from 0.1.0` in each fresh game after its gates, so
-  a breaking PR that leaves an old name in a template fails.
-- **The templates' `AGENTS.md`** (`templates/grid`, `templates/blank`,
-  or wherever 2005 moved them): a row in the table of tools, "`cargo
-  shuyi migrations --from 0.1.0` | the engine's breaking changes since
-  0.1.0 whose old names the game still uses", and one line under the
-  table naming the `shuyi-upgrade` skill for moving to a newer engine.
+- **The templates' `AGENTS.md`** (`templates/shuyi-default/base/AGENTS.md`):
+  one line under the table of tools naming the `shuyi-upgrade` skill
+  for moving to a newer engine (3454 adds the `cargo shuyi changes`
+  row).
 - **The `work-ticket` skill:** under 2804's step for the `Breaking:` line
-  and its `migration` block, "then run `cargo xtask migrations`".
+  and its `migration` block, "then run `cargo xtask check-migrations`".
 - **A short ADR** (the next free number in `docs/adr/`):
   - a breaking change's migration entry is written once, in the
     ticket's completion notes, in the PR that breaks (2804's block),
-    and `cargo xtask migrations` refuses a `Breaking:` line without one;
-  - a generated copy ships inside `shuyi-cli`, checked equal in CI, so
-    every version of the tools carries every entry up to itself;
-  - a game crosses versions with the target version's own `shuyi`,
-    installed beside it, because the game's `cargo shuyi` can't build
-    until the move is done;
+    and `cargo xtask check-migrations` refuses a `Breaking:` line
+    without one;
+  - a game's plan is `shuyi changes`, read before the pin moves, from
+    the change feed (3453, 3454): one source for every game, whatever
+    its pin;
   - the game's Rust moves with the engine, to at least its
     `rust-version`;
-  - an entry applies where its `find` strings occur in the game's code;
-    versions only narrow the list.
-  It extends 2005's version-policy ADR and ADR-0022.
-- **For the game:** nothing changes in its files. The library API gains
-  a variant of `Op` and an entry in the `Op::ALL` slice. **From 2086
-  (done):** `Op` is `#[non_exhaustive]` (ADR-0039's rule for enums that
-  grow), so that is no break and needs no `Breaking:` line.
+  - an entry applies where its `find` strings occur in the game's code,
+    or where the compiler names its API line; pins only narrow the
+    list.
+  It extends 2005's version-policy ADR and 3454's ADR.
+- **For the game:** nothing changes in its files or the library API.
 
 **Out (do not do):**
+- The op that reads the feed, its MCP tool and the template's weekly
+  workflow: 3454. The feed: 3453.
+- A list of migrations embedded in `shuyi-cli` (`migrations.json`) and
+  a `shuyi migrations` op: the feed replaces both (amended
+  2026-11-28).
+- A `templates` job step that runs the plan over a fresh game: the job
+  already builds each template against the PR's engine with clippy's
+  warnings denied, so an old name left in a template fails it, a
+  deprecated one too.
 - The deprecation rule, the fixes-to-the-latest-release rule and what a
   breaking change needs: 2005's version-policy ADR.
 - The `migration` block's shape and the per-release migration guide on
@@ -320,82 +265,45 @@ asked in 2005's sign-off.
 - Changing the game's `engine-change` skill or `cargo xtask engine-pin`:
   the game's own ticket, if it wants the op.
 
+**Estimated size:** about 700 lines (code 250, tests 250, the skill and
+docs 200).
+
 ## Implementation steps
 
 1. Read 2005's version-policy ADR, 2804's `crates/xtask/src/changelog.rs`
    and the block's shape in `tickets/README.md`, 2010's
    `breaking_lines`, ADR-0022, 1134's skill format and worked examples,
-   2012's `bump-rust` skill, and `crates/cli/src/contract/cli.rs`,
-   `new.rs` and `doctor.rs`.
-2. Write `cargo xtask migrations`, its checks, its `--check` and its
-   tests. List the tickets for `BEFORE_BLOCKS` (`tickets/done/` files
-   with a `Breaking:` line and no block). Run it to write
-   `crates/cli/migrations.json`. Add `--check` to CI's `tickets` job,
-   and the lines to the `run-gates` and `work-ticket` skills.
-3. Write the op: the lock reader, the version compare, the walk, the
-   answer and its text. Add it to `Op`, `Op::ALL`, `schemas()`,
-   `without_project`, the usage and the module docs. Write its tests
-   over a scratch project (made under `std::env::temp_dir()`, as
-   `crates/cli/src/contract/import/tests.rs` makes one) with a fake list.
-4. Regenerate the schemas and `versions.json`.
-5. Check the diff's size. If steps 1 to 4 are already past about 600
-   changed lines (the schemas, `migrations.json` and snapshots aside),
-   do step 7 in this PR and leave step 6 to a follow-up ticket, written
-   with the `write-ticket` skill and blocked by this one; say so in the
-   Completion notes, and tick the criteria about the skill, the
-   templates and CI's `templates` job only in that ticket.
-6. Write the skill and its worked example. Change the templates'
-   `AGENTS.md` and CI's `templates` job.
-7. Write the ADR, its row in `docs/adr/README.md`, and
-   `docs/contract.md`'s row. Run the gates.
+   2012's `bump-rust` skill, and 3453's and 3454's ADRs and
+   `crates/cli/src/contract/changes.rs`.
+2. Write `cargo xtask check-migrations`, its checks and its tests. List
+   the tickets for `BEFORE_BLOCKS` (`tickets/done/` files with a
+   `Breaking:` line and no block). Add it to CI's `tickets` job, and the
+   lines to the `run-gates` and `work-ticket` skills.
+3. Write the skill and its worked example. Add the templates'
+   `AGENTS.md` line.
+4. Write the ADR and its row in `docs/adr/README.md`. Run the gates.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask migrations --check` passes on the branch, and its
-      unit tests show it failing, with the file and line, on a block
-      whose `since` is above the workspace version, on a `find` string
-      missing from its `before`, on a `Breaking:` line with no block in
-      a ticket outside `BEFORE_BLOCKS`, and on a stale
-      `migrations.json`.
-- [ ] CI's `tickets` job runs `cargo xtask migrations --check`.
-- [ ] Over a scratch game whose `Cargo.lock` names the engine at 0.2.0
-      from git, with a fake list at 0.2.0, 0.3.0 and 0.5.0 and the tools
-      at 0.4.0, the answer lists the 0.2.0 entry (`maybe_done`) and the
-      0.3.0 one, not the 0.5.0 one. Each call site has the right file,
-      line and column. Matches under `target/`, `.git/` and a nested
-      folder with its own `[workspace]` are not listed. `ok` is false;
-      after the call sites are edited to the `after` form, `ok` is true.
-- [ ] The same game with the engine from a release (`registry+`) or a
-      path answers `from_source` `Release` or `Checkout`, and
-      `--from 0.3.0` drops the 0.2.0 entry.
-- [ ] No `Cargo.lock` and no `--from` fails with a message naming
-      `--from`; `--from 0.6.0` with the tools at 0.4.0 fails.
-- [ ] The embedded `crates/cli/migrations.json` parses as the op's list
-      (a unit test).
-- [ ] CI's `templates` job runs `cargo shuyi migrations --from 0.1.0`
-      green on both templates.
-- [ ] `check-skills` passes on `skills/shuyi-upgrade`, its steps include
-      reading and raising the game's Rust, and its worked example runs
-      green in CI.
-- [ ] The schemas have their line in `versions.json`, and
-      `contract::VERSION` rose only for a break (`cargo xtask contract`
-      passes).
+- [ ] `cargo xtask check-migrations` passes on the branch, and its unit
+      tests show it failing, with the file and line, on a block whose
+      `since` is above the workspace version, on a `find` string missing
+      from its `before`, and on a `Breaking:` line with no block in a
+      ticket outside `BEFORE_BLOCKS`.
+- [ ] CI's `tickets` job runs `cargo xtask check-migrations`.
+- [ ] `check-skills` passes on `skills/shuyi-upgrade`, its steps run
+      `cargo shuyi changes` before the pin moves and include reading and
+      raising the game's Rust, and its worked example runs green in CI.
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: `cargo xtask migrations`: parsing blocks, each refusal (the
-  `Breaking:` line with no block among them, and a ticket in
-  `BEFORE_BLOCKS` skipped), sorting by version (0.10.0 after 0.9.0),
-  `--check` on a stale file. The op: reading `Cargo.lock` (a release, a
-  revision, a checkout, two engine crates disagreeing, no engine
-  crate); comparing versions; the walk's skips; the column on a line
-  with non-ASCII text before the match.
-- Integration: the scratch game above, through `migrations` and through
-  the CLI with `--json`; the embedded list parses.
-- CI: the `tickets` job's new step; the `templates` job's new line; the
-  skill's worked example.
+- Unit: `cargo xtask check-migrations`: each refusal (the `Breaking:`
+  line with no block among them, and a ticket in `BEFORE_BLOCKS`
+  skipped), and a ticket with two `Breaking:` lines and two blocks
+  passing.
+- CI: the `tickets` job's new step; the skill's worked example.
 
 ## Completion notes
 

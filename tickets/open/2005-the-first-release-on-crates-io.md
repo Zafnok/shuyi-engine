@@ -190,7 +190,8 @@ The sign-off also:
   - **Fixes go to the latest release only:** no backports, no LTS.
     `SECURITY.md` says so in one line.
   - **The `since` of a `migration` block** is the workspace version
-    after the PR that breaks. 2523's `shuyi migrations` relies on this.
+    after the PR that breaks. 2523's check and the change feed (3453)
+    rely on this.
   - **Golden values.** It counts as breaking a changed or removed value
     in a golden table (2116's `shuyi_assets::golden`, checked by CI's
     `determinism` job): in an engine crate's table, or in an example's
