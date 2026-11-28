@@ -31,7 +31,7 @@ pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// every platform. Shown, and written to a file, as sixteen lowercase hex
 /// digits, as a `StateHash` is shown (a string, since
 /// JSON can't hold every `u64`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ContentHash(
     /// The hash.
@@ -103,7 +103,7 @@ impl<'de> Deserialize<'de> for ContentHash {
 
 /// What made a record or a save: the engine, the game's build and the
 /// content it ran on, as the module docs say.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 // A stamp: built with `Made::new`, it may grow (ADR-0039).

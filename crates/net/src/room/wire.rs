@@ -10,7 +10,16 @@
 //! - a roster is a `u8` count of seats, then a `u8` whose bit `n` is set
 //!   when seat `n` is a human's;
 //! - wins are a `u8` count, then each seat's as a `u32`;
-//! - a catch-up's steps are a `u32` count, then each step's inputs.
+//! - a catch-up's steps are a `u32` count, then each step's inputs;
+//! - a build's stamp ([`Made`]) is the engine's version and the game's
+//!   word, each a `u8` length then that many bytes of UTF-8 (a longer one
+//!   is cut to its first 255 bytes, at a character's edge), then the
+//!   content hash's 8 bytes;
+//! - a refusal ([`Refusal`]) is a byte naming it, then its field.
+//!
+//! The handshake's messages, [`ClientMsg::Hello`] and [`Frame::Refused`],
+//! keep their bytes in every [`PROTOCOL`]: a client of another version
+//! still reads why it was refused.
 //!
 //! Decoding never panics. It refuses an unknown first byte, bytes that end
 //! early or go on past the message, a seat past the game's
@@ -32,12 +41,13 @@
 use core::fmt;
 
 use shuyi_core::tick::{SeatInput, TickInput};
+use shuyi_core::{ContentHash, Made};
 
 use super::{Checked, Joined, RoomGame, SeatKind};
 
 /// The version of these messages: a client and a server of other
 /// versions don't talk.
-pub const PROTOCOL: u16 = 1;
+pub const PROTOCOL: u16 = 2;
 
 /// The first byte of each message.
 mod tag {
@@ -47,10 +57,21 @@ mod tag {
     pub const ROUND_OVER: u8 = 0x04;
     pub const ROUND_START: u8 = 0x05;
     pub const CLOSING: u8 = 0x06;
+    pub const WELCOME: u8 = 0x07;
+    pub const REFUSED: u8 = 0x08;
     pub const INPUT: u8 = 0x80;
     pub const ALIVE: u8 = 0x81;
     pub const RESYNC: u8 = 0x82;
     pub const LEAVE: u8 = 0x83;
+    pub const HELLO: u8 = 0x84;
+    pub const PLAY: u8 = 0x85;
+}
+
+/// The byte naming each [`Refusal`].
+mod why {
+    pub const PROTOCOL: u8 = 0x01;
+    pub const OTHER_BUILD: u8 = 0x02;
+    pub const BUSY: u8 = 0x03;
 }
 
 /// A place's byte for watching, and a winner's for a draw.
@@ -137,6 +158,39 @@ pub enum Frame {
     RoundStart(RoundStart),
     /// The server is shutting down.
     Closing,
+    /// The handshake passed: the client may send [`ClientMsg::Play`].
+    Welcome,
+    /// The server turned the client's message down, and why. After every
+    /// refusal but [`Refusal::Busy`] it closes the link.
+    Refused {
+        /// Why.
+        why: Refusal,
+    },
+}
+
+/// Why a server turned a client down.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Refusal {
+    /// The client's build is not the server's: `theirs` is the server's
+    /// stamp, which the client's own [`Made::check`] compares with its
+    /// own to say what differs.
+    OtherBuild {
+        /// The server's stamp.
+        theirs: Made,
+    },
+    /// Every room is full: the client may ask again in `retry_after_s`
+    /// seconds. The link stays open.
+    Busy {
+        /// The seconds to wait.
+        retry_after_s: u16,
+    },
+    /// The client spoke another version of these messages, or no
+    /// [`ClientMsg::Hello`] first: `ours` is the server's [`PROTOCOL`].
+    Protocol {
+        /// The server's version.
+        ours: u16,
+    },
 }
 
 /// A message from a client to the room.
@@ -151,6 +205,17 @@ pub enum ClientMsg {
     Resync,
     /// The player leaves the room.
     Leave,
+    /// The handshake, a client's first message: the version of these
+    /// messages it speaks ([`PROTOCOL`]) and its build's stamp. Built with
+    /// [`ClientMsg::hello`].
+    Hello {
+        /// The client's [`PROTOCOL`].
+        protocol: u16,
+        /// The client's build.
+        made: Made,
+    },
+    /// After a [`Frame::Welcome`]: seat me in a room.
+    Play,
 }
 
 /// Bytes that are no message.
@@ -278,6 +343,11 @@ impl Frame {
                 put_round_start(&mut out, start);
             }
             Self::Closing => out.push(tag::CLOSING),
+            Self::Welcome => out.push(tag::WELCOME),
+            Self::Refused { why } => {
+                out.push(tag::REFUSED);
+                put_refusal(&mut out, why);
+            }
         }
         out
     }
@@ -342,6 +412,10 @@ impl Frame {
             }
             tag::ROUND_START => Self::RoundStart(read.round_start()?),
             tag::CLOSING => Self::Closing,
+            tag::WELCOME => Self::Welcome,
+            tag::REFUSED => Self::Refused {
+                why: read.refusal()?,
+            },
             other => return Err(WireError::UnknownTag(other)),
         };
         read.finish()?;
@@ -350,7 +424,17 @@ impl Frame {
 }
 
 impl ClientMsg {
-    /// Its bytes. A list of more than 255 actions is cut to its first 255.
+    /// The handshake of a client of build `made`, speaking this
+    /// [`PROTOCOL`].
+    pub fn hello(made: Made) -> Self {
+        Self::Hello {
+            protocol: PROTOCOL,
+            made,
+        }
+    }
+
+    /// Its bytes. A list of more than 255 actions is cut to its first 255,
+    /// and a stamp's text past 255 bytes to its first 255.
     pub fn encode(&self) -> Vec<u8> {
         match self {
             Self::Input(seat) => {
@@ -365,6 +449,13 @@ impl ClientMsg {
             Self::Alive => vec![tag::ALIVE],
             Self::Resync => vec![tag::RESYNC],
             Self::Leave => vec![tag::LEAVE],
+            Self::Hello { protocol, made } => {
+                let mut out = vec![tag::HELLO];
+                out.extend_from_slice(&protocol.to_le_bytes());
+                put_made(&mut out, made);
+                out
+            }
+            Self::Play => vec![tag::PLAY],
         }
     }
 
@@ -383,6 +474,11 @@ impl ClientMsg {
             tag::ALIVE => Self::Alive,
             tag::RESYNC => Self::Resync,
             tag::LEAVE => Self::Leave,
+            tag::HELLO => Self::Hello {
+                protocol: read.u16()?,
+                made: read.made()?,
+            },
+            tag::PLAY => Self::Play,
             other => return Err(WireError::UnknownTag(other)),
         };
         read.finish()?;
@@ -431,6 +527,37 @@ fn put_round_start(out: &mut Vec<u8>, start: &RoundStart) {
     put_wins(out, &start.wins);
 }
 
+/// A text's `u8` length and bytes: past 255 bytes, its first 255, cut at a
+/// character's edge.
+fn put_text(out: &mut Vec<u8>, text: &str) {
+    let end = text.floor_char_boundary(usize::from(u8::MAX));
+    out.push(u8::try_from(end).unwrap_or(u8::MAX));
+    out.extend_from_slice(&text.as_bytes()[..end]);
+}
+
+fn put_made(out: &mut Vec<u8>, made: &Made) {
+    put_text(out, &made.engine);
+    put_text(out, &made.game);
+    out.extend_from_slice(&made.content.0.to_le_bytes());
+}
+
+fn put_refusal(out: &mut Vec<u8>, refusal: &Refusal) {
+    match refusal {
+        Refusal::Protocol { ours } => {
+            out.push(why::PROTOCOL);
+            out.extend_from_slice(&ours.to_le_bytes());
+        }
+        Refusal::OtherBuild { theirs } => {
+            out.push(why::OTHER_BUILD);
+            put_made(out, theirs);
+        }
+        Refusal::Busy { retry_after_s } => {
+            out.push(why::BUSY);
+            out.extend_from_slice(&retry_after_s.to_le_bytes());
+        }
+    }
+}
+
 fn put_inputs(out: &mut Vec<u8>, inputs: &TickInput) {
     if inputs.encode(out).is_err() {
         let fitted = TickInput::new(inputs.seats.iter().cloned().map(fit).collect());
@@ -455,6 +582,10 @@ impl Reader<'_> {
 
     fn u8(&mut self) -> Result<u8, WireError> {
         self.take::<1>().map(|[byte]| byte)
+    }
+
+    fn u16(&mut self) -> Result<u16, WireError> {
+        self.take().map(u16::from_le_bytes)
     }
 
     fn u32(&mut self) -> Result<u32, WireError> {
@@ -527,6 +658,35 @@ impl Reader<'_> {
             seed: self.u64()?,
             wins: self.wins()?,
         })
+    }
+
+    fn text(&mut self) -> Result<String, WireError> {
+        let len = usize::from(self.u8()?);
+        let (text, rest) = self.rest.split_at_checked(len).ok_or(WireError::Short)?;
+        self.rest = rest;
+        String::from_utf8(text.to_vec()).map_err(|_| WireError::BadField("stamp's text"))
+    }
+
+    fn made(&mut self) -> Result<Made, WireError> {
+        let engine = self.text()?;
+        let game = self.text()?;
+        let content = ContentHash(self.u64()?);
+        let mut made = Made::new(game, content);
+        made.engine = engine;
+        Ok(made)
+    }
+
+    fn refusal(&mut self) -> Result<Refusal, WireError> {
+        match self.u8()? {
+            why::PROTOCOL => Ok(Refusal::Protocol { ours: self.u16()? }),
+            why::OTHER_BUILD => Ok(Refusal::OtherBuild {
+                theirs: self.made()?,
+            }),
+            why::BUSY => Ok(Refusal::Busy {
+                retry_after_s: self.u16()?,
+            }),
+            _ => Err(WireError::BadField("refusal")),
+        }
     }
 
     fn inputs(&mut self) -> Result<TickInput, WireError> {

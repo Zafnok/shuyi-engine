@@ -49,6 +49,7 @@ pub mod testing;
 pub mod wire;
 
 pub use client::{Advance, RoomClient};
+pub(crate) use host::draw_seed;
 pub use host::{Outbox, Room, RoomStats};
 
 /// Every this many steps of a round, a step's frame carries the sim's

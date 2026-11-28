@@ -48,6 +48,12 @@ What it builds on:
 - **The director's handshake** (2615): `Hello { protocol, made }`, then
   `Play`; answers `Welcome`, `Refused { why: OtherBuild | Busy {
   retry_after_s } | Protocol }`.
+  - **From 2615 (done):** the game builds the `Hello` with
+    `ClientMsg::hello(made)` and reads `Welcome` and `Refused` itself
+    with `Frame::decode`: `RoomClient::on_frame` passes over them. A
+    welcomed client out of a room (waiting after `Busy`, or after
+    `Leave`) is let go after five silent seconds, as a room lets go of
+    its players: it sends `RoomClient::alive()`'s `Alive` meanwhile.
 - **Transports:** native, 2617's WebSocket client in `shuyi-app` behind
   its `net` feature; web, 1142's binary messages over our own miniquad
   JS plugin (`net.js`, from 2522), since the web build has no

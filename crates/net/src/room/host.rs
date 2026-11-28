@@ -23,7 +23,9 @@ pub struct Outbox {
     /// The host encodes each ([`Frame::encode`]) and sends it on the
     /// [`Reliable`](crate::Channel::Reliable) channel.
     pub frames: Vec<(PeerId, Frame)>,
-    /// Peers the room let go, silent too long: the host closes them.
+    /// Peers let go: by a room, silent too long; by a
+    /// [`Director`](crate::director::Director), refused or cut off. The
+    /// host closes them, after sending the frames.
     pub drop: Vec<PeerId>,
 }
 
@@ -283,7 +285,9 @@ impl<G: RoomGame> Room<G> {
                 }
             }
             ClientMsg::Leave => self.leave(peer),
-            ClientMsg::Alive => {}
+            // The handshake is the director's: here it only counts as
+            // heard.
+            ClientMsg::Alive | ClientMsg::Hello { .. } | ClientMsg::Play => {}
         }
     }
 
@@ -472,7 +476,7 @@ impl<G: RoomGame> Room<G> {
 }
 
 /// A round's seed: two draws, the first the high half.
-fn draw_seed(rng: &mut SimRng) -> u64 {
+pub(crate) fn draw_seed(rng: &mut SimRng) -> u64 {
     let high = u64::from(rng.next_u32());
     let low = u64::from(rng.next_u32());
     (high << 32).wrapping_add(low)

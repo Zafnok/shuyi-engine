@@ -126,7 +126,9 @@ impl<G: RoomGame> RoomClient<G> {
     /// the sim at once; a step, a roster and a round's end or start wait
     /// for [`advance`](Self::advance); a `Closing` closes the client.
     /// Frames before the first catch-up, and while it waits for one after
-    /// a mismatch, are dropped.
+    /// a mismatch, are dropped. The handshake's frames
+    /// ([`Frame::Welcome`], [`Frame::Refused`]) are the game's to read,
+    /// with [`Frame::decode`]: the client passes over them.
     pub fn on_frame(&mut self, bytes: &[u8]) -> Result<(), WireError> {
         let frame = Frame::decode::<G>(bytes)?;
         match frame {
@@ -301,9 +303,13 @@ impl<G: RoomGame> RoomClient<G> {
                 self.wins = wins;
                 self.step = 0;
             }
-            // A catch-up and a `Closing` never wait, and a step is
-            // applied apart.
-            Frame::Step { .. } | Frame::Joined { .. } | Frame::Closing => {}
+            // A catch-up, a `Closing` and the handshake's frames never
+            // wait, and a step is applied apart.
+            Frame::Step { .. }
+            | Frame::Joined { .. }
+            | Frame::Closing
+            | Frame::Welcome
+            | Frame::Refused { .. } => {}
         }
     }
 

@@ -148,9 +148,9 @@ binary (2789's `trails-server`); the library parses no command line.
     logic;
   - `monthly_egress_budget`, default 1 TB (Oracle's free egress is 10
     TB): past it, new players get 2615's `Busy`, `/healthz` is `503
-    budget`, and the players already in keep playing. If 2615's
-    director has no switch to refuse `Play`, add
-    `Director::set_open(bool)` to it here.
+    budget`, and the players already in keep playing. 2615's director
+    has no switch to refuse `Play`: add `Director::set_open(bool)` to
+    it here.
 - **SIGTERM** and Ctrl-C: send 2614's `Closing` frame to every client,
   flush for up to 2 s, save the state file, exit 0. `/healthz` says
   `shutting-down` meanwhile.
