@@ -177,9 +177,13 @@ old: audio::OggVorbisTrack (a unit struct)
 new: audio::OggVorbisTrack = audio::Track<audio::OggVorbis>
 before: |
   formats.register(OggVorbisTrack)?;
+  check(&FlacTrack, "a.flac");
+  check(&Mp3Track, "a.mp3");
 after: |
   formats.register(OggVorbisTrack::default())?;
-find: ["register(OggVorbisTrack)", "&OggVorbisTrack,", "&FlacTrack,", "&Mp3Track,"]
+  check(&FlacTrack::default(), "a.flac");
+  check(&Mp3Track::default(), "a.mp3");
+find: ["register(OggVorbisTrack)", "&FlacTrack,", "&Mp3Track,"]
 ```
 
 Breaking: shuyi-assets: the engine's text formats (`names::NamesRon`, `palette::PaletteRon`, `ron::Ron`, …): they implement `format::TextFormat`, and are a `Format` through its blanket impl; a call of `id`, `extensions` or `max_bytes` on one where `TextFormat` is imported too is ambiguous and is written `Format::id(&format)`
@@ -188,7 +192,7 @@ Breaking: shuyi-assets: the engine's text formats (`names::NamesRon`, `palette::
 since: 0.1.0
 what: The text formats implement TextFormat and get Format from it, so with both traits in scope a method both have needs its trait named.
 old: impl Format for NamesRon
-new: impl TextFormat for NamesRon (and Format through `impl<T: TextFormat> Format for T`)
+new: "impl TextFormat for NamesRon (and Format through `impl<T: TextFormat> Format for T`)"
 before: |
   use shuyi_assets::format::{Format, TextFormat};
   assert_eq!(NamesRon.id(), "names");
