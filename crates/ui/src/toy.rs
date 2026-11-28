@@ -43,8 +43,10 @@ use crate::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use crate::frame::color::EngineColor;
 use crate::frame::console::{ConsoleSpec, ScaleMode};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
+use crate::frame::key_cap::KeyCapStyle;
 use crate::frame_cap::FrameCap;
 use crate::game::{Game, GameHooks, ScreenHook};
+use crate::input::help_keys::HelpKeys;
 use crate::screen::{FrameInput, Screen, Transition};
 use crate::screens::key_bindings::KeyBindingsScreen;
 use crate::screens::key_bindings::KeyRow;
@@ -494,7 +496,17 @@ pub struct Toy {
     /// ([`GameData::first_language`]): the engine's default,
     /// [`FirstLanguage::System`].
     pub first_language: FirstLanguage,
+    /// Whether it has its day and night palettes as themes.
+    themes: bool,
+    /// Its key caps' style ([`GameData::key_caps`]): none.
+    key_caps: Option<KeyCapStyle>,
+    /// What a key's name in its text says ([`GameData::key_text`]): the
+    /// engine's [`key_text`](crate::text::key_text).
+    key_text: KeyText,
 }
+
+/// What [`GameData::key_text`] gives for the toy.
+type KeyText = fn(&str, HelpKeys<'_, Action>) -> Option<String>;
 
 impl Toy {
     /// The toy game.
@@ -592,7 +604,40 @@ impl Toy {
             lights: grid::lights(),
             level: None,
             first_language: FirstLanguage::System,
+            themes: true,
+            key_caps: None,
+            key_text: crate::text::key_text,
         }
+    }
+
+    /// The toy game on the palette `day`, as its day theme too.
+    #[cfg(test)]
+    pub(crate) fn with_palette(self, day: PaletteDef) -> Self {
+        Self { day, ..self }
+    }
+
+    /// The toy game without themes: [`GameData::theme_def`] gives none.
+    #[cfg(test)]
+    pub(crate) fn without_themes(self) -> Self {
+        Self {
+            themes: false,
+            ..self
+        }
+    }
+
+    /// The toy game with key caps in `style`.
+    #[cfg(test)]
+    pub(crate) fn with_key_caps(self, style: Option<KeyCapStyle>) -> Self {
+        Self {
+            key_caps: style,
+            ..self
+        }
+    }
+
+    /// The toy game naming keys in its text with `key_text`.
+    #[cfg(test)]
+    pub(crate) fn with_key_text(self, key_text: KeyText) -> Self {
+        Self { key_text, ..self }
     }
 
     /// The image [`CARD`]'s id.
@@ -663,10 +708,21 @@ impl GameData for Toy {
     }
 
     fn theme_def(&self, theme: Theme) -> Option<&PaletteDef> {
+        if !self.themes {
+            return None;
+        }
         match theme {
             Theme::Day => Some(&self.day),
             Theme::Night => Some(&self.night),
         }
+    }
+
+    fn key_caps(&self) -> Option<KeyCapStyle> {
+        self.key_caps
+    }
+
+    fn key_text(&self, name: &str, keys: HelpKeys<'_, Action>) -> Option<String> {
+        (self.key_text)(name, keys)
     }
 
     fn debug_lang(&self) -> Option<&str> {
@@ -1190,5 +1246,35 @@ mod tests {
             let parsed = shuyi_assets::message::Message::parse(&text);
             assert!(parsed.is_ok(), "{key}: {parsed:?}");
         }
+    }
+
+    /// The overrides tests turn on start as the toy has always been: its
+    /// day and night themes, no key caps, the engine's names of keys.
+    #[test]
+    fn the_overrides_start_as_the_toy_and_each_changes_its_own() {
+        let toy = Toy::new();
+        assert_eq!(toy.theme_def(Theme::Day), Some(&toy.day));
+        assert_eq!(toy.theme_def(Theme::Night), Some(&toy.night));
+        assert_eq!(toy.key_caps(), None);
+        let keymap = crate::input::Keymap::layout_picker(toy.keymap_def());
+        let keys = HelpKeys::new(&keymap, crate::input::Device::Keyboard);
+        for name in ["Confirm", "Move", "nothing"] {
+            assert_eq!(
+                toy.key_text(name, keys),
+                crate::text::key_text(name, keys),
+                "{name}"
+            );
+        }
+        let mut night = toy.night.clone();
+        night.colors.remove("text");
+        let changed = Toy::new()
+            .with_palette(night.clone())
+            .without_themes()
+            .with_key_caps(Some(KeyCapStyle::default()))
+            .with_key_text(|_, _| Some("a key".to_owned()));
+        assert_eq!(changed.palette_def(), &night);
+        assert_eq!(changed.theme_def(Theme::Day), None);
+        assert_eq!(changed.key_caps(), Some(KeyCapStyle::default()));
+        assert_eq!(changed.key_text("Confirm", keys).as_deref(), Some("a key"));
     }
 }

@@ -1,0 +1,593 @@
+diff --git 08-polish/crates/game/files/audio.ron 08-polish/crates/game/files/audio.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/audio.ron
+@@ -0,0 +1,21 @@
++// The game's sounds: the cues the engine's menus and cursors play, and the
++// board's two, `push` and `win`, each a sound effect in `sfx/` written as
++// a few numbers (`.sfx.ron`). Change a file's numbers to change its sound,
++// or name a `.wav` or `.ogg` file in its place. `min_gap_ms` keeps a
++// cursor that moves several cells in one frame to one tick.
++(
++    music_fade_ms: 500,
++    sounds: [
++        (id: "ui_move", files: ["sfx/move.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
++        (id: "ui_select", files: ["sfx/select.sfx.ron"], volume: 80, credit: Own),
++        (id: "ui_cancel", files: ["sfx/cancel.sfx.ron"], volume: 80, credit: Own),
++        (id: "ui_cursor", files: ["sfx/cursor.sfx.ron"], volume: 80, credit: Own, min_gap_ms: 40),
++        // ANCHOR: board
++        (id: "push", files: ["sfx/push.sfx.ron"], volume: 80, credit: Own),
++        (id: "win", files: ["sfx/win.sfx.ron"], volume: 80, credit: Own),
++        // ANCHOR_END: board
++    ],
++    music: [],
++    pools: [],
++    credits: [],
++)
+diff --git 07-save/crates/game/files/en.ron 08-polish/crates/game/files/en.ron
+--- 07-save/crates/game/files/en.ron
++++ 08-polish/crates/game/files/en.ron
+@@ -15,11 +15,83 @@
+     "title.help": "{Cancel} leave",
+ 
+     // The board.
++    "board.moves": "Moves: {n}",
+     "board.help": "{Cursor} walk · {Undo} undo · {Cancel} levels",
+     "board.help.won": "Solved! {Confirm} next · {Undo} undo · {Cancel} levels",
+ 
+     // The level menu.
+     "levels.title": "Levels",
+     "levels.level": "Level {n}",
++    "levels.options": "Options",
+     "levels.help": "{Cursor} move · {Confirm} choose · {Cancel} back",
++
++    // The engine's options and Key bindings screens.
++    "options.title": "Options",
++    "options.row.text_speed": "Text speed",
++    "options.row.fullscreen": "Fullscreen",
++    "options.row.frame_cap": "Frame rate",
++    "options.row.theme": "Colors",
++    "options.row.music_volume": "Music volume",
++    "options.row.sound_volume": "Sound volume",
++    "options.row.key_bindings": "Key bindings",
++    "options.row.restore_defaults": "Restore defaults",
++    "options.value.on": "On",
++    "options.value.off": "Off",
++    "options.value.slow": "Slow",
++    "options.value.normal": "Normal",
++    "options.value.fast": "Fast",
++    "options.value.instant": "Instant",
++    "options.value.fps": "{n} FPS",
++    "options.value.unlimited": "Unlimited",
++    "options.message.restored": "Defaults restored",
++    "options.message.not_saved": "Couldn't save: the change lasts until you quit",
++    "options.question.restore": "Restore every option to its default?",
++    "options.question.answers": "{Confirm} yes / {Cancel} no",
++    "options.help.change": "{Cursor} move · {Confirm} change · {Cancel} back",
++    "options.help.volume": "{Cursor} move · {Confirm} type a number · {Cancel} back",
++    "options.help.number_pad": "{Cursor} change · {Confirm} done · {Cancel} cancel",
++    "options.help.open": "{Cursor} move · {Confirm} open · {Cancel} back",
++    "options.help.restore": "{Cursor} move · {Confirm} restore · {Cancel} back",
++    "options.help.none": "{Cursor} move · {Cancel} back",
++    "options.help.question": "{Confirm} yes · {Cancel} no",
++    "options.question.keep": "Keep these changes?",
++    "options.leave.keep": "Keep",
++    "options.leave.discard": "Discard",
++    "options.leave.back": "Back",
++    "options.help.leave": "{Cursor} choose · {Confirm} pick · {Cancel} back",
++    "key_bindings.title": "Key bindings",
++    "key_bindings.keyboard": "Keyboard",
++    "key_bindings.controller": "Controller",
++    "key_bindings.key_column": "Key {n}",
++    "key_bindings.button_column": "Button {n}",
++    "key_bindings.must_have_key": "Must have a key",
++    "key_bindings.must_have_button": "Must have a button",
++    "key_bindings.optional": "Optional",
++    "key_bindings.restore_defaults": "Restore defaults",
++    "key_bindings.press_a_key": "Press a key…",
++    "key_bindings.press_a_button": "Press a button…",
++    "key_bindings.capture_help": "Press the key to put here",
++    "key_bindings.reserved": "That key can't be used",
++    "key_bindings.change": "Change",
++    "key_bindings.clear": "Clear",
++    "key_bindings.hold_to_cancel": "hold any button to cancel",
++    "key_bindings.restore_keys": "Restore the default keys for {layout}?",
++    "key_bindings.restore_buttons": "Restore the default buttons?",
++    "key_bindings.restore_answers": "{Confirm} yes / {Cancel} no",
++    "key_bindings.blocked_key": "Give {action} a key first",
++    "key_bindings.blocked_button": "Give {action} a button first",
++    "key_bindings.help_slot": "{Cursor} move · {Confirm} bind · {clear} clear · {Cancel} back",
++    "key_bindings.help_restore_row": "{Cursor} move · {Confirm} restore · {Cancel} back",
++    "key_bindings.help_restore": "{Confirm} yes · {Cancel} no",
++    "key_bindings.help_capture_back": "{key} back",
++    "key_bindings.help_choice": "{Cursor} move · {Confirm} select · {Cancel} back",
++    "key_bindings.help_switch": "{Left}/{Right} keyboard or controller · {Cursor} move · {Cancel} back",
++    "key_bindings.help_slot_pad": "{Cursor} move · {Confirm} change · {Cancel} back",
++    "key_bindings.action.up": "Up",
++    "key_bindings.action.down": "Down",
++    "key_bindings.action.left": "Left",
++    "key_bindings.action.right": "Right",
++    "key_bindings.action.confirm": "Confirm",
++    "key_bindings.action.cancel": "Cancel",
++    "key_bindings.action.undo": "Undo",
+ }
+diff --git 08-polish/crates/game/files/sfx/cancel.sfx.ron 08-polish/crates/game/files/sfx/cancel.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/cancel.sfx.ron
+@@ -0,0 +1,9 @@
++// Backing out (the engine's preset `cancel`).
++(
++    wave: Square(duty: 50),
++    hz: 520,
++    to_hz: 330,
++    hold_ms: 60,
++    fade_ms: 60,
++    volume: 35,
++)
+diff --git 08-polish/crates/game/files/sfx/cursor.sfx.ron 08-polish/crates/game/files/sfx/cursor.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/cursor.sfx.ron
+@@ -0,0 +1,8 @@
++// A cursor's step (the engine's preset `tick`).
++(
++    wave: Square(duty: 12),
++    hz: 1320,
++    hold_ms: 5,
++    fade_ms: 20,
++    volume: 25,
++)
+diff --git 08-polish/crates/game/files/sfx/move.sfx.ron 08-polish/crates/game/files/sfx/move.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/move.sfx.ron
+@@ -0,0 +1,10 @@
++// The menu's highlight moving (the engine's preset `blip`). A sound effect
++// is a few numbers: `cargo shuyi check` checks them, and the game renders
++// them to a sound as it loads.
++(
++    wave: Square(duty: 50),
++    hz: 880,
++    hold_ms: 15,
++    fade_ms: 35,
++    volume: 30,
++)
+diff --git 08-polish/crates/game/files/sfx/push.sfx.ron 08-polish/crates/game/files/sfx/push.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/push.sfx.ron
+@@ -0,0 +1,10 @@
++// A box pushed: a short, low scrape (from the engine's preset `hit`, made
++// with `cargo shuyi sfx hit`, then lower and shorter).
++(
++    wave: Noise,
++    hz: 1200,
++    to_hz: 300,
++    hold_ms: 25,
++    fade_ms: 75,
++    volume: 45,
++)
+diff --git 08-polish/crates/game/files/sfx/select.sfx.ron 08-polish/crates/game/files/sfx/select.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/select.sfx.ron
+@@ -0,0 +1,9 @@
++// A choice made (the engine's preset `select`).
++(
++    wave: Square(duty: 50),
++    hz: 660,
++    hold_ms: 70,
++    fade_ms: 60,
++    volume: 35,
++    step: (at_ms: 40, percent: 150),
++)
+diff --git 08-polish/crates/game/files/sfx/win.sfx.ron 08-polish/crates/game/files/sfx/win.sfx.ron
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/files/sfx/win.sfx.ron
+@@ -0,0 +1,11 @@
++// The level won: a rising note (the engine's preset `power_up`, made with
++// `cargo shuyi sfx power_up`).
++(
++    wave: Square(duty: 50),
++    hz: 330,
++    to_hz: 990,
++    hold_ms: 400,
++    fade_ms: 150,
++    volume: 35,
++    vibrato: (hz: 14, percent: 5),
++)
+diff --git 07-save/crates/game/src/board.rs 08-polish/crates/game/src/board.rs
+--- 07-save/crates/game/src/board.rs
++++ 08-polish/crates/game/src/board.rs
+@@ -17,7 +17,16 @@ use crate::Data;
+ use crate::action::Action;
+ use crate::level::TERRAIN_NAMES;
+ use crate::levels::LevelWon;
+-use crate::rules::{Command, Puzzle};
++use crate::rules::{Command, Event, Puzzle};
++
++// ANCHOR: sounds
++/// The cue a push plays, in `files/audio.ron`.
++// check-text: not player text, a sound's id
++pub const PUSH: &str = "push";
++/// The cue the move that wins plays.
++// check-text: not player text, a sound's id
++pub const WIN: &str = "win";
++// ANCHOR_END: sounds
+ 
+ // ANCHOR: skin
+ /// The cells a level is shown in: all but the top and bottom rows.
+@@ -131,6 +140,8 @@ impl UnitPainter<Piece> for Pieces<'_> {
+ pub struct BoardView {
+     /// The level's name.
+     pub name: String,
++    /// The moves made on this level.
++    pub moves: String,
+     /// The help line.
+     pub help: String,
+ }
+@@ -197,15 +208,26 @@ impl Board {
+         // ANCHOR_END: won_view
+         BoardView {
+             name: self.name.clone(),
++            // ANCHOR: moves
++            moves: ctx.text_with("board.moves", &[("n", &self.history.len())]),
++            // ANCHOR_END: moves
+             help: ctx.text_with(help, &[]),
+         }
+     }
+ 
+     // ANCHOR: send
+-    /// Sends `command` to the rules. A refused one changes nothing.
+-    fn send(&mut self, command: Command) {
+-        if self.puzzle.apply(&command).is_ok() {
+-            self.history.push(command);
++    /// Sends `command` to the rules, and plays its sound: the win's on the
++    /// move that wins, a push's on another push, none on a walk. A refused
++    /// one changes nothing and plays nothing.
++    fn send(&mut self, ctx: &mut Ctx<Data>, command: Command) {
++        let Ok(events) = self.puzzle.apply(&command) else {
++            return;
++        };
++        self.history.push(command);
++        if self.puzzle.outcome().is_some() {
++            ctx.audio.play_sound(WIN);
++        } else if events.iter().any(|e| matches!(e, Event::Pushed { .. })) {
++            ctx.audio.play_sound(PUSH);
+         }
+     }
+     // ANCHOR_END: send
+@@ -239,13 +261,15 @@ impl Screen<Data> for Board {
+     }
+ 
+     // ANCHOR: update
+-    fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
++    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+         for &action in &input.actions {
+             match action {
+-                Action::Up => self.send(Command::Step(Dir::Up)),
+-                Action::Down => self.send(Command::Step(Dir::Down)),
+-                Action::Left => self.send(Command::Step(Dir::Left)),
+-                Action::Right => self.send(Command::Step(Dir::Right)),
++                // ANCHOR: steps
++                Action::Up => self.send(ctx, Command::Step(Dir::Up)),
++                Action::Down => self.send(ctx, Command::Step(Dir::Down)),
++                Action::Left => self.send(ctx, Command::Step(Dir::Left)),
++                Action::Right => self.send(ctx, Command::Step(Dir::Right)),
++                // ANCHOR_END: steps
+                 Action::Undo => self.undo(),
+                 // ANCHOR: won
+                 Action::Confirm if self.puzzle.outcome().is_some() => {
+@@ -268,6 +292,11 @@ impl Screen<Data> for Board {
+         buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
+         let view = self.view(ctx);
+         buf.print(1, 0, &view.name, c(EngineColor::Highlight), bg);
++        // ANCHOR: draw_moves
++        let width = i32::try_from(view.moves.chars().count()).unwrap_or(0);
++        let right = i32::from(buf.width()) - width - 1;
++        buf.print(right, 0, &view.moves, c(EngineColor::Text), bg);
++        // ANCHOR_END: draw_moves
+         let last = i32::from(buf.height()) - 1;
+         buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
+         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);
+diff --git 07-save/crates/game/src/levels.rs 08-polish/crates/game/src/levels.rs
+--- 07-save/crates/game/src/levels.rs
++++ 08-polish/crates/game/src/levels.rs
+@@ -5,12 +5,14 @@
+ use std::any::Any;
+ 
+ use shuyi::prelude::*;
++use shuyi::ui::screens::options::OptionsScreen;
+ use shuyi::ui::widgets::menu::glyph;
+ use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
+ 
+ use crate::Data;
+ use crate::action::Action;
+ use crate::board::Board;
++use crate::options::option_rows;
+ use crate::progress;
+ 
+ // ANCHOR: result
+@@ -24,6 +26,8 @@ pub struct LevelWon(pub usize);
+ pub enum Choice {
+     /// Plays this level, counted from 0.
+     Level(usize),
++    /// Opens the options.
++    Options,
+ }
+ 
+ /// The level menu.
+@@ -59,7 +63,8 @@ impl LevelMenu {
+                 .with_enabled(n < self.open)
+                 .with_value(Choice::Level(n))
+         });
+-        Menu::new(items.collect()).focused(self.focus)
++        let options = MenuItem::keyed("levels.options").with_value(Choice::Options);
++        Menu::new(items.chain([options]).collect()).focused(self.focus)
+     }
+     // ANCHOR_END: menu
+ }
+@@ -86,6 +91,11 @@ impl Screen<Data> for LevelMenu {
+                 Some(MenuEvent::Chosen(Choice::Level(n))) => {
+                     return Transition::Push(Box::new(Board::new(ctx, n)));
+                 }
++                // ANCHOR: chosen
++                Some(MenuEvent::Chosen(Choice::Options)) => {
++                    return Transition::Push(Box::new(OptionsScreen::new(option_rows)));
++                }
++                // ANCHOR_END: chosen
+                 Some(MenuEvent::Cancelled) => return Transition::Pop,
+                 None => {}
+             }
+diff --git 07-save/crates/game/src/lib.rs 08-polish/crates/game/src/lib.rs
+--- 07-save/crates/game/src/lib.rs
++++ 08-polish/crates/game/src/lib.rs
+@@ -12,6 +12,7 @@ pub mod app_info;
+ pub mod board;
+ pub mod level;
+ pub mod levels;
++pub mod options;
+ pub mod progress;
+ pub mod rules;
+ pub mod stages;
+diff --git 08-polish/crates/game/src/options.rs 08-polish/crates/game/src/options.rs
+new file mode 100644
+--- /dev/null
++++ 08-polish/crates/game/src/options.rs
+@@ -0,0 +1,53 @@
++//! The options: the engine's screen, with the rows the game wants, and the
++//! engine's Key bindings screen, where the player rebinds every action.
++
++// ANCHOR: uses
++use shuyi::prelude::*;
++use shuyi::ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
++use shuyi::ui::screens::options::{self, OptionRow, RowAction, RowValue};
++
++use crate::Data;
++use crate::action::Action;
++// ANCHOR_END: uses
++
++// ANCHOR: rows
++/// The Key bindings screen's rows: every action must keep a key.
++pub const KEY_ROWS: [KeyRow<Action>; 7] = [
++    (Action::Up, "key_bindings.action.up", RowGroup::Required),
++    (Action::Down, "key_bindings.action.down", RowGroup::Required),
++    (Action::Left, "key_bindings.action.left", RowGroup::Required),
++    (
++        Action::Right,
++        "key_bindings.action.right",
++        RowGroup::Required,
++    ),
++    (
++        Action::Confirm,
++        "key_bindings.action.confirm",
++        RowGroup::Required,
++    ),
++    (
++        Action::Cancel,
++        "key_bindings.action.cancel",
++        RowGroup::Required,
++    ),
++    (Action::Undo, "key_bindings.action.undo", RowGroup::Required),
++];
++
++/// The options' rows: the frame rate, the keys, and Restore defaults.
++pub fn option_rows(_: &Ctx<Data>) -> Vec<OptionRow<Data>> {
++    vec![
++        OptionRow::frame_cap(),
++        OptionRow::new(
++            "options.row.key_bindings",
++            RowValue::action(
++                |_| None,
++                |ctx| RowAction::Open(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS))),
++                |_| options::HELP_OPEN,
++            ),
++        )
++        .starting_group(),
++        OptionRow::restore_defaults().starting_group(),
++    ]
++}
++// ANCHOR_END: rows
+diff --git 07-save/crates/game/src/progress.rs 08-polish/crates/game/src/progress.rs
+--- 07-save/crates/game/src/progress.rs
++++ 08-polish/crates/game/src/progress.rs
+@@ -1,11 +1,9 @@
+ //! The player's progress, kept in their storage: the furthest level
+ //! reached, with the version of its format.
+ 
+-// ANCHOR: uses
+ use serde::{Deserialize, Serialize};
+ use shuyi::core::{SaveFormat, SaveHeader};
+ use shuyi::ui::storage::{Storage, StorageError};
+-// ANCHOR_END: uses
+ 
+ // ANCHOR: progress
+ /// What is kept: the version of the format, and the furthest level.
+diff --git 07-save/crates/game/src/stages.rs 08-polish/crates/game/src/stages.rs
+--- 07-save/crates/game/src/stages.rs
++++ 08-polish/crates/game/src/stages.rs
+@@ -3,11 +3,14 @@
+ 
+ use shuyi::assets::lighting::Lighting;
+ use shuyi::prelude::*;
++use shuyi::ui::screens::key_bindings::KeyBindingsScreen;
++use shuyi::ui::screens::options::OptionsScreen;
+ 
+ use crate::Data;
+ use crate::board::Board;
+ use crate::level::{self, Level};
+ use crate::levels::LevelMenu;
++use crate::options::{KEY_ROWS, option_rows};
+ 
+ /// The stages' ids, in order.
+ pub fn names() -> &'static [&'static str] {
+@@ -39,11 +42,18 @@ pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
+     Some(Box::new(LevelMenu::new(ctx)))
+ }
+ 
++// ANCHOR: screens
+ /// Every screen the game can show past the title, for the check that its
+ /// controls fit each target.
+ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+-    vec![Box::new(LevelMenu::new(ctx)), Box::new(Board::new(ctx, 0))]
++    vec![
++        Box::new(LevelMenu::new(ctx)),
++        Box::new(Board::new(ctx, 0)),
++        Box::new(OptionsScreen::new(option_rows)),
++        Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)),
++    ]
+ }
++// ANCHOR_END: screens
+ 
+ /// The game's tools: the engine's, for a game on the short path.
+ #[cfg(feature = "tools")]
+diff --git 07-save/crates/game/tests/board.rs 08-polish/crates/game/tests/board.rs
+--- 07-save/crates/game/tests/board.rs
++++ 08-polish/crates/game/tests/board.rs
+@@ -2,7 +2,7 @@
+ //! read the board's state. Key names here are the Harness's test-script
+ //! names, input to a test, not game code.
+ 
+-use game::board::Board;
++use game::board::{Board, PUSH, WIN};
+ use game::levels::LevelMenu;
+ use shuyi::core::Pos;
+ use shuyi::core::TurnRules;
+@@ -67,6 +67,27 @@ fn a_box_against_a_wall_stays_and_so_does_the_player() {
+     assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
+ }
+ 
++// ANCHOR: test_sounds
++#[test]
++fn a_push_plays_its_sound_a_walk_none_and_the_winning_push_the_win() {
++    let mut h = on_board();
++    // The level menu's own: Enter chose the first level.
++    assert_eq!(h.sounds(), ["ui_select"]);
++    h.clear_audio();
++    // Up, Down: a walk, and back.
++    h.keys("Up Down");
++    assert!(h.sounds().is_empty(), "{:?}", h.sounds());
++    h.keys("Right");
++    assert_eq!(h.sounds(), [PUSH]);
++    // An undo plays nothing.
++    h.keys("u");
++    assert_eq!(h.sounds(), [PUSH]);
++    // The push again, then the one onto the target.
++    h.keys("Right Right");
++    assert_eq!(h.sounds(), [PUSH, PUSH, WIN]);
++}
++// ANCHOR_END: test_sounds
++
+ // ANCHOR: test_undo
+ #[test]
+ fn undo_takes_back_a_push_and_nothing_before_the_start() {
+@@ -129,7 +150,6 @@ fn a_level_not_reached_cant_be_chosen() {
+     assert!(!menu.items()[1].enabled);
+ }
+ 
+-// ANCHOR: test_damaged
+ #[test]
+ fn a_kept_progress_of_another_version_or_damaged_counts_as_none() {
+     let mut h = game::game().harness();
+@@ -141,4 +161,29 @@ fn a_kept_progress_of_another_version_or_damaged_counts_as_none() {
+     storage.write(game::progress::KEY, "(version").unwrap();
+     assert_eq!(game::progress::furthest(storage), 0);
+ }
+-// ANCHOR_END: test_damaged
++
++// ANCHOR: test_moves
++#[test]
++fn the_moves_counter_counts_moves_and_undo_takes_one_back() {
++    let mut h = on_board();
++    assert!(h.snapshot().contains("Moves: 0"), "{}", h.snapshot());
++    // Up, then a wall: the refused step is no move.
++    h.keys("Up Up");
++    assert!(h.snapshot().contains("Moves: 1"), "{}", h.snapshot());
++    h.keys("Down u");
++    assert!(h.snapshot().contains("Moves: 1"), "{}", h.snapshot());
++}
++// ANCHOR_END: test_moves
++
++// ANCHOR: test_options
++#[test]
++fn the_options_open_from_the_menu_and_reach_the_key_bindings() {
++    let mut h = game::game().harness();
++    let menu = "Enter Up";
++    h.keys(menu);
++    h.keys("Enter");
++    assert_eq!(h.screens(), ["title", "levels", "options"]);
++    h.keys("Down Enter");
++    assert_eq!(h.screens(), ["title", "levels", "options", "key_bindings"]);
++}
++// ANCHOR_END: test_options
+diff --git 07-save/crates/game/tests/it/main.rs 08-polish/crates/game/tests/it/main.rs
+--- 07-save/crates/game/tests/it/main.rs
++++ 08-polish/crates/game/tests/it/main.rs
+@@ -5,7 +5,11 @@
+ use std::path::Path;
+ 
+ use game::action::Action;
++use game::board::{PUSH, WIN};
+ use game::title::Title;
++use shuyi::assets::audio::{format_problem, playable};
++use shuyi::prelude::GameData;
++use shuyi::ui::audio::AudioConfig;
+ use shuyi_cli::contract::check::{CheckInput, check, targets};
+ use shuyi_cli::contract::playtest::PlaytestInput;
+ use shuyi_cli::contract::run::{RunInput, keys, run};
+@@ -59,6 +63,33 @@ fn confirm_starts_the_first_stage_if_there_is_one() {
+     }
+ }
+ 
++#[test]
++fn every_sound_the_board_and_the_menus_play_is_in_the_manifest_and_plays() {
++    let data = game::game().data().unwrap_or_else(|e| panic!("{e:?}"));
++    let bundle = game::game().bundle();
++    let config = AudioConfig::DEFAULT;
++    let cues = [
++        config.move_cue,
++        config.select_cue,
++        config.cancel_cue,
++        config.denied_cue,
++        config.cursor_cue,
++        PUSH,
++        WIN,
++    ];
++    for cue in cues {
++        let sound = data.audio_manifest().sounds.get(cue);
++        let sound = sound.unwrap_or_else(|| panic!("files/audio.ron has no cue `{cue}`"));
++        assert!(!sound.files.is_empty(), "{cue}");
++        for file in &sound.files {
++            // What the platform plays: a sound effect rendered to a WAV.
++            let bytes = playable(file, bundle.bytes(file));
++            let bytes = bytes.unwrap_or_else(|| panic!("{cue}: no file {file}"));
++            assert_eq!(format_problem(file, &bytes), None, "{cue}: {file}");
++        }
++    }
++}
++
+ #[test]
+ fn check_finds_no_error_in_the_files() {
+     let answer = check(&tools(), &CheckInput::default());

@@ -1,0 +1,51 @@
+diff --git 09-test/crates/game/src/app_info.rs 10-ship/crates/game/src/app_info.rs
+--- 09-test/crates/game/src/app_info.rs
++++ 10-ship/crates/game/src/app_info.rs
+@@ -7,4 +7,4 @@ use shuyi::platform::AppInfo;
+ /// Who the game is: the window's title, the loading card and the storage read it.
+ // check-text: not player text, who the game is (`shuyi.ron`'s `app`)
+ #[rustfmt::skip]
+-pub const APP: AppInfo = AppInfo::new("Box Pusher", "com.example.box-pusher", env!("CARGO_PKG_VERSION"));
++pub const APP: AppInfo = AppInfo::new("Box Pusher", "io.github.zafnok.box-pusher", env!("CARGO_PKG_VERSION"));
+diff --git 09-test/crates/game/src/lib.rs 10-ship/crates/game/src/lib.rs
+--- 09-test/crates/game/src/lib.rs
++++ 10-ship/crates/game/src/lib.rs
+@@ -17,10 +17,8 @@ pub mod progress;
+ pub mod rules;
+ pub mod stages;
+ pub mod title;
+-// ANCHOR: tools
+ #[cfg(feature = "tools")]
+ pub mod tools;
+-// ANCHOR_END: tools
+ 
+ use std::sync::OnceLock;
+ 
+diff --git 09-test/crates/game/src/stages.rs 10-ship/crates/game/src/stages.rs
+--- 09-test/crates/game/src/stages.rs
++++ 10-ship/crates/game/src/stages.rs
+@@ -53,10 +53,8 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+     ]
+ }
+ 
+-// ANCHOR: tools
+ /// The game's tools: the engine's, and its scene, bot and replay on top.
+ #[cfg(feature = "tools")]
+ pub fn tools() -> crate::tools::Tools {
+     crate::tools::Tools::new(crate::game())
+ }
+-// ANCHOR_END: tools
+diff --git 09-test/shuyi.ron 10-ship/shuyi.ron
+--- 09-test/shuyi.ron
++++ 10-ship/shuyi.ron
+@@ -13,7 +13,9 @@
+         // Its reverse-DNS id, unique to the game: the folder its saves are
+         // kept in follows it. Set your own (`io.github.<you>.<game>`)
+         // before you hand out a build, and never change it after.
+-        id: "com.example.box-pusher",
++        // ANCHOR: id
++        id: "io.github.zafnok.box-pusher",
++        // ANCHOR_END: id
+         // Its version, semver; without it, the crate's (`Cargo.toml`).
+         // version: "0.1.0",
+         // A number that only grows from one build handed out to the next.

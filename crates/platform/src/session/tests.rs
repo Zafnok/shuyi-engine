@@ -14,7 +14,7 @@ use shuyi_ui::frame_cap::{FrameCap, Pacing};
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
-use shuyi_ui::storage::{MemoryStorage, StorageError};
+use shuyi_ui::storage::{FaultyStorage, MemoryStorage};
 use shuyi_ui::system_keyboard::TextAsk;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
 use shuyi_ui::{Game, GameHooks, KeyPrompt};
@@ -298,35 +298,18 @@ fn the_load_is_noted_and_a_backend_adds_its_part() {
 
 #[test]
 fn a_store_that_cannot_be_read_says_so() {
-    #[derive(Debug)]
-    struct Broken {
-        keys: bool,
-    }
-    impl Storage for Broken {
-        fn read(&self, key: &str) -> Result<Option<String>, StorageError> {
-            if key == "good" {
-                return Ok(Some("value".into()));
-            }
-            Err(StorageError::Backend("no".into()))
-        }
-        fn write(&mut self, _: &str, _: &str) -> Result<(), StorageError> {
-            Ok(())
-        }
-        fn delete(&mut self, _: &str) -> Result<(), StorageError> {
-            Ok(())
-        }
-        fn list(&self) -> Result<Vec<String>, StorageError> {
-            if self.keys {
-                Ok(vec!["good".into(), "bad".into()])
-            } else {
-                Err(StorageError::Backend("no".into()))
-            }
-        }
-    }
+    // A store whose "bad" key can't be read, and whose keys can or can't
+    // be listed.
+    let mut stored = MemoryStorage::new();
+    stored.write("good", "value").unwrap();
+    stored.write("bad", "lost").unwrap();
+    let broken = FaultyStorage::over(stored)
+        .failing_key("bad")
+        .with_error("no");
     let mut all = BTreeMap::new();
-    assert!(!read_store(&Broken { keys: false }, &mut all));
+    assert!(!read_store(&broken.clone().failing_lists(), &mut all));
     assert!(all.is_empty());
-    assert!(!read_store(&Broken { keys: true }, &mut all));
+    assert!(!read_store(&broken, &mut all));
     assert_eq!(all.len(), 1, "what could be read is kept");
     let mut record = SessionRecord::new();
     assert!(record.limits().iter().any(|l| l.contains("store")));

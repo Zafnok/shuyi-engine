@@ -1,5 +1,5 @@
 use super::*;
-use crate::storage::MemoryStorage;
+use crate::storage::{FaultyStorage, MemoryStorage};
 use proptest::prelude::*;
 use shuyi_assets::format::Formats;
 use shuyi_core::made::{ContentHash, Part};
@@ -436,35 +436,21 @@ fn saves_a_game_wrote_with_ron_export_and_import_unchanged() {
     assert_eq!(contents(&target), contents(&source));
 }
 
-/// A storage that lists nothing: fails, or holds nothing.
-#[derive(Debug)]
-struct Unlistable;
-
-impl Storage for Unlistable {
-    fn read(&self, _key: &str) -> Result<Option<String>, StorageError> {
-        Ok(None)
-    }
-    fn write(&mut self, _key: &str, _value: &str) -> Result<(), StorageError> {
-        Ok(())
-    }
-    fn delete(&mut self, _key: &str) -> Result<(), StorageError> {
-        Ok(())
-    }
-    fn list(&self) -> Result<Vec<String>, StorageError> {
-        Err(StorageError::Backend("no list".to_owned()))
-    }
+/// A storage that holds nothing and can't list.
+fn unlistable() -> FaultyStorage {
+    FaultyStorage::new().failing_lists().with_error("no list")
 }
 
 #[test]
 fn a_storage_that_fails_fails_the_plan_and_the_bundle() {
-    let failed = plan_import(FIXTURE, &Unlistable, &accept_all, &fixture_made());
+    let failed = plan_import(FIXTURE, &unlistable(), &accept_all, &fixture_made());
     assert_eq!(
         failed,
         Err(BundleError::Storage(StorageError::Backend(
             "no list".to_owned()
         )))
     );
-    assert!(write_bundle(&Unlistable, &fixture_made(), |_| true).is_err());
+    assert!(write_bundle(&unlistable(), &fixture_made(), |_| true).is_err());
 }
 
 #[test]
@@ -532,31 +518,11 @@ fn apply_writes_only_the_ready_entries_taken() {
     assert_eq!(storage.read("trophies").unwrap(), None);
 }
 
-/// A memory storage whose `fail_at`th write (from 1) fails, once.
-#[derive(Debug)]
-struct FailingWrite {
-    inner: MemoryStorage,
-    writes: u32,
-    fail_at: u32,
-}
-
-impl Storage for FailingWrite {
-    fn read(&self, key: &str) -> Result<Option<String>, StorageError> {
-        self.inner.read(key)
-    }
-    fn write(&mut self, key: &str, value: &str) -> Result<(), StorageError> {
-        self.writes += 1;
-        if self.writes == self.fail_at {
-            return Err(StorageError::Backend("the third write".to_owned()));
-        }
-        self.inner.write(key, value)
-    }
-    fn delete(&mut self, key: &str) -> Result<(), StorageError> {
-        self.inner.delete(key)
-    }
-    fn list(&self) -> Result<Vec<String>, StorageError> {
-        self.inner.list()
-    }
+/// `inner`, whose `fail_at`th write (from 1) fails, once.
+fn failing_write(inner: &MemoryStorage, fail_at: usize) -> FaultyStorage {
+    FaultyStorage::over(inner.clone())
+        .failing_write(fail_at)
+        .with_error("the third write")
 }
 
 #[test]
@@ -573,21 +539,13 @@ fn a_storage_that_fails_a_write_keeps_every_key_as_it_was() {
     // turn, the third (the journal) and the fourth (the first value) among
     // them.
     for fail_at in 1..=6 {
-        let mut storage = FailingWrite {
-            inner: before.clone(),
-            writes: 0,
-            fail_at,
-        };
+        let mut storage = failing_write(&before, fail_at);
         let failed = apply(&plan, &mut storage, |_| true);
         assert!(failed.is_err(), "write {fail_at}");
         assert_eq!(contents(&storage), contents(&before), "write {fail_at}");
     }
     // Past the six, it works.
-    let mut storage = FailingWrite {
-        inner: before.clone(),
-        writes: 0,
-        fail_at: 7,
-    };
+    let mut storage = failing_write(&before, 7);
     apply(&plan, &mut storage, |_| true).unwrap();
     assert_eq!(
         contents(&storage),
@@ -630,7 +588,7 @@ fn recover_puts_back_what_an_interrupted_import_changed() {
     assert_eq!(recover(&mut storage), Ok(true));
     assert_eq!(storage.read("_bundle-journal").unwrap(), None);
     assert_eq!(storage.read("a").unwrap().as_deref(), Some("old a"));
-    assert!(recover(&mut Unlistable).is_err());
+    assert!(recover(&mut unlistable()).is_err());
 }
 
 #[test]

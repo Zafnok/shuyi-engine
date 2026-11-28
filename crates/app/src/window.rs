@@ -369,11 +369,11 @@ pub(crate) fn wanted_fullscreen(frame: &Frame<'_>) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use shuyi_platform::headless::HeadlessPlatform;
-    use shuyi_platform::{
-        App, Audio, Card, DisplayInfo, Platform, Storage, SystemEvent, TextInput,
-    };
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use shuyi_platform::{App, Card, SystemEvent};
     use shuyi_ui::toy;
-    use shuyi_ui::{PlatformFacts, RawInputEvent};
 
     use super::*;
 
@@ -773,42 +773,17 @@ mod tests {
         assert_eq!(wanted_fullscreen(&frame), None);
         // A game frame comes from a running game alone.
         let mut app = App::running(toy::game());
-        let mut platform = Wanting(HeadlessPlatform::new(), Vec::new());
+        // The headless backend, keeping what `wanted_fullscreen` gives for
+        // each frame presented.
+        let wanted = Rc::new(RefCell::new(Vec::new()));
+        let kept = Rc::clone(&wanted);
+        let mut platform = HeadlessPlatform::new();
+        platform.set_present_hook(Some(Box::new(move |frame: &Frame<'_>| {
+            kept.borrow_mut().push(wanted_fullscreen(frame));
+        })));
         let _ = app.frame_after(&mut platform, 1.0 / 60.0);
-        platform.0.push_system(SystemEvent::ToggleFullscreen);
+        platform.push_system(SystemEvent::ToggleFullscreen);
         let _ = app.frame_after(&mut platform, 1.0 / 60.0);
-        assert_eq!(platform.1, [Some(false), Some(true)]);
-    }
-
-    /// The headless backend, keeping what [`wanted_fullscreen`] gives for
-    /// each frame presented.
-    struct Wanting(HeadlessPlatform, Vec<Option<bool>>);
-
-    impl Platform for Wanting {
-        fn display(&self) -> DisplayInfo {
-            self.0.display()
-        }
-        fn present(&mut self, frame: &Frame<'_>) {
-            self.1.push(wanted_fullscreen(frame));
-            self.0.present(frame);
-        }
-        fn poll_input(&mut self, out: &mut Vec<RawInputEvent>) {
-            self.0.poll_input(out);
-        }
-        fn system_events(&mut self, out: &mut Vec<SystemEvent>) {
-            self.0.system_events(out);
-        }
-        fn storage(&mut self) -> Box<dyn Storage> {
-            self.0.storage()
-        }
-        fn audio(&mut self) -> &mut dyn Audio {
-            self.0.audio()
-        }
-        fn text_input(&mut self) -> Option<&mut dyn TextInput> {
-            self.0.text_input()
-        }
-        fn facts(&self) -> PlatformFacts {
-            self.0.facts()
-        }
+        assert_eq!(*wanted.borrow(), [Some(false), Some(true)]);
     }
 }

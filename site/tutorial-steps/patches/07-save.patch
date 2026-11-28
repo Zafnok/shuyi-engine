@@ -1,0 +1,342 @@
+diff --git 06-levels/Cargo.toml 07-save/Cargo.toml
+--- 06-levels/Cargo.toml
++++ 07-save/Cargo.toml
+@@ -23,6 +23,8 @@ shuyi-app = { path = "../../../crates/app" }
+ shuyi-assets = { path = "../../../crates/assets" }
+ # Its own part of the data, and its rules' state, are plain data.
+ serde = { version = "1", default-features = false, features = ["derive", "std"] }
++# What it keeps and its lines are written as RON.
++ron = { version = "0.12", default-features = false, features = ["std"] }
+ 
+ [workspace.lints.rust]
+ unsafe_code = "forbid"
+diff --git 06-levels/crates/game/Cargo.toml 07-save/crates/game/Cargo.toml
+--- 06-levels/crates/game/Cargo.toml
++++ 07-save/crates/game/Cargo.toml
+@@ -43,6 +43,7 @@ shuyi-app = { workspace = true, optional = true }
+ # which the game renders as it loads them.
+ shuyi-assets = { workspace = true, features = ["sfx"] }
+ serde.workspace = true
++ron.workspace = true
+ 
+ [package.metadata.cargo-machete]
+ # Named for their features (`link`, `sfx`), not their code.
+diff --git 06-levels/crates/game/files/en.ron 07-save/crates/game/files/en.ron
+--- 06-levels/crates/game/files/en.ron
++++ 07-save/crates/game/files/en.ron
+@@ -14,16 +14,12 @@
+     "title.play": "{Confirm} play",
+     "title.help": "{Cancel} leave",
+ 
+-    // ANCHOR: board
+     // The board.
+     "board.help": "{Cursor} walk · {Undo} undo · {Cancel} levels",
+     "board.help.won": "Solved! {Confirm} next · {Undo} undo · {Cancel} levels",
+-    // ANCHOR_END: board
+ 
+-    // ANCHOR: levels
+     // The level menu.
+     "levels.title": "Levels",
+     "levels.level": "Level {n}",
+     "levels.help": "{Cursor} move · {Confirm} choose · {Cancel} back",
+-    // ANCHOR_END: levels
+ }
+diff --git 06-levels/crates/game/src/board.rs 07-save/crates/game/src/board.rs
+--- 06-levels/crates/game/src/board.rs
++++ 07-save/crates/game/src/board.rs
+@@ -151,7 +151,6 @@ pub struct Board {
+ // ANCHOR_END: board
+ 
+ impl Board {
+-    // ANCHOR: new
+     /// The board on level `level`.
+     ///
+     /// # Panics
+@@ -168,7 +167,6 @@ impl Board {
+             puzzle,
+         }
+     }
+-    // ANCHOR_END: new
+ 
+     /// What the map shows, in a view of `view` tiles round the player.
+     pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {
+diff --git 06-levels/crates/game/src/level.rs 07-save/crates/game/src/level.rs
+--- 06-levels/crates/game/src/level.rs
++++ 07-save/crates/game/src/level.rs
+@@ -53,9 +53,7 @@ pub fn formats() -> Formats {
+     let mut formats = Formats::standard();
+     // The first format of its kind: never refused.
+     let _ = formats.register(MapText::<TerrainId, Feature>::new(FORMAT, terrain_named));
+-    // ANCHOR: register
+     let _ = formats.register(Ron::<LevelList>::new());
+-    // ANCHOR_END: register
+     formats
+ }
+ 
+diff --git 06-levels/crates/game/src/levels.rs 07-save/crates/game/src/levels.rs
+--- 06-levels/crates/game/src/levels.rs
++++ 07-save/crates/game/src/levels.rs
+@@ -2,7 +2,6 @@
+ //! [`Menu`]. A board that is won pops with a [`LevelWon`], and the menu
+ //! moves on to the next level.
+ 
+-// ANCHOR: uses
+ use std::any::Any;
+ 
+ use shuyi::prelude::*;
+@@ -12,7 +11,7 @@ use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
+ use crate::Data;
+ use crate::action::Action;
+ use crate::board::Board;
+-// ANCHOR_END: uses
++use crate::progress;
+ 
+ // ANCHOR: result
+ /// What a won board hands the menu: the level it was on.
+@@ -20,29 +19,33 @@ use crate::board::Board;
+ pub struct LevelWon(pub usize);
+ // ANCHOR_END: result
+ 
+-// ANCHOR: choice
+ /// What an item of the menu stands for.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum Choice {
+     /// Plays this level, counted from 0.
+     Level(usize),
+ }
+-// ANCHOR_END: choice
+ 
+-// ANCHOR: struct
+ /// The level menu.
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+ pub struct LevelMenu {
+     /// Which item has the focus.
+     pub focus: usize,
++    /// How many levels are open: the one after the last won, and those
++    /// before it.
++    pub open: usize,
+ }
+-// ANCHOR_END: struct
+ 
+ impl LevelMenu {
+     // ANCHOR: new
+-    /// The menu, on the first level.
+-    pub fn new() -> Self {
+-        Self::default()
++    /// The menu, on the furthest level the player has reached.
++    pub fn new(ctx: &Ctx<Data>) -> Self {
++        let last = ctx.game.own.levels.len().saturating_sub(1);
++        let furthest = progress::furthest(&ctx.storage).min(last);
++        Self {
++            focus: furthest,
++            open: furthest + 1,
++        }
+     }
+     // ANCHOR_END: new
+ 
+@@ -53,6 +56,7 @@ impl LevelMenu {
+         let items = (0..levels).map(|n| {
+             MenuItem::keyed("levels.level")
+                 .with_arg("n", n + 1)
++                .with_enabled(n < self.open)
+                 .with_value(Choice::Level(n))
+         });
+         Menu::new(items.collect()).focused(self.focus)
+@@ -66,13 +70,11 @@ impl Screen<Data> for LevelMenu {
+         "levels"
+     }
+ 
+-    // ANCHOR: actions
+     /// Its menu's.
+     fn actions(&self) -> Option<Vec<Action>> {
+         let actions = Menu::<()>::ACTIONS.iter();
+         Some(actions.filter_map(|&ui| Action::for_ui(ui)).collect())
+     }
+-    // ANCHOR_END: actions
+ 
+     // ANCHOR: update
+     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
+@@ -98,12 +100,16 @@ impl Screen<Data> for LevelMenu {
+         if let Some(LevelWon(level)) = result.and_then(ScreenResult::take::<LevelWon>) {
+             let last = ctx.game.own.levels.len().saturating_sub(1);
+             self.focus = (level + 1).min(last);
++            // ANCHOR: keep
++            self.open = self.open.max(self.focus + 1);
++            // A storage that fails loses only the player's progress.
++            let _ = progress::reached(&mut ctx.storage, self.focus);
++            // ANCHOR_END: keep
+         }
+         Transition::None
+     }
+     // ANCHOR_END: uncovered
+ 
+-    // ANCHOR: draw
+     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
+         let c = |e| ctx.palette.engine(e);
+         let bg = c(EngineColor::Background);
+@@ -123,7 +129,6 @@ impl Screen<Data> for LevelMenu {
+         let last = i32::from(buf.height()) - 1;
+         print_centred(buf, last, &help, c(EngineColor::TextDim), bg);
+     }
+-    // ANCHOR_END: draw
+ 
+     fn as_any(&self) -> Option<&dyn Any> {
+         Some(self)
+diff --git 06-levels/crates/game/src/lib.rs 07-save/crates/game/src/lib.rs
+--- 06-levels/crates/game/src/lib.rs
++++ 07-save/crates/game/src/lib.rs
+@@ -12,6 +12,7 @@ pub mod app_info;
+ pub mod board;
+ pub mod level;
+ pub mod levels;
++pub mod progress;
+ pub mod rules;
+ pub mod stages;
+ pub mod title;
+diff --git 07-save/crates/game/src/progress.rs 07-save/crates/game/src/progress.rs
+new file mode 100644
+--- /dev/null
++++ 07-save/crates/game/src/progress.rs
+@@ -0,0 +1,55 @@
++//! The player's progress, kept in their storage: the furthest level
++//! reached, with the version of its format.
++
++// ANCHOR: uses
++use serde::{Deserialize, Serialize};
++use shuyi::core::{SaveFormat, SaveHeader};
++use shuyi::ui::storage::{Storage, StorageError};
++// ANCHOR_END: uses
++
++// ANCHOR: progress
++/// What is kept: the version of the format, and the furthest level.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
++pub struct Progress {
++    /// The version of the format that wrote it.
++    pub version: u32,
++    /// The furthest level reached, counted from 0.
++    pub furthest: usize,
++}
++
++impl SaveFormat for Progress {
++    const NAME: &'static str = "Progress";
++    /// Raised whenever this type changes shape or meaning.
++    const VERSION: u32 = 1;
++}
++
++/// Where it is kept, in the player's profile.
++// check-text: not player text, a storage key
++pub const KEY: &str = "progress";
++
++/// The furthest level reached: the first, if nothing readable is kept.
++pub fn furthest(storage: &dyn Storage) -> usize {
++    let Ok(Some(text)) = storage.read(KEY) else {
++        return 0;
++    };
++    match ron::from_str::<SaveHeader<Progress>>(&text) {
++        Ok(header) if header.is_current() => {
++            ron::from_str::<Progress>(&text).map_or(0, |progress| progress.furthest)
++        }
++        _ => 0,
++    }
++}
++
++/// Keeps `level` as the furthest reached, if it is further.
++pub fn reached(storage: &mut dyn Storage, level: usize) -> Result<(), StorageError> {
++    if level <= furthest(storage) {
++        return Ok(());
++    }
++    let progress = Progress {
++        version: Progress::VERSION,
++        furthest: level,
++    };
++    let text = ron::to_string(&progress).map_err(|e| StorageError::Backend(e.to_string()))?;
++    storage.write(KEY, &text)
++}
++// ANCHOR_END: progress
+diff --git 06-levels/crates/game/src/stages.rs 07-save/crates/game/src/stages.rs
+--- 06-levels/crates/game/src/stages.rs
++++ 07-save/crates/game/src/stages.rs
+@@ -34,21 +34,16 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
+ }
+ // ANCHOR_END: own
+ 
+-// ANCHOR: first
+ /// What the title starts: the level menu.
+ pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
+-    let _ = ctx;
+-    Some(Box::new(LevelMenu::new()))
++    Some(Box::new(LevelMenu::new(ctx)))
+ }
+-// ANCHOR_END: first
+ 
+-// ANCHOR: screens
+ /// Every screen the game can show past the title, for the check that its
+ /// controls fit each target.
+ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+-    vec![Box::new(LevelMenu::new()), Box::new(Board::new(ctx, 0))]
++    vec![Box::new(LevelMenu::new(ctx)), Box::new(Board::new(ctx, 0))]
+ }
+-// ANCHOR_END: screens
+ 
+ /// The game's tools: the engine's, for a game on the short path.
+ #[cfg(feature = "tools")]
+diff --git 06-levels/crates/game/tests/board.rs 07-save/crates/game/tests/board.rs
+--- 06-levels/crates/game/tests/board.rs
++++ 07-save/crates/game/tests/board.rs
+@@ -7,8 +7,8 @@ use game::levels::LevelMenu;
+ use shuyi::core::Pos;
+ use shuyi::core::TurnRules;
+ use shuyi::platform::harness::Harness;
++use shuyi::ui::storage::Storage;
+ 
+-// ANCHOR: on_board
+ /// The game on its first level.
+ fn on_board() -> Harness<game::Data> {
+     let mut h = game::game().harness();
+@@ -16,7 +16,6 @@ fn on_board() -> Harness<game::Data> {
+     assert_eq!(h.screens(), ["title", "levels", "board"]);
+     h
+ }
+-// ANCHOR_END: on_board
+ 
+ fn board(h: &Harness<game::Data>) -> &Board {
+     h.screen::<Board>()
+@@ -108,3 +107,38 @@ fn cancel_leaves_the_menu_for_the_title() {
+     h.keys("Enter Backspace");
+     assert_eq!(h.screens(), ["title"]);
+ }
++
++// ANCHOR: test_save
++#[test]
++fn the_furthest_level_is_kept_and_opens_the_menu_there() {
++    let mut h = on_board();
++    assert_eq!(game::progress::furthest(&h.ctx().storage), 0);
++    h.keys("Right Right Enter");
++    assert_eq!(game::progress::furthest(&h.ctx().storage), 1);
++    // The menu made next, as on the next run, opens there.
++    let menu = LevelMenu::new(h.ctx());
++    assert_eq!((menu.focus, menu.open), (1, 2));
++}
++// ANCHOR_END: test_save
++
++#[test]
++fn a_level_not_reached_cant_be_chosen() {
++    let h = game::game().harness();
++    let menu = LevelMenu::new(h.ctx()).menu(h.ctx());
++    assert!(menu.items()[0].enabled);
++    assert!(!menu.items()[1].enabled);
++}
++
++// ANCHOR: test_damaged
++#[test]
++fn a_kept_progress_of_another_version_or_damaged_counts_as_none() {
++    let mut h = game::game().harness();
++    let storage = &mut h.ctx_mut().storage;
++    storage
++        .write(game::progress::KEY, "(version: 9, furthest: 3)")
++        .unwrap();
++    assert_eq!(game::progress::furthest(storage), 0);
++    storage.write(game::progress::KEY, "(version").unwrap();
++    assert_eq!(game::progress::furthest(storage), 0);
++}
++// ANCHOR_END: test_damaged

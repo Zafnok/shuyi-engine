@@ -1,7 +1,7 @@
 use proptest::prelude::*;
 
 use super::*;
-use crate::storage::{MAX_KEY_LEN, MemoryStorage};
+use crate::storage::{FaultyStorage, MAX_KEY_LEN, MemoryStorage};
 
 fn numbered(n: u32) -> String {
     format!("Player {n}")
@@ -198,50 +198,24 @@ fn the_move_runs_once() {
     );
 }
 
-/// A [`MemoryStorage`] whose writes fail once `writes` have succeeded,
-/// and whose deletes fail while `deletes_fail`.
-#[derive(Debug)]
-struct Stopping {
-    inner: MemoryStorage,
-    writes: usize,
-    deletes_fail: bool,
-}
-
-impl Storage for Stopping {
-    fn read(&self, key: &str) -> Result<Option<String>, StorageError> {
-        self.inner.read(key)
-    }
-    fn write(&mut self, key: &str, value: &str) -> Result<(), StorageError> {
-        if self.writes == 0 {
-            return Err(StorageError::Backend("stopped".into()));
-        }
-        self.writes -= 1;
-        self.inner.write(key, value)
-    }
-    fn delete(&mut self, key: &str) -> Result<(), StorageError> {
-        if self.deletes_fail {
-            return Err(StorageError::Backend("stopped".into()));
-        }
-        self.inner.delete(key)
-    }
-    fn list(&self) -> Result<Vec<String>, StorageError> {
-        self.inner.list()
-    }
+/// `inner`, whose writes fail once `writes` have succeeded, and whose
+/// deletes fail.
+fn stopping(inner: MemoryStorage, writes: usize) -> FaultyStorage {
+    FaultyStorage::over(inner)
+        .with_write_budget(writes)
+        .failing_deletes()
+        .with_error("stopped")
 }
 
 #[test]
 fn a_move_stopped_part_way_loses_nothing_and_is_tried_again() {
     let old = keys_from_before_profiles();
     for writes in 0..=old.len() {
-        let mut storage = Stopping {
-            inner: old_storage(),
-            writes,
-            deletes_fail: true,
-        };
+        let mut storage = stopping(old_storage(), writes);
         let (_, warnings) = load(&mut storage, numbered);
         assert!(!warnings.is_empty(), "stopped after {writes} writes");
         // The next launch, with nothing failing.
-        let mut storage = storage.inner;
+        let mut storage = storage.memory();
         let (_, warnings) = load(&mut storage, numbered);
         assert!(warnings.is_empty(), "{warnings:?}");
         for key in &old {
@@ -319,11 +293,7 @@ fn deleting_a_profiles_keys_spares_the_others() {
 fn deleting_keys_tries_them_all_and_says_it_failed() {
     let mut inner = MemoryStorage::new();
     inner.write("p1-a", "1").unwrap();
-    let mut storage = Stopping {
-        inner,
-        writes: 0,
-        deletes_fail: true,
-    };
+    let mut storage = stopping(inner, 0);
     assert!(delete_keys(&mut storage, ProfileId::FIRST).is_err());
 }
 

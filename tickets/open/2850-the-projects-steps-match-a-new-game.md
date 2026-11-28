@@ -89,10 +89,12 @@ None.
 - checking steps 02–10 against the template file by file: each changes
   the game on purpose. The check covers step 1.
 
-**Either order with 2858:** if 2858 is done, make this ticket's
-new-game files once in `site/tutorial/01-new`, run `cargo xtask
-tutorial-steps --write`, and `--record` any step whose patch no longer
-applies. If not, edit the ten folders as planned, and 2858 records them.
+**From 2858 (done):** steps 02–10 are made from `01-new` and a patch
+each (ADR-0168). Make this ticket's new-game files once in
+`site/tutorial/01-new`, run `cargo xtask tutorial-steps --write`, and
+where it stops at a patch that no longer applies, make the change in that
+step's folder too and `--record` it; the locks it refreshes are kept with
+`--locks` (the `run-gates` skill, *The tutorial's steps*).
 
 ## Implementation steps
 

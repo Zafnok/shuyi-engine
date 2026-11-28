@@ -1,0 +1,427 @@
+diff --git 02-board/crates/game/files/en.ron 03-walk/crates/game/files/en.ron
+--- 02-board/crates/game/files/en.ron
++++ 03-walk/crates/game/files/en.ron
+@@ -16,6 +16,6 @@
+ 
+     // ANCHOR: board
+     // The board.
+-    "board.help": "{Cancel} back",
++    "board.help": "{Cursor} walk · {Cancel} back",
+     // ANCHOR_END: board
+ }
+diff --git 02-board/crates/game/files/palette.ron 03-walk/crates/game/files/palette.ron
+--- 02-board/crates/game/files/palette.ron
++++ 03-walk/crates/game/files/palette.ron
+@@ -13,7 +13,6 @@
+     "accent": "#a0e07a",
+     "bright": "#ffffff",
+ 
+-    // ANCHOR: game
+     // The game's.
+     "floor_fg": "#3a3a46",
+     "floor_bg": "#16161c",
+@@ -26,5 +25,4 @@
+     "path": "#5ac8ff",
+     "cursor": "#ffd75a",
+     "threat": "#ff7a5a",
+-    // ANCHOR_END: game
+ }
+diff --git 02-board/crates/game/src/board.rs 03-walk/crates/game/src/board.rs
+--- 02-board/crates/game/src/board.rs
++++ 03-walk/crates/game/src/board.rs
+@@ -1,11 +1,10 @@
+ //! The board: a level on the screen. What it shows is a [`MapScene`] the
+ //! engine's glyph skin paints, and a [`BoardView`] of the lines round it.
+ 
+-// ANCHOR: uses
+ use std::any::Any;
+ 
+ use shuyi::core::Pos;
+-use shuyi::core::TerrainId;
++use shuyi::core::{Dir, TerrainId, TurnRules};
+ use shuyi::prelude::*;
+ use shuyi::ui::frame::Palette;
+ use shuyi::ui::grid::{
+@@ -15,16 +14,12 @@ use shuyi::ui::grid::{
+ 
+ use crate::Data;
+ use crate::level::TERRAIN_NAMES;
+-use crate::rules::Puzzle;
+-// ANCHOR_END: uses
++use crate::rules::{Command, Puzzle};
+ 
+ // ANCHOR: skin
+-// ANCHOR: area
+ /// The cells a level is shown in: all but the top and bottom rows.
+ pub const AREA: Rect = Rect::new(0, 1, 48, 22);
+-// ANCHOR_END: area
+ 
+-// ANCHOR: looks
+ /// Each terrain's two glyphs and colors, by [`TerrainId`]: floor, wall,
+ /// target.
+ pub const TERRAIN_LOOKS: [([char; 2], &str, &str); 3] = [
+@@ -32,9 +27,7 @@ pub const TERRAIN_LOOKS: [([char; 2], &str, &str); 3] = [
+     (['▓', '▓'], "wall_fg", "wall_bg"),
+     (['<', '>'], "target_fg", "floor_bg"),
+ ];
+-// ANCHOR_END: looks
+ 
+-// ANCHOR: terrains
+ /// The terrains as the skin sees them.
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+ pub struct Terrain;
+@@ -49,9 +42,7 @@ impl Terrains for Terrain {
+         Some(TerrainGlyphs::new(glyphs, fg, bg))
+     }
+ }
+-// ANCHOR_END: terrains
+ 
+-// ANCHOR: glyphs
+ /// The glyph skin: two cells a tile.
+ // check-text: not player text, the palette's names
+ pub const GLYPHS: GlyphSkin = GlyphSkin::new(
+@@ -59,9 +50,7 @@ pub const GLYPHS: GlyphSkin = GlyphSkin::new(
+     WalkSpeeds::of(8.0),
+     0,
+ );
+-// ANCHOR_END: glyphs
+ 
+-// ANCHOR: piece
+ /// Which piece.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum Who {
+@@ -98,9 +87,7 @@ impl MapUnit for Piece {
+         format!("{letter} ({},{})", self.pos.x, self.pos.y)
+     }
+ }
+-// ANCHOR_END: piece
+ 
+-// ANCHOR: pieces
+ /// The pieces under the glyph skin: the player's letter over its tile, and
+ /// a box over both of its tile's cells.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+@@ -134,10 +121,8 @@ impl UnitPainter<Piece> for Pieces<'_> {
+         }
+     }
+ }
+-// ANCHOR_END: pieces
+ // ANCHOR_END: skin
+ 
+-// ANCHOR: boardview
+ /// What the lines round the map show.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct BoardView {
+@@ -146,7 +131,6 @@ pub struct BoardView {
+     /// The help line.
+     pub help: String,
+ }
+-// ANCHOR_END: boardview
+ 
+ // ANCHOR: board
+ /// The board screen.
+@@ -160,7 +144,6 @@ pub struct Board {
+ // ANCHOR_END: board
+ 
+ impl Board {
+-    // ANCHOR: new
+     /// The board on the game's level.
+     ///
+     /// # Panics
+@@ -174,9 +157,7 @@ impl Board {
+             puzzle,
+         }
+     }
+-    // ANCHOR_END: new
+ 
+-    // ANCHOR: scene
+     /// What the map shows, in a view of `view` tiles round the player.
+     pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {
+         let tiles = self.puzzle.tiles();
+@@ -194,10 +175,8 @@ impl Board {
+         scene.push_unit(Piece { who, pos, home });
+         scene
+     }
+-    // ANCHOR_END: scene
+ 
+     /// What the lines round the map show.
+-    // ANCHOR: view
+     pub fn view(&self, ctx: &Ctx<Data>) -> BoardView {
+         let help = "board.help";
+         BoardView {
+@@ -205,35 +184,54 @@ impl Board {
+             help: ctx.text_with(help, &[]),
+         }
+     }
+-    // ANCHOR_END: view
+ 
+-    // ANCHOR: view_tiles
++    // ANCHOR: send
++    /// Sends `command` to the rules. A refused one changes nothing.
++    fn send(&mut self, command: Command) {
++        let _ = self.puzzle.apply(&command);
++    }
++    // ANCHOR_END: send
++
+     /// The tiles the glyph skin fits in [`AREA`].
+     pub fn view_tiles() -> (i32, i32) {
+         GridSkin::<Piece>::view_tiles(&GLYPHS, AREA)
+     }
+-    // ANCHOR_END: view_tiles
+ }
+ 
+-// ANCHOR: screen_top
+ impl Screen<Data> for Board {
+     // check-text: not player text, the screen's id
+     fn name(&self) -> &'static str {
+         "board"
+     }
+ 
+-    /// Cancel to go back.
++    // ANCHOR: actions
++    /// The four steps, and Cancel to go back.
+     fn actions(&self) -> Option<Vec<UiAction>> {
+-        Some(vec![UiAction::Cancel])
++        Some(vec![
++            UiAction::Up,
++            UiAction::Down,
++            UiAction::Left,
++            UiAction::Right,
++            UiAction::Cancel,
++        ])
+     }
++    // ANCHOR_END: actions
+ 
++    // ANCHOR: update
+     fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
+-        if input.actions.contains(&UiAction::Cancel) {
+-            return Transition::Pop;
++        for &action in &input.actions {
++            match action {
++                UiAction::Up => self.send(Command::Step(Dir::Up)),
++                UiAction::Down => self.send(Command::Step(Dir::Down)),
++                UiAction::Left => self.send(Command::Step(Dir::Left)),
++                UiAction::Right => self.send(Command::Step(Dir::Right)),
++                UiAction::Cancel => return Transition::Pop,
++                _ => {}
++            }
+         }
+         Transition::None
+     }
+-    // ANCHOR_END: screen_top
++    // ANCHOR_END: update
+ 
+     // ANCHOR: draw
+     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
+@@ -251,9 +249,7 @@ impl Screen<Data> for Board {
+     }
+     // ANCHOR_END: draw
+ 
+-    // ANCHOR: as_any
+     fn as_any(&self) -> Option<&dyn Any> {
+         Some(self)
+     }
+-    // ANCHOR_END: as_any
+ }
+diff --git 02-board/crates/game/src/level.rs 03-walk/crates/game/src/level.rs
+--- 02-board/crates/game/src/level.rs
++++ 03-walk/crates/game/src/level.rs
+@@ -1,7 +1,6 @@
+ //! A level: a text file in the engine's `.map` format, read through the
+ //! format registry, with the game's own terrains and features.
+ 
+-// ANCHOR: uses
+ use serde::{Deserialize, Serialize};
+ use shuyi::assets::Formats;
+ use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat, MapText};
+@@ -9,7 +8,6 @@ use shuyi::core::TerrainId;
+ use shuyi::prelude::*;
+ 
+ use crate::rules::Puzzle;
+-// ANCHOR_END: uses
+ 
+ // ANCHOR: terrains
+ /// Floor: the player and the boxes go over it.
+diff --git 02-board/crates/game/src/lib.rs 03-walk/crates/game/src/lib.rs
+--- 02-board/crates/game/src/lib.rs
++++ 03-walk/crates/game/src/lib.rs
+@@ -7,14 +7,12 @@
+ //! its name, id and version, is `shuyi.ron`'s `app`, which
+ //! `cargo shuyi app-info` writes into [`app_info`].
+ 
+-// ANCHOR: mods
+ pub mod app_info;
+ pub mod board;
+ pub mod level;
+ pub mod rules;
+ pub mod stages;
+ pub mod title;
+-// ANCHOR_END: mods
+ 
+ use std::sync::OnceLock;
+ 
+diff --git 02-board/crates/game/src/rules.rs 03-walk/crates/game/src/rules.rs
+--- 02-board/crates/game/src/rules.rs
++++ 03-walk/crates/game/src/rules.rs
+@@ -2,12 +2,13 @@
+ //! through commands. They know nothing of screens, keys or the clock.
+ 
+ // ANCHOR: uses
++use core::fmt;
+ use std::collections::BTreeSet;
+ 
+ use serde::{Deserialize, Serialize};
+-use shuyi::core::{Grid, Pos, TerrainId};
++use shuyi::core::{Dir, Grid, Pos, TerrainId, TurnRules};
+ 
+-use crate::level::{Feature, Level, TARGET};
++use crate::level::{Feature, Level, TARGET, WALL};
+ // ANCHOR_END: uses
+ 
+ // ANCHOR: state
+@@ -23,8 +24,42 @@ pub struct Puzzle {
+ }
+ // ANCHOR_END: state
+ 
++// ANCHOR: command
++/// What the player asks for.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
++pub enum Command {
++    /// Take one step that way.
++    Step(Dir),
++}
++
++/// What happened.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
++pub enum Event {
++    /// The player walked to this tile.
++    Walked(Pos),
++}
++
++/// Why a command was refused.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum Refusal {
++    /// A wall is that way.
++    Wall,
++    /// A box is that way, and nothing can push it yet.
++    Box,
++}
++
++impl fmt::Display for Refusal {
++    // check-text: not player text, what a test or a tool prints
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        f.write_str(match self {
++            Refusal::Wall => "a wall is that way",
++            Refusal::Box => "a box is that way",
++        })
++    }
++}
++// ANCHOR_END: command
++
+ impl Puzzle {
+-    // ANCHOR: new
+     /// The puzzle `level` lays out: it needs one start, a box, and as many
+     /// targets as boxes.
+     pub fn new(level: &Level) -> Result<Self, String> {
+@@ -52,9 +87,7 @@ impl Puzzle {
+         }
+         Ok(puzzle)
+     }
+-    // ANCHOR_END: new
+ 
+-    // ANCHOR: getters
+     /// The tiles.
+     pub fn tiles(&self) -> &Grid<TerrainId> {
+         &self.tiles
+@@ -69,9 +102,7 @@ impl Puzzle {
+     pub fn boxes(&self) -> &BTreeSet<Pos> {
+         &self.boxes
+     }
+-    // ANCHOR_END: getters
+ 
+-    // ANCHOR: targets
+     /// Every target tile.
+     pub fn targets(&self) -> BTreeSet<Pos> {
+         let (width, height) = (self.tiles.width(), self.tiles.height());
+@@ -80,5 +111,54 @@ impl Puzzle {
+             .filter(|&pos| self.tiles.get(pos) == Some(&TARGET))
+             .collect()
+     }
+-    // ANCHOR_END: targets
++
++    // ANCHOR: is_wall
++    /// Whether `pos` is a wall, or off the map.
++    fn is_wall(&self, pos: Pos) -> bool {
++        self.tiles.get(pos).is_none_or(|&tile| tile == WALL)
++    }
++    // ANCHOR_END: is_wall
++}
++
++// ANCHOR: rules
++impl TurnRules for Puzzle {
++    type Command = Command;
++    type Event = Event;
++    type Error = Refusal;
++    /// Nothing ends a level yet.
++    type Outcome = ();
++
++    fn check(&self, command: &Command) -> Result<(), Refusal> {
++        let Command::Step(dir) = *command;
++        let to = self.player.step(dir);
++        if self.is_wall(to) {
++            return Err(Refusal::Wall);
++        }
++        if self.boxes.contains(&to) {
++            return Err(Refusal::Box);
++        }
++        Ok(())
++    }
++
++    fn apply(&mut self, command: &Command) -> Result<Vec<Event>, Refusal> {
++        // All or nothing: a refused command changes nothing.
++        self.check(command)?;
++        let Command::Step(dir) = *command;
++        let to = self.player.step(dir);
++        self.player = to;
++        Ok(vec![Event::Walked(to)])
++    }
++
++    fn legal_commands(&self) -> Vec<Command> {
++        Dir::ALL
++            .into_iter()
++            .map(Command::Step)
++            .filter(|command| self.check(command).is_ok())
++            .collect()
++    }
++
++    fn outcome(&self) -> Option<()> {
++        None
++    }
+ }
++// ANCHOR_END: rules
+diff --git 02-board/crates/game/tests/board.rs 03-walk/crates/game/tests/board.rs
+--- 02-board/crates/game/tests/board.rs
++++ 03-walk/crates/game/tests/board.rs
+@@ -3,6 +3,7 @@
+ //! names, input to a test, not game code.
+ 
+ use game::board::Board;
++use shuyi::core::Pos;
+ use shuyi::platform::harness::Harness;
+ 
+ /// The game on its first level.
+@@ -26,3 +27,15 @@ fn the_level_is_drawn_and_cancel_goes_back() {
+     h.keys("Backspace");
+     assert!(h.screen::<Board>().is_none());
+ }
++
++// ANCHOR: test_walk
++#[test]
++fn the_player_walks_and_a_wall_stops_them() {
++    let mut h = on_board();
++    assert_eq!(board(&h).puzzle.player(), Pos::new(2, 2));
++    h.keys("Up");
++    assert_eq!(board(&h).puzzle.player(), Pos::new(2, 1));
++    h.keys("Up");
++    assert_eq!(board(&h).puzzle.player(), Pos::new(2, 1));
++}
++// ANCHOR_END: test_walk

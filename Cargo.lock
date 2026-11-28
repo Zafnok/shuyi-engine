@@ -2762,6 +2762,7 @@ dependencies = [
  "serde_norway",
  "sha2",
  "shuyi-cli",
+ "shuyi-embed",
  "shuyi-sound",
  "toml",
 ]

@@ -87,6 +87,37 @@ fn each_file_is_its_kind() {
     assert_eq!(classify("crates/xtask/src/golden.rs"), Kind::Code);
 }
 
+/// The book's project's steps past the first are made by `cargo xtask
+/// tutorial-steps --write` (ticket 2858); the first step, the patches and
+/// the locks are its source.
+#[test]
+fn the_made_steps_are_generated_and_their_source_is_not() {
+    let generated = Kind::LeftOut(LeftOut::Generated);
+    assert_eq!(
+        classify("site/tutorial/05-undo/crates/game/src/rules.rs"),
+        generated
+    );
+    assert_eq!(classify("site/tutorial/02-board/shuyi.ron"), generated);
+    assert_eq!(
+        classify("site/tutorial/10-ship/crates/game/files/levels/1.map"),
+        generated
+    );
+    assert_eq!(
+        classify("site/tutorial/01-new/crates/game/src/lib.rs"),
+        Kind::Docs
+    );
+    assert_eq!(
+        classify("site/tutorial-steps/patches/05-undo.patch"),
+        Kind::Docs
+    );
+    assert_eq!(classify("site/tutorial/tries.toml"), Kind::Docs);
+    assert_eq!(classify("site/tutorial/xx-notes/a.md"), Kind::Docs);
+    assert_eq!(
+        classify("site/tutorial-steps/locks/02-board/Cargo.lock"),
+        Kind::LeftOut(LeftOut::Lock)
+    );
+}
+
 #[test]
 fn the_totals_count_apart_what_is_left_out_and_the_tickets() {
     let size = fixture();

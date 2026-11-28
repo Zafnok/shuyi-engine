@@ -1,0 +1,241 @@
+diff --git 03-walk/crates/game/files/en.ron 04-push/crates/game/files/en.ron
+--- 03-walk/crates/game/files/en.ron
++++ 04-push/crates/game/files/en.ron
+@@ -17,5 +17,6 @@
+     // ANCHOR: board
+     // The board.
+     "board.help": "{Cursor} walk · {Cancel} back",
++    "board.help.won": "Solved! {Cancel} back",
+     // ANCHOR_END: board
+ }
+diff --git 03-walk/crates/game/src/board.rs 04-push/crates/game/src/board.rs
+--- 03-walk/crates/game/src/board.rs
++++ 04-push/crates/game/src/board.rs
+@@ -178,7 +178,13 @@ impl Board {
+ 
+     /// What the lines round the map show.
+     pub fn view(&self, ctx: &Ctx<Data>) -> BoardView {
+-        let help = "board.help";
++        // ANCHOR: won_view
++        let help = if self.puzzle.outcome().is_some() {
++            "board.help.won"
++        } else {
++            "board.help"
++        };
++        // ANCHOR_END: won_view
+         BoardView {
+             name: self.name.clone(),
+             help: ctx.text_with(help, &[]),
+@@ -204,7 +210,6 @@ impl Screen<Data> for Board {
+         "board"
+     }
+ 
+-    // ANCHOR: actions
+     /// The four steps, and Cancel to go back.
+     fn actions(&self) -> Option<Vec<UiAction>> {
+         Some(vec![
+@@ -215,7 +220,6 @@ impl Screen<Data> for Board {
+             UiAction::Cancel,
+         ])
+     }
+-    // ANCHOR_END: actions
+ 
+     // ANCHOR: update
+     fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
+diff --git 03-walk/crates/game/src/rules.rs 04-push/crates/game/src/rules.rs
+--- 03-walk/crates/game/src/rules.rs
++++ 04-push/crates/game/src/rules.rs
+@@ -1,7 +1,6 @@
+ //! The puzzle's rules, pure and deterministic: a state that changes only
+ //! through commands. They know nothing of screens, keys or the clock.
+ 
+-// ANCHOR: uses
+ use core::fmt;
+ use std::collections::BTreeSet;
+ 
+@@ -9,7 +8,6 @@ use serde::{Deserialize, Serialize};
+ use shuyi::core::{Dir, Grid, Pos, TerrainId, TurnRules};
+ 
+ use crate::level::{Feature, Level, TARGET, WALL};
+-// ANCHOR_END: uses
+ 
+ // ANCHOR: state
+ /// The puzzle: its tiles, where the player stands and where the boxes are.
+@@ -32,33 +30,53 @@ pub enum Command {
+     Step(Dir),
+ }
+ 
++// ANCHOR: event
+ /// What happened.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+ pub enum Event {
+     /// The player walked to this tile.
+     Walked(Pos),
++    /// A box was pushed from one tile to another.
++    Pushed {
++        /// Where it was.
++        from: Pos,
++        /// Where it is now.
++        to: Pos,
++    },
+ }
++// ANCHOR_END: event
+ 
++// ANCHOR: refusal
+ /// Why a command was refused.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum Refusal {
+     /// A wall is that way.
+     Wall,
+-    /// A box is that way, and nothing can push it yet.
+-    Box,
++    /// The box that way has a wall or another box behind it.
++    Stuck,
++    /// Every box is already on a target.
++    Over,
+ }
++// ANCHOR_END: refusal
+ 
+ impl fmt::Display for Refusal {
+     // check-text: not player text, what a test or a tool prints
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         f.write_str(match self {
+             Refusal::Wall => "a wall is that way",
+-            Refusal::Box => "a box is that way",
++            Refusal::Stuck => "the box can't move that way",
++            Refusal::Over => "every box is on a target",
+         })
+     }
+ }
+ // ANCHOR_END: command
+ 
++// ANCHOR: won
++/// How a level ends: only one way, every box on a target.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
++pub struct Won;
++// ANCHOR_END: won
++
+ impl Puzzle {
+     /// The puzzle `level` lays out: it needs one start, a box, and as many
+     /// targets as boxes.
+@@ -112,12 +130,10 @@ impl Puzzle {
+             .collect()
+     }
+ 
+-    // ANCHOR: is_wall
+     /// Whether `pos` is a wall, or off the map.
+     fn is_wall(&self, pos: Pos) -> bool {
+         self.tiles.get(pos).is_none_or(|&tile| tile == WALL)
+     }
+-    // ANCHOR_END: is_wall
+ }
+ 
+ // ANCHOR: rules
+@@ -125,29 +141,47 @@ impl TurnRules for Puzzle {
+     type Command = Command;
+     type Event = Event;
+     type Error = Refusal;
+-    /// Nothing ends a level yet.
+-    type Outcome = ();
++    type Outcome = Won;
+ 
++    // ANCHOR: check
+     fn check(&self, command: &Command) -> Result<(), Refusal> {
++        if self.outcome().is_some() {
++            return Err(Refusal::Over);
++        }
+         let Command::Step(dir) = *command;
+         let to = self.player.step(dir);
+         if self.is_wall(to) {
+             return Err(Refusal::Wall);
+         }
+-        if self.boxes.contains(&to) {
+-            return Err(Refusal::Box);
++        // ANCHOR: push_check
++        let past = to.step(dir);
++        if self.boxes.contains(&to) && (self.is_wall(past) || self.boxes.contains(&past)) {
++            return Err(Refusal::Stuck);
+         }
++        // ANCHOR_END: push_check
+         Ok(())
+     }
++    // ANCHOR_END: check
+ 
++    // ANCHOR: apply
+     fn apply(&mut self, command: &Command) -> Result<Vec<Event>, Refusal> {
+         // All or nothing: a refused command changes nothing.
+         self.check(command)?;
+         let Command::Step(dir) = *command;
+         let to = self.player.step(dir);
++        // ANCHOR: push_apply
++        let mut events = Vec::new();
++        if self.boxes.remove(&to) {
++            let past = to.step(dir);
++            self.boxes.insert(past);
++            events.push(Event::Pushed { from: to, to: past });
++        }
++        // ANCHOR_END: push_apply
+         self.player = to;
+-        Ok(vec![Event::Walked(to)])
++        events.push(Event::Walked(to));
++        Ok(events)
+     }
++    // ANCHOR_END: apply
+ 
+     fn legal_commands(&self) -> Vec<Command> {
+         Dir::ALL
+@@ -157,8 +191,11 @@ impl TurnRules for Puzzle {
+             .collect()
+     }
+ 
+-    fn outcome(&self) -> Option<()> {
+-        None
++    // ANCHOR: outcome
++    /// Won once every box is on a target.
++    fn outcome(&self) -> Option<Won> {
++        (self.boxes == self.targets()).then_some(Won)
+     }
++    // ANCHOR_END: outcome
+ }
+ // ANCHOR_END: rules
+diff --git 03-walk/crates/game/tests/board.rs 04-push/crates/game/tests/board.rs
+--- 03-walk/crates/game/tests/board.rs
++++ 04-push/crates/game/tests/board.rs
+@@ -4,6 +4,7 @@
+ 
+ use game::board::Board;
+ use shuyi::core::Pos;
++use shuyi::core::TurnRules;
+ use shuyi::platform::harness::Harness;
+ 
+ /// The game on its first level.
+@@ -39,3 +40,29 @@ fn the_player_walks_and_a_wall_stops_them() {
+     assert_eq!(board(&h).puzzle.player(), Pos::new(2, 1));
+ }
+ // ANCHOR_END: test_walk
++
++// ANCHOR: test_push
++#[test]
++fn pushing_the_box_onto_the_target_wins() {
++    let mut h = on_board();
++    h.keys("Right");
++    assert!(board(&h).puzzle.boxes().contains(&Pos::new(4, 2)));
++    assert!(board(&h).puzzle.outcome().is_none());
++    h.keys("Right");
++    assert!(board(&h).puzzle.boxes().contains(&Pos::new(5, 2)));
++    assert!(board(&h).puzzle.outcome().is_some());
++}
++// ANCHOR_END: test_push
++
++// ANCHOR: test_stuck
++#[test]
++fn a_box_against_a_wall_stays_and_so_does_the_player() {
++    let mut h = on_board();
++    // Round the box, and push it up against the top wall.
++    h.keys("Down Right Up");
++    assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
++    assert!(board(&h).puzzle.boxes().contains(&Pos::new(3, 1)));
++    h.keys("Up");
++    assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
++}
++// ANCHOR_END: test_stuck

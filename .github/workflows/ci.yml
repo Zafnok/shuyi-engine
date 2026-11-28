@@ -479,6 +479,9 @@ jobs:
   # gained a dependency, or moved a version) fails here instead of being
   # rewritten, and the last step fails on anything else the job changed.
   # A dependency change in the engine refreshes the ten locks (`run-gates`).
+  # Steps 02 to 10 are made from 01-new and a patch each (ticket 2858,
+  # ADR-0168): the `tickets` job, which builds xtask already, checks they
+  # are, so this job builds the folders as checked in.
   tutorial:
     name: tutorial (${{ matrix.step }})
     needs: changes
@@ -1545,6 +1548,10 @@ jobs:
         run: cargo xtask check-toolchain
       - name: Check the book's dev container against the steps and the root's
         run: cargo xtask check-devcontainers
+      # The book's project's steps 02 to 10 are what 01-new and their patches
+      # make, and each step's lock is its group's (ticket 2858, ADR-0168).
+      - name: Check the tutorial's steps against their source
+        run: cargo xtask tutorial-steps --check
       - name: Check the docs map
         run: cargo xtask check-docs
       # A game's Windows checkout of this repository by Cargo adds about 80
