@@ -192,7 +192,7 @@ No `Behaviour:` line is expected: every existing snapshot is unchanged.
   still acts through actions and `ScreenResult` (ADR-0018).
 - Scrolling a `Repeat` past `max` (3234's scroll panel).
 - Eased transitions between a widget's states (normal, focused,
-  disabled) and menu sounds in the look file.
+  disabled): 3270. Menu sounds in the look file.
 - Colours in the look file: roles only; colours stay in the palette and
   its themes (`GameSettings::Theme`, 2324).
 - A text size the player picks (2323, parked) and the accessibility tree

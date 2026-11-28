@@ -97,12 +97,13 @@ None.
     of the above.
 
 **Out (do not do):**
+- relations, observers and events beyond `Commands`, which the Bevy
+  coverage audit of 2026-11-28 ticketed: relations and entity extras in
+  2153, messages, observers and hooks in 2154, schedule control and
+  states in 2155, script systems in 2156, each blocked by this one;
 - running a schedule inside a game's stage, the parallel scheduler and
   the example (2108);
 - scenes (2221);
-- relations (parent and child entities), observers, and events beyond
-  `Commands`. No ticket plans them yet: a game that needs one writes a
-  follow-up ticket (the `write-ticket` skill), blocked by this one;
 - measuring the module at the scale of an RTS army (2705, parked).
   **Either order with 2705:** if 2705 is done, read its report,
   `docs/research/units-at-scale.md`, beside 2904's numbers, and

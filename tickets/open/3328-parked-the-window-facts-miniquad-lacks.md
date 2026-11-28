@@ -90,7 +90,7 @@ None.
 
 **Out (do not do):**
 - The macroquad backend: it keeps 3044's behaviour.
-- Several windows, and moving the window from the game.
+- Several windows, and moving the window from the game: 3355 (parked).
 
 **Estimated size:** about 1,300 lines (code 750, tests 400, docs 150).
 

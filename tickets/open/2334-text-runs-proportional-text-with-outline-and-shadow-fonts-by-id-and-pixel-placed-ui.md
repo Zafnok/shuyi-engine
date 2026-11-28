@@ -295,12 +295,15 @@ its 2355 and 2338 clauses and 2405's hits) goes to a follow-up ticket
 2338 at it.
 
 **Out (do not do):**
+- text areas (3268). **Either order with 3268:** if 3268 is done, its
+  text area wraps runs through this ticket's line breaker, with a test;
+  if not, nothing to do (3268 wraps runs itself).
 
 - rotated runs, or runs drawn at a scale the caller picks: 2335
   rotates single sprites, and 2323 (parked) scales runs only by the
   player's text size (above);
-- styled spans inside a run: 2347 styles cell text only, and its Out
-  leaves runs out too; a ticket of its own when a game asks;
+- styled spans inside a run: 2347 styles cell text only, and 3267
+  builds spans on these runs;
 - Japanese and Chinese breaking rules for runs (2302's rules are for
   cells; a run breaks at spaces and cuts long words); a shaper itself
   (`shape` above is the one place it goes), right-to-left text (2908,

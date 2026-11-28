@@ -238,8 +238,8 @@ None.
 - The accessibility tree (2322, parked), beyond the either-order part
   in item 4.
 - Shoulder buttons that jump between tabs or groups, and focus across
-  screens: no `UiAction` for them (the `input-actions` skill); a
-  follow-up if a game asks.
+  screens: no `UiAction` for them (the `input-actions` skill). 3268
+  adds next and previous focus with groups on this map.
 - Drag and drop itself: 3233.
 - Moving engine screens onto `Focus`: each takes the focus in one
   widget at a time (the profiles screen's actions menu takes every

@@ -75,7 +75,7 @@ None.
 - HD-2D's diorama skin (3107): its stage is 2D, so 2315–2318's
   channels cover it, and 3107 places their gizmos through its camera;
 - the DS's hardware 3D (3025);
-- a free-fly debug camera (3106 leaves it to a later ticket);
+- a free-fly debug camera (3122, parked);
 - editing anything in 3D.
 
 ## Implementation steps

@@ -213,8 +213,7 @@ engine's `name_entry` (`crates/ui/src/widgets/mod.rs`). So:
   reads, doesn't change.
 
 **Out (do not do):**
-- Multi-line fields (a sign's text, chat history): a follow-up ticket
-  if a game asks.
+- Multi-line fields (a sign's text, chat history): 3268.
 - The IME's composing text drawn in the field: miniquad 0.4.11 has
   none, and it comes with the winit backend's IME work.
 - The pointer placing the caret or dragging a selection: keys answer a

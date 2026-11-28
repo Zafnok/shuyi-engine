@@ -85,6 +85,12 @@ None.
   `site/snippets/`.
 
 **Out (do not do):**
+- scenes based on other scenes, and prefab instances with overrides:
+  2294, blocked by this one;
+- relations between entities (2153). **Either order with 2153:** if 2153
+  is done, the scene writes only a relation's forward side and rebuilds
+  the reverse side on load, with a round-trip test; if not, nothing to
+  do (2153 adds that rule to this format).
 - an editor for scenes: the editor research (2506, parked) decides
   whether one of its panels edits `*.scene.ron` files, and writes its
   ticket;

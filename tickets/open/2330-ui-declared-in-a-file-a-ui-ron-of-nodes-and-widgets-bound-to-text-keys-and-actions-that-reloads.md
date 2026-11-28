@@ -122,6 +122,14 @@ None.
   moves to a `.ui.ron`, with its snapshot unchanged.
 
 **Out (do not do):**
+- the folding tree widget (3265). **Either order with 3265:** if 3265 is
+  done, add its `tree` node; if not, nothing to do (3265 adds it).
+- grid layout and anchors (3266). **Either order with 3266:** if 3266 is
+  done, add `grid`, `tracks`, `span` and `anchor` to the node format; if
+  not, nothing to do (3266 adds them).
+- the colour picker's nodes (3269). **Either order with 3269:** if 3269
+  is done, add its `swatches` and `colour` nodes; if not, nothing to do
+  (3269 adds them).
 - logic in the file (no conditions or scripts; scripts are 2101's);
 - an editor (2507).
 

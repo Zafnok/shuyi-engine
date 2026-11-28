@@ -102,7 +102,7 @@ None.
 - **A text dump** of each rig's state, one line.
 
 **Out (do not do):**
-- a free-fly debug camera (a later ticket if wanted);
+- a free-fly debug camera (3122, parked);
 - camera shake and cinematic paths in 3D;
 - head bob and weapon sway (a game's job);
 - drawing the camera between two steps on displays faster than 60 Hz

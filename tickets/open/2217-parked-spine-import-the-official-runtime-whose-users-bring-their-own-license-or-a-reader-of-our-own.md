@@ -6,7 +6,7 @@ milestone: "Engine: animation"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2105", "2336"]
+blocked_by: ["2105", "2336", "3262"]
 nick_input: decision
 completed:
 ---
@@ -95,10 +95,9 @@ Record the answer in `docs/decisions.md`. If it is A:
 - **What it does:** loads a Spine export (JSON or binary, with its
   atlas) through the runtime, poses it at a time, mixes animations as
   the runtime does, and hands the skin a list of textured triangles and
-  quads for a world layer (1120). The frame has solid polygons (2336)
-  but no textured triangles: add textured triangles on 2336's pixel
-  rule (pixel centres, half-open edges) through a `for_each_run` like
-  `Shape`'s, with `frame-png` and the 1-bit renderers drawing them too.
+  quads for a world layer (1120), drawn as 3262's textured triangle
+  items (pixel centres, half-open edges, in `frame-png` and the 1-bit
+  renderers too), which is why 3262 is a blocker.
 - **Determinism:** poses are for drawing only. The docs say a game must
   never read bone positions from this module into its rules (use 2105's
   `Fx` rigs, or the game's own data, for hitboxes).

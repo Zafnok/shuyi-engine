@@ -30,8 +30,8 @@ rectangles that widgets draw in.
 `f32`. The engine's frames are whole cells (glyph skins) or whole
 pixels (sprite skins), the views are tested by equality, and `shuyi-ui`
 is `no_std` (3005). A small integer subset of flexbox of our own is
-simpler to test and to keep deterministic. If a game needs CSS grid,
-a follow-up can wrap `taffy` behind a feature.
+simpler to test and to keep deterministic. Grids and anchored nodes
+extend it in 3266, in integers too.
 
 ## Nick input
 
@@ -79,8 +79,8 @@ None.
 
 **Out (do not do):**
 - UI declared in a data file (2330);
-- CSS grid, absolute positioning, scrolling containers (the list cursor,
-  2307, already scrolls a menu);
+- CSS grid and absolute positioning (3266); scrolling containers (the
+  list cursor, 2307, already scrolls a menu);
 - moving the focus between laid-out widgets with the d-pad (2355, which
   waits for this ticket);
 - hit areas for the pointer: painters record them in the frame as they

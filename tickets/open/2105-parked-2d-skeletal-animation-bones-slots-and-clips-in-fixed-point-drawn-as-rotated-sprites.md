@@ -114,7 +114,8 @@ None.
 **Out (do not do):**
 - bone scale and shear (a follow-up if a rig needs them; 2216 reports
   them as errors);
-- mesh attachments and deformation, IK constraints, physics on bones;
+- mesh attachments and deformation (2160, parked), IK constraints,
+  physics on bones;
 - DragonBones import (2216);
 - Spine import (2217);
 - a state machine that picks the clip (2104 picks clips; mixing two of

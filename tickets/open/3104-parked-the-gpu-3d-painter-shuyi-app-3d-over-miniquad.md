@@ -141,11 +141,12 @@ None.
 
 **Out (do not do):**
 - other backends' painters (the DS's is ADR-0012's);
-- more than one shadow-casting light;
+- more than one shadow-casting light, spot lights, cascades, a sky and
+  more fog: 3117;
 - colour grading from a lookup image;
 - ray-traced and path-traced light (2911 researches it);
-- screen-space reflections, ambient occlusion and other effects not in
-  ADR-0011 §7;
+- screen-space reflections, ambient occlusion, anti-aliasing,
+  tonemapping and other effects not in ADR-0011 §7: 3121;
 - the diorama skin (3107);
 - a CI job of its own for 3D: the look test runs in 2018's `render`
   job.

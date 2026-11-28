@@ -172,9 +172,9 @@ None.
 
 **Out (do not do):**
 - layers (an upper body on one graph over legs on another) and additive
-  poses: a follow-up if a game needs one;
+  poses: 2159 (parked);
 - blends of more than two clips at once by a parameter (Godot's
-  `BlendSpace2D` over poses): a follow-up if a game needs one;
+  `BlendSpace2D` over poses): 2159 (parked);
 - fades between frame clips: 2104 draws frames, which can't be mixed;
 - a fade written once per pair of states (Spine's `setMix`): here each
   transition has its own; a follow-up if graphs repeat themselves;

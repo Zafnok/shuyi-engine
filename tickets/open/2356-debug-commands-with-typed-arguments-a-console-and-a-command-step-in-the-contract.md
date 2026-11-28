@@ -323,8 +323,12 @@ None.
   is done first, do it here as its clause describes.
 - A command in the grid template. 2511 reshapes the templates, and 2512
   budgets their lines. Hello, Grid shows the pattern.
-- Several commands on one line, tab completion, recalling past lines,
-  scripting (2101), and writing arbitrary state.
+- Several commands on one line, recalling past lines, scripting
+  (2101), and writing arbitrary state.
+- Tab completion and the state browser's edits (3453). **Either order
+  with 3453:** if 3453 is done, the console completes command names and
+  argument enums through its `shuyi_ui::fuzzy`, and the state browser's
+  edits become debug commands; if not, nothing to do (3453 adds both).
 
 ## Implementation steps
 
