@@ -1054,9 +1054,9 @@ jobs:
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       # The sound effects' renderer, the corner sheets' generator and the
       # part sets' roll, in integers without `std` (tickets 2225, 2259 and
-      # 2260).
+      # 2260); the part sets' painting too, beside the raster (ticket 2284).
       - run: cargo build -p shuyi-assets --no-default-features --features sfx,corners,parts --target thumbv7em-none-eabihf --locked
-      - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
+      - run: cargo build -p shuyi-ui --no-default-features --features raster,parts --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
       # The Playdate backend as the device links it, and a game on it. The SDK
       # itself stays out of CI: its license gives no leave to fetch it on a

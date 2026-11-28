@@ -149,6 +149,7 @@ pub const API_CRATES: &[ApiCrate] = &[
             "raster",
             "toy",
             "schema",
+            "parts",
         ]),
     },
     ApiCrate {

@@ -701,9 +701,9 @@ manifest names it like any sound file:
 
 A part set makes a picture for each of a game's many generated people,
 creatures or things, from parts drawn once (ticket 2260, ADR-0165):
-behind the `parts` feature of `shuyi-assets` (the file and the roll;
-the painting, a feature of `shuyi-ui`, is ticket 2284's). No
-dependency, and it builds without `std`. Hand-drawn pictures stay the
+behind the `parts` feature of `shuyi-assets` (the file and the roll)
+and of `shuyi-ui` (the painting, ticket 2284, which turns the first on).
+No dependency, and both build without `std`. Hand-drawn pictures stay the
 default way ([picture sets](#formats), one file of pictures per named
 person); a game opts in for its crowds, and may show both on one screen.
 
@@ -735,9 +735,11 @@ person); a game opts in for its crowds, and may show both on one screen.
 - **Roll, in the skin.** The rules keep a person's seed and kind, and
   what they wear, never pixels or colours. The skin rolls the look,
   `PartSet::appearance(kind, seed, worn)`: a part per slot and a colour
-  per key, which it paints into an RGBA `Painted` picture of the set's
-  size that every painter draws (ADR-0078), again only when the person
-  changes.
+  per key. It paints it with `shuyi_ui::frame::parts::paint` into an
+  RGBA `Painted` picture of the set's size that every painter draws
+  (ADR-0078), again only when the person changes. A picture not RGBA or
+  not the set's size, a look not of the set, or a part whose pixels
+  aren't there is a `PaintError`, and paints nothing.
 - **A mod can add to a set.** Each slot and each colour group rolls from
   a generator of its own, seeded by the FNV hash of the seed and its
   name, so adding a slot or a group changes no other one's roll: every

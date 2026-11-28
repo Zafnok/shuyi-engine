@@ -10,7 +10,8 @@
 //! of [`shape`]; and
 //! the one-bit renderer ([`onebit`]); with the `raster` feature, the
 //! software painter whose picture every backend must match
-//! ([`raster`]).
+//! ([`raster`]); with the `parts` feature, a part set's look painted
+//! into a painted picture (`parts`).
 //!
 //! The drawing helpers skins share ([`draw`]): [`GlyphBuffer::panel`] (a
 //! box with a title in its border), [`GlyphBuffer::meter`] (a bar that
@@ -33,6 +34,8 @@ pub mod hit;
 pub mod key_cap;
 pub mod onebit;
 pub mod painted;
+#[cfg(feature = "parts")]
+pub mod parts;
 pub mod portrait;
 #[cfg(any(test, feature = "raster"))]
 pub mod raster;
