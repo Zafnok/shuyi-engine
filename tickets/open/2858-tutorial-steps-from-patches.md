@@ -18,7 +18,7 @@ completed:
 Found by the redundancy sweep of 2026-11-28. The book's project (the box
 pusher) is ten full copies of one growing game, `site/tutorial/01-new`
 to `10-ship` ([ADR-0117](../../docs/adr/0117-exercises-checks-spliced-into-a-copy-of-each-step-and-run-by-its-web-build.md),
-[ADR-0126](../../docs/adr/0126-the-books-tries-pictures-of-an-edit-rendered-by-ci-and-checked.md)).
+[ADR-0126](../../docs/adr/0126-the-code-pad-a-codespace-of-the-book-not-a-build-server.md)).
 Each step is the one before it plus that chapter's change.
 
 - **Measured** (`find <step> -type f ! -name Cargo.lock | xargs cat | wc -l`):
