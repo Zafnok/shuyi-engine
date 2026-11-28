@@ -42,14 +42,18 @@ pub struct Type {
 
 /// The structs and enums of `listing`, in its order.
 pub fn types(listing: &[String]) -> Vec<Type> {
-    listing.iter().filter_map(|line| read_type(line)).collect()
+    listing
+        .iter()
+        .map(String::as_str)
+        .filter_map(read_type)
+        .collect()
 }
 
 /// `line` as a `pub struct` or `pub enum` line, if it is one: any
 /// attributes before `pub`, the word, then the path up to its generics
 /// (`<`), its tuple fields (`(`) or the end of the line.
 fn read_type(line: &str) -> Option<Type> {
-    let header = type_header(line).filter(|header| header.is_type())?;
+    let header = type_header(line).filter(super::constructors::Header::is_type)?;
     let end = header
         .rest
         .find(|c: char| matches!(c, '<' | '(' | ';' | '{') || c.is_whitespace())
@@ -443,10 +447,10 @@ mod tests {
             closed: ["shuyi_core::grid::Dir"],
             open: ["shuyi_core::grid::Pos"],
         )})"#;
-        let had = r#"(crates: {"shuyi-core": (open: ["shuyi_core::grid::Pos"])})"#;
-        assert_eq!(check(Some(head), Some(had), &crates), []);
-        let lacked = r#"(crates: {"shuyi-core": (plain: ["shuyi_core::grid::Pos"])})"#;
-        let problems = check(Some(head), Some(lacked), &crates);
+        let base_had = r#"(crates: {"shuyi-core": (open: ["shuyi_core::grid::Pos"])})"#;
+        assert_eq!(check(Some(head), Some(base_had), &crates), []);
+        let base_lacked = r#"(crates: {"shuyi-core": (plain: ["shuyi_core::grid::Pos"])})"#;
+        let problems = check(Some(head), Some(base_lacked), &crates);
         assert_eq!(
             problems,
             [Problem::NewOpen {
@@ -462,7 +466,7 @@ mod tests {
         );
         // A base with no file, or none of this crate, has no `open` list.
         assert_eq!(check(Some(head), None, &crates), []);
-        let other = r#"(crates: {})"#;
+        let other = "(crates: {})";
         assert_eq!(check(Some(head), Some(other), &crates).len(), 1);
     }
 

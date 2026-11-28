@@ -197,6 +197,12 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
             from: "        \"shuyi-sound\": (",
             to: "        \"shuyi-cli\": (",
         ),
+        // Ticket 2096: the sound crates' exhaustive types.
+        Cut(
+            file: "tools/exhaustive.ron",
+            from: "        \"shuyi-sound\": (",
+            to: "        \"shuyi-playdate\": (",
+        ),
         Cut(
             file: "README.md",
             from: "| `shuyi-sound` | `crates/sound` |",
