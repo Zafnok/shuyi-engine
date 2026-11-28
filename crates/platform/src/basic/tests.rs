@@ -441,15 +441,7 @@ impl PreviewGame<Data> for DemoPreview {
 }
 
 /// The engine's usual limits, in a box of 40 × 3.
-const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: 40,
-    box_lines: 3,
-    max_text: 120,
-    max_option: 30,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 3,
-};
+const LIMITS: DialogueLimits = DialogueLimits::new(40, 3);
 
 /// The rules the demo's scenes are checked against.
 struct DemoRules(DialogueLimits);

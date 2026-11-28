@@ -187,6 +187,10 @@ impl Concerns {
 /// what it is built for, and what it sits beside.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// Read from a manifest, or built with `default()` and its fields assigned:
+// it grows (parked 3017 gives it `needs`), so `#[non_exhaustive]` (ADR-0039
+// kinds 4 and 5).
+#[non_exhaustive]
 pub struct ModuleInfo {
     /// The concerns it answers, and how: one module may answer several
     /// (`[{ concern = "bodies", answer = "rigid-body" }]`).

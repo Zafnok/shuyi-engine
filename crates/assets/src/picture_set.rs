@@ -65,15 +65,7 @@
 //!     "ana",
 //!     vec![NamedPicture::new("neutral", neutral, ImageInfo::new(64, 64))],
 //! );
-//! let limits = DialogueLimits {
-//!     box_width: 30,
-//!     box_lines: 3,
-//!     max_text: 90,
-//!     max_option: 20,
-//!     max_options: 4,
-//!     min_options: 2,
-//!     max_reaction_texts: 3,
-//! };
+//! let limits = DialogueLimits::new(30, 3).with_max_option(20);
 //! let rules = Rules { limits, sets: [("ana".to_owned(), ana)].into() };
 //! let ana = CharacterId("ana".into());
 //! assert_eq!(rules.expression_problem(&ana, "neutral"), None);

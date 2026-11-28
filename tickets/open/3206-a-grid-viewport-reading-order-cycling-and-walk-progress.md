@@ -79,7 +79,8 @@ None.
   (`crates/assets/src/keymap/action_set.rs`) if no other ticket added
   it (below).
 - The toy's `Field` holds a `Viewport` and uses `tile_at`, `arrived`
-  and `UiAction::dir`. Hello, Grid uses `tile_at`, `arrived` and
+  and `UiAction::dir` (**from 2096 (done)** it is `#[non_exhaustive]`,
+  built with `Field::new` or `Field::glyphs`). Hello, Grid uses `tile_at`, `arrived` and
   `UiAction::dir`; its camera stays centred on its hero (its own look).
 - `skills/shuyi-stage-grid/SKILL.md`: a line on `Viewport`, `cycle` and
   the walk helpers beside its `Camera::centred_on` line; `check-skills`

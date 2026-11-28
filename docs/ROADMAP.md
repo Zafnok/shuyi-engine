@@ -198,7 +198,7 @@ These tickets, in order:
 | 3041 (done) | Log sinks in shipped builds |
 | 3044 (done) | The window opens as it was left |
 | 2095 (done) | The font atlas's description, the `Sound` kind and `DoctorInput` move under ADR-0039 |
-| 2096 | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
+| 2096 (done) | `cargo xtask api` fails a new public struct or enum that is neither `#[non_exhaustive]` nor listed as a plain value or a closed set |
 | 3503 (done) | A public constructor takes no two neighbouring arguments of the same type, checked by `cargo xtask api` |
 | 3537 (done) | The bots' settings, the perf rows and five other constructors take no two neighbouring numbers |
 | 3539 (done) | The perf rows take no two neighbouring numbers |

@@ -73,15 +73,7 @@ impl Screen<Data> for Talk {
 
 // ANCHOR: preview
 /// What the text box holds: the checks keep every line to it.
-const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: Talk::SIZE.0,
-    box_lines: Talk::SIZE.1,
-    max_text: 200,
-    max_option: 30,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 3,
-};
+const LIMITS: DialogueLimits = DialogueLimits::new(Talk::SIZE.0, Talk::SIZE.1).with_max_text(200);
 
 /// The rules the format's checks hold a scene to.
 pub struct Rules;

@@ -75,8 +75,20 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text
 /// How much text a game's dialogue box and reply menu hold: the limits the
 /// checks keep a script to, counted in cells ([`text_width`]).
 ///
+/// Kind 2 of ADR-0039: a game builds it in a `const` with
+/// [`DialogueLimits::new`] and the `with_<field>` methods, as it grows (2289
+/// gives it a character policy):
+///
+/// ```
+/// use shuyi_assets::dialogue::DialogueLimits;
+///
+/// const LIMITS: DialogueLimits = DialogueLimits::new(40, 3).with_max_text(200);
+/// assert_eq!(LIMITS.max_options, 4);
+/// ```
+///
 /// [`text_width`]: crate::lang::text_width
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DialogueLimits {
     /// Cells per line of the text box.
     pub box_width: usize,
@@ -93,6 +105,61 @@ pub struct DialogueLimits {
     /// Most text steps (speech or narration) in one reply's reaction, so
     /// the scene rejoins quickly.
     pub max_reaction_texts: usize,
+}
+
+impl DialogueLimits {
+    /// The limits of a text box `box_width` cells wide that shows
+    /// `box_lines` lines at once: a line's text fills one page
+    /// (`box_width * box_lines`), a reply holds 30 cells, a `@choice`
+    /// offers 2 to 4 replies, and a reaction holds 3 text steps.
+    #[must_use]
+    pub const fn new(box_width: usize, box_lines: usize) -> Self {
+        Self {
+            box_width,
+            box_lines,
+            max_text: box_width * box_lines,
+            max_option: 30,
+            min_options: 2,
+            max_options: 4,
+            max_reaction_texts: 3,
+        }
+    }
+
+    /// These limits with [`Self::max_text`] at `max_text`.
+    #[must_use]
+    pub const fn with_max_text(mut self, max_text: usize) -> Self {
+        self.max_text = max_text;
+        self
+    }
+
+    /// These limits with [`Self::max_option`] at `max_option`.
+    #[must_use]
+    pub const fn with_max_option(mut self, max_option: usize) -> Self {
+        self.max_option = max_option;
+        self
+    }
+
+    /// These limits with [`Self::min_options`] at `min_options`.
+    #[must_use]
+    pub const fn with_min_options(mut self, min_options: usize) -> Self {
+        self.min_options = min_options;
+        self
+    }
+
+    /// These limits with [`Self::max_options`] at `max_options`.
+    #[must_use]
+    pub const fn with_max_options(mut self, max_options: usize) -> Self {
+        self.max_options = max_options;
+        self
+    }
+
+    /// These limits with [`Self::max_reaction_texts`] at
+    /// `max_reaction_texts`.
+    #[must_use]
+    pub const fn with_max_reaction_texts(mut self, max_reaction_texts: usize) -> Self {
+        self.max_reaction_texts = max_reaction_texts;
+        self
+    }
 }
 
 /// A step a game adds to the format: `@<name> <args>`, for a name the
@@ -383,7 +450,12 @@ impl<D> DialogueTable<D> {
 
 /// Every scene of every dialogue file, with where each was written: what
 /// checks that need more of the game's data run on once that is loaded.
+///
+/// `#[non_exhaustive]` (ADR-0039 kind 3): it grows (2140 gives it the story's
+/// variables), so it is built with `default()` or by
+/// [`scripts_from_parsed`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Scripts<D = NoDirective> {
     /// The scenes, by id.
     pub table: DialogueTable<D>,
@@ -404,10 +476,21 @@ impl<D> Default for Scripts<D> {
 /// the `.dlg` format ([`Dlg`]) reads. [`scripts_from_parsed`] checks them
 /// against the game's rules, once its characters, names and music are
 /// loaded.
+///
+/// `#[non_exhaustive]` (ADR-0039 kind 3): it grows (2140 gives it the story's
+/// variables), so it is built with [`DialogueFile::new`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct DialogueFile<D = NoDirective> {
     /// Its scenes, in file order.
     pub scenes: Vec<ParsedScene<D>>,
+}
+
+impl<D> DialogueFile<D> {
+    /// The file of `scenes`, in file order.
+    pub fn new(scenes: Vec<ParsedScene<D>>) -> Self {
+        Self { scenes }
+    }
 }
 
 impl<D: 'static> AssetKind for DialogueFile<D> {

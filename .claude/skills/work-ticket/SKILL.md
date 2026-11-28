@@ -177,7 +177,10 @@ built already.
   The game's pin update is a game PR. A public type you add, or add to,
   follows ADR-0039 (2013), and its constructors take no two neighbouring
   numbers (ADR-0151): `cargo xtask api` fails one that
-  `tools/constructors.ron` doesn't list.
+  `tools/constructors.ron` doesn't list. A new public struct or enum left
+  exhaustive is listed in `tools/exhaustive.ron` with its kind (`plain`,
+  `closed` or `private`; ticket 2096): `cargo xtask api` fails one that
+  isn't.
 
 ## 4. Verify
 

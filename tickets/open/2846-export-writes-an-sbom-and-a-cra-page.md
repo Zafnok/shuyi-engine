@@ -106,9 +106,9 @@ is Nick's, asked in 3529; this ticket works with either answer.
 - `Work` gains `origin`, Cargo's `source` of the crate (empty for a path
   crate). `Work` is `#[non_exhaustive]`, so the field is additive.
 - `ExportOutput` gains `sbom: Option<FileSize>`, the SBOM's path from
-  the export's folder and its size. A `Breaking:` line (no
-  `#[non_exhaustive]` on it), the contract's next version, the schema
-  regenerated.
+  the export's folder and its size: additive in Rust (**from 2096
+  (done)** it is `#[non_exhaustive]`), the contract's next version, the
+  schema regenerated.
 - The disclosure check knows the SBOM as made by this export.
 - Optional `cargo-auditable`: `shuyi.ron`'s `export.auditable: true`
   builds the desktop programs with `cargo auditable build`, which embeds
@@ -277,9 +277,8 @@ into a new ticket.
 - [ ] `docs/cyber-resilience.md` exists with the four sections, says it
       is not legal advice, cites each date by article, and follows the
       three either-order clauses; `cargo xtask check-docs` passes.
-- [ ] The completion notes have a `Breaking:` line for
-      `ExportOutput.sbom` with its `migration` block, and a `Behaviour:`
-      line for the new file beside every package.
+- [ ] The completion notes have a `Behaviour:` line for the new file
+      beside every package.
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 

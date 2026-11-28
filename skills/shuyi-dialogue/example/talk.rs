@@ -41,15 +41,9 @@ const BOX: BoxPlace = BoxPlace::new(Rect::new(0, 17, 48, 7), 2, 19);
 
 /// What the scenes keep to: the box's size, two to four replies, and no
 /// tokens of the game's own.
-const LIMITS: DialogueLimits = DialogueLimits {
-    box_width: WIDTH,
-    box_lines: LINES,
-    max_text: WIDTH * LINES,
-    max_option: WIDTH - 4,
-    min_options: 2,
-    max_options: 4,
-    max_reaction_texts: 2,
-};
+const LIMITS: DialogueLimits = DialogueLimits::new(WIDTH, LINES)
+    .with_max_option(WIDTH - 4)
+    .with_max_reaction_texts(2);
 
 /// The game's rules for its scenes ([`LIMITS`]).
 struct Rules;

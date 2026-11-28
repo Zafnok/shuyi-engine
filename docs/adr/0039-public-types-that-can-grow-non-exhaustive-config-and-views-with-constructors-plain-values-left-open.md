@@ -2,7 +2,8 @@
 
 - **Status:** Accepted; kinds 2 to 5 amended by ADR-0151 (a constructor takes no
   two neighbouring numbers, checked by `cargo xtask api` against
-  `tools/constructors.ron`)
+  `tools/constructors.ron`); held by `cargo xtask api` against
+  `tools/exhaustive.ron` too (ticket 2096)
 - **Date:** 2026-10-23
 - **Related tickets:** 2013 (this), 2010 (the public API gate,
   ADR-0038), 2005
@@ -155,6 +156,17 @@ major version.
   skills' lines and by 2010's job, whose cargo-semver-checks names the
   very break this rule prevents (a field added to a struct a game can
   build, a variant added to an exhaustive enum).
+- That break shows only when the type grows, so `cargo xtask api` also
+  reads the head's listing of every catalog crate and holds each
+  exhaustive `pub struct` and `pub enum` to `tools/exhaustive.ron`
+  (ticket 2096, `crates/xtask/src/api/exhaustive.rs`). The file names
+  each at each of its paths, under its crate and its kind: `plain` (kind
+  1), `closed` (kind 6's closed sets), `private` (kind 8: a field the
+  listing doesn't show, so no game builds it by literal), or `open` (may
+  grow, and moves under this ADR in the PR that grows it, with a
+  `Breaking:` line). The check fails a type the file doesn't list, a
+  listed path the listing shows `#[non_exhaustive]` or doesn't show, and
+  an `open` path the base's file lacks: that list only shrinks.
 
 **The types the templates and hello-grid build by literal** (in `src/`
 and `tests/`, as of 2026-10-23), their kind, and when each changes:

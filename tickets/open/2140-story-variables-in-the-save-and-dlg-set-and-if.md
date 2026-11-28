@@ -140,9 +140,11 @@ None.
   (118), `openings.rs` (56) and `stand_in.rs` (83, 166), read through
   the contents API on 2026-11-23 (`gh search code` was rate-limited).
   So the new variants break it: `Step` becomes `#[non_exhaustive]` in
-  the same break, so later steps don't. `DialogueFile` and `Scripts`
-  gain a `story: StoryDecls` field and become `#[non_exhaustive]` with
-  constructors. Each gets a `Breaking:` line with a `migration` block.
+  the same break, so later steps don't. It gets a `Breaking:` line
+  with a `migration` block. `DialogueFile` and `Scripts` gain a
+  `story: StoryDecls` field, additively: **from 2096 (done)** both are
+  `#[non_exhaustive]`, built with `DialogueFile::new(scenes)` and
+  `Scripts::default()`.
   The game's directives are `place`, `opening`, `dies` and `joins`
   (`crates/content/src/dialogue.rs`, `impl Directive for Stage`), so
   the engine taking `@var` and `@set` shadows none of them. The new

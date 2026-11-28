@@ -90,9 +90,9 @@ None.
   as ADR-0120 does.
 - Public types (ADR-0039): `Diagnostic`, `Suggestion`, `BuildInput` and
   `BuildOutput` may grow, so each is `#[non_exhaustive]` with a
-  constructor or `Default`. `Answer` gains a field: `Answer` is not
-  `#[non_exhaustive]` and has `deny_unknown_fields`, so this breaks the
-  Rust API: write a `Breaking:` line and a `migration` block. In the
+  constructor or `Default`. `Answer` gains a field, additively in
+  Rust: **from 2096 (done)** it is `#[non_exhaustive]`, built with
+  `Answer::new` and its kin. In the
   JSON it is a field added to every answer, which breaks no client, so
   the contract's `VERSION` stays and the schemas add their line to
   `versions.json` (ADR-0150). A search of the

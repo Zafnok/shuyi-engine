@@ -675,15 +675,7 @@ fn a_character_draws_from_the_set_its_language_names() {
     let rules = PackRules::new(
         |_, _| None,
         &shuyi_assets::dialogue::NoTokens,
-        shuyi_assets::dialogue::DialogueLimits {
-            box_width: 40,
-            box_lines: 3,
-            max_text: 200,
-            max_option: 30,
-            min_options: 2,
-            max_options: 4,
-            max_reaction_texts: 3,
-        },
+        shuyi_assets::dialogue::DialogueLimits::new(40, 3).with_max_text(200),
         &CellWidths::NARROW,
     );
     let lang: Lang = from_files(&files, None, str::to_owned, &rules).unwrap();

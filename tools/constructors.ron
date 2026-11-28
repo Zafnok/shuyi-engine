@@ -18,6 +18,7 @@
         // The order is the meaning.
         (path: "shuyi_assets::font::FontAtlasDef::new", why: "a cell's width then its height (from 2095)"),
         (path: "shuyi_assets::image::ImageInfo::new", why: "a width then a height"),
+        (path: "shuyi_assets::dialogue::DialogueLimits::new", why: "the text box's width then its lines: a width then a height (from 2096)"),
         (path: "shuyi_ui::frame::painted::Painted::rgba", why: "a width then a height"),
         (path: "shuyi_ui::frame::painted::Painted::one_bit", why: "a width then a height"),
         (path: "shuyi_ui::frame::painted::Painted::indexed", why: "a width then a height"),

@@ -129,7 +129,11 @@ map) with a type that implements `Directive`: the parser hands it every
      (`box_width`), its lines per page (`box_lines`), the longest line
      (`max_text`) and reply (`max_option`), how many replies a choice
      offers (`min_options`, `max_options`), and the most lines in one
-     reaction (`max_reaction_texts`);
+     reaction (`max_reaction_texts`). Build it in a `const` with
+     `DialogueLimits::new(box_width, box_lines)`, which takes the rest
+     from the box (a line fills one page, a reply 30 cells, 2 to 4
+     replies, 3 lines a reaction), and change any with its `with_<field>`
+     (`.with_max_text(200)`);
    - `tokens`: the game's own `{tokens}` in text (`NoTokens` for none);
    - and if it wants: `can_speak`, `expression_problem`,
      `speech_problem`, `music_problem` and `scene_problems`.

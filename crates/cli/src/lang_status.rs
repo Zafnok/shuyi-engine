@@ -400,15 +400,7 @@ mod tests {
     const RULES: PackRules<'static> = PackRules::new(
         no_problem,
         &NoTokens,
-        DialogueLimits {
-            box_width: 40,
-            box_lines: 3,
-            max_text: 200,
-            max_option: 30,
-            min_options: 2,
-            max_options: 4,
-            max_reaction_texts: 3,
-        },
+        DialogueLimits::new(40, 3).with_max_text(200),
         &shuyi_assets::font::CellWidths::NARROW,
     );
 

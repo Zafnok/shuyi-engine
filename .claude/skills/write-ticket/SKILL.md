@@ -59,7 +59,9 @@ them without asking questions.
    - A new public type follows ADR-0039 (2013): one that may grow is
      `#[non_exhaustive]` with a constructor that takes no two
      neighbouring numbers (ADR-0151), and a new field on such a type is
-     additive. Say which in the Scope.
+     additive. One left exhaustive is listed in `tools/exhaustive.ron`
+     with its kind (`plain`, `closed` or `private`), which `cargo xtask
+     api` checks. Say which in the Scope.
 5. **Keep it small:** one PR's worth, about 1,500 counted lines or fewer,
    as `cargo xtask pr-size` counts them (code, tests, docs and
    hand-written data; snapshots, golden tables, schemas, lock files,

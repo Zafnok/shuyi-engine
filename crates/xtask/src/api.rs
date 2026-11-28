@@ -20,7 +20,9 @@
 //! ([`reached_outside`], ticket 2090). A constructor of a head's
 //! `#[non_exhaustive]` type that takes two neighbouring numbers, and that
 //! [`constructors::FILE`] doesn't list, fails it too ([`constructors`],
-//! ticket 3503, ADR-0151).
+//! ticket 3503, ADR-0151), and so does a head's exhaustive `pub struct` or
+//! `pub enum` that [`exhaustive::FILE`] doesn't list with its kind
+//! ([`exhaustive`], ticket 2096, ADR-0039).
 //!
 //! **What is checked** (tickets 2040 and 2041) is one configuration per
 //! crate, on the host, in a debug build, the same in both tools: each crate
@@ -418,6 +420,9 @@ pub struct CrateApi {
     pub unchecked: Option<&'static str>,
     /// The head's constructors of its `#[non_exhaustive]` types (ticket 3503).
     pub constructors: Vec<constructors::Constructor>,
+    /// The head's structs and enums, and whether each is `#[non_exhaustive]`
+    /// (ticket 2096).
+    pub types: Vec<exhaustive::Type>,
 }
 
 impl CrateApi {
@@ -449,6 +454,7 @@ impl CrateApi {
             outside: Vec::new(),
             unchecked: None,
             constructors: constructors::constructors(head),
+            types: exhaustive::types(head),
         }
     }
 
@@ -531,9 +537,10 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
     }
     let compared = base_revision(root, options, runner).and_then(|base| {
         let contract = contract::check(root, &base, runner);
-        compare(root, &base, runner).map(|crates| (base, crates, contract))
+        let base_listed = base_file(root, &base, exhaustive::FILE, runner);
+        compare(root, &base, runner).map(|crates| (base, crates, contract, base_listed))
     });
-    let (base, mut crates, contract) = match compared {
+    let (base, mut crates, contract, base_listed) = match compared {
         Ok(compared) => compared,
         Err(error) => {
             return Outcome {
@@ -573,8 +580,12 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
     let allowed = fs::read_to_string(root.join(constructors::FILE)).ok();
     let problems = constructors::check(allowed.as_deref(), &crates);
     errors.extend(constructors::error(&problems));
+    let listed = fs::read_to_string(root.join(exhaustive::FILE)).ok();
+    let unlisted = exhaustive::check(listed.as_deref(), base_listed.as_deref(), &crates);
+    errors.extend(exhaustive::error(&unlisted));
     let mut summary = summary(&base, &crates, &warnings, verdict.as_ref(), book.as_ref());
     summary.push_str(&constructors::section(&problems));
+    summary.push_str(&exhaustive::section(&unlisted));
     Outcome {
         summary,
         label: Some(self::verdict(&crates)),
@@ -1196,6 +1207,17 @@ pub fn rule(crates: &[CrateApi], pr: &Pr, done_ticket: &dyn Fn(&str) -> Option<S
     ))
 }
 
+/// The text of `file` at the revision `base`, or `None` when it has no such
+/// file (or git can't read it).
+fn base_file(root: &Path, base: &str, file: &str, runner: &dyn Runner) -> Option<String> {
+    let spec = format!("{base}:{file}");
+    runner
+        .run(root, "git", &["show", &spec])
+        .ok()
+        .filter(|ran| ran.ok)
+        .map(|ran| ran.stdout)
+}
+
 /// The files the head changed from `base`, the working tree's included.
 fn changed_files(root: &Path, base: &str, runner: &dyn Runner) -> Result<Vec<String>, String> {
     let ran = run_ok(runner, root, "git", &["diff", "--name-only", base])?;
@@ -1454,6 +1476,7 @@ fn done_ticket(root: &Path, id: &str) -> Option<String> {
 }
 
 pub mod constructors;
+pub mod exhaustive;
 
 #[cfg(test)]
 mod tests;
