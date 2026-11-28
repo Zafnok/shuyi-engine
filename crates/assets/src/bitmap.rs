@@ -116,7 +116,7 @@ impl OneBitPicture {
 }
 
 impl AssetKind for OneBitPicture {
-    const NAME: &'static str = "one-bit picture";
+    const NAME: &str = "one-bit picture";
 }
 
 /// A one-bit picture file read whole as a [`OneBitPicture`] (`one-bit`).

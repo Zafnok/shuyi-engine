@@ -260,7 +260,7 @@ mod look_in_full {
 }
 
 impl<T: 'static, F: 'static> AssetKind for GridMap<T, F> {
-    const NAME: &'static str = "map";
+    const NAME: &str = "map";
 }
 
 /// What a terrain id resolves to, in a [`MapText`].

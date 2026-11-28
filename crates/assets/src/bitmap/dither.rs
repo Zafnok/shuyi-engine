@@ -96,7 +96,7 @@ impl Default for OneBitSettings {
 }
 
 impl ImportSettings for OneBitSettings {
-    const SECTION: &'static str = "onebit";
+    const SECTION: &str = "onebit";
 }
 
 /// A picture's brightness from 0 to 255 of the pixel `[r, g, b, _]`.
