@@ -161,7 +161,7 @@ docs 100).
   attributes before `pub` (the listing writes `#[non_exhaustive]
   #[repr(u8)] pub enum shuyi_ui::…`, which the old reader took for a line
   inside a block) and returns the item's word and the rest of the line.
-- `tools/exhaustive.ron` lists 895 paths of 661 types (a re-export at
+- `tools/exhaustive.ron` lists 896 paths of 662 types (a re-export at
   each of its paths), measured on 2026-11-28 with `cargo +nightly-2026-08-16
   public-api -p <crate> --simplified` and each crate's features of
   `API_CRATES`, and sorted with the rustdoc JSON that listing writes
@@ -172,7 +172,7 @@ docs 100).
   | ----- | ----- | ------ | ------- | ---- |
   | `shuyi-core` | 33 | 13 | 53 | 36 |
   | `shuyi-assets` | 48 | 10 | 47 | 62 |
-  | `shuyi-ui` | 34 | 34 | 138 | 130 |
+  | `shuyi-ui` | 34 | 34 | 139 | 130 |
   | `shuyi-platform` | 5 | 4 | 19 | 1 |
   | `shuyi-app` | 0 | 0 | 5 | 0 |
   | `shuyi-cli` | 22 | 9 | 17 | 115 |
@@ -222,7 +222,7 @@ docs 100).
 
 **Deviations.**
 
-- **A fourth kind, `private`** (ADR-0039 kind 8). 220 of the 661 types
+- **A fourth kind, `private`** (ADR-0039 kind 8). 221 of the 662 types
   have a private field: no game builds them by literal, so they rightly
   stay exhaustive, yet they are neither plain values nor closed sets,
   and filing them `open` would say they must move. The listing can't
@@ -230,7 +230,7 @@ docs 100).
   the same), so the file names them.
 - **More than the ticket counted.** The ticket measured 759 lines with
   default features; with `API_CRATES`' features (as `listing` runs) it is
-  908 (895 once ten moved). So the data is 487 lines, not 250, with several paths a
+  908 (895 once ten moved, and 896 with main's `FaultyStorage`). So the data is 487 lines, not 250, with several paths a
   line (up to 120 columns, as `tools/constructors.ron` runs to 202).
 - `without_generics` stays private: a type's path ends at its first
   `<`, `(`, `;` or space, so the reader cuts there.
